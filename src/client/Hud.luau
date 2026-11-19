@@ -1,4 +1,5 @@
--- Interface construite en code : argent, compteurs de vol, améliorations, jauge de charge et panneau de résultat.
+-- HUD permanent : compteurs Throw Power et argent (bas gauche), bouton et fenêtre des améliorations (gauche), barre
+-- d'entraînement avec STOP, gains de puissance qui s'envolent, popups LEVEL UP / NEW GEAR, consigne du moment.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
@@ -7,66 +8,287 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Economy = require(Shared:WaitForChild("Economy"))
 local Format = require(Shared:WaitForChild("Format"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
+local Training = require(Shared:WaitForChild("Training"))
 
-local FONT = Enum.Font.FredokaOne
-local WHITE = Color3.new(1, 1, 1)
-local GOLD = Color3.fromRGB(255, 210, 60)
-local PANEL = Color3.fromRGB(25, 27, 35)
-local BUY = Color3.fromRGB(60, 190, 90)
-local LOCKED = Color3.fromRGB(85, 88, 98)
+local UIKit = require(script.Parent.UIKit)
+
+local C = UIKit.COLORS
+
+type Card = { title: TextLabel, detail: TextLabel, buy: TextButton }
 
 local Hud = {}
 
 local player: Player
 local gui: ScreenGui
+local root: Frame -- tout le HUD permanent, masqué pendant le vol
+local powerLabel: TextLabel
 local moneyLabel: TextLabel
-local counters: Frame
-local distanceLabel: TextLabel
-local bonesLabel: TextLabel
-local smashedLabel: TextLabel
-local gaugeFrame: Frame
-local needle: Frame
-local fill: Frame
+local upgradesButton: TextButton
+local badge: Frame
+local window: Frame
+local gearCard: Card
+local valueCard: Card
+local trainBar: Frame
+local trainLevel: TextLabel
+local trainFill: Frame
+local trainCount: TextLabel
 local hint: TextLabel
-local resultFrame: Frame
-local resultScale: UIScale
-local resultTotal: TextLabel
-local resultDetail: TextLabel
-local resultPerfect: TextLabel
-local upgradeButtons: { [string]: TextButton } = {}
-local dummyConnections: { RBXScriptConnection } = {}
-local resultToken = 0
+local lastPower = 0
+local levelStartPower = 0
 
--- Cette méthode permet de créer une instance d'interface avec ses propriétés lorsque l'on construit le HUD.
-local function create(className: string, props: { [string]: any }): any
-	local instance = Instance.new(className)
-	for key, value in props do
-		if key ~= "Parent" then
-			(instance :: any)[key] = value
-		end
-	end
-	instance.Parent = props.Parent
-	return instance
+-- Cette méthode permet de lire un attribut numérique du joueur (valeur par défaut si absent) lorsque le HUD se
+-- rafraîchit.
+local function stat(name: string, default: number): number
+	return (player:GetAttribute(name) :: number?) or default
 end
 
--- Cette méthode permet d'arrondir les coins d'un cadre lorsque l'on construit un panneau.
-local function round(parent: Instance, radius: number)
-	create("UICorner", { CornerRadius = UDim.new(0, radius), Parent = parent })
-end
-
--- Cette méthode permet de créer un texte au style du jeu (police ronde, contour sombre) lorsque l'on construit le HUD.
-local function text(props: { [string]: any }): TextLabel
-	local label = create("TextLabel", {
-		BackgroundTransparency = 1,
-		Font = FONT,
-		TextColor3 = WHITE,
-		TextStrokeTransparency = 0.4,
-		TextSize = 24,
+-- Cette méthode permet de créer une pastille de compteur (icône + valeur) en bas à gauche lorsque le HUD est construit.
+local function counter(parent: Instance, order: number, icon: string, color: Color3): TextLabel
+	local pill = UIKit.create("Frame", {
+		LayoutOrder = order,
+		Size = UDim2.fromOffset(230, 52),
+		BackgroundColor3 = C.panel,
+		BackgroundTransparency = 0.25,
+		Parent = parent,
 	})
-	for key, value in props do
-		(label :: any)[key] = value
+	UIKit.corner(pill, 26)
+	UIKit.outline(pill, 3)
+	UIKit.text({ Size = UDim2.fromOffset(52, 52), Text = icon, TextSize = 32, Parent = pill })
+	return UIKit.text({
+		Position = UDim2.fromOffset(52, 0),
+		Size = UDim2.new(1, -62, 1, 0),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextSize = 34,
+		TextColor3 = color,
+		Parent = pill,
+	})
+end
+
+-- Cette méthode permet de construire une carte d'amélioration (titre, détail, bouton d'achat) dans la fenêtre lorsque
+-- le HUD est construit.
+local function card(parent: Instance, order: number, kind: string, color: Color3): Card
+	local frame = UIKit.create("Frame", {
+		LayoutOrder = order,
+		Size = UDim2.new(1, 0, 0, 120),
+		BackgroundColor3 = Color3.fromRGB(55, 60, 78),
+		Parent = parent,
+	})
+	UIKit.corner(frame, 14)
+	UIKit.outline(frame, 3)
+	local title = UIKit.text({
+		Position = UDim2.fromOffset(16, 10),
+		Size = UDim2.new(1, -200, 0, 34),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextSize = 30,
+		TextColor3 = color,
+		Parent = frame,
+	})
+	local detail = UIKit.text({
+		Position = UDim2.fromOffset(16, 48),
+		Size = UDim2.new(1, -200, 0, 60),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		Font = UIKit.BODY_FONT,
+		TextSize = 22,
+		TextWrapped = true,
+		Parent = frame,
+	})
+	local buy = UIKit.button({
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -14, 0.5, 0),
+		Size = UDim2.fromOffset(170, 70),
+		TextSize = 30,
+		Parent = frame,
+	}, function()
+		Hud.onBuy(kind)
+	end)
+	return { title = title, detail = detail, buy = buy }
+end
+
+-- Cette méthode permet de construire la fenêtre des améliorations (équipement d'entraînement, valeur du mannequin)
+-- lorsque le HUD est construit.
+local function buildWindow()
+	window = UIKit.create("Frame", {
+		Name = "Upgrades",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(620, 360),
+		BackgroundColor3 = C.panel,
+		Visible = false,
+		Parent = gui,
+	})
+	UIKit.corner(window, 18)
+	UIKit.outline(window, 4)
+	local header = UIKit.create("Frame", {
+		Size = UDim2.new(1, 0, 0, 64),
+		BackgroundColor3 = C.yellow,
+		Parent = window,
+	})
+	UIKit.corner(header, 18)
+	UIKit.text({ Size = UDim2.fromScale(1, 1), Text = "UPGRADES", TextSize = 44, Parent = header })
+	UIKit.button({
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(1, -6, 0, 6),
+		Size = UDim2.fromOffset(52, 52),
+		BackgroundColor3 = C.red,
+		Text = "X",
+		TextSize = 30,
+		Parent = window,
+	}, function()
+		window.Visible = false
+	end)
+	local cards = UIKit.create("Frame", {
+		Name = "Cards",
+		Position = UDim2.fromOffset(20, 84),
+		Size = UDim2.new(1, -40, 1, -100),
+		BackgroundTransparency = 1,
+		Parent = window,
+	})
+	UIKit.create("UIListLayout", { Padding = UDim.new(0, 14), SortOrder = Enum.SortOrder.LayoutOrder, Parent = cards })
+	gearCard = card(cards, 1, "Gear", C.yellow)
+	valueCard = card(cards, 2, "Value", C.green)
+end
+
+-- Cette méthode permet de rafraîchir compteurs, cartes d'amélioration et pastille « ! » lorsque l'argent, la
+-- puissance, l'équipement ou la valeur changent.
+local function refreshEconomy()
+	local money = stat("Money", 0)
+	moneyLabel.Text = Format.money(money)
+	powerLabel.Text = Format.short(stat("ThrowPower", GameConfig.START_POWER))
+
+	local tier = stat("GearTier", 1)
+	local gear = Training.gear(tier)
+	local gearCost = Training.nextGearCost(tier)
+	gearCard.title.Text = "TRAINING GEAR"
+	if gearCost then
+		local nextGear = Training.gear(tier + 1)
+		gearCard.detail.Text = string.format(
+			"%s <b>+%s</b>/rep  →  %s <b>+%s</b>/rep",
+			gear.name,
+			Format.short(gear.gain),
+			nextGear.name,
+			Format.short(nextGear.gain)
+		)
+		gearCard.buy.Text = Format.money(gearCost)
+	else
+		gearCard.detail.Text = string.format("%s <b>+%s</b>/rep", gear.name, Format.short(gear.gain))
+		gearCard.buy.Text = "MAXED"
 	end
-	return label
+
+	local level = stat("ValueLevel", 1)
+	local valueCost = Economy.valueCost(level)
+	valueCard.title.Text = "DUMMY VALUE  Lv " .. level
+	valueCard.detail.Text = string.format(
+		"Payout <b>x%.2f</b>  →  <b>x%.2f</b>",
+		Economy.valueMultiplier(level),
+		Economy.valueMultiplier(level + 1)
+	)
+	valueCard.buy.Text = if valueCost then Format.money(valueCost) else "MAXED"
+
+	local canGear = gearCost ~= nil and money >= gearCost
+	local canValue = valueCost ~= nil and money >= valueCost
+	gearCard.buy.BackgroundColor3 = if canGear then C.green else C.locked
+	valueCard.buy.BackgroundColor3 = if canValue then C.green else C.locked
+	badge.Visible = canGear or canValue
+end
+
+-- Cette méthode permet de faire s'envoler un gain (« +3 💪 ») au-dessus de la barre d'entraînement lorsque la
+-- puissance augmente.
+local function floatGain(amount: number)
+	local label = UIKit.text({
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, math.random(-60, 60), 1, -150),
+		Size = UDim2.fromOffset(200, 40),
+		Text = "+" .. Format.short(amount) .. " 💪",
+		TextSize = 34,
+		TextColor3 = C.yellow,
+		Parent = gui,
+	})
+	TweenService:Create(label, TweenInfo.new(0.9, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Position = label.Position - UDim2.fromOffset(0, 90),
+		TextTransparency = 1,
+	}):Play()
+	local stroke = label:FindFirstChildOfClass("UIStroke")
+	if stroke then
+		TweenService:Create(stroke, TweenInfo.new(0.9), { Transparency = 1 }):Play()
+	end
+	task.delay(1, function()
+		label:Destroy()
+	end)
+end
+
+-- Cette méthode permet de rafraîchir la barre d'entraînement (niveau, répétitions) lorsque la progression change.
+local function refreshTraining()
+	local level = stat("TrainLevel", 1)
+	local reps = stat("TrainReps", 0)
+	local needed = Training.repsForLevel(level)
+	trainLevel.Text = "LEVEL " .. level
+	trainCount.Text = reps .. " / " .. needed
+	TweenService:Create(trainFill, TweenInfo.new(0.2), { Size = UDim2.fromScale(reps / needed, 1) }):Play()
+end
+
+-- Cette méthode permet d'afficher la consigne et la barre d'entraînement adaptées à l'action du joueur lorsque son
+-- action ou l'état du couloir changent.
+local function refreshState()
+	local action = player:GetAttribute("Action")
+	local state = player:GetAttribute("LaneState")
+	trainBar.Visible = action == "Training"
+	root.Visible = state ~= "Flying"
+	hint.Visible = action == nil and state == "Ready"
+end
+
+-- Cette méthode permet de construire la barre d'entraînement (niveau, progression, STOP) en bas de l'écran lorsque
+-- le HUD est construit.
+local function buildTrainBar(onStop: () -> ())
+	trainBar = UIKit.create("Frame", {
+		Name = "TrainBar",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -24),
+		Size = UDim2.fromOffset(520, 100),
+		BackgroundTransparency = 1,
+		Visible = false,
+		Parent = gui,
+	})
+	UIKit.button({
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.fromScale(0.5, 0),
+		Size = UDim2.fromOffset(170, 44),
+		BackgroundColor3 = C.red,
+		Text = "STOP",
+		Parent = trainBar,
+	}, onStop)
+	local track = UIKit.create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.fromScale(0.5, 1),
+		Size = UDim2.new(1, 0, 0, 40),
+		BackgroundColor3 = C.panel,
+		Parent = trainBar,
+	})
+	UIKit.corner(track, 12)
+	UIKit.outline(track, 3)
+	trainFill = UIKit.create("Frame", {
+		Size = UDim2.fromScale(0, 1),
+		BackgroundColor3 = C.blue,
+		Parent = track,
+	})
+	UIKit.corner(trainFill, 12)
+	trainLevel = UIKit.text({
+		Position = UDim2.fromOffset(14, 0),
+		Size = UDim2.fromScale(0.5, 1),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextSize = 26,
+		ZIndex = 2,
+		Parent = track,
+	})
+	trainCount = UIKit.text({
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -14, 0, 0),
+		Size = UDim2.fromScale(0.5, 1),
+		TextXAlignment = Enum.TextXAlignment.Right,
+		TextSize = 26,
+		ZIndex = 2,
+		Parent = track,
+	})
 end
 
 -- Cette méthode permet d'adapter l'échelle du HUD à la taille de l'écran lorsque la fenêtre change (mobile compris).
@@ -74,326 +296,130 @@ local function bindScale(scale: UIScale)
 	local camera = Workspace.CurrentCamera
 	local function update()
 		local size = camera.ViewportSize
-		scale.Scale = math.clamp(math.min(size.X / 1280, size.Y / 720), 0.6, 1.3)
+		scale.Scale = math.clamp(math.min(size.X / 1280, size.Y / 720), 0.55, 1.3)
 	end
 	camera:GetPropertyChangedSignal("ViewportSize"):Connect(update)
 	update()
 end
 
--- Cette méthode permet de rafraîchir argent et boutons d'amélioration lorsque l'argent ou un niveau change.
-local function refreshEconomy()
-	local money = (player:GetAttribute("Money") :: number?) or 0
-	moneyLabel.Text = Format.money(money)
-	for kind, button in upgradeButtons do
-		local level = player:GetAttribute(kind .. "Level") or 1
-		local cost = Economy.upgradeCost(kind, level)
-		local effect
-		if kind == "Power" then
-			effect = string.format(
-				"Speed %d → %d",
-				math.floor(Economy.launchSpeed(level)),
-				math.floor(Economy.launchSpeed(math.min(level + 1, Economy.maxLevel(kind))))
-			)
-		else
-			effect = string.format(
-				"Payout ×%.2f → ×%.2f",
-				Economy.valueMultiplier(level),
-				Economy.valueMultiplier(math.min(level + 1, Economy.maxLevel(kind)))
-			)
-		end
-		local title = if kind == "Power" then "CANNON POWER" else "DUMMY VALUE"
-		local price = if cost then Format.money(cost) else "MAX"
-		button.Text = string.format(
-			'<font size="20">%s  Lv %d</font>\n<font size="16" color="#DDE3F0">%s</font>\n<font size="24">%s</font>',
-			title,
-			level,
-			if cost then effect else "Maxed out",
-			price
-		)
-		local affordable = cost ~= nil and money >= cost
-		button.BackgroundColor3 = if affordable then BUY else LOCKED
-		button.AutoButtonColor = affordable
-	end
+-- Cette méthode permet de donner le ScreenGui du jeu (créé par Hud.init) lorsqu'un autre module y ajoute ses éléments.
+function Hud.screen(): ScreenGui
+	return gui
 end
 
--- Cette méthode permet d'afficher la jauge ou les compteurs selon l'état du couloir lorsque LaneState change.
-local function refreshState()
-	local state = player:GetAttribute("LaneState")
-	gaugeFrame.Visible = state == "Ready"
-	hint.Visible = state == "Ready"
-	if state == "Ready" then
-		counters.Visible = false
-		Hud.setGauge(0)
-	end
-end
-
--- Cette méthode permet de construire les boutons d'amélioration à droite de l'écran lorsque le HUD est créé.
-local function buildUpgrades(root: Instance, onBuy: (string) -> ())
-	local column = create("Frame", {
-		Name = "Upgrades",
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -16, 0.5, 0),
-		Size = UDim2.fromOffset(240, 212),
-		BackgroundTransparency = 1,
-		Parent = root,
-	})
-	create("UIListLayout", { Padding = UDim.new(0, 12), SortOrder = Enum.SortOrder.LayoutOrder, Parent = column })
-	for order, kind in { "Power", "Value" } do
-		local button = create("TextButton", {
-			Name = kind,
-			LayoutOrder = order,
-			Size = UDim2.new(1, 0, 0, 100),
-			Font = FONT,
-			RichText = true,
-			TextColor3 = WHITE,
-			TextStrokeTransparency = 0.5,
-			TextSize = 20,
-			BackgroundColor3 = LOCKED,
-			Parent = column,
-		})
-		round(button, 14)
-		create("UIStroke", {
-			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-			Color = Color3.fromRGB(15, 15, 20),
-			Thickness = 3,
-			Parent = button,
-		})
-		button.Activated:Connect(function()
-			onBuy(kind)
-		end)
-		upgradeButtons[kind] = button
-	end
-end
-
--- Cette méthode permet de construire la jauge de charge en bas de l'écran lorsque le HUD est créé.
-local function buildGauge(root: Instance)
-	gaugeFrame = create("Frame", {
-		Name = "Gauge",
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -48),
-		Size = UDim2.fromOffset(460, 38),
-		BackgroundColor3 = PANEL,
-		Parent = root,
-	})
-	round(gaugeFrame, 10)
-	create("UIStroke", { Color = WHITE, Thickness = 3, Parent = gaugeFrame })
-	fill = create("Frame", {
-		Name = "Fill",
-		Size = UDim2.fromScale(0, 1),
-		BackgroundColor3 = WHITE,
-		Parent = gaugeFrame,
-	})
-	round(fill, 10)
-	create("UIGradient", {
-		Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(70, 200, 90)),
-			ColorSequenceKeypoint.new(0.6, Color3.fromRGB(250, 210, 50)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(240, 80, 50)),
-		}),
-		Parent = fill,
-	})
-	local perfect = create("Frame", {
-		Name = "PerfectZone",
-		Position = UDim2.fromScale(GameConfig.PERFECT_THRESHOLD, 0),
-		Size = UDim2.fromScale(1 - GameConfig.PERFECT_THRESHOLD, 1),
-		BackgroundColor3 = GOLD,
-		BackgroundTransparency = 0.35,
-		ZIndex = 2,
-		Parent = gaugeFrame,
-	})
-	text({
-		Name = "PerfectLabel",
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 0, -2),
-		Size = UDim2.fromOffset(90, 20),
-		Text = "PERFECT",
-		TextColor3 = GOLD,
-		TextSize = 16,
-		Parent = perfect,
-	})
-	needle = create("Frame", {
-		Name = "Needle",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0, 0.5),
-		Size = UDim2.new(0, 6, 1, 14),
-		BackgroundColor3 = WHITE,
-		ZIndex = 3,
-		Parent = gaugeFrame,
-	})
-	create("UIStroke", { Color = PANEL, Thickness = 2, Parent = needle })
-	hint = text({
-		Name = "Hint",
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -98),
-		Size = UDim2.fromOffset(460, 30),
-		Text = "HOLD TO CHARGE · RELEASE TO FIRE",
-		TextSize = 26,
-		Parent = root,
-	})
-end
-
--- Cette méthode permet de construire les compteurs de vol (distance, os, objets) en haut de l'écran lorsque le HUD
--- est créé.
-local function buildCounters(root: Instance)
-	counters = create("Frame", {
-		Name = "Counters",
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 84),
-		Size = UDim2.fromOffset(720, 70),
-		BackgroundTransparency = 1,
-		Visible = false,
-		Parent = root,
-	})
-	create("UIListLayout", {
-		FillDirection = Enum.FillDirection.Horizontal,
-		HorizontalAlignment = Enum.HorizontalAlignment.Center,
-		Padding = UDim.new(0, 30),
-		SortOrder = Enum.SortOrder.LayoutOrder,
-		Parent = counters,
-	})
-	distanceLabel = text({ LayoutOrder = 1, Size = UDim2.fromOffset(260, 70), TextSize = 64, Parent = counters })
-	bonesLabel = text({
-		LayoutOrder = 2,
-		Size = UDim2.fromOffset(190, 70),
-		TextSize = 34,
-		TextColor3 = Color3.fromRGB(255, 120, 90),
-		Parent = counters,
-	})
-	smashedLabel = text({
-		LayoutOrder = 3,
-		Size = UDim2.fromOffset(190, 70),
-		TextSize = 34,
-		TextColor3 = Color3.fromRGB(140, 210, 255),
-		Parent = counters,
-	})
-end
-
--- Cette méthode permet de construire le panneau de résultat au centre de l'écran lorsque le HUD est créé.
-local function buildResult(root: Instance)
-	resultFrame = create("Frame", {
-		Name = "Result",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.42),
-		Size = UDim2.fromOffset(400, 230),
-		BackgroundColor3 = PANEL,
-		BackgroundTransparency = 0.15,
-		Visible = false,
-		Parent = root,
-	})
-	round(resultFrame, 18)
-	create("UIStroke", { Color = GOLD, Thickness = 4, Parent = resultFrame })
-	resultScale = create("UIScale", { Parent = resultFrame })
-	resultPerfect = text({
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0),
-		Size = UDim2.fromOffset(200, 40),
-		Text = "PERFECT!",
-		TextColor3 = GOLD,
-		TextSize = 36,
-		Rotation = -4,
-		Parent = resultFrame,
-	})
-	resultTotal = text({
-		Position = UDim2.fromOffset(0, 26),
-		Size = UDim2.new(1, 0, 0, 64),
-		TextColor3 = GOLD,
-		TextSize = 60,
-		Parent = resultFrame,
-	})
-	resultDetail = text({
-		Position = UDim2.fromOffset(20, 96),
-		Size = UDim2.new(1, -40, 0, 120),
-		TextSize = 22,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Top,
-		RichText = true,
-		Parent = resultFrame,
-	})
-end
-
--- Cette méthode permet de placer l'aiguille et le remplissage de la jauge lorsque la charge avance (v entre 0 et 1).
-function Hud.setGauge(v: number)
-	needle.Position = UDim2.fromScale(v, 0.5)
-	fill.Size = UDim2.fromScale(v, 1)
-end
-
--- Cette méthode permet de suivre en direct les compteurs d'un mannequin lancé lorsque le serveur annonce le lancer.
-function Hud.setDummy(model: Model)
-	for _, connection in dummyConnections do
-		connection:Disconnect()
-	end
-	table.clear(dummyConnections)
-	local function update()
-		distanceLabel.Text = Format.meters((model:GetAttribute("Distance") :: number?) or 0)
-		bonesLabel.Text = ((model:GetAttribute("Bones") :: number?) or 0) .. " BONES"
-		smashedLabel.Text = ((model:GetAttribute("Smashed") :: number?) or 0) .. " SMASHED"
-	end
-	table.insert(dummyConnections, model.AttributeChanged:Connect(update))
-	update()
-	counters.Visible = true
-end
-
--- Cette méthode permet d'afficher les gains d'un lancer pendant RESULT_TIME lorsque le serveur envoie le résultat.
-function Hud.showResult(result: Economy.Payout)
-	resultToken += 1
-	local token = resultToken
-	resultTotal.Text = "+" .. Format.money(result.total)
-	local lines = {
-		string.format("%s  →  %s", Format.meters(result.distance), Format.money(result.distanceMoney)),
-		string.format("%d bones broken  →  %s", result.bones, Format.money(result.bonesMoney)),
-		string.format("%d objects smashed  →  %s", result.smashed, Format.money(result.smashMoney)),
-	}
-	if result.multiplier ~= 1 then
-		table.insert(lines, string.format('<font color="#FFD23C">Multiplier ×%.2f</font>', result.multiplier))
-	end
-	resultDetail.Text = table.concat(lines, "\n")
-	resultPerfect.Visible = result.perfect
-	resultFrame.Visible = true
-	resultScale.Scale = 0.6
-	TweenService:Create(resultScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		Scale = 1,
-	}):Play()
-	task.delay(GameConfig.RESULT_TIME, function()
-		if token == resultToken then
-			resultFrame.Visible = false
-		end
-	end)
-end
+-- Cette méthode permet de recevoir un achat demandé par l'interface ; remplacée par init.client (envoi au serveur).
+function Hud.onBuy(_kind: string) end
 
 -- Cette méthode permet de construire le HUD et de le brancher sur les attributs du joueur lorsque le client démarre ;
--- `onBuy` reçoit "Power" ou "Value" quand le joueur clique sur une amélioration.
-function Hud.init(localPlayer: Player, onBuy: (string) -> ())
+-- `onStop` arrête l'entraînement.
+function Hud.init(localPlayer: Player, onStop: () -> ())
 	player = localPlayer
-	gui = create("ScreenGui", {
+	gui = UIKit.create("ScreenGui", {
 		Name = "Hud",
 		ResetOnSpawn = false,
+		IgnoreGuiInset = true,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 		Parent = player:WaitForChild("PlayerGui"),
 	})
-	bindScale(create("UIScale", { Parent = gui }))
-
-	local moneyFrame = create("Frame", {
-		Name = "Money",
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 12),
-		Size = UDim2.fromOffset(280, 60),
-		BackgroundColor3 = PANEL,
-		BackgroundTransparency = 0.2,
+	bindScale(UIKit.create("UIScale", { Parent = gui }))
+	root = UIKit.create("Frame", {
+		Name = "Main",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
 		Parent = gui,
 	})
-	round(moneyFrame, 16)
-	moneyLabel = text({ Size = UDim2.fromScale(1, 1), TextSize = 42, TextColor3 = GOLD, Parent = moneyFrame })
+	local counters = UIKit.create("Frame", {
+		Name = "Counters",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 18, 1, -18),
+		Size = UDim2.fromOffset(240, 116),
+		BackgroundTransparency = 1,
+		Parent = root,
+	})
+	UIKit.create("UIListLayout", {
+		Padding = UDim.new(0, 10),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		VerticalAlignment = Enum.VerticalAlignment.Bottom,
+		Parent = counters,
+	})
+	powerLabel = counter(counters, 1, "💪", C.yellow)
+	moneyLabel = counter(counters, 2, "💵", C.green)
 
-	buildCounters(gui)
-	buildUpgrades(gui, onBuy)
-	buildGauge(gui)
-	buildResult(gui)
+	upgradesButton = UIKit.button({
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 18, 0.5, 0),
+		Size = UDim2.fromOffset(96, 96),
+		BackgroundColor3 = C.blue,
+		Text = "⬆️\n<font size='18'>UPGRADES</font>",
+		TextSize = 40,
+		Radius = 18,
+		Parent = root,
+	}, function()
+		window.Visible = not window.Visible
+		if window.Visible then
+			UIKit.pop(window, 0.7)
+		end
+	end)
+	badge = UIKit.create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(1, -6, 0, 6),
+		Size = UDim2.fromOffset(30, 30),
+		BackgroundColor3 = C.red,
+		Visible = false,
+		Parent = upgradesButton,
+	})
+	UIKit.corner(badge, 15)
+	UIKit.outline(badge, 2)
+	UIKit.text({ Size = UDim2.fromScale(1, 1), Text = "!", TextSize = 24, Parent = badge })
 
-	for _, attribute in { "Money", "PowerLevel", "ValueLevel" } do
+	hint = UIKit.text({
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -30),
+		Size = UDim2.fromOffset(760, 34),
+		Font = UIKit.BODY_FONT,
+		TextSize = 26,
+		Text = "Stand on the <font color='#FFD23C'>yellow pad</font> to throw  ·  "
+			.. "<font color='#FFD23C'>💪 Train</font> to throw farther",
+		Parent = root,
+	})
+
+	buildWindow()
+	buildTrainBar(onStop)
+
+	lastPower = stat("ThrowPower", GameConfig.START_POWER)
+	levelStartPower = lastPower
+	for _, attribute in { "Money", "GearTier", "ValueLevel" } do
 		player:GetAttributeChangedSignal(attribute):Connect(refreshEconomy)
 	end
+	player:GetAttributeChangedSignal("ThrowPower"):Connect(function()
+		local power = stat("ThrowPower", GameConfig.START_POWER)
+		if power > lastPower and player:GetAttribute("Action") == "Training" then
+			floatGain(power - lastPower)
+			UIKit.pop(powerLabel, 1.2)
+		end
+		lastPower = power
+		refreshEconomy()
+	end)
+	player:GetAttributeChangedSignal("TrainLevel"):Connect(function()
+		local power = stat("ThrowPower", GameConfig.START_POWER)
+		UIKit.banner(gui, "LEVEL UP!", "Throw Power +" .. Format.short(power - levelStartPower))
+		levelStartPower = power
+		UIKit.playSound("LevelUp")
+		refreshTraining()
+	end)
+	player:GetAttributeChangedSignal("TrainReps"):Connect(refreshTraining)
+	player:GetAttributeChangedSignal("GearTier"):Connect(function()
+		local gear = Training.gear(stat("GearTier", 1))
+		UIKit.banner(gui, "NEW GEAR!", gear.name .. "  +" .. Format.short(gear.gain) .. " per rep", C.green)
+		UIKit.playSound("LevelUp", 1.2)
+	end)
+	player:GetAttributeChangedSignal("Money"):Connect(function()
+		UIKit.pop(moneyLabel, 1.15)
+	end)
+	player:GetAttributeChangedSignal("Action"):Connect(refreshState)
 	player:GetAttributeChangedSignal("LaneState"):Connect(refreshState)
 	refreshEconomy()
+	refreshTraining()
 	refreshState()
 end
 

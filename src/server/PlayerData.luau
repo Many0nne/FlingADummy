@@ -1,17 +1,22 @@
--- Données du joueur : argent, niveaux d'amélioration et record, portés par des attributs du Player (répliqués au
+-- Données du joueur : argent, Throw Power, équipement, niveaux et record, portés par des attributs du Player (répliqués au
 -- client), recopiés dans les leaderstats et sauvegardés en DataStore.
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Economy = require(ReplicatedStorage.Shared.Economy)
+local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local Training = require(ReplicatedStorage.Shared.Training)
 
-local STORE_NAME = "PlayerData_v1"
+local STORE_NAME = "PlayerData_v2"
 
 local DEFAULTS = {
 	Money = 0,
-	PowerLevel = 1,
+	ThrowPower = GameConfig.START_POWER,
+	GearTier = 1,
 	ValueLevel = 1,
+	TrainLevel = 1,
+	TrainReps = 0,
 	BestDistance = 0,
 }
 
@@ -102,19 +107,28 @@ end
 -- Cette méthode permet d'acheter le niveau suivant d'une amélioration lorsque le client le demande ; le serveur
 -- valide le type, le niveau maximal et le solde. Renvoie true si l'achat a eu lieu.
 function PlayerData.buyUpgrade(player: Player, kind: any): boolean
-	if kind ~= "Power" and kind ~= "Value" then
+	local attribute, cost
+	if kind == "Gear" then
+		attribute = "GearTier"
+		cost = Training.nextGearCost((player:GetAttribute(attribute) :: number?) or 1)
+	elseif kind == "Value" then
+		attribute = "ValueLevel"
+		cost = Economy.valueCost((player:GetAttribute(attribute) :: number?) or 1)
+	else
 		return false
 	end
-	local attribute = kind .. "Level"
-	local level = player:GetAttribute(attribute) or 1
-	local cost = Economy.upgradeCost(kind, level)
 	local money = (player:GetAttribute("Money") :: number?) or 0
 	if cost == nil or money < cost then
 		return false
 	end
 	player:SetAttribute("Money", money - cost)
-	player:SetAttribute(attribute, level + 1)
+	player:SetAttribute(attribute, ((player:GetAttribute(attribute) :: number?) or 1) + 1)
 	return true
+end
+
+-- Cette méthode permet d'ajouter de la Throw Power lorsque l'avatar termine une répétition d'entraînement.
+function PlayerData.addPower(player: Player, amount: number)
+	player:SetAttribute("ThrowPower", ((player:GetAttribute("ThrowPower") :: number?) or 0) + amount)
 end
 
 -- Cette méthode permet de brancher chargement et sauvegarde sur l'arrivée, le départ et l'arrêt du serveur lorsque

@@ -14,7 +14,8 @@ observer) et on attend son retour. Une action destructive ou hors du dépôt se 
 | Sujet | Document |
 |---|---|
 | Règles du jeu, chiffres, feuille de route | `docs/design.md` |
-| Tâche en cours : prototype v0 (modules, vérification) | `docs/prototype-v0.md` |
+| Tâche en cours : v0.2, boucle des jeux de référence (décisions, mesures) | `docs/v0.2.md` |
+| Prototype v0 (historique : premier plan, premières mesures) | `docs/prototype-v0.md` |
 | Étude de marché, relevé quotidien | `market/` (section ci-dessous) |
 
 ## Rojo et Studio
