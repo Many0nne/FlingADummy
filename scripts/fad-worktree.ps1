@@ -63,7 +63,10 @@ $worktrees = Join-Path $root 'worktrees'
 $runDir = Join-Path $worktrees '.run'
 $ownersFile = Join-Path $worktrees '.owners.json'
 $studioLock = Join-Path $runDir 'studio.lock'
-$basePort = 34900
+# Port du checkout principal (slot 0) ; FAD_BASE_PORT ne sert qu'aux tests (bac a sable loin des ports reels).
+$basePort = if ($env:FAD_BASE_PORT) { [int]$env:FAD_BASE_PORT } else { 34900 }
+# Branche du checkout principal : elle peut aussi reserver Studio (son Rojo est lance a la main sur le port de base).
+$mainBranch = 'main'
 # Control server du plugin Rojo « CSGO autoconnect » : tant qu'il n'est pas multi-projets, il peut reconnecter cette place a CSGO.
 $csgoControlPort = 34870
 $helper = Join-Path $PSScriptRoot 't3_threads.py'
@@ -107,9 +110,17 @@ function Invoke-GitLoud {
   & git @args 2>&1 | ForEach-Object { Write-Host "$_" }
 }
 
+# Cette methode permet de lancer une commande externe en ignorant son stderr sans que Windows PowerShell 5.1 ne le
+# transforme en erreur bloquante ; renvoie stdout, le code reste dans $LASTEXITCODE.
+function Invoke-Quiet([string]$Exe) {
+  $ErrorActionPreference = 'Continue'
+  $rest = @($args)
+  & $Exe @rest 2>$null
+}
+
 # Cette methode permet de retrouver le thread T3 d'une session Claude ; $null si le helper echoue ou ne la connait pas.
 function Get-ThreadOf([string]$Session) {
-  try { $out = python -I $helper thread-of $Session 2>$null } catch { return $null }
+  try { $out = Invoke-Quiet python -I $helper thread-of $Session } catch { return $null }
   if ($LASTEXITCODE -ne 0) { return $null }
   $t = "$out".Trim()
   if ($t) { return $t }
@@ -119,7 +130,7 @@ function Get-ThreadOf([string]$Session) {
 # Cette methode permet de connaitre l'etat de threads T3 (active, settled, archived...) lorsqu'on juge un verrou ;
 # $null si le helper est en panne (on ne conclut alors rien).
 function Get-ThreadStates([string[]]$Threads) {
-  try { $out = python -I $helper status @Threads 2>$null } catch { return $null }
+  try { $out = Invoke-Quiet python -I $helper status @Threads } catch { return $null }
   if ($LASTEXITCODE -ne 0 -or -not "$out".Trim()) { return $null }
   try { return ("$out" | ConvertFrom-Json) } catch { return $null }
 }
@@ -201,7 +212,7 @@ function Unregister-Owner {
 
 # Cette methode permet de savoir si une ref git existe dans le depot principal.
 function Test-Ref([string]$Ref) {
-  git -C $root show-ref --verify --quiet $Ref
+  Invoke-Quiet git -C $root show-ref --verify --quiet $Ref | Out-Null
   return ($LASTEXITCODE -eq 0)
 }
 
@@ -255,6 +266,15 @@ function Test-RojoRunning([string]$ForSlug) {
   Test-RojoProcess (Read-Int (Join-Path $runDir "$ForSlug.pid")) (Read-Int (Join-Path $runDir "$ForSlug.port"))
 }
 
+# Cette methode permet de savoir si le Rojo d'une branche tourne, y compris celui du checkout principal (`rojo serve`
+# lance a la main sur le port de base, sans fichier pid) lorsque cette branche reserve ou detient Studio.
+function Test-HolderRojo([string]$HolderBranch) {
+  if ($HolderBranch -ne $mainBranch) { return (Test-RojoRunning (Get-Slug $HolderBranch)) }
+  $l = Get-PortListener $basePort
+  if (-not $l) { return $false }
+  return ((Get-Process -Id $l -ErrorAction SilentlyContinue).ProcessName -eq 'rojo') -or (Test-RojoProcess $l $basePort)
+}
+
 # Cette methode permet de renvoyer le code HTTP d'une URL, ou $null si rien ne repond (pwsh 7 et Windows PowerShell 5.1).
 function Get-UrlCode([string]$Url) {
   try { return [int](Invoke-WebRequest -Uri $Url -TimeoutSec 3 -UseBasicParsing).StatusCode }
@@ -303,14 +323,20 @@ function Get-StudioLock {
 # Cette methode permet de dire pourquoi le detenteur du verrou Studio ne l'utilise plus (worktree supprime, Rojo arrete,
 # threads T3 tous termines) lorsqu'une autre branche le demande ; renvoie $null si le detenteur est encore actif.
 function Get-StudioLockStaleReason($Lock) {
+  if ($Lock.branch -eq $mainBranch) {
+    if (-not (Test-HolderRojo $mainBranch)) { return 'Rojo arrete' }
+    return $null
+  }
   $holderSlug = Get-Slug $Lock.branch
   if (-not (Test-Path (Join-Path $worktrees "fad-$holderSlug"))) { return 'worktree supprime' }
   if (-not (Test-RojoRunning $holderSlug)) { return 'Rojo arrete' }
   try { $entry = Get-Owners | Where-Object { $_.branch -eq $Lock.branch } | Select-Object -First 1 } catch { $entry = $null }
   $threads = @($entry.threads | Where-Object { $_ })
   if ($threads) {
+    # Seuls des etats certains comptent : un thread `missing` (base T3 deplacee, id errone) n'est pas un thread fini.
     $states = Get-ThreadStates $threads
-    if ($states -and -not @($threads | Where-Object { $states.$_ -eq 'active' })) { return 'threads T3 termines' }
+    $finished = @($threads | Where-Object { $states -and $states.$_ -in 'settled', 'archived', 'deleted' })
+    if ($finished.Count -eq $threads.Count) { return 'threads T3 termines' }
   }
   return $null
 }
@@ -333,6 +359,9 @@ function Write-ConnectHelp([int]$Port) {
   $conn = @(Get-StudioConnectedPorts | Where-Object { $_ -ne $Port })
   $from = if ($conn) { "Disconnect dans le plugin Rojo (connecte au port $($conn -join ', ')), puis " } else { '' }
   Write-Host "Connexion (Studio en mode Edit, place 88580736516669) : $($from)plugin Rojo > port $Port > Connect."
+  if ($conn -contains $basePort) {
+    Write-Host "Studio est connecte au checkout principal ($basePort), hors verrou : s'assurer que personne (l'utilisateur) n'y teste avant Disconnect."
+  }
   if (Get-PortListener $csgoControlPort) {
     Write-Host "Attention : le serveur de commande CSGO autoconnect (port $csgoControlPort) tourne et peut reconnecter cette fenetre a CSGO : verifier le port connecte avant de tester."
   }
@@ -376,7 +405,11 @@ if ($ReleaseStudio) {
 
 if ($AcquireStudio) {
   # Sans Rojo, le verrou serait aussitot considere comme abandonne (et Studio n'aurait rien a suivre).
-  if (-not (Test-RojoRunning $slug)) { throw "Rojo ne tourne pas pour '$Branch' : lancer d'abord .\scripts\fad-worktree.ps1 $Branch." }
+  if (-not (Test-HolderRojo $Branch)) {
+    if ($Branch -eq $mainBranch) { throw "Rojo ne tourne pas sur le port $basePort : lancer d'abord ``rojo serve`` dans le checkout principal." }
+    throw "Rojo ne tourne pas pour '$Branch' : lancer d'abord .\scripts\fad-worktree.ps1 $Branch."
+  }
+  if ($Branch -eq $mainBranch) { $currentPort = $basePort }
   $deadline = (Get-Date).AddMinutes($WaitStudio)
   while ($true) {
     $result = Invoke-Locked 'studio' {
@@ -446,20 +479,28 @@ function Assert-Reusable {
 
 $created = $false
 if (Test-Path $dir) { Assert-Reusable }
+$hasOrigin = (git -C $root remote) -contains 'origin'
+# Fetch hors mutex : un reseau lent ne bloque pas les autres agents (git verrouille lui-meme ses refs).
+if (-not (Test-Path $dir) -and $hasOrigin) { Invoke-GitLoud -C $root fetch origin --quiet }
 
 # Creation du worktree puis attribution du slot, sous mutex : deux agents ne prennent ni le meme port ni le meme dossier.
 # Le port n'est reserve qu'une fois le worktree en place (un echec ne laisse rien derriere lui).
 $port = Invoke-Locked 'state' {
   # Slot : celui demande, sinon celui deja attribue, sinon le premier numero >= 1 libre (ports des autres worktrees
-  # et ports reellement ecoutes). Un slot demande deja attribue a un autre worktree est refuse avant toute creation.
+  # et ports reellement ecoutes). Un slot demande deja attribue a un autre worktree, ou ecoute par autre chose que
+  # Rojo, est refuse avant toute creation.
   $others = @{}
   foreach ($f in @(Get-ChildItem -Path $runDir -Filter '*.port' -File -ErrorAction SilentlyContinue)) {
     if ($f.FullName -ne $portFile) { $others[(Read-Int $f.FullName)] = $f.BaseName }
   }
   $n = $Slot
-  if ($n -le 0 -and $currentPort -gt $basePort) { $n = $currentPort - $basePort }
   if ($n -gt 0) {
-    if ($others.ContainsKey($basePort + $n)) { throw "Port $($basePort + $n) deja attribue au worktree '$($others[$basePort + $n])' : choisir un autre -Slot." }
+    $want = $basePort + $n
+    if ($others.ContainsKey($want)) { throw "Port $want deja attribue au worktree '$($others[$want])' : choisir un autre -Slot." }
+    $l = Get-PortListener $want
+    if ($l -and -not (Test-RojoProcess $l $want)) { throw "Port $want deja pris par un autre processus (pid $l) : choisir un autre -Slot." }
+  } elseif ($currentPort -gt $basePort) {
+    $n = $currentPort - $basePort
   } else {
     $n = 1
     while ($others.ContainsKey($basePort + $n) -or (Get-PortListener ($basePort + $n))) { $n++ }
@@ -467,8 +508,6 @@ $port = Invoke-Locked 'state' {
 
   if (Test-Path $dir) { Assert-Reusable }
   else {
-    $hasOrigin = (git -C $root remote) -contains 'origin'
-    if ($hasOrigin) { Invoke-GitLoud -C $root fetch origin --quiet }
     # Branche existante (locale ou origin) : on la reprend ; sinon creee depuis la base (origin si present).
     if (Test-Ref "refs/heads/$Branch") {
       Invoke-GitLoud -C $root worktree add $dir $Branch
@@ -478,7 +517,7 @@ $port = Invoke-Locked 'state' {
       # Base locale en avance sur origin (commits pas encore pousses) : on part de la locale pour ne pas les perdre de vue.
       $start = $Base
       if ($hasOrigin -and (Test-Ref "refs/remotes/origin/$Base")) {
-        git -C $root merge-base --is-ancestor "origin/$Base" $Base 2>$null
+        Invoke-Quiet git -C $root merge-base --is-ancestor "origin/$Base" $Base | Out-Null
         $localAhead = ($LASTEXITCODE -eq 0) -and ((git -C $root rev-parse $Base) -ne (git -C $root rev-parse "origin/$Base"))
         if ($localAhead) { Write-Warning "'$Base' local est en avance sur origin/$Base : branche creee depuis le local (penser a pousser $Base)." }
         else { $start = "origin/$Base" }
@@ -493,6 +532,10 @@ $port = Invoke-Locked 'state' {
   return ($basePort + $n)
 }
 $Slot = $port - $basePort
+# Slot change par -Slot : le Rojo de l'ancien port n'aurait plus de suivi (et bloquerait -Remove), on l'arrete.
+if ($currentPort -gt 0 -and $port -ne $currentPort -and (Stop-Rojo $currentPort)) {
+  Write-Host "Rojo de l'ancien port $currentPort arrete (slot change)."
+}
 
 # Inscription apres la creation : un echec ne laisse pas d'entree orpheline dans le registre.
 if (-not $NoRegister) { Register-Owner }

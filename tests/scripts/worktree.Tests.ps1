@@ -138,12 +138,25 @@ Describe 'fad-worktree.ps1 : reprise d''un worktree cree a la main' {
     (Get-SbPaths $sb 'feature/12-collision').Port | Should Not Exist
   }
 
-  It 'refuse de demarrer si le port est pris par un processus qui n''est pas Rojo' {
+  It 'refuse un slot impose dont le port est pris par un processus qui n''est pas Rojo, sans rien reserver' {
     $tcp = [System.Net.Sockets.TcpListener]::Create(35531)
     $tcp.Start()
     try {
       (Invoke-Wt $sb @('feature/13-port-pris', '-Slot', '631')).Output | Should Match 'deja pris'
+      (Get-SbPaths $sb 'feature/13-port-pris').Port | Should Not Exist
+      (Get-SbPaths $sb 'feature/13-port-pris').Dir | Should Not Exist
     } finally { $tcp.Stop() }
+  }
+
+  It 'changer de slot arrete le Rojo de l''ancien port' {
+    (Invoke-Wt $sb @($branch)).Output | Should Match 'OK \(200\)'
+    $old = Get-SbRojoPid $sb $branch
+    $r = Invoke-Wt $sb @($branch, '-Slot', '632')
+    $r.Output | Should Match 'ancien port 35530 arrete'
+    Start-Sleep -Milliseconds 500
+    Test-Alive $old | Should Be $false
+    (Get-Content $p.Port) | Should Be '35532'
+    Invoke-Wt $sb @($branch, '-Stop') | Out-Null
   }
 
   Remove-Sandbox $sb
@@ -394,6 +407,12 @@ Describe 'fad-worktree.ps1 : verrou Studio' {
     Get-Holder | Should Be $b
   }
 
+  It 'thread du detenteur inconnu de T3 (missing) : le verrou n''est pas repris' {
+    Set-FakeT3 $sb -Sessions @{ 'S-a' = 'T-a' } -Threads @{ 'T-a' = 'active' }
+    (Invoke-Wt $sb @($a, '-AcquireStudio')).Code | Should Be 2
+    Get-Holder | Should Be $b
+  }
+
   It 'reprend le verrou quand le worktree du detenteur est supprime' {
     Set-FakeT3 $sb -Sessions @{ 'S-a' = 'T-a'; 'S-b' = 'T-b' } -Threads @{ 'T-a' = 'active'; 'T-b' = 'active' }
     Set-Content $lockFile '{"branch":"feature/7-disparue","port":35599,"since":"2026-01-01 00:00"}'
@@ -413,6 +432,37 @@ Describe 'fad-worktree.ps1 : verrou Studio' {
     Get-Holder | Should BeNullOrEmpty
   }
 
+  Remove-Sandbox $sb
+}
+
+Describe 'fad-worktree.ps1 : verrou Studio tenu par le checkout principal' {
+  $sb = New-Sandbox
+  # Port de base deplace pour le bac a sable : le checkout principal reel occupe 34900.
+  $env:FAD_BASE_PORT = '35700'
+  Set-FakeT3 $sb -Sessions @{ 'S-w' = 'T-w' } -Threads @{ 'T-w' = 'active' }
+  $w = 'feature/14-studio-wt'
+  Invoke-Wt $sb @($w, '-Slot', '1') 'S-w' | Out-Null
+  $lockFile = (Get-SbPaths $sb $w).Lock
+
+  It 'refuse la reservation par main si son Rojo ne tourne pas' {
+    (Invoke-Wt $sb @('main', '-AcquireStudio')).Code | Should Not Be 0
+  }
+
+  It 'main reserve Studio sur le port de base, un worktree est alors refuse (code 2)' {
+    $script:mainRojo = Start-ManualRojo $sb $sb.Repo 35700
+    (Invoke-Wt $sb @('main', '-AcquireStudio')).Code | Should Be 0
+    (Get-Content $lockFile -Raw | ConvertFrom-Json).port | Should Be 35700
+    (Invoke-Wt $sb @($w, '-AcquireStudio')).Code | Should Be 2
+  }
+
+  It 'Rojo du checkout principal arrete : le verrou est repris' {
+    Stop-Process -Id $script:mainRojo -Force; Start-Sleep -Milliseconds 300
+    $r = Invoke-Wt $sb @($w, '-AcquireStudio')
+    $r.Code | Should Be 0
+    $r.Output | Should Match 'Rojo arrete'
+  }
+
+  $env:FAD_BASE_PORT = $null
   Remove-Sandbox $sb
 }
 
@@ -492,6 +542,35 @@ Describe 'fad-worktree-cleanup.ps1 : decisions' {
     $fin = Get-SbRojoPid $sb 'feature/8-fin'
     Invoke-Cleanup $sb | Out-Null
     Test-Alive $fin | Should Be $true
+  }
+
+  It 'branche sans PR : pas de faux message de panne de gh' {
+    Set-FakeT3 $sb -Sessions $sessions -Threads $threads
+    Remove-Item (Get-SbPaths $sb 'x').Log -ErrorAction SilentlyContinue
+    Invoke-Cleanup $sb | Out-Null
+    "$(Get-Content (Get-SbPaths $sb 'x').Log -Raw -ErrorAction SilentlyContinue)" | Should Not Match 'gh sans reponse'
+  }
+
+  It 'thread inconnu de T3 (missing) : Rojo garde' {
+    Invoke-Wt $sb @('feature/8-perdu', '-Slot', '620', '-NoRegister') | Out-Null
+    Invoke-Wt $sb @('feature/8-perdu', '-RegisterThread', 'T-perdu') | Out-Null
+    $perdu = Get-SbRojoPid $sb 'feature/8-perdu'
+    Invoke-Cleanup $sb | Out-Null
+    Test-Alive $perdu | Should Be $true
+  }
+
+  It 'PR mergee, worktree deja supprime a la main, commits locaux non pousses : branche locale gardee' {
+    $br = 'feature/8-sansdossier'
+    Invoke-Wt $sb @($br, '-NoUp', '-Slot', '621', '-NoRegister') | Out-Null
+    $sha = Add-SbCommit $sb $br -Push
+    Add-SbCommit $sb $br 'apres-merge.txt' | Out-Null
+    Invoke-Git $sb.Repo worktree remove --force (Get-SbPaths $sb $br).Dir | Out-Null
+    Invoke-Wt $sb @($br, '-RegisterThread', 'T-fin') | Out-Null
+    Set-FakeT3 $sb -Sessions $sessions -Threads $threads
+    Set-FakeGh $sb -Prs @{ $br = @(@{ number = 9; state = 'MERGED'; headRefOid = $sha }) }
+    Invoke-Cleanup $sb | Out-Null
+    (git -C $sb.Repo branch --list $br) | Should Not BeNullOrEmpty
+    (Get-Content (Get-SbPaths $sb 'x').Log -Raw) | Should Match "GARDE $br"
   }
 
   It 'registre illisible : le nettoyage le signale dans son journal sans planter' {

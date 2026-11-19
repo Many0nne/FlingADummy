@@ -121,12 +121,16 @@ vérification :
 - Réserver avant toute action Studio (MCP, connexion du plugin, demande de test à l'utilisateur), libérer juste après.
   Code 2 : continuer le travail sans Studio et réessayer plus tard, ou attendre avec `-WaitStudio`. Ne jamais déconnecter
   Studio d'un autre worktree sans le verrou.
+- Depuis le checkout principal (`rojo serve` lancé à la main sur 34900) : réserver avec la branche `main`
+  (`.\scripts\fad-worktree.ps1 main -AcquireStudio`, puis `main -ReleaseStudio`). Si la réservation signale Studio
+  connecté à 34900 hors verrou, c'est sans doute l'utilisateur qui teste : vérifier avant Disconnect.
 - Connexion à la main pour l'instant : la réservation affiche le port du worktree et celui auquel Studio est connecté ;
   plugin Rojo (mode Edit) > Disconnect > port du worktree > Connect. Après la libération, revenir sur `34900` si le
   checkout principal sert. L'auto-connexion par le plugin multi-projets (`Many0nne/CSGO_surf_combat#589`) se branchera
   plus tard (issue de suivi).
-- Un verrou est repris d'office si son détenteur n'a plus de worktree, plus de Rojo ou plus de thread T3 actif : un
-  agent qui s'arrête sans libérer ne bloque pas les autres.
+- Un verrou est repris d'office si son détenteur n'a plus de worktree, plus de Rojo ou plus de thread T3 actif (threads
+  settled, archivés ou supprimés ; un thread inconnu de T3 ne compte pas comme fini) : un agent qui s'arrête sans
+  libérer ne bloque pas les autres.
 - Une tâche qui attend l'avis de l'utilisateur garde le verrou jusqu'à son retour : regrouper ces demandes.
 - Blender : la session avec interface (MCP `blender`) sert une tâche à la fois ; les traitements par script passent par
   `"/c/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b --factory-startup` (parallélisable).

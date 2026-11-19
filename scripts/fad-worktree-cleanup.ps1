@@ -10,9 +10,10 @@
   Un thread settled qui recoit un nouveau message redevient actif : rien n'est touche. Une session inscrite
   pas encore rattachee a un thread (premier tour en cours) et active depuis moins de 30 min bloque aussi l'entree.
   Le lien worktree -> threads vient du registre worktrees\.owners.json, rempli par fad-worktree.ps1.
-  Garde-fous : rien n'est arrete ni supprime si le helper T3 ne repond pas ; rien n'est supprime si gh ne repond pas,
-  s'il reste des modifications non commitees, ou des commits absents d'origin (sauf ceux contenus dans une PR mergee,
-  cas du squash-merge avec branche distante supprimee).
+  Garde-fous : rien n'est arrete ni supprime si le helper T3 ne repond pas ou ne connait pas un des threads (missing) ;
+  rien n'est supprime si gh ne repond pas, s'il reste des modifications non commitees, ou si la branche a des commits
+  absents d'origin, meme quand son worktree a deja disparu (sauf ceux contenus dans une PR mergee, cas du squash-merge
+  avec branche distante supprimee).
   A chaque passage, le checkout principal est avance en fast-forward sur origin/main s'il est sur main sans modification.
   Lance toutes les 10 minutes par la tache planifiee "Fling a Dummy worktree cleanup" (install-cleanup-task.ps1) ;
   journal dans worktrees\.cleanup.log.
@@ -75,31 +76,37 @@ function Invoke-Helper {
 function Get-BranchPrs([string]$Branch) {
   try { $json = gh pr list --repo $repo --head $Branch --state all --json number,state,headRefOid 2>$null } catch { return $null }
   if ($LASTEXITCODE -ne 0 -or -not "$json".Trim()) { return $null }
-  try { return @("$json" | ConvertFrom-Json) } catch { return $null }
+  # La virgule garde un tableau vide (branche sans PR) : sans elle, l'appelant recevrait $null, comme une panne de gh.
+  try { return , @("$json" | ConvertFrom-Json) } catch { return $null }
 }
 
-# Cette methode permet de dire pourquoi un worktree ne peut pas etre supprime sans perte lorsqu'il a du travail non pousse ;
-# renvoie $null s'il est sur. Les commits deja contenus dans une PR mergee (squash-merge, branche distante supprimee) sont surs.
+# Cette methode permet de dire pourquoi un worktree ou sa branche locale ne peuvent pas etre supprimes sans perte
+# (modifications non commitees, commits non pousses) ; renvoie $null s'il n'y a rien a perdre. Les commits sont lus sur
+# la branche elle-meme, meme si le dossier du worktree a disparu. Ceux deja contenus dans une PR mergee (squash-merge,
+# branche distante supprimee) sont surs.
 function Get-UnsafeReason([string]$Dir, [string]$Branch, $Prs) {
-  if (@(git -C $Dir status --porcelain).Count -gt 0) { return 'modifications non commitees' }
-  $local = @(git -C $Dir rev-list HEAD --not --remotes)
+  # Dossier sans .git : reliquat vide d'un -Remove interrompu, git status y lirait le checkout principal.
+  if ((Test-Path (Join-Path $Dir '.git')) -and @(git -C $Dir status --porcelain).Count -gt 0) { return 'modifications non commitees' }
+  git -C $root rev-parse --verify -q "refs/heads/$Branch" *> $null
+  if ($LASTEXITCODE -ne 0) { return $null }
+  $local = @(git -C $root rev-list "refs/heads/$Branch" --not --remotes)
   # Branche rebasee et force-pushee : les anciennes versions des commits ont un equivalent (meme patch) sur origin.
-  if ($local -and (git -C $Dir rev-parse --verify -q "refs/remotes/origin/$Branch")) {
-    $alreadyPushed = @(git -C $Dir cherry "origin/$Branch" HEAD | Where-Object { $_ -like '- *' } | ForEach-Object { $_.Substring(2) })
+  git -C $root rev-parse --verify -q "refs/remotes/origin/$Branch" *> $null
+  if ($local -and $LASTEXITCODE -eq 0) {
+    $alreadyPushed = @(git -C $root cherry "origin/$Branch" "refs/heads/$Branch" | Where-Object { $_ -like '- *' } | ForEach-Object { $_.Substring(2) })
     $local = @($local | Where-Object { $_ -notin $alreadyPushed })
   }
   foreach ($pr in @($Prs | Where-Object { $_.state -eq 'MERGED' })) {
     if (-not $local) { break }
-    git -C $Dir cat-file -e "$($pr.headRefOid)^{commit}" 2>$null
+    git -C $root cat-file -e "$($pr.headRefOid)^{commit}" *> $null
     if ($LASTEXITCODE -ne 0) { continue }
-    $inPr = @(git -C $Dir rev-list $pr.headRefOid)
+    $inPr = @(git -C $root rev-list $pr.headRefOid)
     $local = @($local | Where-Object { $_ -notin $inPr })
   }
   if ($local.Count -eq 0) { return $null }
   return "$($local.Count) commit(s) absents d'origin"
 }
 
-if (-not (Test-Path $ownersFile)) { return }
 # Tache planifiee et lancement manuel peuvent se chevaucher : une seule execution a la fois (mutex propre a ce checkout).
 $sha = [Security.Cryptography.SHA256]::Create()
 $rootKey = -join ($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($root.ToLowerInvariant())) | Select-Object -First 6 |
@@ -118,6 +125,7 @@ try {
     $ErrorActionPreference = 'Stop'
     if ($LASTEXITCODE -ne 0) { Write-Log "MAJ $mainBranch impossible en fast-forward (checkout principal diverge d'origin/$mainBranch)" -Once }
   }
+  if (-not (Test-Path $ownersFile)) { return }
   try { $owners = @(foreach ($o in ([IO.File]::ReadAllText($ownersFile) | ConvertFrom-Json)) { if ($o.branch) { $o } }) }
   catch { Write-Log "Registre $ownersFile illisible : rien n'est nettoye tant qu'il n'est pas repare ($($_.Exception.Message))" -Once; return }
   foreach ($entry in $owners) {
@@ -139,6 +147,9 @@ try {
     $statesJson = Invoke-Helper status @threads
     $states = if ($statesJson) { try { $statesJson | ConvertFrom-Json } catch { $null } }
     if (-not $states) { Write-Log "GARDE $branch : helper T3 sans reponse" -Once; continue }
+    # Seuls des etats certains comptent : un thread `missing` (base T3 deplacee, id errone) n'est pas un thread fini.
+    $unknown = @($threads | Where-Object { $states.$_ -notin 'active', 'settled', 'archived', 'deleted' })
+    if ($unknown) { Write-Log "GARDE $branch : thread(s) inconnu(s) de T3 ($($unknown -join ', '))" -Once; continue }
     if (@($threads | Where-Object { $states.$_ -eq 'active' })) { continue }
 
     # Travail clos : PR mergee (ou fermee sans merge) et aucune PR encore ouverte sur la branche -> suppression.
@@ -159,11 +170,9 @@ try {
       continue
     }
 
-    # Dossier sans .git : reliquat vide d'un -Remove interrompu, git status y lirait le checkout principal.
-    if (Test-Path (Join-Path $dir '.git')) {
-      $reason = Get-UnsafeReason $dir $branch $prs
-      if ($reason) { Write-Log "GARDE $branch (threads termines) : $reason" -Once; continue }
-    }
+    # Verifie meme sans dossier de worktree : la branche locale est supprimee juste apres (PR mergee).
+    $reason = Get-UnsafeReason $dir $branch $prs
+    if ($reason) { Write-Log "GARDE $branch (threads termines) : $reason" -Once; continue }
     $why = if ($delivered) { 'PR mergee, threads termines' } else { 'PR fermee sans merge, threads termines' }
     if ($DryRun) { Write-Host "A SUPPRIMER $branch ($why) : fad-worktree.ps1 $branch -Remove"; continue }
     try {
