@@ -1,0 +1,36 @@
+-- Jauge : onde triangle, facteur de vitesse, zone PERFECT.
+return function(T, Loader)
+	local loader = Loader.new()
+	local Gauge = loader:require("src/shared/Gauge")
+	local GameConfig = loader:require("src/shared/GameConfig")
+	local P = GameConfig.GAUGE_PERIOD
+
+	T.describe("Gauge.value", function()
+		T.it("part de 0, atteint 1 à mi-période et revient à 0", function()
+			T.expectNear(Gauge.value(0), 0)
+			T.expectNear(Gauge.value(P / 4), 0.5)
+			T.expectNear(Gauge.value(P / 2), 1)
+			T.expectNear(Gauge.value(3 * P / 4), 0.5)
+			T.expectNear(Gauge.value(P), 0)
+		end)
+		T.it("est périodique", function()
+			T.expectNear(Gauge.value(2 * P + P / 4), 0.5, 1e-6)
+		end)
+	end)
+
+	T.describe("Gauge.launchFactor", function()
+		T.it("va de GAUGE_MIN_FACTOR à 1, borné", function()
+			T.expectNear(Gauge.launchFactor(0), GameConfig.GAUGE_MIN_FACTOR)
+			T.expectNear(Gauge.launchFactor(1), 1)
+			T.expectNear(Gauge.launchFactor(2), 1)
+			T.expectNear(Gauge.launchFactor(-1), GameConfig.GAUGE_MIN_FACTOR)
+		end)
+	end)
+
+	T.describe("Gauge.isPerfect", function()
+		T.it("à partir du seuil seulement", function()
+			T.expect(Gauge.isPerfect(GameConfig.PERFECT_THRESHOLD), "seuil inclus")
+			T.expect(not Gauge.isPerfect(GameConfig.PERFECT_THRESHOLD - 0.01), "sous le seuil")
+		end)
+	end)
+end

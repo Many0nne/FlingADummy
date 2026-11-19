@@ -1,0 +1,20 @@
+# Place construite par Rojo
+/*.rbxl
+/*.rbxlx
+/*.rbxl.lock
+/*.rbxlx.lock
+
+sourcemap.json
+
+# Définitions de types Roblox pour luau-lsp (téléchargées par tools/check.sh)
+tools/globalTypes*.d.luau
+
+# Collecteur de marché : base, rapports, images de dissection et journaux restent sur le poste
+/market/data/
+/market/reports/
+/market/logs/
+/market/dissection/*
+!/market/dissection/BRIEF.md
+__pycache__/
+
+*.blend1

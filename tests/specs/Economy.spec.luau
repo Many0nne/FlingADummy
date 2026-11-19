@@ -1,0 +1,63 @@
+-- Économie : vitesse par niveau, multiplicateur de valeur, prix des améliorations, gains d'un lancer.
+return function(T, Loader)
+	local loader = Loader.new()
+	local Economy = loader:require("src/shared/Economy")
+	local GameConfig = loader:require("src/shared/GameConfig")
+
+	T.describe("Economy.launchSpeed", function()
+		T.it("vaut la vitesse de base au niveau 1", function()
+			T.expectNear(Economy.launchSpeed(1), GameConfig.BASE_LAUNCH_SPEED)
+		end)
+		T.it("croît de POWER_GROWTH par niveau", function()
+			T.expectNear(Economy.launchSpeed(3), GameConfig.BASE_LAUNCH_SPEED * GameConfig.POWER_GROWTH ^ 2)
+		end)
+	end)
+
+	T.describe("Economy.valueMultiplier", function()
+		T.it("vaut 1 au niveau 1 puis + VALUE_STEP par niveau", function()
+			T.expectNear(Economy.valueMultiplier(1), 1)
+			T.expectNear(Economy.valueMultiplier(5), 1 + 4 * GameConfig.VALUE_STEP)
+		end)
+	end)
+
+	T.describe("Economy.upgradeCost", function()
+		T.it("démarre au prix de base", function()
+			T.expectEqual(Economy.upgradeCost("Power", 1), GameConfig.POWER_BASE_COST)
+			T.expectEqual(Economy.upgradeCost("Value", 1), GameConfig.VALUE_BASE_COST)
+		end)
+		T.it("croît à chaque niveau, en entiers", function()
+			local previous = 0
+			for level = 1, GameConfig.POWER_MAX_LEVEL - 1 do
+				local cost = Economy.upgradeCost("Power", level)
+				T.expect(cost ~= nil and cost > previous, "prix croissant au niveau " .. level)
+				T.expectEqual(cost, math.floor(cost :: number), "prix entier")
+				previous = cost :: number
+			end
+		end)
+		T.it("renvoie nil au niveau maximal", function()
+			T.expectEqual(Economy.upgradeCost("Power", GameConfig.POWER_MAX_LEVEL), nil)
+			T.expectEqual(Economy.upgradeCost("Value", GameConfig.VALUE_MAX_LEVEL), nil)
+		end)
+	end)
+
+	T.describe("Economy.payout", function()
+		T.it("additionne distance, os et objets au niveau 1", function()
+			local p = Economy.payout({ distance = 123.7, bones = 4, smashed = 3, perfect = false }, 1)
+			T.expectEqual(p.distance, 123)
+			T.expectEqual(p.distanceMoney, 123)
+			T.expectEqual(p.bonesMoney, 40)
+			T.expectEqual(p.smashMoney, 15)
+			T.expectEqual(p.total, 178)
+		end)
+		T.it("applique la valeur du mannequin et le bonus PERFECT, arrondi", function()
+			local p = Economy.payout({ distance = 100, bones = 0, smashed = 1, perfect = true }, 2)
+			-- (100 + 5) × 1,25 × 1,2 = 157,5 → 158
+			T.expectNear(p.multiplier, 1.5)
+			T.expectEqual(p.total, 158)
+		end)
+		T.it("ne compte pas de distance négative", function()
+			local p = Economy.payout({ distance = -5, bones = 0, smashed = 0, perfect = false }, 1)
+			T.expectEqual(p.total, 0)
+		end)
+	end)
+end

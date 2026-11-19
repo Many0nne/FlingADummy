@@ -1,0 +1,27 @@
+-- Format : séparateurs de milliers, argent, mètres.
+return function(T, Loader)
+	local Format = Loader.new():require("src/shared/Format")
+
+	T.describe("Format.money", function()
+		T.it("sépare les milliers", function()
+			T.expectEqual(Format.money(0), "$0")
+			T.expectEqual(Format.money(999), "$999")
+			T.expectEqual(Format.money(1000), "$1,000")
+			T.expectEqual(Format.money(12345), "$12,345")
+			T.expectEqual(Format.money(123456), "$123,456")
+			T.expectEqual(Format.money(1234567), "$1,234,567")
+		end)
+		T.it("tronque les décimales et gère le négatif", function()
+			T.expectEqual(Format.money(12.9), "$12")
+			T.expectEqual(Format.money(-1500), "-$1,500")
+		end)
+	end)
+
+	T.describe("Format.meters", function()
+		T.it("arrondit au mètre inférieur, jamais négatif", function()
+			T.expectEqual(Format.meters(123.8), "123 m")
+			T.expectEqual(Format.meters(1500), "1,500 m")
+			T.expectEqual(Format.meters(-3), "0 m")
+		end)
+	end)
+end

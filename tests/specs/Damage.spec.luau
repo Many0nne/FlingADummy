@@ -1,0 +1,38 @@
+-- Dégâts : os cassés selon la violence du choc, teinte des membres.
+return function(T, Loader)
+	local loader = Loader.new()
+	local Damage = loader:require("src/shared/Damage")
+	local GameConfig = loader:require("src/shared/GameConfig")
+
+	T.describe("Damage.bonesForImpact", function()
+		T.it("aucun os sous le premier seuil", function()
+			T.expectEqual(Damage.bonesForImpact(0), 0)
+			T.expectEqual(Damage.bonesForImpact(GameConfig.BONE_IMPACT_DV - 0.1), 0)
+		end)
+		T.it("un os entre les deux seuils, deux au-delà", function()
+			T.expectEqual(Damage.bonesForImpact(GameConfig.BONE_IMPACT_DV), 1)
+			T.expectEqual(Damage.bonesForImpact(GameConfig.DOUBLE_BONE_DV - 0.1), 1)
+			T.expectEqual(Damage.bonesForImpact(GameConfig.DOUBLE_BONE_DV), 2)
+		end)
+	end)
+
+	T.describe("Damage.tint", function()
+		local base = Color3.fromRGB(255, 205, 40)
+		T.it("garde la couleur de base sans os cassé", function()
+			T.expectEqual(Damage.tint(base, 0), base)
+		end)
+		T.it("fonce à chaque os, plafonné au dernier palier", function()
+			T.expectEqual(Damage.tint(base, 1), Damage.TINTS[1])
+			T.expectEqual(Damage.tint(base, 2), Damage.TINTS[2])
+			T.expectEqual(Damage.tint(base, 3), Damage.TINTS[3])
+			T.expectEqual(Damage.tint(base, 9), Damage.TINTS[3])
+		end)
+		T.it("les paliers vont du clair au sombre", function()
+			local function brightness(c)
+				return c.R + c.G + c.B
+			end
+			T.expect(brightness(Damage.TINTS[1]) > brightness(Damage.TINTS[2]), "orange plus clair que rouge")
+			T.expect(brightness(Damage.TINTS[2]) > brightness(Damage.TINTS[3]), "rouge plus clair que rouge sombre")
+		end)
+	end)
+end
