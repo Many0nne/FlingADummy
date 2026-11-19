@@ -64,15 +64,16 @@ local remotes: Remotes.Remotes
 local flights: { [Player]: Flight } = {}
 local rng = Random.new()
 
--- Cette méthode permet de donner le point de départ du mannequin (au-dessus de la tête de l'avatar, ou de la zone de
--- lancer si le personnage manque) lorsqu'un lancer part.
+-- Cette méthode permet de donner le point de départ du mannequin (main de l'avatar au lâcher de l'animation de
+-- lancer, devant et au-dessus de la tête ; zone de lancer si le personnage manque) lorsqu'un lancer part.
 local function throwOrigin(player: Player, lane: Lane): Vector3
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local ahead = lane.direction * GameConfig.THROW_FORWARD
 	if root then
-		return root.Position + Vector3.new(0, GameConfig.THROW_HEIGHT, 1)
+		return root.Position + Vector3.new(0, GameConfig.THROW_HEIGHT, 0) + ahead
 	end
-	return lane.pad + Vector3.new(0, 3 + GameConfig.THROW_HEIGHT, 1)
+	return lane.pad + Vector3.new(0, 3 + GameConfig.THROW_HEIGHT, 0) + ahead
 end
 
 -- Cette méthode permet de tirer le mannequin d'un joueur lorsqu'il le tient sur la zone de lancer (ou que `force`
@@ -108,7 +109,7 @@ function LaunchService.launch(player: Player, gauge: any, force: boolean?)
 		Vector3.new(rng:NextNumber(-SPIN.X, SPIN.X), rng:NextNumber(-SPIN.Y, SPIN.Y), rng:NextNumber(-SPIN.Z, SPIN.Z))
 	local parts = {}
 	for _, child in dummy:GetChildren() do
-		if child:IsA("BasePart") then
+		if child:IsA("BasePart") and not child:GetAttribute("Accessory") then
 			child:SetNetworkOwner(nil)
 			child.AssemblyLinearVelocity = dir * speed
 			child.AssemblyAngularVelocity = spin

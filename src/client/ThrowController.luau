@@ -1,5 +1,6 @@
 -- Lancer : sur la zone de lancer, une jauge verticale apparaît et son aiguille court toute seule ; un clic (toucher,
--- Espace) l'arrête, l'avatar prend son élan et le mannequin part au lâcher avec la valeur de la jauge.
+-- Espace) l'arrête, la cinématique démarre (gros plan, bandes noires), l'avatar joue son geste de lancer et le
+-- mannequin part au lâcher avec la valeur de la jauge.
 local ContextActionService = game:GetService("ContextActionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -7,11 +8,13 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Economy = require(Shared:WaitForChild("Economy"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Gauge = require(Shared:WaitForChild("Gauge"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local CharacterPoser = require(script.Parent.CharacterPoser)
+local ThrowCinematic = require(script.Parent.ThrowCinematic)
 local UIKit = require(script.Parent.UIKit)
 
 local C = UIKit.COLORS
@@ -129,10 +132,19 @@ local function faceTrack()
 	camera.CFrame = CFrame.lookAt(position + Vector3.new(5, 7, -15), position + Vector3.new(0, 4, 25))
 end
 
--- Cette méthode permet d'arrêter l'aiguille et de lancer l'élan lorsque le joueur clique pendant qu'il tient le
--- mannequin ; renvoie true si le clic a servi.
+-- Cette méthode permet de donner la vitesse de départ du mannequin (même calcul que le serveur : piste vers +Z,
+-- angle LAUNCH_PITCH_DEG) lorsque le mannequin décoratif quitte la main.
+local function launchVelocity(gauge: number): Vector3
+	local power = (player:GetAttribute("ThrowPower") :: number?) or GameConfig.START_POWER
+	local pitch = math.rad(GameConfig.LAUNCH_PITCH_DEG)
+	return Vector3.new(0, math.sin(pitch), math.cos(pitch)) * Economy.launchSpeed(power) * Gauge.launchFactor(gauge)
+end
+
+-- Cette méthode permet d'arrêter l'aiguille, de démarrer la cinématique et le geste lorsque le joueur clique pendant
+-- qu'il tient le mannequin ; renvoie true si le clic a servi.
 local function trigger(): boolean
-	if not frame.Visible or locked or CharacterPoser.isThrowing() then
+	local character = player.Character
+	if not frame.Visible or locked or CharacterPoser.isThrowing() or not character then
 		return false
 	end
 	local value = currentValue()
@@ -141,9 +153,11 @@ local function trigger(): boolean
 	if Gauge.isPerfect(value) then
 		UIKit.banner(frame.Parent :: Instance, "PERFECT!", nil, C.gold, 210)
 	end
+	ThrowCinematic.play(character)
 	CharacterPoser.playThrow(function()
 		remotes.Launch:FireServer(value)
-	end)
+		ThrowCinematic.release()
+	end, launchVelocity(value))
 	return true
 end
 
@@ -167,6 +181,7 @@ function ThrowController.init(localPlayer: Player, createdRemotes: Remotes.Remot
 	player = localPlayer
 	remotes = createdRemotes
 	build(gui)
+	ThrowCinematic.init(gui)
 	player:GetAttributeChangedSignal("Action"):Connect(refresh)
 	player:GetAttributeChangedSignal("LaneState"):Connect(function()
 		if player:GetAttribute("LaneState") == "Flying" then

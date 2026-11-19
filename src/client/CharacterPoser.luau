@@ -1,93 +1,166 @@
--- Poses procédurales des avatars (R15), vues par chaque client pour tous les joueurs d'après leurs attributs :
--- mannequin tenu au-dessus de la tête sur la zone de lancer, soulevé en boucle à l'entraînement, élan du lancer
--- (joueur local). Les articulations sont écrasées dans Stepped, après les animations par défaut.
+-- Animations des avatars (R15) et mannequins décoratifs : le joueur local joue les clips de Shared.AnimationData
+-- (tenu, entraînement, lancer) sur son Animator, qui les réplique et pilote aussi bien les Motor6D que les
+-- AnimationConstraint des avatars récents. Chaque client pose, pour tous les joueurs, le mannequin tenu sur la main
+-- droite ou le poids d'entraînement sur les deux mains, d'après les attributs et la position des mains.
+local KeyframeSequenceProvider = game:GetService("KeyframeSequenceProvider")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local AnimationData = require(Shared:WaitForChild("AnimationData"))
+local Assets = require(Shared:WaitForChild("Assets"))
 local DummyShape = require(Shared:WaitForChild("DummyShape"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Training = require(Shared:WaitForChild("Training"))
 
 local HELD_SCALE = 0.6
-local HELD_LIFT = GameConfig.THROW_HEIGHT - 0.7 -- mannequin posé sur les mains levées (studs au-dessus du torse)
-local FOLLOW_THROUGH = 0.3 -- durée du geste après le lâcher (s)
+local PALM_GAP = 0.3 -- demi-épaisseur de la main sous le mannequin couché (studs)
+local FADE = 0.2 -- fondu d'entrée et de sortie des clips (s)
+local THROW_FADE = 0.08
+local RELEASE_GRACE = 0.25 -- lâcher de secours après le marqueur (clip absent ou en retard, s)
+local THROW_TIMEOUT = 3 -- fin forcée d'un lancer local (s)
+local FLY_TIME = 0.6 -- vol du mannequin décoratif lâché, en attendant le mannequin du serveur (s)
+local FLY_SPIN = Vector3.new(7, 0, 2) -- rotation du mannequin décoratif lâché (rad/s)
 
-type Pose = { shoulder: number, elbow: number, waist: number, lift: number, reach: number }
-
-type State = {
-	visual: Model?,
-	key: string?,
-	lastRep: number,
-	lastPower: number,
+type State = { visual: Model?, key: string? }
+type Throw = {
+	start: number,
+	released: boolean,
+	release: () -> (),
+	velocity: Vector3,
+	track: AnimationTrack?,
 }
+type Flying = { model: Model, velocity: Vector3, born: number }
 
 local CharacterPoser = {}
 
+local localPlayer = Players.LocalPlayer
 local states: { [Player]: State } = {}
-local throwStart: number? = nil
-local released = false
-local onRelease: (() -> ())? = nil
+local animations: { [string]: Animation } = {}
+local tracks: { character: Model?, byName: { [string]: AnimationTrack } } = { character = nil, byName = {} }
+local throw: Throw? = nil
+local flying: Flying? = nil
 
--- Cette méthode permet de mélanger deux valeurs lorsque l'on interpole une pose.
-local function lerp(a: number, b: number, t: number): number
-	return a + (b - a) * t
+local CLIPS: { [string]: AnimationData.Clip } = {}
+for _, clip in AnimationData.CLIPS do
+	CLIPS[clip.name] = clip
 end
 
--- Cette méthode permet de calculer la pose d'entraînement lorsque la répétition en est à `phase` (0-1) : bras à la
--- poitrine, puis au-dessus de la tête au milieu de la répétition.
-local function liftPose(phase: number): Pose
-	local s = 0.5 - 0.5 * math.cos(2 * math.pi * phase)
-	return {
-		shoulder = lerp(1.2, 2.95, s),
-		elbow = lerp(1.7, 0.15, s),
-		waist = lerp(0.12, -0.05, s),
-		lift = lerp(0.7, HELD_LIFT, s),
-		reach = lerp(-1.3, -0.3, s),
-	}
-end
-
--- Cette méthode permet de calculer la pose de l'élan lorsque le lancer en est à `t` secondes : penché en arrière
--- puis projeté vers l'avant au lâcher.
-local function throwPose(t: number): Pose
-	local windUp = GameConfig.WIND_UP_TIME
-	if t < windUp * 0.7 then
-		local k = t / (windUp * 0.7)
-		return {
-			shoulder = lerp(2.9, 3.4, k),
-			elbow = lerp(0.3, 0.9, k),
-			waist = lerp(0, -0.4, k),
-			lift = HELD_LIFT,
-			reach = lerp(-0.3, 1.2, k),
-		}
+-- Cette méthode permet de donner l'Animation d'un clip lorsque l'on le charge : asset publié, ou dans Studio le
+-- clip construit à la volée (KeyframeSequenceProvider) tant qu'il n'est pas publié ; nil sinon.
+local function animationFor(clip: AnimationData.Clip): Animation?
+	local cached = animations[clip.name]
+	if cached then
+		return cached
 	end
-	local k = math.clamp((t - windUp * 0.7) / (windUp * 0.3 + FOLLOW_THROUGH), 0, 1)
-	return {
-		shoulder = lerp(3.4, 1.4, math.min(k * 2, 1)),
-		elbow = lerp(0.9, 0.1, k),
-		waist = lerp(-0.4, 0.35, math.min(k * 2, 1)),
-		lift = HELD_LIFT,
-		reach = lerp(1.2, -2, k),
-	}
+	local uri = Assets.uri(Assets.ANIMATIONS[clip.name])
+	if not uri and RunService:IsStudio() then
+		local ok, result = pcall(function()
+			return KeyframeSequenceProvider:RegisterKeyframeSequence(AnimationData.buildSequence(clip))
+		end)
+		uri = if ok then result else nil
+	end
+	if not uri then
+		return nil
+	end
+	local animation = Instance.new("Animation")
+	animation.Name = clip.name
+	animation.AnimationId = uri
+	animations[clip.name] = animation
+	return animation
 end
 
--- Cette méthode permet d'appliquer une pose aux articulations R15 d'un personnage lorsque Stepped tourne : on écrase
--- Transform après l'animateur (Motor6D, ou AnimationConstraint des avatars récents) ; sans pose, l'animateur reprend
--- la main à la frame suivante.
-local function applyPose(character: Model, pose: Pose)
-	local function set(partName: string, jointName: string, rotation: CFrame)
-		local limb = character:FindFirstChild(partName)
-		local joint = limb and limb:FindFirstChild(jointName)
-		if joint and (joint:IsA("Motor6D") or joint:IsA("AnimationConstraint")) then
-			(joint :: any).Transform = rotation
+-- Cette méthode permet de donner la piste d'un clip sur le personnage du joueur local (chargée une fois par
+-- personnage) lorsque l'on la joue ou l'arrête ; nil sans Animator ou sans animation.
+local function trackFor(name: string): AnimationTrack?
+	local character = localPlayer.Character
+	if not character then
+		return nil
+	end
+	if tracks.character ~= character then
+		tracks = { character = character, byName = {} }
+	end
+	local existing = tracks.byName[name]
+	if existing then
+		return existing
+	end
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
+	local animation = animationFor(CLIPS[name])
+	if not animator or not animation then
+		return nil
+	end
+	local ok, track = pcall(function()
+		return animator:LoadAnimation(animation)
+	end)
+	if not ok then
+		return nil
+	end
+	tracks.byName[name] = track
+	return track
+end
+
+-- Cette méthode permet de jouer ou d'arrêter un clip en boucle du joueur local lorsque son action change ;
+-- l'entraînement est calé sur REP_TIME et démarre au sommet, là où le serveur compte la répétition.
+local function setLooping(name: string, on: boolean)
+	local track = if on then trackFor(name) else tracks.byName[name]
+	if not track then
+		return
+	end
+	if on and not track.IsPlaying then
+		track:Play(FADE)
+		if name == "Train" then
+			local clip = CLIPS.Train
+			track:AdjustSpeed(clip.length / GameConfig.REP_TIME)
+			track.TimePosition = clip.markers.Top
 		end
+	elseif not on and track.IsPlaying then
+		track:Stop(FADE)
 	end
-	set("RightUpperArm", "RightShoulder", CFrame.Angles(pose.shoulder, 0, -0.15))
-	set("LeftUpperArm", "LeftShoulder", CFrame.Angles(pose.shoulder, 0, 0.15))
-	set("RightLowerArm", "RightElbow", CFrame.Angles(pose.elbow, 0, 0))
-	set("LeftLowerArm", "LeftElbow", CFrame.Angles(pose.elbow, 0, 0))
-	set("UpperTorso", "Waist", CFrame.Angles(pose.waist, 0, 0))
+end
+
+-- Cette méthode permet de calculer où poser le mannequin tenu (couché sur la paume droite, dos contre la main, tête
+-- vers l'avant du personnage) lorsque le personnage le porte ou le lance ; suit le bras pendant tout le geste.
+local function palmFrame(character: Model, root: BasePart, scale: number): CFrame
+	local hand = character:FindFirstChild("RightHand") :: BasePart?
+	local arm = character:FindFirstChild("RightUpperArm") :: BasePart?
+	local fallback = root.CFrame * CFrame.new(0, GameConfig.THROW_HEIGHT, 0) * CFrame.Angles(-math.pi / 2, 0, 0)
+	if not hand or not arm then
+		return fallback
+	end
+	local reach = hand.Position - arm.Position
+	if reach.Magnitude < 0.1 then
+		return fallback
+	end
+	local up = reach.Unit
+	local forward = root.CFrame.LookVector
+	local head = forward - up * forward:Dot(up)
+	if head.Magnitude < 0.05 then
+		head = -root.CFrame.UpVector
+	end
+	head = head.Unit
+	local back = -up
+	local center = hand.Position + up * (PALM_GAP + 0.55 * scale) + head * (0.5 * scale)
+	return CFrame.fromMatrix(center, head:Cross(back), head, back)
+end
+
+-- Cette méthode permet de calculer où poser le poids d'entraînement (couché en travers des deux mains, à plat)
+-- lorsque le personnage s'entraîne.
+local function liftFrame(character: Model, root: BasePart, scale: number): CFrame
+	local left = character:FindFirstChild("LeftHand") :: BasePart?
+	local right = character:FindFirstChild("RightHand") :: BasePart?
+	local up = root.CFrame.UpVector
+	if not left or not right then
+		return root.CFrame * CFrame.new(0, GameConfig.THROW_HEIGHT, 0) * CFrame.Angles(-math.pi / 2, 0, -math.pi / 2)
+	end
+	local across = right.Position - left.Position
+	across -= up * across:Dot(up)
+	across = if across.Magnitude > 0.05 then across.Unit else root.CFrame.RightVector
+	local center = (left.Position + right.Position) / 2 + up * (PALM_GAP + 0.55 * scale)
+	local back = -up
+	return CFrame.fromMatrix(center, across:Cross(back), across, back)
 end
 
 -- Cette méthode permet de remplacer le mannequin décoratif d'un personnage lorsque ce qu'il tient change (`key`) ;
@@ -105,22 +178,66 @@ local function setVisual(state: State, key: string?, build: (() -> Model)?)
 		local model = build()
 		local primary = model.PrimaryPart :: BasePart
 		primary.Anchored = true
-		model.Parent = workspace
+		model.Parent = Workspace
 		state.visual = model
 	end
 end
 
--- Cette méthode permet de poser le mannequin décoratif au-dessus des mains (couché en travers des épaules)
--- lorsque la pose est appliquée.
-local function placeVisual(state: State, root: BasePart, pose: Pose)
-	if state.visual then
-		local frame = root.CFrame * CFrame.new(0, pose.lift, pose.reach) * CFrame.Angles(0, 0, math.rad(90))
-		state.visual:PivotTo(frame)
+-- Cette méthode permet de lâcher le mannequin du joueur local lorsque l'animation de lancer atteint son marqueur
+-- Release (ou le délai de secours) : le mannequin décoratif part sur sa lancée et le lancer est envoyé au serveur.
+local function release()
+	local current = throw
+	if not current or current.released then
+		return
 	end
+	current.released = true
+	local state = states[localPlayer]
+	if state and state.visual then
+		if flying then
+			flying.model:Destroy()
+		end
+		flying = { model = state.visual, velocity = current.velocity, born = os.clock() }
+		state.visual = nil
+		state.key = nil
+	end
+	current.release()
 end
 
--- Cette méthode permet de mettre à jour la pose et le mannequin décoratif d'un joueur lorsque Stepped tourne.
-local function update(player: Player, state: State, now: number)
+-- Cette méthode permet d'avancer le mannequin décoratif lâché (balistique, en vrille) lorsque Heartbeat tourne ; il
+-- disparaît quand le mannequin du serveur arrive (handOff) ou après FLY_TIME.
+local function updateFlying(now: number, dt: number)
+	local current = flying
+	if not current then
+		return
+	end
+	if now - current.born > FLY_TIME or not current.model.Parent then
+		current.model:Destroy()
+		flying = nil
+		return
+	end
+	current.velocity -= Vector3.new(0, Workspace.Gravity * dt, 0)
+	local spin = CFrame.Angles(FLY_SPIN.X * dt, FLY_SPIN.Y * dt, FLY_SPIN.Z * dt)
+	local pivot = current.model:GetPivot()
+	current.model:PivotTo((pivot + current.velocity * dt) * spin)
+end
+
+-- Cette méthode permet de jouer les clips en boucle du joueur local selon son action et de clore son lancer
+-- lorsque Heartbeat tourne.
+local function updateLocal(action: any, now: number)
+	local current = throw
+	if current then
+		local playing = current.track ~= nil and current.track.IsPlaying
+		if now - current.start > THROW_TIMEOUT or (current.released and not playing) then
+			throw = nil
+			current = nil
+		end
+	end
+	setLooping("Hold", action == "Holding" and current == nil)
+	setLooping("Train", action == "Training")
+end
+
+-- Cette méthode permet de mettre à jour le mannequin décoratif d'un joueur lorsque Heartbeat tourne.
+local function update(player: Player, state: State)
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not character or not root then
@@ -128,70 +245,65 @@ local function update(player: Player, state: State, now: number)
 		return
 	end
 	local action = player:GetAttribute("Action")
-	local isLocalThrow = player == Players.LocalPlayer and throwStart ~= nil
-	if isLocalThrow then
-		local t = now - (throwStart :: number)
-		local pose = throwPose(t)
-		applyPose(character, pose)
-		if not released and t >= GameConfig.WIND_UP_TIME then
-			released = true
-			setVisual(state, nil)
-			if onRelease then
-				onRelease()
-			end
-		end
-		if not released then
-			placeVisual(state, root, pose)
-		end
-		if t >= GameConfig.WIND_UP_TIME + FOLLOW_THROUGH then
-			throwStart = nil
-		end
-	elseif action == "Holding" then
+	local releasedHere = player == localPlayer and throw ~= nil and throw.released
+	if action == "Holding" and not releasedHere then
 		setVisual(state, "Holding", function()
 			return DummyShape.buildVisual(HELD_SCALE)
 		end)
-		local pose = { shoulder = 2.9, elbow = 0.3, waist = 0, lift = HELD_LIFT, reach = -0.3 }
-		applyPose(character, pose)
-		placeVisual(state, root, pose)
+		if state.visual then
+			state.visual:PivotTo(palmFrame(character, root, HELD_SCALE))
+		end
 	elseif action == "Training" then
 		local tier = (player:GetAttribute("GearTier") :: number?) or 1
+		local gear = Training.gear(tier)
 		setVisual(state, "Training" .. tier, function()
-			local gear = Training.gear(tier)
-			return DummyShape.buildVisual(gear.scale, gear.color, gear.material)
+			return DummyShape.buildVisual(gear.scale, { color = gear.color, material = gear.material })
 		end)
-		local phase = ((now - state.lastRep) / GameConfig.REP_TIME + 0.5) % 1
-		local pose = liftPose(phase)
-		applyPose(character, pose)
-		placeVisual(state, root, pose)
+		if state.visual then
+			state.visual:PivotTo(liftFrame(character, root, gear.scale))
+		end
 	else
 		setVisual(state, nil)
 	end
 end
 
--- Cette méthode permet de suivre un joueur (rythme des répétitions d'après sa Throw Power) lorsqu'il est présent.
-local function track(player: Player)
-	local state: State = { visual = nil, key = nil, lastRep = os.clock(), lastPower = 0 }
-	states[player] = state
-	player:GetAttributeChangedSignal("ThrowPower"):Connect(function()
-		state.lastRep = os.clock()
+-- Cette méthode permet de lancer le geste du joueur local lorsque la jauge est arrêtée : clip de lancer, puis
+-- `onRelease` au marqueur Release ; `velocity` est la vitesse de départ du mannequin (vol du décoratif).
+function CharacterPoser.playThrow(onRelease: () -> (), velocity: Vector3)
+	local current: Throw = { start = os.clock(), released = false, release = onRelease, velocity = velocity }
+	throw = current
+	setLooping("Hold", false)
+	local track = trackFor("Throw")
+	if track then
+		current.track = track
+		track:GetMarkerReachedSignal("Release"):Once(release)
+		track:Play(THROW_FADE)
+	end
+	task.delay(GameConfig.THROW_RELEASE_TIME + RELEASE_GRACE, function()
+		if throw == current then
+			release()
+		end
 	end)
 end
 
--- Cette méthode permet de lancer l'élan du joueur local lorsque la jauge est arrêtée ; `release` est appelé au
--- moment où le mannequin quitte ses mains.
-function CharacterPoser.playThrow(release: () -> ())
-	throwStart = os.clock()
-	released = false
-	onRelease = release
-end
-
--- Cette méthode permet de savoir si l'élan du joueur local est en cours lorsque l'interface doit ignorer un clic.
+-- Cette méthode permet de savoir si le geste du joueur local est en cours lorsque l'interface doit ignorer un clic.
 function CharacterPoser.isThrowing(): boolean
-	return throwStart ~= nil
+	return throw ~= nil
 end
 
--- Cette méthode permet de brancher le suivi des joueurs et la boucle des poses lorsque le client démarre.
+-- Cette méthode permet de retirer le mannequin décoratif lâché lorsque le mannequin du serveur prend le relais.
+function CharacterPoser.handOff()
+	if flying then
+		flying.model:Destroy()
+		flying = nil
+	end
+end
+
+-- Cette méthode permet de brancher le suivi des joueurs et la boucle des animations lorsque le client démarre.
 function CharacterPoser.init()
+	local function track(player: Player)
+		states[player] = { visual = nil, key = nil }
+	end
 	Players.PlayerAdded:Connect(track)
 	for _, player in Players:GetPlayers() do
 		track(player)
@@ -203,11 +315,14 @@ function CharacterPoser.init()
 			states[player] = nil
 		end
 	end)
-	RunService.Stepped:Connect(function()
+	-- Heartbeat : après la simulation, les mains sont à leur place animée de la frame
+	RunService.Heartbeat:Connect(function(dt)
 		local now = os.clock()
+		updateLocal(localPlayer:GetAttribute("Action"), now)
 		for player, state in states do
-			update(player, state, now)
+			update(player, state)
 		end
+		updateFlying(now, dt)
 	end)
 end
 

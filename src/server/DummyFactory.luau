@@ -1,5 +1,5 @@
--- Fabrique du mannequin physique : 10 pièces articulées par des rotules à butées, sans Humanoid (gabarit dans
--- Shared.DummyShape).
+-- Fabrique du mannequin physique : 10 pièces (maillées, collision en boîte) articulées par des rotules à butées, sans
+-- Humanoid (gabarit dans Shared.DummyShape).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local DummyShape = require(ReplicatedStorage.Shared.DummyShape)
@@ -22,27 +22,16 @@ local function attach(partInstance: BasePart, world: Vector3, axis: Vector3): At
 end
 
 -- Cette méthode permet de construire un mannequin neuf, debout, centre du torse à l'origine, lorsqu'un lancer part ;
--- l'appelant le place (PivotTo) puis le parente au monde.
-function DummyFactory.build(): Model
+-- `variant` le décline (couleur, matériau, accessoires). L'appelant le place (PivotTo) puis le parente au monde.
+function DummyFactory.build(variant: DummyShape.Variant?): Model
 	local model = Instance.new("Model")
 	model.Name = "Dummy"
-	local parts: { [string]: BasePart } = {}
-	for _, piece in DummyShape.PIECES do
-		local p = Instance.new("Part")
-		p.Name = piece.name
-		p.Size = piece.size
-		p.Position = piece.position
-		p.Color = piece.color
-		p.Shape = piece.shape or Enum.PartType.Block
-		p.Material = Enum.Material.SmoothPlastic
+	local parts = DummyShape.buildPieces(model, 1, variant)
+	for _, p in parts do
 		p.CustomPhysicalProperties = PHYSICS
-		p:SetAttribute("BaseColor", piece.color)
+		p:SetAttribute("BaseColor", p.Color)
 		p:SetAttribute("Bones", 0)
-		p.Parent = model
-		parts[piece.name] = p
 	end
-	DummyShape.addTarget(parts.Torso, Enum.NormalId.Front)
-	DummyShape.addTarget(parts.Torso, Enum.NormalId.Back)
 	for _, joint in DummyShape.JOINTS do
 		local parentPart, childPart = parts[joint[1]], parts[joint[2]]
 		local socket = Instance.new("BallSocketConstraint")
@@ -56,6 +45,7 @@ function DummyFactory.build(): Model
 		socket.TwistUpperAngle = TWIST_LIMIT
 		socket.Parent = childPart
 	end
+	DummyShape.addAccessories(model, parts, 1, variant)
 	model.PrimaryPart = parts.Torso
 	CollisionGroups.assign(model, CollisionGroups.DUMMY)
 	return model

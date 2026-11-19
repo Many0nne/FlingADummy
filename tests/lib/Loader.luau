@@ -116,6 +116,9 @@ function Loader:require(target: any)
 			Instance = roblox.Instance,
 			Color3 = roblox.Color3,
 			Enum = roblox.Enum,
+			Vector2 = roblox.Vector2,
+			UDim = roblox.UDim,
+			UDim2 = roblox.UDim2,
 		}
 		for name, value in self.globals do
 			env[name] = value
