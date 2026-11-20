@@ -114,9 +114,11 @@ Interface : section suivante.
   au bord droit (place du bouton de collection des références) ; pastille rouge « ! » quand un achat est possible.
 - **Compteurs** (bas gauche) : biceps + Throw Power (cyan), liasse + argent (blanc), revenu « +$N/s » en vert à droite
   de l'argent quand l'attribut joueur `Income` est positif (posé par la collection, #13).
-- **Tutoriel** (objectif en haut au centre) : 3 étapes seulement, puis plus jamais de texte, de flèche ni de chevrons :
-  « Train! » (jusqu'au premier niveau) → « Throw your dummy! » (premier lancer) → « Buy better gear! » dès que le
-  premier équipement est abordable (flèche sur le bouton UPGRADE du popup « NEW GEAR! », sinon sur Shop). Étapes
+- **Tutoriel** (objectif en haut au centre) : toute la boucle une fois, puis plus jamais de texte, de flèche ni de
+  chevrons : « Throw your dummy! » (premier lancer) → « Train! » (jusqu'au premier niveau) → « Buy better gear! » dès que
+  le premier équipement est abordable → « Upgrade your dummy! » dès que l'amélioration du mannequin l'est. Pour un achat,
+  la flèche désigne où cliquer : bouton UPGRADE du popup « NEW GEAR! », sinon bouton d'achat de la carte quand la
+  fenêtre est ouverte (comme la flèche rouge de la boutique de 09), sinon le bouton du HUD qui ouvre la fenêtre. Étapes
   sauvegardées avec le joueur (attribut `Tutorial`, drapeaux) ; une sauvegarde antérieure en déduit les étapes déjà faites.
   Rien pendant la jauge, le vol, le résultat et la séance d'entraînement. Cible du décor : triangle jaune au-dessus,
   chevrons jaunes au sol qui défilent vers elle. Logique dans `Shared.Tutorial` et `Shared.Objectives`.

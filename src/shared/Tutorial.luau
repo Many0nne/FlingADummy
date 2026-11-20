@@ -1,23 +1,23 @@
--- Tutoriel court : S'entraîner (un niveau) → Lancer → Acheter le premier équipement, puis plus aucun objectif affiché.
--- L'état est un masque de drapeaux (attribut `Tutorial` du joueur, sauvegardé) : une étape faite dans le désordre
--- compte quand même, et l'étape affichée est la première qui reste à faire. Aussi : choix du palier proposé par le
--- popup « NEW GEAR! ».
+-- Tutoriel court, toute la boucle une fois : Lancer → S'entraîner (un niveau) → Acheter le premier équipement →
+-- Améliorer le mannequin, puis plus aucun objectif affiché. L'état est un masque de drapeaux (attribut `Tutorial` du
+-- joueur, sauvegardé) : une étape faite dans le désordre compte quand même, et l'étape affichée est la première qui
+-- reste à faire. Aussi : choix du palier proposé par le popup « NEW GEAR! ».
 local Tutorial = {}
 
-Tutorial.STEPS = { "Train", "Throw", "BuyGear" }
+Tutorial.STEPS = { "Throw", "Train", "BuyGear", "BuyDummy" }
 
-local FLAG = { Train = 1, Throw = 2, BuyGear = 4 }
-Tutorial.DONE = 7 -- tous les drapeaux
+local FLAG = { Throw = 1, Train = 2, BuyGear = 4, BuyDummy = 8 }
+Tutorial.DONE = 15 -- tous les drapeaux
 
--- Cette méthode permet d'enregistrer une étape faite (`event` : « Train », « Throw », « BuyGear ») lorsque le serveur
--- la constate ; acheter un équipement clôt tout le tutoriel (la boucle est comprise).
+-- Cette méthode permet d'enregistrer une étape faite (`event` : « Throw », « Train », « BuyGear », « BuyDummy »)
+-- lorsque le serveur la constate ; un achat vaut aussi lancer et entraînement (la boucle de base est comprise).
 function Tutorial.complete(flags: number, event: string): number
-	if event == "BuyGear" then
-		return Tutorial.DONE
-	end
 	local flag = FLAG[event]
 	if not flag then
 		return flags
+	end
+	if event == "BuyGear" or event == "BuyDummy" then
+		flag = bit32.bor(flag, FLAG.Throw, FLAG.Train)
 	end
 	return bit32.bor(flags, flag)
 end
@@ -36,15 +36,18 @@ end
 -- Cette méthode permet de déduire le tutoriel déjà fait d'une sauvegarde antérieure au tutoriel lorsqu'un ancien
 -- joueur arrive : un ancien joueur ne revoit pas les étapes qu'il a déjà faites.
 function Tutorial.infer(data: { [string]: any }): number
-	if type(data.GearTier) == "number" and data.GearTier > 1 then
-		return Tutorial.DONE
-	end
 	local flags = 0
+	if type(data.BestDistance) == "number" and data.BestDistance > 0 then
+		flags = Tutorial.complete(flags, "Throw")
+	end
 	if type(data.TrainLevel) == "number" and data.TrainLevel > 1 then
 		flags = Tutorial.complete(flags, "Train")
 	end
-	if type(data.BestDistance) == "number" and data.BestDistance > 0 then
-		flags = Tutorial.complete(flags, "Throw")
+	if type(data.GearTier) == "number" and data.GearTier > 1 then
+		flags = Tutorial.complete(flags, "BuyGear")
+	end
+	if type(data.ValueLevel) == "number" and data.ValueLevel > 1 then
+		flags = Tutorial.complete(flags, "BuyDummy")
 	end
 	return flags
 end

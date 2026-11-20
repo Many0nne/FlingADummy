@@ -883,6 +883,18 @@ function Hud.offerButton(): GuiObject?
 	return if offerTier ~= nil then offer.button else nil
 end
 
+-- Cette méthode permet de donner le bouton d'achat de la carte visée (« Gear » : équipement suivant, « Value » :
+-- amélioration du mannequin) lorsque la flèche du tutoriel cherche où pointer ; nil si sa fenêtre n'est pas ouverte.
+function Hud.buyButton(kind: string): GuiObject?
+	if kind == "Gear" and UIKit.isWindowOpen(windows.Shop) then
+		local card = gearCards[stat("GearTier", 1) + 1]
+		return if card then card.action else nil
+	elseif kind == "Value" and UIKit.isWindowOpen(windows.Dummies) then
+		return dummyCard.action
+	end
+	return nil
+end
+
 -- Cette méthode permet de savoir si un popup de palier occupe le haut de l'écran lorsque l'objectif s'affiche.
 function Hud.isPopupShown(): boolean
 	return os.clock() < popupEndsAt

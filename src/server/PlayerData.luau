@@ -136,14 +136,12 @@ function PlayerData.buyUpgrade(player: Player, kind: any): boolean
 	end
 	player:SetAttribute("Money", money - cost)
 	player:SetAttribute(attribute, ((player:GetAttribute(attribute) :: number?) or 1) + 1)
-	if kind == "Gear" then
-		PlayerData.tutorialStep(player, "BuyGear")
-	end
+	PlayerData.tutorialStep(player, if kind == "Gear" then "BuyGear" else "BuyDummy")
 	return true
 end
 
--- Cette méthode permet de noter une étape du tutoriel faite (« Train », « Throw », « BuyGear ») lorsque le serveur
--- la constate ; sans effet une fois le tutoriel fini.
+-- Cette méthode permet de noter une étape du tutoriel faite (« Throw », « Train », « BuyGear », « BuyDummy ») lorsque
+-- le serveur la constate ; sans effet une fois le tutoriel fini.
 function PlayerData.tutorialStep(player: Player, event: string)
 	local flags = (player:GetAttribute("Tutorial") :: number?) or 0
 	local updated = Tutorial.complete(flags, event)

@@ -16,23 +16,27 @@ export type State = {
 	laneState: string?, -- attribut LaneState : "Ready", "Flying", "Result"
 	step: string?, -- étape du tutoriel à faire (Shared.Tutorial.current) : nil une fois le tutoriel fini
 	canBuyGear: boolean,
+	canBuyDummy: boolean,
 }
 
 export type Objective = {
 	id: string,
 	text: string,
 	target: string?, -- valeur de l'attribut Objective de la cible du décor
-	button: string?, -- bouton du HUD désigné : "Shop"
+	button: string?, -- bouton du HUD désigné : "Shop", "Dummies"
+	buy: string?, -- achat visé dans la fenêtre du bouton (« Gear », « Value ») : la flèche passe sur son bouton
 }
 
 export type Candidate = { position: Vector3, slot: number?, owner: number? }
 
 local THROW = { id = "Throw", text = "Throw your dummy!", target = "Throw" }
 local TRAIN = { id = "Train", text = "Train!", target = "Train" }
-local BUY_GEAR = { id = "BuyGear", text = "Buy better gear!", button = "Shop" }
+local BUY_GEAR = { id = "BuyGear", text = "Buy better gear!", button = "Shop", buy = "Gear" }
+local BUY_DUMMY = { id = "BuyDummy", text = "Upgrade your dummy!", button = "Dummies", buy = "Value" }
 
--- Cette méthode permet de choisir l'objectif du tutoriel (entraînement, lancer, puis achat du premier équipement dès
--- qu'il est abordable) lorsque l'état du joueur change ; nil une fois le tutoriel fini ou quand l'écran est occupé.
+-- Cette méthode permet de choisir l'objectif du tutoriel (lancer, entraînement, puis achats de l'équipement et du
+-- mannequin dès qu'ils sont abordables) lorsque l'état du joueur change ; nil une fois le tutoriel fini ou quand
+-- l'écran est occupé.
 function Objectives.pick(state: State): Objective?
 	if state.laneState == "Flying" or state.laneState == "Result" then
 		return nil
@@ -40,12 +44,14 @@ function Objectives.pick(state: State): Objective?
 	if state.action == "Holding" or state.action == "Training" then
 		return nil
 	end
-	if state.step == "Train" then
-		return TRAIN
-	elseif state.step == "Throw" then
+	if state.step == "Throw" then
 		return THROW
+	elseif state.step == "Train" then
+		return TRAIN
 	elseif state.step == "BuyGear" and state.canBuyGear then
 		return BUY_GEAR
+	elseif state.step == "BuyDummy" and state.canBuyDummy then
+		return BUY_DUMMY
 	end
 	return nil
 end
