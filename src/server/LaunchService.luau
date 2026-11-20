@@ -258,7 +258,12 @@ local function checkSmashed(list: { Flight })
 	local byFlight: { [Flight]: { [string]: { count: number, position: Vector3 } } } = {}
 	for _, piece in Obstacles.pieces() do
 		local p = piece.part
-		if piece.claimed or p.Anchored or p.AssemblyLinearVelocity.Magnitude <= GameConfig.SMASH_SPEED then
+		if
+			piece.claimed
+			or not p.Parent
+			or p.Anchored
+			or p.AssemblyLinearVelocity.Magnitude <= GameConfig.SMASH_SPEED
+		then
 			continue
 		end
 		local index = ObstacleRules.claimant(p.Position, positions)

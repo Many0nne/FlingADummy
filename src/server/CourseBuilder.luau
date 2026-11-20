@@ -494,23 +494,34 @@ local function buildTrack(parent: Instance)
 	-- Paroi de bout de piste, en gradins tournés vers le départ
 	local last = Zones.LIST[#Zones.LIST]
 	terraces(parent, Vector3.new(half, 0, END_Z), Vector3.new(-half, 0, END_Z), -Vector3.zAxis, last, 1, 1)
-	-- Parois invisibles au-dessus des gradins : les mannequins restent dans le canyon
+	-- Parois invisibles au-dessus des gradins (côtés et bout de piste) : les mannequins restent dans le canyon
 	local _, topHeight = CourseLayout.tier(CourseLayout.TIER_COUNT - 1)
 	local innerTop = CourseLayout.tier(CourseLayout.TIER_COUNT - 1)
-	for _, side in { -1, 1 } do
-		Build.part({
-			Name = "SideWall",
-			Size = Vector3.new(1, GameConfig.SIDE_WALL_HEIGHT, END_Z + GameConfig.LAUNCH_DEPTH),
-			Position = Vector3.new(
-				side * (innerTop + 0.5),
-				topHeight + GameConfig.SIDE_WALL_HEIGHT / 2,
-				(END_Z - GameConfig.LAUNCH_DEPTH) / 2
-			),
-			Transparency = 1,
-			CanQuery = false,
-			Parent = parent,
-		})
+	local wallY = topHeight + GameConfig.SIDE_WALL_HEIGHT / 2
+	local z = -GameConfig.LAUNCH_DEPTH
+	local endZ = END_Z + innerTop - half -- recul de la dernière marche de la paroi du bout
+	while z < endZ - 0.01 do
+		local span = math.min(SEGMENT_LENGTH, endZ - z)
+		for _, side in { -1, 1 } do
+			Build.part({
+				Name = "SideWall",
+				Size = Vector3.new(1, GameConfig.SIDE_WALL_HEIGHT, span),
+				Position = Vector3.new(side * (innerTop + 0.5), wallY, z + span / 2),
+				Transparency = 1,
+				CanQuery = false,
+				Parent = parent,
+			})
+		end
+		z += span
 	end
+	Build.part({
+		Name = "EndWall",
+		Size = Vector3.new(2 * innerTop + 2, GameConfig.SIDE_WALL_HEIGHT, 1),
+		Position = Vector3.new(0, wallY, endZ + 0.5),
+		Transparency = 1,
+		CanQuery = false,
+		Parent = parent,
+	})
 end
 
 -- Cette méthode permet de créer les places des joueurs (position, couleur, repères) avant que le décor ne les habille

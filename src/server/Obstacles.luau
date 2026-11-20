@@ -3,6 +3,7 @@
 -- déplacée réapparaît à sa place RESPAWN_DELAY après le dernier choc subi par son obstacle, une par une, de bas en
 -- haut, avec un petit effet d'apparition (Shared.ObstacleRules).
 local Debris = game:GetService("Debris")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -20,6 +21,8 @@ local SCAN_PERIOD = 0.2 -- surveillance des pièces (s)
 local SETTLE_SPEED = 2 -- une pièce déplacée qui bouge encore repousse la réapparition
 local POP_TIME = 0.25
 local OCCUPIED_SCALE = 0.9 -- emplacement vérifié avant réapparition (pièces voisines qui se touchent tolérées)
+local OCCUPIED_RETRY = 0.2 -- une pièce dont l'emplacement est occupé attend (s)…
+local OCCUPIED_TRIES = 40 -- … au plus 8 s (un mannequin posé disparaît RESULT_TIME après la fin de son vol)
 
 -- Obstacles très légers : le mannequin les traverse et les projette au lieu de s'y arrêter
 local CRATE_DENSITY = 0.05
@@ -348,23 +351,29 @@ function Obstacles.shatter(glass: Glass, impact: Vector3, velocity: Vector3)
 	end
 end
 
+-- Cette méthode permet d'inspecter l'emplacement d'une pièce lorsqu'elle va réapparaître : renvoie s'il est occupé par
+-- un mannequin ou un éclat (les avatars, eux, sont repoussés), et les pièces d'obstacles déplacées qui l'encombrent.
+local function inspect(piece: Piece, debris: { Piece }): boolean
+	for _, hit in Workspace:GetPartBoundsInBox(piece.home, piece.template.Size * OCCUPIED_SCALE, overlap) do
+		local other = pieceOf[hit]
+		if other then
+			if other ~= piece and (other.displaced or ObstacleRules.isDisplaced(other.home, hit.CFrame)) then
+				table.insert(debris, other)
+			end
+		elseif not hit.Anchored and not Players:GetPlayerFromCharacter(hit:FindFirstAncestorOfClass("Model")) then
+			return true
+		end
+	end
+	return false
+end
+
 -- Cette méthode permet de vérifier les emplacements des pièces déplacées d'un obstacle lorsque sa réapparition est due :
--- renvoie les débris d'obstacles qui les encombrent, ou nil si un mannequin, un avatar ou un éclat y est encore.
+-- renvoie les débris d'obstacles qui les encombrent, ou nil si un mannequin ou un éclat y est encore.
 local function clearance(group: Group): { Piece }?
 	local debris = {}
 	for _, piece in group.pieces do
-		if not piece.displaced then
-			continue
-		end
-		for _, hit in Workspace:GetPartBoundsInBox(piece.home, piece.template.Size * OCCUPIED_SCALE, overlap) do
-			local other = pieceOf[hit]
-			if other then
-				if other.displaced then
-					table.insert(debris, other)
-				end
-			elseif not hit.Anchored then
-				return nil
-			end
+		if piece.displaced and inspect(piece, debris) then
+			return nil
 		end
 	end
 	return debris
@@ -373,8 +382,10 @@ end
 -- Cette méthode permet de retirer une pièce déplacée du monde (son obstacle la fera réapparaître) lorsque l'on libère
 -- un emplacement ou que son tour de réapparaître vient.
 local function remove(piece: Piece)
-	pieceOf[piece.part] = nil
-	piece.part:Destroy()
+	if piece.part.Parent then
+		pieceOf[piece.part] = nil
+		piece.part:Destroy()
+	end
 end
 
 -- Cette méthode permet de remettre les pièces déplacées d'un obstacle à leur place, une par une de bas en haut, lorsque
@@ -390,14 +401,22 @@ local function respawn(group: Group, debris: { Piece })
 		end
 	end
 	for _, piece in debris do
-		if piece.part.Parent then
-			remove(piece)
-		end
+		remove(piece)
 	end
 	local order = ObstacleRules.respawnOrder(homes, displaced)
 	task.spawn(function()
 		for _, index in order do
 			local piece = group.pieces[index]
+			-- L'emplacement a pu se remplir depuis le début de la réapparition (mannequin, débris)
+			local late = {}
+			local tries = 0
+			while inspect(piece, late) and tries < OCCUPIED_TRIES do
+				tries += 1
+				task.wait(OCCUPIED_RETRY)
+			end
+			for _, other in late do
+				remove(other)
+			end
 			local p = piece.template:Clone()
 			p.Anchored = true
 			p.CFrame = piece.home
