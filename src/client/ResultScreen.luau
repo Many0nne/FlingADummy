@@ -153,9 +153,14 @@ local function countUp(total: number, current: number)
 		if k >= 1 then
 			connection:Disconnect()
 			UIKit.pop(totalLabel, 1.4)
+			ResultScreen.onTotal(totalLabel.AbsolutePosition + totalLabel.AbsoluteSize / 2)
 		end
 	end)
 end
+
+-- Cette méthode permet de signaler que le total a fini de compter (centre du total en pixels d'écran) lorsque la
+-- cérémonie se termine ; remplacée par init.client (le gain vole alors vers le compteur d'argent).
+function ResultScreen.onTotal(_from: Vector2) end
 
 -- Cette méthode permet de jouer la cérémonie de résultat lorsque le serveur envoie les gains du lancer.
 function ResultScreen.show(result: any)

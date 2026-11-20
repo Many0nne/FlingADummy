@@ -33,6 +33,7 @@ local gui = Hud.screen()
 Objective.init(player, gui)
 FlightView.init(gui)
 ResultScreen.init(gui)
+ResultScreen.onTotal = Hud.releaseMoney
 CharacterPoser.init()
 ThrowController.init(player, remotes, gui)
 FlightCamera.init(player)

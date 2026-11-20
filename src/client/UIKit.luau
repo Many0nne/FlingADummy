@@ -389,6 +389,16 @@ local function bindPress(button: GuiButton, onClick: () -> ())
 		end
 		UIKit.playSound("Click")
 		onClick()
+		-- Bouton masqué par son clic (croix, STOP) : MouseLeave n'arrivera pas, il reprendrait au survol à 1,06
+		task.delay(0.3, function()
+			if not UIKit.isShown(button) then
+				hovered = false
+				pressed = false
+				local scale = UIKit.scaleOf(button)
+				claim(scale)
+				scale.Scale = 1
+			end
+		end)
 	end)
 end
 
@@ -604,6 +614,9 @@ local function updateBlur()
 	if not blur or blur.Parent ~= camera then
 		if not wanted then
 			return
+		end
+		if blur then
+			blur:Destroy()
 		end
 		blur = UIKit.create("BlurEffect", { Name = "WindowBlur", Size = 0, Parent = camera })
 	end
@@ -960,9 +973,8 @@ function UIKit.sparkles(parent: Instance, count: number, area: Vector2, zIndex: 
 	end
 end
 
--- Cette méthode permet d'afficher un popup (titre en dégradé à contour épais, petit texte rouge au-dessus, sous-titre)
--- qui entre en rebond devant des rayons tournants et des étincelles, puis s'efface, lorsque le joueur gagne un
--- niveau, un équipement ou un objet ; renvoie sa durée d'affichage. Constructeur réutilisé par le popup NEW GEAR!.
+-- Cette méthode permet d'afficher un popup (titre en dégradé, tag rouge, sous-titre) qui rebondit devant rayons et
+-- étincelles puis s'efface lorsque le joueur gagne un palier ou un objet ; renvoie sa durée (réutilisé par #31).
 function UIKit.popup(parent: Instance, options: PopupOptions): number
 	local duration = options.duration or 1.8
 	local colors = options.colors or { Color3.fromRGB(255, 240, 110), UIKit.COLORS.orange }
@@ -1061,9 +1073,8 @@ local function centerOf(gui: GuiObject): Vector2
 	return gui.AbsolutePosition + gui.AbsoluteSize / 2
 end
 
--- Cette méthode permet de faire jaillir puis voler un « +N » et quelques icônes vers un compteur (le compteur gonfle à
--- chaque arrivée) lorsque le joueur gagne de l'argent ou de la puissance ; renvoie l'étiquette (texte modifiable tant
--- qu'elle vole, pour y regrouper un gain rapproché).
+-- Cette méthode permet de faire jaillir puis voler un « +N » et quelques icônes vers un compteur lorsque le joueur
+-- gagne de l'argent ou de la puissance ; renvoie l'étiquette (texte modifiable en vol pour un gain regroupé).
 function UIKit.flyGain(options: FlyOptions): TextLabel
 	local layer = effectsLayer()
 	local s = options.scale or 1

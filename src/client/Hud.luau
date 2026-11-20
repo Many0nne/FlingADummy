@@ -58,6 +58,8 @@ local trainCount: TextLabel
 local lastPower = 0
 local lastMoney = 0
 local seeded = false -- valeurs sauvegardées chargées : les gains suivants volent vers les compteurs
+local heldMoney = 0 -- gain du lancer (déjà compté dans pending) qui attend la fin du total de l'écran de résultat
+local heldToken = 0
 local levelGain = 0 -- Throw Power versée au dernier niveau d'entraînement, pas encore annoncée
 local levelUpPending = false -- niveau arrivé avant sa Throw Power (ordre de réplication non garanti)
 local LEVEL_GAIN_WAIT = 0.5 -- attente maximale de la Throw Power d'un niveau avant de l'annoncer quand même (s)
@@ -154,9 +156,8 @@ local function buildCounters()
 	moneyLabel = counter(row, 2, "Money", "cash", C.white, C.yellow, Format.money)
 end
 
--- Cette méthode permet de construire les boutons à icône (Index et Shop à gauche, Dummies à droite, comme Index /
--- Boutique / Animaux des références) lorsque le HUD est construit ; Shop et Dummies portent le reflet des boutons
--- importants. Placés sans UIListLayout : ancrés au centre, ils grossissent sur place au survol.
+-- Cette méthode permet de construire les boutons à icône (Index et Shop à gauche avec reflet sur Shop, Dummies à
+-- droite avec reflet) lorsque le HUD est construit ; ancrés au centre, ils grossissent sur place au survol.
 local function buildButtons()
 	local gap = 22
 	local left = UIKit.create("Frame", {
@@ -415,11 +416,12 @@ function Hud.refresh()
 	local money = stat("Money", 0)
 	-- Revenu collé au montant, en plus petit et en vert (comme « $64 +$1 » de la référence 02), seulement s'il existe
 	local income = stat("Income", 0)
-	moneyLabel.Text = Format.money(money - counters.Money.pending)
+	moneyLabel.Text = Format.money(math.max(0, money - counters.Money.pending))
 		.. if income > 0
 			then string.format(' <font size="22" color="#50D746">%s</font>', Format.perSecond(income))
 			else ""
-	powerLabel.Text = Format.short(stat("ThrowPower", GameConfig.START_POWER) - counters.ThrowPower.pending)
+	powerLabel.Text =
+		Format.short(math.max(0, stat("ThrowPower", GameConfig.START_POWER) - counters.ThrowPower.pending))
 
 	local gearCost = Training.nextGearCost(stat("GearTier", 1))
 	local valueCost = Economy.valueCost(stat("ValueLevel", 1))
@@ -558,9 +560,8 @@ local function showPopup(options: UIKit.PopupOptions)
 	popupEndsAt = os.clock() + duration
 end
 
--- Cette méthode permet de faire voler un gain (« +N » et icônes) depuis `from` (pixels d'écran) jusqu'au compteur
--- `kind`, en le regroupant avec un gain rapproché, lorsque l'argent ou la puissance augmentent ; le chiffre affiché
--- n'avance qu'à l'arrivée.
+-- Cette méthode permet de faire voler un gain (« +N » et icônes) de `from` (pixels d'écran) au compteur `kind`,
+-- regroupé avec un gain rapproché, lorsque l'argent ou la puissance augmentent ; le chiffre n'avance qu'à l'arrivée.
 local function flyGain(kind: string, amount: number, from: Vector2)
 	local c = counters[kind]
 	c.pending += amount
@@ -596,11 +597,38 @@ local function flyGain(kind: string, amount: number, from: Vector2)
 	})
 end
 
--- Cette méthode permet de donner le point de départ des « +N » d'argent (total de l'écran de résultat, au centre)
--- lorsque l'argent augmente.
+-- Cette méthode permet de donner le point de départ par défaut des « +N » d'argent (total de l'écran de résultat, au
+-- centre) lorsque l'écran de résultat n'a pas donné le sien.
 local function moneyOrigin(): Vector2
 	local size = Workspace.CurrentCamera.ViewportSize
 	return Vector2.new(size.X * 0.5, size.Y * 0.45 + 67 * hudScale.Scale)
+end
+
+-- Cette méthode permet de faire voler vers le compteur le gain du lancer mis en attente, depuis le total de l'écran de
+-- résultat (`from`), lorsque ce total a fini de compter ; sans effet s'il n'y a rien en attente.
+function Hud.releaseMoney(from: Vector2?)
+	if heldMoney <= 0 then
+		return
+	end
+	local amount = heldMoney
+	heldMoney = 0
+	heldToken += 1
+	counters.Money.pending = math.max(0, counters.Money.pending - amount)
+	flyGain("Money", amount, from or moneyOrigin())
+end
+
+-- Cette méthode permet de mettre en attente le gain d'un lancer (le compteur ne l'affiche pas encore) lorsque l'argent
+-- arrive avec l'écran de résultat ; il vole quand le total a compté, ou au plus tard après RESULT_TIME.
+local function holdMoney(amount: number)
+	heldMoney += amount
+	counters.Money.pending += amount
+	heldToken += 1
+	local token = heldToken
+	task.delay(GameConfig.RESULT_TIME + 0.5, function()
+		if heldToken == token then
+			Hud.releaseMoney()
+		end
+	end)
 end
 
 -- Cette méthode permet d'annoncer le niveau d'entraînement franchi (« LEVEL UP! », Throw Power versée) lorsque le
@@ -673,8 +701,14 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 	end
 	player:GetAttributeChangedSignal("Money"):Connect(function()
 		local money = stat("Money", 0)
-		if seeded and money > lastMoney then
-			flyGain("Money", money - lastMoney, moneyOrigin())
+		local lane = player:GetAttribute("LaneState")
+		-- Seul le gain d'un lancer vole (le chargement des valeurs sauvegardées non) ; un achat entame les gains en vol
+		if seeded and money > lastMoney and (lane == "Flying" or lane == "Result") then
+			holdMoney(money - lastMoney)
+		elseif money < lastMoney then
+			local c = counters.Money
+			c.pending = math.min(c.pending, money)
+			heldMoney = math.min(heldMoney, c.pending)
 		end
 		lastMoney = money
 		Hud.refresh()
