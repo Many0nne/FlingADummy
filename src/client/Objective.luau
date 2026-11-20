@@ -196,15 +196,23 @@ local function step()
 		targetPart = findTarget(kind, root.Position)
 	end
 	local target = if kind then targetPart else nil
+	-- Point visé : le centre de la cible, ou pour la bande de lancer son point le plus proche du joueur
+	local aim = if target
+		then Objectives.aimPoint(
+			target.Position,
+			target:GetAttribute("Span") :: number?,
+			if root then root.Position else target.Position
+		)
+		else nil
 	-- Flottement et pulsation calculés seulement pour une flèche affichée, coupés en mouvement réduit
 	local now = os.clock()
 	local reduced = UIKit.reducedMotion()
 	worldArrow.Enabled = target ~= nil
-	if target then
+	if aim then
 		local pulse = UIMotion.pulse(now, reduced)
 		worldArrow.Size = UDim2.fromScale(ARROW_SIZE * pulse, ARROW_SIZE * pulse)
 		arrowAnchor.CFrame =
-			CFrame.new(target.Position + Vector3.new(0, ARROW_HEIGHT + UIMotion.float(now, reduced) * ARROW_FLOAT, 0))
+			CFrame.new(aim + Vector3.new(0, ARROW_HEIGHT + UIMotion.float(now, reduced) * ARROW_FLOAT, 0))
 	end
 	if hudArrow.Parent and hudArrow.Visible then
 		placeHudArrow(hudArrow.Parent :: GuiObject) -- suit les changements de taille d'écran (rotation du mobile)
@@ -212,9 +220,9 @@ local function step()
 		hudArrow.Position = hudArrowBase + UDim2.fromOffset(hudArrowBob.X * bob, hudArrowBob.Y * bob)
 		hudArrowScale.Scale = UIMotion.pulse(now, reduced)
 	end
-	if target and root and humanoid then
+	if aim and root and humanoid then
 		local feet = root.Position - Vector3.new(0, humanoid.HipHeight + root.Size.Y / 2 - 0.12, 0)
-		updateChevrons(feet, Vector3.new(target.Position.X, feet.Y, target.Position.Z))
+		updateChevrons(feet, Vector3.new(aim.X, feet.Y, aim.Z))
 	else
 		updateChevrons(nil, nil)
 	end

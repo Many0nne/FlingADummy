@@ -1,13 +1,17 @@
--- Lancer : sur la zone de lancer, une jauge verticale apparaît et son aiguille court toute seule ; un clic (toucher,
--- Espace) l'arrête, la cinématique démarre (gros plan, bandes noires), l'avatar joue son geste de lancer et le
--- mannequin part au lâcher avec la valeur de la jauge.
+-- Lancer : figé par le serveur sur la bande de lancer, le joueur voit une jauge verticale dont l'aiguille court toute
+-- seule ; un clic (toucher, Espace) l'arrête (son et rebond), la cinématique démarre (gros plan, bandes noires),
+-- l'avatar joue son geste de lancer et le mannequin part au lâcher avec la valeur de la jauge (vérifiée par le
+-- serveur). Anime aussi le reflet de la bande, localement.
+local CollectionService = game:GetService("CollectionService")
 local ContextActionService = game:GetService("ContextActionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local CourseLayout = require(Shared:WaitForChild("CourseLayout"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Gauge = require(Shared:WaitForChild("Gauge"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -19,6 +23,9 @@ local UIKit = require(script.Parent.UIKit)
 local C = UIKit.COLORS
 local GAUGE_HEIGHT = 320 -- ≈ 0,45 h à 720 px, comme les références
 local GAUGE_WIDTH = 64
+local SHINE_SWEEP = 2.2 -- durée du passage du reflet sur la bande (s)
+local SHINE_REACH = 1.5 -- décalage du dégradé aux deux bouts : le reflet sort entièrement de la bande
+local SHINE_PAUSE = 1.4 -- pause entre deux passages (s)
 
 local ThrowController = {}
 
@@ -30,6 +37,7 @@ local valueLabel: TextLabel
 local promptLabel: TextLabel
 local shownAt = 0
 local locked: number? = nil -- valeur figée par le clic, en attendant le lâcher
+local shining: { [Instance]: boolean } = setmetatable({}, { __mode = "k" }) :: any -- reflets déjà animés
 
 -- Cette méthode permet de construire la jauge verticale au style des références (capsule à contour noir, dégradé
 -- vert en haut → rouge en bas, traits sombres, curseur blanc, valeur « +N » à droite, consigne dessous) lorsque le
@@ -113,38 +121,42 @@ local function currentValue(): number
 	return locked or Gauge.value(os.clock() - shownAt)
 end
 
--- Cette méthode permet de tourner l'avatar et la caméra vers la piste lorsque le joueur prend le mannequin en main.
-local function faceTrack()
+-- Cette méthode permet de placer la caméra derrière l'avatar, vers la piste, lorsque le joueur est figé sur la bande
+-- (le serveur l'a déjà tourné face à la piste).
+local function aimCamera()
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	if not root or not humanoid then
+	if not root then
 		return
 	end
 	local position = root.Position
-	root.CFrame = CFrame.lookAt(position, position + Vector3.zAxis)
 	local camera = Workspace.CurrentCamera
 	camera.CFrame = CFrame.lookAt(position + Vector3.new(5, 7, -15), position + Vector3.new(0, 4, 25))
 end
 
--- Cette méthode permet d'immobiliser l'avatar pendant le geste (ou de lui rendre ses déplacements) lorsque le
--- lancer commence ou finit : quitter la zone de lancer en plein geste ferait refuser le lancer par le serveur.
-local function setRooted(character: Model, rooted: boolean)
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	if not humanoid then
+-- Cette méthode permet de faire glisser en boucle le reflet de la bande de lancer (un seul dégradé, animé par ce
+-- client : rien ne passe par le réseau) lorsqu'il apparaît dans le monde.
+local function animateShine(gradient: Instance)
+	if not gradient:IsA("UIGradient") or shining[gradient] then
 		return
 	end
-	if rooted then
-		humanoid:SetAttribute("WalkSpeedBeforeThrow", humanoid.WalkSpeed)
-		humanoid.WalkSpeed = 0
-	else
-		local speed = humanoid:GetAttribute("WalkSpeedBeforeThrow")
-		if typeof(speed) == "number" then
-			humanoid.WalkSpeed = speed
+	shining[gradient] = true
+	gradient.Offset = Vector2.new(-SHINE_REACH, 0)
+	local tween = TweenService:Create(
+		gradient,
+		TweenInfo.new(SHINE_SWEEP, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1, false, SHINE_PAUSE),
+		{ Offset = Vector2.new(SHINE_REACH, 0) }
+	)
+	tween:Play()
+	-- Bande sortie du monde (streaming) : l'animation s'arrête, une nouvelle repartira à son retour
+	local connection
+	connection = gradient.AncestryChanged:Connect(function()
+		if not gradient:IsDescendantOf(game) then
+			tween:Cancel()
+			connection:Disconnect()
+			shining[gradient] = nil
 		end
-		humanoid:SetAttribute("WalkSpeedBeforeThrow", nil)
-	end
-	humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, not rooted)
+	end)
 end
 
 local refresh: () -> ()
@@ -158,16 +170,15 @@ local function trigger(): boolean
 	end
 	local value = currentValue()
 	locked = value
+	UIKit.playSound("GaugeStop")
 	UIKit.pop(needle, 1.5)
-	faceTrack() -- le joueur a pu tourner sur la zone depuis l'apparition de la jauge
+	UIKit.pop(frame, 1.12) -- petit rebond de toute la jauge
 	ThrowCinematic.play(character)
-	setRooted(character, true)
 	CharacterPoser.playThrow(function()
 		remotes.Launch:FireServer(value)
 		ThrowCinematic.release()
 	end, function()
 		-- Geste fini : lancer parti (la jauge se cache au vol) ou refusé (caméra rendue, jauge réarmée)
-		setRooted(character, false)
 		if player:GetAttribute("LaneState") ~= "Flying" then
 			ThrowCinematic.abort()
 			CharacterPoser.handOff()
@@ -178,7 +189,7 @@ local function trigger(): boolean
 	return true
 end
 
--- Cette méthode permet d'afficher ou de masquer la jauge lorsque le joueur entre sur la zone de lancer ou la quitte.
+-- Cette méthode permet d'afficher la jauge lorsque le serveur fige le joueur sur la bande, et de la masquer après.
 function refresh()
 	local holding = player:GetAttribute("Action") == "Holding"
 	if holding and not frame.Visible then
@@ -186,14 +197,14 @@ function refresh()
 		locked = nil
 		frame.Visible = true
 		UIKit.pop(frame, 0.6)
-		faceTrack()
+		aimCamera()
 	elseif not holding and frame.Visible and not CharacterPoser.isThrowing() then
 		frame.Visible = false
 	end
 end
 
--- Cette méthode permet de brancher la jauge sur l'état du joueur et sur le clic, le toucher et Espace lorsque le
--- client démarre.
+-- Cette méthode permet de brancher la jauge sur l'état du joueur et sur le clic, le toucher et Espace, et le reflet de
+-- la bande, lorsque le client démarre.
 function ThrowController.init(localPlayer: Player, createdRemotes: Remotes.Remotes, gui: ScreenGui)
 	player = localPlayer
 	remotes = createdRemotes
@@ -213,7 +224,7 @@ function ThrowController.init(localPlayer: Player, createdRemotes: Remotes.Remot
 			trigger()
 		end
 	end)
-	-- Espace passe par une action prioritaire : sur la zone de lancer, elle lance au lieu de sauter
+	-- Espace passe par une action prioritaire : sur la bande, elle lance au lieu de sauter
 	ContextActionService:BindActionAtPriority("ThrowDummy", function(_, state)
 		if state == Enum.UserInputState.Begin and trigger() then
 			return Enum.ContextActionResult.Sink
@@ -229,6 +240,11 @@ function ThrowController.init(localPlayer: Player, createdRemotes: Remotes.Remot
 			promptLabel.Visible = locked == nil
 		end
 	end)
+
+	CollectionService:GetInstanceAddedSignal(CourseLayout.BAND_SHINE_TAG):Connect(animateShine)
+	for _, gradient in CollectionService:GetTagged(CourseLayout.BAND_SHINE_TAG) do
+		animateShine(gradient)
+	end
 end
 
 return ThrowController

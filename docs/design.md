@@ -21,10 +21,15 @@ multipliés par la zone atteinte.
 | Première renaissance | < 3 min (v1) |
 
 ## Boucle principale (≈ 10-15 s)
-1. **Prendre le mannequin** : monter sur sa place de la zone de lancer ; l'avatar tient un mannequin au-dessus de sa tête.
+1. **Prendre le mannequin** : poser le pied n'importe où sur la bande de lancer ; le serveur fige l'avatar à cet endroit
+   (à 3 studs des bords au plus près), face à la piste (écarté de 5 studs au moins d'un voisin déjà figé), et il tient un mannequin au-dessus de sa tête.
+   Plus de déplacement ni de saut jusqu'au lancer (pas de sortie, comme les références).
 2. **Jauge à 1 clic** : une jauge verticale apparaît, l'aiguille monte et descend seule (`+1` à `+20`) ; un clic, un toucher
-   ou Espace l'arrête. Pas de zone PERFECT ni de bonus : le haut de la jauge est le max (`+20`), comme dans les
-   jeux de référence.
+   ou Espace l'arrête, avec un clic net et un petit rebond de la jauge, puis le whoosh au lâcher. Pas de zone PERFECT ni
+   de bonus : le haut de la jauge est le max (`+20`), comme dans les jeux de référence. **Valeur vérifiée par le
+   serveur** (`Shared.Gauge.verify`) : il note l'ouverture de la jauge, estime l'instant du clic à la réception
+   (lâcher de l'animation et latence mesurée déduits, latence `GetNetworkPing` (aller-retour) bornée à 1 s, tolérance 0,12 s, lâcher en retard de
+   0,25 s au plus) et garde la valeur du client si elle est atteignable dans cette fenêtre, sinon la sienne.
 3. **Élan** : l'avatar se penche en arrière puis projette le mannequin (0,35 s).
 4. **Vol** : bandes noires, caméra qui suit, compteurs (distance, os, objets), bannière de la zone traversée, radio du
    mannequin ; chaque choc a son son, ses particules et son popup (« +1 BONE », « SMASH x6 », combos).
@@ -56,8 +61,14 @@ multipliés par la zone atteinte.
   laisse libre (podium à tenons, pastille jaune, râtelier, invite « Lift », briques fines `FadBrickFine`), stands à
   auvents rayés « SELL » et « SHOP » (branchés par la collection et la boutique), chevrons jaunes vers la zone de
   lancer. Plan dans `Shared.CourseLayout`.
-- **Zone de lancer commune** : bande orange à damier, ligne de départ blanche, **4 places côte à côte** (pastille à la
-  couleur du joueur, nom et record au-dessus). Le joueur réapparaît à côté de sa place.
+- **Zone de lancer commune** : la **bande de lancer**, sur toute la largeur de la piste et toute la profondeur de la zone
+  (16 studs, du hub au départ), au ras de la pelouse : carreaux de 4 studs à tenons orange et jaune, reflet blanc qui
+  glisse d'un bout à l'autre (animé par chaque client), liseré blanc à peine surélevé côté piste (compté comme bande),
+  comme *Throw Food For Animals* et *Throw a Seed*. Pas de place attitrée : jusqu'à 15 joueurs figés y tiennent côte à
+  côte (4 par serveur). Le joueur réapparaît dans le hub, 6 studs derrière la bande, et y revient après chaque lancer.
+- **Piste fermée aux avatars** : barrière invisible juste derrière le liseré (groupe `AvatarBarrier`, qui ne
+  collisionne qu'avec `Characters`), et pièces d'obstacles dans le groupe `Obstacles`, que les avatars traversent : un
+  joueur ne descend pas sur la piste et ne bouscule pas les obstacles des autres.
 - **Piste partagée** (80 studs de large, 2,4 km) au fond d'un canyon en 3 gradins : parois en briques, herbe (ou neige,
   sable…) voxel qui déborde de chaque marche, décor voxel sur les terre-pleins et au pied des parois (traversable).
 - **Obstacles partagés** (`Server.Obstacles`) : rangées de 4 vitres (une par colonne), tours de caisses (2 × 2 × 4) par
@@ -110,8 +121,9 @@ Interface : section suivante.
   elle. Logique dans `Shared.Objectives`.
 - **Cibles du décor** (point d'accroche pour la carte et la collection) : une `BasePart` avec le tag `ObjectiveTarget`
   et l'attribut `Objective` (`"Throw"`, `"Train"`…), plus `Slot` (place du lobby) ou `OwnerUserId` (joueur) si elle
-  n'est pas partagée ; le joueur suit la plus proche de celles qui lui sont ouvertes. `CourseBuilder` marque la pastille
-  et l'appareil d'entraînement de chaque place.
+  n'est pas partagée ; le joueur suit la plus proche de celles qui lui sont ouvertes. `Span` : cible allongée sur X,
+  visée en son point le plus proche du joueur. `CourseBuilder` marque la bande de lancer (partagée, `Span`) et
+  l'appareil d'entraînement de chaque place.
 - **Fenêtres** : cadre sombre, bandeau dégradé (icône, titre), croix rouge ; cartes d'objets grises (nom, rareté
   colorée de `Shared.Rarity`, rendu 3D en `ViewportFrame`, statistique, bouton : prix vert / rouge, « EQUIPPED »).
   Shop = équipements d'entraînement ; Dummies = mannequin lancé (valeur) et mannequins à venir en silhouette (#14) ;

@@ -10,26 +10,97 @@ return function(T, Loader)
 	local count = GameConfig.SLOT_COUNT
 
 	T.describe("CourseLayout places", function()
-		T.it("aligne SLOT_COUNT places côte à côte, centrées sur la piste et dans la zone de lancer", function()
+		T.it("aligne SLOT_COUNT points de lancer de test côte à côte, centrés, sur la ligne de la bande", function()
 			T.expectEqual(count, 4)
 			local sum = 0
 			for index = 1, count do
-				local pad = CourseLayout.padPosition(index)
-				sum += pad.X
-				T.expectEqual(pad.Z, GameConfig.PAD_Z)
-				T.expect(
-					pad.Z - GameConfig.PAD_RADIUS >= -GameConfig.LAUNCH_DEPTH and pad.Z + GameConfig.PAD_RADIUS <= 0,
-					"pastille dans la zone de lancer"
-				)
-				T.expect(math.abs(pad.X) + GameConfig.PAD_RADIUS <= GameConfig.TRACK_WIDTH / 2, "pastille sur la piste")
-				if index > 1 then
-					local gap = pad.X - CourseLayout.padPosition(index - 1).X
-					T.expect(gap >= 2 * GameConfig.PAD_RADIUS + 2, "pastilles séparées")
-				end
+				local point = CourseLayout.launchPoint(index)
+				sum += point.X
+				T.expectEqual(point.Z, CourseLayout.BAND_Z)
+				T.expect(CourseLayout.isOnBand(point), "point de lancer sur la bande")
 			end
 			T.expect(math.abs(sum) < 1e-6, "places centrées")
 		end)
 
+		T.it("met la bande sur toute la largeur de la piste, au bord du départ, dans la zone de lancer", function()
+			local half = GameConfig.TRACK_WIDTH / 2
+			local top = CourseLayout.BAND_TOP
+			T.expect(GameConfig.BAND_DEPTH <= GameConfig.LAUNCH_DEPTH, "bande dans la zone de lancer")
+			T.expect(CourseLayout.isOnBand(Vector3.new(half, top + 3, -0.1)), "coin gauche côté piste")
+			T.expect(
+				CourseLayout.isOnBand(Vector3.new(-half, top + 3, -GameConfig.BAND_DEPTH)),
+				"coin droit côté hub"
+			)
+			T.expect(not CourseLayout.isOnBand(Vector3.new(0, top + 3, -GameConfig.BAND_DEPTH - 0.5)), "hub")
+			T.expect(CourseLayout.isOnBand(Vector3.new(0, top + 3, 0.6)), "liseré blanc compté comme bande")
+			T.expect(not CourseLayout.isOnBand(Vector3.new(0, top + 3, CourseLayout.BAND_EDGE + 0.5)), "piste")
+			T.expect(not CourseLayout.isOnBand(Vector3.new(half + 1, top + 3, -2)), "hors de la largeur")
+			T.expect(not CourseLayout.isOnBand(Vector3.new(0, top + 20, -2)), "loin au-dessus")
+		end)
+	end)
+
+	T.describe("CourseLayout.bandDepth", function()
+		T.it("fige le joueur à la profondeur où il est entré, à BAND_MARGIN des bords", function()
+			local margin = GameConfig.BAND_MARGIN
+			T.expectNear(CourseLayout.bandDepth(-7), -7)
+			T.expectNear(CourseLayout.bandDepth(-GameConfig.BAND_DEPTH), -GameConfig.BAND_DEPTH + margin)
+			T.expectNear(CourseLayout.bandDepth(0.5), -margin)
+		end)
+	end)
+
+	T.describe("CourseLayout.bandSpot", function()
+		local spacing = GameConfig.BAND_SPACING
+		local limit = GameConfig.TRACK_WIDTH / 2 - GameConfig.BAND_MARGIN
+
+		T.it("fige le joueur là où il est entré quand la place est libre", function()
+			T.expectNear(CourseLayout.bandSpot(7.3, {}) :: number, 7.3)
+			T.expectNear(CourseLayout.bandSpot(-12, { 10 }) :: number, -12)
+		end)
+
+		T.it("garde les bords à BAND_MARGIN", function()
+			T.expectNear(CourseLayout.bandSpot(100, {}) :: number, limit)
+			T.expectNear(CourseLayout.bandSpot(-GameConfig.TRACK_WIDTH / 2, {}) :: number, -limit)
+		end)
+
+		T.it("décale latéralement un joueur qui tomberait sur un autre, du côté le plus proche", function()
+			T.expectNear(CourseLayout.bandSpot(1, { 0 }) :: number, spacing)
+			T.expectNear(CourseLayout.bandSpot(-1, { 0 }) :: number, -spacing)
+			-- Coincé contre le bord : décalé vers l'intérieur
+			T.expectNear(CourseLayout.bandSpot(limit, { limit }) :: number, limit - spacing)
+		end)
+
+		T.it("glisse au-delà d'un groupe de joueurs serrés", function()
+			local spot = CourseLayout.bandSpot(0.5, { 0, spacing }) :: number
+			T.expectNear(spot, -spacing)
+			local right = CourseLayout.bandSpot(spacing - 0.5, { 0, spacing }) :: number
+			T.expectNear(right, 2 * spacing)
+		end)
+
+		T.it("fait tenir 4 joueurs côte à côte entrés au même endroit, tous à BAND_SPACING", function()
+			local taken = {}
+			for _ = 1, 4 do
+				local spot = CourseLayout.bandSpot(0, taken)
+				T.expect(spot ~= nil, "place trouvée")
+				for _, other in taken do
+					T.expect(math.abs((spot :: number) - other) >= spacing - 1e-6, "écart minimal")
+				end
+				table.insert(taken, spot :: number)
+			end
+			T.expectEqual(#taken, 4)
+		end)
+
+		T.it("renvoie nil quand la bande est pleine", function()
+			local taken = {}
+			local x = -limit
+			while x <= limit + 1e-6 do
+				table.insert(taken, x)
+				x += spacing
+			end
+			T.expectEqual(CourseLayout.bandSpot(0, taken), nil)
+		end)
+	end)
+
+	T.describe("CourseLayout hub", function()
 		T.it("place l'appareil d'entraînement devant la base, à côté de l'entrée qu'il laisse libre", function()
 			local half = CourseLayout.BASE_SIZE / 2
 			local podium = CourseLayout.STATION_SIZE / 2
