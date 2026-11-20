@@ -170,6 +170,7 @@ local function trigger(): boolean
 	end
 	local value = currentValue()
 	locked = value
+	remotes.GaugeStop:FireServer() -- le serveur note l'heure d'arrivée du clic (anti-triche de la jauge)
 	UIKit.playSound("GaugeStop")
 	UIKit.pop(needle, 1.5)
 	UIKit.pop(frame, 1.12) -- petit rebond de toute la jauge

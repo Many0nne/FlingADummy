@@ -69,6 +69,7 @@ local remotes: Remotes.Remotes
 local dummiesFolder: Folder
 local flights: { [any]: Flight } = {}
 local results: { [Player]: Flight } = {} -- vol dont le résultat et le tirage sont à l'écran
+local gaugeStops: { [Player]: number } = {} -- os.clock() d'arrivée du GaugeStop, jusqu'au Launch
 local rng = Random.new()
 local botCount = 0
 
@@ -157,23 +158,41 @@ end
 
 -- Cette méthode permet de retenir la valeur de jauge d'un lancer lorsque le serveur le reçoit : celle du client si
 -- elle est compatible avec l'instant où la jauge s'est ouverte (Shared.Gauge.verify), sinon celle du serveur.
-local function verifiedGauge(player: Player, claimed: number, openedAt: number): number
+local function verifiedGauge(player: Player, claimed: number, openedAt: number, stopArrival: number?): number
 	local elapsed = os.clock() - openedAt
 	local lag = networkLag(player)
-	local value, accepted = Gauge.verify(claimed, elapsed, lag)
+	-- Un GaugeStop arrivé avant l'ouverture est ignoré par Gauge.verify (repli)
+	local stopAt = if stopArrival then stopArrival - openedAt else nil
+	local value, accepted = Gauge.verify(claimed, elapsed, lag, stopAt)
 	if RunService:IsStudio() then
 		print(
 			string.format(
-				"[Launch] jauge %s : client=%.2f serveur=%.2f (%.2f s après ouverture, latence %.3f s)",
+				"[Launch] jauge %s : client=%.2f serveur=%.2f (%.2f s après ouverture, GaugeStop %s, latence %.3f s)",
 				if accepted then "acceptée" else "refusée",
 				claimed,
 				value,
 				elapsed,
+				if stopAt then string.format("à %.2f s", stopAt) else "absent",
 				lag
 			)
 		)
 	end
 	return value
+end
+
+-- Cette méthode permet de noter l'heure d'arrivée du clic qui arrête la jauge lorsque le joueur est figé sur la bande
+-- avec la jauge ouverte ; une seule fois par lancer (les suivants sont ignorés jusqu'au Launch).
+function LaunchService.gaugeStop(player: Player)
+	local openedAt = SlotService.gaugeOpenedAt(player)
+	if player:GetAttribute("LaneState") ~= "Ready" or player:GetAttribute("Action") ~= "Holding" or not openedAt then
+		return
+	end
+	-- Un GaugeStop resté d'une jauge précédente (avant l'ouverture actuelle) est remplacé
+	local previous = gaugeStops[player]
+	if previous and previous >= openedAt then
+		return
+	end
+	gaugeStops[player] = os.clock()
 end
 
 -- Cette méthode permet de tirer le mannequin d'un joueur lorsqu'il est figé sur la bande de lancer (ou que `force`
@@ -183,6 +202,9 @@ function LaunchService.launch(player: Player, gauge: any, force: boolean?)
 		return
 	end
 	gauge = math.clamp(gauge, 0, 1)
+	-- Tout Launch consomme le GaugeStop noté, même refusé plus bas : le clic suivant en notera un nouveau
+	local stopArrival = gaugeStops[player]
+	gaugeStops[player] = nil
 	if player:GetAttribute("LaneState") ~= "Ready" or not player:GetAttribute("DataReady") then
 		return
 	end
@@ -195,7 +217,7 @@ function LaunchService.launch(player: Player, gauge: any, force: boolean?)
 		if player:GetAttribute("Action") ~= "Holding" or not openedAt then
 			return
 		end
-		gauge = verifiedGauge(player, gauge, openedAt)
+		gauge = verifiedGauge(player, gauge, openedAt, stopArrival)
 	end
 	player:SetAttribute("LaneState", "Flying")
 	player:SetAttribute("Action", nil)
@@ -495,6 +517,7 @@ end
 function LaunchService.init(createdRemotes: Remotes.Remotes, dummies: Folder)
 	remotes = createdRemotes
 	dummiesFolder = dummies
+	remotes.GaugeStop.OnServerEvent:Connect(LaunchService.gaugeStop)
 	remotes.Launch.OnServerEvent:Connect(function(player, gauge)
 		LaunchService.launch(player, gauge)
 	end)
@@ -519,6 +542,7 @@ function LaunchService.init(createdRemotes: Remotes.Remotes, dummies: Folder)
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		results[player] = nil
+		gaugeStops[player] = nil
 		local flight = flights[player]
 		if flight then
 			flights[player] = nil

@@ -96,6 +96,93 @@ return function(T, Loader)
 		end)
 	end)
 
+	T.describe("Gauge.verify avec GaugeStop", function()
+		local release = GameConfig.THROW_RELEASE_TIME
+		local tolerance = GameConfig.GAUGE_LAG_TOLERANCE
+
+		-- Cette méthode permet de donner l'arrivée du GaugeStop et du Launch d'un client honnête qui clique `click` s après
+		-- l'ouverture, avec une latence aller-retour `rtt` et un lâcher en retard de `late`, lorsqu'un test les simule.
+		local function arrivals(click: number, rtt: number, late: number): (number, number)
+			-- La jauge du client apparaît rtt/2 après l'ouverture serveur : les deux arrivées sont décalées de rtt entiers
+			return click + rtt, click + release + late + rtt
+		end
+
+		T.it("accepte la valeur juste, avec latence et gigue de la mesure", function()
+			for _, case in { { 0.3, 0.1, 0.03, 0.12 }, { 0.8, 0.25, 0.2, 0.3 }, { 1.4, 0.15, 0.05, 0.05 } } do
+				local click, rtt, late, measured = case[1], case[2], case[3], case[4]
+				local stopAt, elapsed = arrivals(click, rtt, late)
+				local value, accepted = Gauge.verify(Gauge.value(click), elapsed, measured, stopAt)
+				T.expect(accepted, string.format("clic %.2f s, latence %.2f (mesurée %.2f)", click, rtt, measured))
+				T.expectNear(value, Gauge.value(click))
+			end
+		end)
+
+		T.it("refuse un 1 envoyé hors de la fenêtre de latence, même avec un lâcher en retard", function()
+			-- Clic à 0,35 s (aiguille à 0,58), lâcher en retard : sans GaugeStop le sommet (0,6 s) est atteignable
+			local stopAt, elapsed = arrivals(0.35, 0.1, 0.25)
+			local value, accepted = Gauge.verify(1, elapsed, 0.1, stopAt)
+			T.expect(not accepted, "max refusé")
+			T.expectNear(value, Gauge.value(0.35), 1e-6)
+			local _, acceptedOld = Gauge.verify(1, elapsed, 0.1)
+			T.expect(acceptedOld, "le repli #29 l'acceptait")
+		end)
+
+		T.it("se replie sur #29 sans GaugeStop", function()
+			local _, elapsed = arrivals(0.3, 0.1, 0.2)
+			local value, accepted = Gauge.verify(Gauge.value(0.3), elapsed, 0.1, nil)
+			T.expect(accepted, "valeur juste acceptée sans GaugeStop")
+			T.expectNear(value, Gauge.value(0.3))
+		end)
+
+		T.it("se replie sur #29 si le GaugeStop est arrivé avant l'ouverture de la jauge", function()
+			local _, elapsed = arrivals(0.35, 0.1, 0.25)
+			local value, accepted = Gauge.verify(Gauge.value(0.35), elapsed, 0.1, -0.5)
+			T.expect(accepted, "valeur juste acceptée")
+			T.expectNear(value, Gauge.value(0.35))
+			local _, cheat = Gauge.verify(1, elapsed, 0.1, -0.5)
+			T.expect(cheat, "même fenêtre qu'avant (#29), pas de fenêtre plus large")
+		end)
+
+		T.it("le premier GaugeStop fait foi : un doublon tardif ne rend pas atteignable le sommet", function()
+			-- Le serveur ne note que la première arrivée (LaunchService.gaugeStop) ; la fenêtre reste autour d'elle
+			local stopAt, elapsed = arrivals(0.3, 0.1, 0)
+			local _, accepted = Gauge.verify(1, elapsed, 0.1, stopAt)
+			T.expect(not accepted, "1 refusé : le sommet est hors de " .. tolerance .. " s du clic")
+		end)
+
+		T.describe("triche « toujours 1 »", function()
+			-- Cette méthode permet de donner la proportion de lancers où un client envoyant toujours 1 obtient le max,
+			-- pour des clics répartis sur la période, une latence `rtt` et un lâcher en retard de 0 à 0,25 s.
+			local function cheatRate(useStop: boolean): number
+				local rtt, wins, total = 0.1, 0, 0
+				for i = 0, 239 do
+					local click = (i + 0.5) / 240 * P
+					for _, late in { 0, 0.0625, 0.125, 0.1875, 0.25 } do
+						local stopAt, elapsed = arrivals(click, rtt, late)
+						local value = Gauge.verify(1, elapsed, rtt, if useStop then stopAt else nil)
+						total += 1
+						if value > 0.999 then
+							wins += 1
+						end
+					end
+				end
+				return wins / total
+			end
+
+			T.it("est nettement réduite par le GaugeStop", function()
+				local before, after = cheatRate(false), cheatRate(true)
+				print(
+					string.format(
+						"[mesure] « toujours 1 » obtient le max : avant %.1f %%, après %.1f %%",
+						before * 100,
+						after * 100
+					)
+				)
+				T.expect(after < before / 1.5, string.format("avant %.3f, après %.3f", before, after))
+			end)
+		end)
+	end)
+
 	T.describe("pas de PERFECT", function()
 		T.it("ni fonction ni constante : le haut de la jauge est le max, sans bonus", function()
 			T.expectEqual((Gauge :: any).isPerfect, nil)
