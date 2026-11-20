@@ -21,8 +21,12 @@ local function writePublished()
 	local Assets = loader:require("src/shared/Assets")
 	local published = {}
 	for _, clip in AnimationData.CLIPS do
+		local id = Assets.ANIMATIONS[clip.name]
+		if not id or id == 0 then
+			error(clip.name .. " : id absent ou 0 dans Assets.ANIMATIONS (README, étape « Créer une nouvelle animation »)")
+		end
 		published[clip.name] = {
-			id = string.format("%d", Assets.ANIMATIONS[clip.name]),
+			id = string.format("%d", id),
 			sha256 = serde.hash("sha256", fs.readFile(OUT .. "/" .. clip.name .. ".rbxm")),
 		}
 	end

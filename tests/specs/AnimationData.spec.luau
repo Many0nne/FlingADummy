@@ -213,6 +213,7 @@ return function(T, Loader, Lib)
 	T.describe("assets/anim/published.json (clips republiés)", function()
 		T.it("liste chaque clip avec l'id de Shared.Assets et l'empreinte du .rbxm exporté", function()
 			local fs = require("@lune/fs")
+			local roblox = require("@lune/roblox")
 			local serde = require("@lune/serde")
 			local Assets = loader:require("src/shared/Assets")
 			local hint = " : exporter (lune run tools/build-anims.luau), publier puis lune run tools/build-anims.luau --published"
@@ -221,13 +222,22 @@ return function(T, Loader, Lib)
 			for _, clip in AnimationData.CLIPS do
 				local entry = published[clip.name]
 				T.expect(entry ~= nil, clip.name .. " absent de published.json" .. hint)
+				local id = Assets.ANIMATIONS[clip.name]
+				T.expect(id ~= nil and id ~= 0, clip.name .. " : id absent ou 0 dans Assets.ANIMATIONS" .. hint)
 				T.expectEqual(
 					entry.id,
-					string.format("%d", Assets.ANIMATIONS[clip.name]),
+					string.format("%d", id),
 					clip.name .. " : id différent de Assets.ANIMATIONS" .. hint
 				)
-				local sha = serde.hash("sha256", fs.readFile("assets/anim/export/" .. clip.name .. ".rbxm"))
-				T.expectEqual(sha, entry.sha256, clip.name .. " : .rbxm exporté différent du .rbxm publié" .. hint)
+				-- Le clip reconstruit depuis AnimationData doit donner le .rbxm exporté, qui doit être le publié
+				local built = serde.hash("sha256", roblox.serializeModel({ AnimationData.buildSequence(clip) }))
+				local exported = serde.hash("sha256", fs.readFile("assets/anim/export/" .. clip.name .. ".rbxm"))
+				T.expectEqual(exported, built, clip.name .. " : AnimationData modifié sans réexport" .. hint)
+				T.expectEqual(
+					exported,
+					entry.sha256,
+					clip.name .. " : .rbxm exporté différent du .rbxm publié" .. hint
+				)
 			end
 		end)
 	end)

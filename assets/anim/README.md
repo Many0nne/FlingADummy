@@ -24,7 +24,8 @@ figure pas, ou si un id diffère de `Assets.ANIMATIONS`.
    `Assets.ANIMATIONS` ne change pas.
 4. Vérifier en jeu : `Animator:GetPlayingAnimationTracks()` renvoie la piste de l'asset pendant le geste (la copie en
    Play ne prend pas les changements : relancer le playtest).
-5. Enregistrer la publication : `lune run tools/build-anims.luau --published` (réécrit `published.json` à partir des
+5. Enregistrer la publication, seulement si l'opération Open Cloud est `done` (l'interroger) et sans réexporter ni
+   modifier le clip depuis l'étape 3 : `lune run tools/build-anims.luau --published` (réécrit `published.json` à partir des
    `.rbxm` exportés et de `Assets.ANIMATIONS`, sans réexporter). Committer `published.json` avec les `.rbxm`.
 6. Libérer Studio (`-ReleaseStudio`).
 
