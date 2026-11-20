@@ -12,9 +12,9 @@ local GameConfig = {
 	LAUNCH_DEPTH        = 16,     -- profondeur de la zone de lancer commune (z de -16 à 0)
 
 	-- Lancer : bande commune au bord de la piste (z de -BAND_DEPTH à 0), le joueur s'y fige jusqu'au lancer
-	BAND_DEPTH          = 8,      -- profondeur de la bande de lancer (studs)
+	BAND_DEPTH          = 16,     -- profondeur de la bande : toute la zone de lancer, jusqu'au hub (studs)
 	BAND_SPACING        = 5,      -- écart minimal entre deux joueurs figés sur la bande, axe X (studs)
-	BAND_MARGIN         = 3,      -- un joueur figé reste à cette distance des bords de la bande (studs)
+	BAND_MARGIN         = 3,      -- un joueur figé reste à cette distance des bords de la bande, en X et en Z (studs)
 	THROW_HEIGHT        = 2.3,    -- départ du mannequin au-dessus du HumanoidRootPart (main au lâcher, mesuré)
 	THROW_FORWARD       = 0.3,    -- départ du mannequin devant le HumanoidRootPart (main au lâcher, mesuré)
 	THROW_SIDE          = 2.1,    -- départ du mannequin à droite du HumanoidRootPart (main qui lance, mesuré)

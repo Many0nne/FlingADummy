@@ -309,7 +309,7 @@ local function bandShine(parent: Instance, size: Vector3, position: Vector3): Pa
 		NumberSequenceKeypoint.new(0.58, 1),
 		NumberSequenceKeypoint.new(1, 1),
 	})
-	gradient.Offset = Vector2.new(-1, 0)
+	gradient.Offset = Vector2.new(-1.5, 0)
 	gradient.Parent = sheen
 	CollectionService:AddTag(gradient, CourseLayout.BAND_SHINE_TAG)
 	gui.Parent = overlay
@@ -322,7 +322,10 @@ local function buildLaunchZone(parent: Instance)
 	local half = GameConfig.TRACK_WIDTH / 2
 	local depth = GameConfig.BAND_DEPTH
 	local top = CourseLayout.BAND_TOP
-	ground(parent, -half, half, -GameConfig.LAUNCH_DEPTH, -depth, Zones.LIST[1].ground, "LaunchZone")
+	-- Pelouse entre le hub et la bande, si la bande ne couvre pas toute la zone de lancer
+	if depth < GameConfig.LAUNCH_DEPTH then
+		ground(parent, -half, half, -GameConfig.LAUNCH_DEPTH, -depth, Zones.LIST[1].ground, "LaunchZone")
+	end
 	-- Carreaux de BAND_TILE studs aux deux teintes alternées (01 / 09), au ras de la pelouse
 	local model = Instance.new("Model")
 	model.Name = "LaunchBand"

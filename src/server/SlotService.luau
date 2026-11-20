@@ -57,8 +57,8 @@ local function unfreeze(player: Player, toHub: boolean)
 	end
 end
 
--- Cette méthode permet de figer le joueur sur la bande (face à la piste, à l'abscisse où il est entré ou juste à côté
--- d'un voisin, debout sur la bande) et d'ouvrir sa jauge lorsqu'il y pose le pied, prêt à lancer.
+-- Cette méthode permet de figer le joueur sur la bande (face à la piste, là où il est entré, écarté d'un voisin,
+-- debout sur la bande) et d'ouvrir sa jauge lorsqu'il y pose le pied, prêt à lancer.
 local function freeze(player: Player, character: Model, root: BasePart, humanoid: Humanoid)
 	local taken = {}
 	for _, other in frozen do
@@ -71,7 +71,8 @@ local function freeze(player: Player, character: Model, root: BasePart, humanoid
 	-- Debout sur la bande même s'il y arrive en sautant : HumanoidRootPart à hauteur des jambes + sa demi-hauteur
 	-- (R6 : HipHeight vaut 0, jambes de 2 studs)
 	local legs = if humanoid.RigType == Enum.HumanoidRigType.R6 then 2 else humanoid.HipHeight
-	local position = Vector3.new(x, CourseLayout.BAND_TOP + legs + root.Size.Y / 2, CourseLayout.BAND_Z)
+	local z = CourseLayout.bandDepth(root.Position.Z)
+	local position = Vector3.new(x, CourseLayout.BAND_TOP + legs + root.Size.Y / 2, z)
 	frozen[player] = {
 		x = x,
 		since = os.clock(),

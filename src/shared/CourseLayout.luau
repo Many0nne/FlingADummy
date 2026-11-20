@@ -17,7 +17,7 @@ CourseLayout.STATION_SIZE = 9 -- côté du podium de l'appareil
 -- Bande de lancer : toute la largeur de la piste, de z = -BAND_DEPTH au départ (z = 0), au ras du sol
 CourseLayout.BAND_TOP = 0
 CourseLayout.EDGE_RISE = 0.25 -- le liseré blanc dépasse un peu du sol
-CourseLayout.BAND_Z = -GameConfig.BAND_DEPTH / 2 -- ligne où se figent les joueurs
+CourseLayout.BAND_Z = -GameConfig.BAND_DEPTH / 2 -- milieu de la bande (points de lancer de test, flèche)
 CourseLayout.BAND_EDGE = 1.2 -- liseré blanc, côté piste (z de 0 à BAND_EDGE), compté comme bande
 CourseLayout.BAND_REACH = 8 -- hauteur au-dessus de la bande où l'avatar compte comme posé dessus (studs)
 CourseLayout.BAND_SHINE_TAG = "LaunchBandShine" -- dégradé du reflet de la bande, que chaque client fait glisser
@@ -54,6 +54,12 @@ function CourseLayout.isOnBand(position: Vector3): boolean
 		and position.Z >= -GameConfig.BAND_DEPTH
 		and position.Z <= CourseLayout.BAND_EDGE
 		and position.Y <= CourseLayout.BAND_TOP + CourseLayout.BAND_REACH
+end
+
+-- Cette méthode permet de donner la profondeur où figer un joueur entré sur la bande en `z` : la sienne, ramenée à
+-- BAND_MARGIN des bords (hub et piste).
+function CourseLayout.bandDepth(z: number): number
+	return math.clamp(z, -GameConfig.BAND_DEPTH + GameConfig.BAND_MARGIN, -GameConfig.BAND_MARGIN)
 end
 
 -- Cette méthode permet de donner l'abscisse où figer un joueur entré sur la bande en `x` (voisins figés en `taken`) :

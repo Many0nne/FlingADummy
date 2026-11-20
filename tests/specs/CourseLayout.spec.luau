@@ -39,6 +39,15 @@ return function(T, Loader)
 		end)
 	end)
 
+	T.describe("CourseLayout.bandDepth", function()
+		T.it("fige le joueur à la profondeur où il est entré, à BAND_MARGIN des bords", function()
+			local margin = GameConfig.BAND_MARGIN
+			T.expectNear(CourseLayout.bandDepth(-7), -7)
+			T.expectNear(CourseLayout.bandDepth(-GameConfig.BAND_DEPTH), -GameConfig.BAND_DEPTH + margin)
+			T.expectNear(CourseLayout.bandDepth(0.5), -margin)
+		end)
+	end)
+
 	T.describe("CourseLayout.bandSpot", function()
 		local spacing = GameConfig.BAND_SPACING
 		local limit = GameConfig.TRACK_WIDTH / 2 - GameConfig.BAND_MARGIN

@@ -23,7 +23,8 @@ local UIKit = require(script.Parent.UIKit)
 local C = UIKit.COLORS
 local GAUGE_HEIGHT = 320 -- ≈ 0,45 h à 720 px, comme les références
 local GAUGE_WIDTH = 64
-local SHINE_SWEEP = 1.6 -- durée du passage du reflet sur la bande (s)
+local SHINE_SWEEP = 2.2 -- durée du passage du reflet sur la bande (s)
+local SHINE_REACH = 1.5 -- décalage du dégradé aux deux bouts : le reflet sort entièrement de la bande
 local SHINE_PAUSE = 1.4 -- pause entre deux passages (s)
 
 local ThrowController = {}
@@ -140,11 +141,11 @@ local function animateShine(gradient: Instance)
 		return
 	end
 	shining[gradient] = true
-	gradient.Offset = Vector2.new(-1, 0)
+	gradient.Offset = Vector2.new(-SHINE_REACH, 0)
 	local tween = TweenService:Create(
 		gradient,
-		TweenInfo.new(SHINE_SWEEP, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, false, SHINE_PAUSE),
-		{ Offset = Vector2.new(1, 0) }
+		TweenInfo.new(SHINE_SWEEP, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1, false, SHINE_PAUSE),
+		{ Offset = Vector2.new(SHINE_REACH, 0) }
 	)
 	tween:Play()
 	-- Bande sortie du monde (streaming) : l'animation s'arrête, une nouvelle repartira à son retour
