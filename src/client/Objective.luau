@@ -1,5 +1,5 @@
 -- Objectif du moment au style des jeux de référence : texte blanc à contour en haut au centre, triangle jaune qui
--- flotte au-dessus de la cible (pièce du décor marquée, cf. Shared.Objectives) ou du bouton du HUD désigné, et file
+-- flotte et pulse au-dessus de la cible (pièce du décor marquée, cf. Shared.Objectives) ou du bouton du HUD désigné, et file
 -- de chevrons jaunes au sol qui défilent du joueur vers la cible.
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -11,6 +11,7 @@ local Economy = require(Shared:WaitForChild("Economy"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Objectives = require(Shared:WaitForChild("Objectives"))
 local Training = require(Shared:WaitForChild("Training"))
+local UIMotion = require(Shared:WaitForChild("UIMotion"))
 
 local Hud = require(script.Parent.Hud)
 local UIKit = require(script.Parent.UIKit)
@@ -23,6 +24,9 @@ local CHEVRON_ARM = 2.2 -- longueur d'une branche du chevron
 local CHEVRON_WIDTH = 0.7 -- largeur d'une branche (chevrons francs, comme les références)
 local CHEVRON_ANGLE = math.rad(42)
 local ARROW_HEIGHT = 7 -- studs au-dessus de la cible
+local ARROW_SIZE = 3 -- studs de côté de la flèche du décor (avant pulsation)
+local ARROW_FLOAT = 0.5 -- studs de flottement de la flèche du décor
+local HUD_ARROW_FLOAT = 8 -- px de flottement de la flèche d'interface
 local TARGET_REFRESH = 0.2 -- s entre deux choix de cible
 
 local Objective = {}
@@ -32,6 +36,7 @@ local label: TextLabel
 local worldArrow: BillboardGui
 local arrowAnchor: BasePart -- point invisible au-dessus de la cible : la flèche ne dépend pas de l'orientation de la cible
 local hudArrow: GuiObject
+local hudArrowScale: UIScale
 local hudArrowBase = UDim2.new() -- position de repos de la flèche d'interface, sans le balancement
 local hudArrowBob = Vector2.yAxis -- sens du balancement (vers le bouton)
 local chevrons: { { BasePart } } = {}
@@ -176,6 +181,7 @@ local function refresh()
 	hudArrow.Parent = anchor
 	hudArrow.Visible = anchor ~= nil
 	placeHudArrow(anchor)
+	hudArrow.Position = hudArrowBase -- pas d'image à l'ancienne place en changeant de bouton
 end
 
 -- Cette méthode permet d'animer le texte, la flèche et les chevrons à chaque image lorsque l'objectif est affiché.
@@ -190,15 +196,22 @@ local function step()
 		targetPart = findTarget(kind, root.Position)
 	end
 	local target = if kind then targetPart else nil
-	local bob = math.sin(os.clock() * 4) * 0.5
+	-- Flottement et pulsation calculés seulement pour une flèche affichée, coupés en mouvement réduit
+	local now = os.clock()
+	local reduced = UIKit.reducedMotion()
 	worldArrow.Enabled = target ~= nil
 	if target then
-		arrowAnchor.CFrame = CFrame.new(target.Position + Vector3.new(0, ARROW_HEIGHT + bob, 0))
+		local pulse = UIMotion.pulse(now, reduced)
+		worldArrow.Size = UDim2.fromScale(ARROW_SIZE * pulse, ARROW_SIZE * pulse)
+		arrowAnchor.CFrame =
+			CFrame.new(target.Position + Vector3.new(0, ARROW_HEIGHT + UIMotion.float(now, reduced) * ARROW_FLOAT, 0))
 	end
-	if hudArrow.Parent then
+	if hudArrow.Parent and hudArrow.Visible then
 		placeHudArrow(hudArrow.Parent :: GuiObject) -- suit les changements de taille d'écran (rotation du mobile)
+		local bob = UIMotion.float(now, reduced) * HUD_ARROW_FLOAT
+		hudArrow.Position = hudArrowBase + UDim2.fromOffset(hudArrowBob.X * bob, hudArrowBob.Y * bob)
+		hudArrowScale.Scale = UIMotion.pulse(now, reduced)
 	end
-	hudArrow.Position = hudArrowBase + UDim2.fromOffset(hudArrowBob.X * bob * 8, hudArrowBob.Y * bob * 8)
 	if target and root and humanoid then
 		local feet = root.Position - Vector3.new(0, humanoid.HipHeight + root.Size.Y / 2 - 0.12, 0)
 		updateChevrons(feet, Vector3.new(target.Position.X, feet.Y, target.Position.Z))
@@ -236,7 +249,7 @@ function Objective.init(localPlayer: Player, gui: ScreenGui)
 		Adornee = arrowAnchor,
 		ResetOnSpawn = false, -- sinon détruite à la réapparition de l'avatar
 		LightInfluence = 0,
-		Size = UDim2.fromScale(3, 3),
+		Size = UDim2.fromScale(ARROW_SIZE, ARROW_SIZE),
 		Enabled = false,
 		Parent = player:WaitForChild("PlayerGui"),
 	})
@@ -248,6 +261,7 @@ function Objective.init(localPlayer: Player, gui: ScreenGui)
 		ZIndex = 6,
 		Visible = false,
 	})
+	hudArrowScale = UIKit.scaleOf(hudArrow)
 	for i = 1, CHEVRON_COUNT do
 		chevrons[i] = makeChevron(folder)
 	end
