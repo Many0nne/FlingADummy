@@ -277,13 +277,14 @@ function Obstacles.pieces(): { Piece }
 	return pieces
 end
 
--- Cette méthode permet de trouver la pièce d'obstacle la plus proche de `position` (à moins de `radius`) lorsque l'on
--- cherche ce qui a cassé un os.
+-- Cette méthode permet de trouver la pièce d'obstacle touchée (déplacée ou en mouvement) la plus proche de `position`,
+-- à moins de `radius`, lorsque l'on cherche ce qui a cassé un os.
 function Obstacles.nearest(position: Vector3, radius: number): Piece?
 	local best, bestDistance = nil, radius
 	for _, piece in pieces do
 		local distance = (piece.part.Position - position).Magnitude
-		if piece.part.Parent and distance < bestDistance then
+		local touched = piece.displaced or piece.part.AssemblyLinearVelocity.Magnitude > SETTLE_SPEED
+		if piece.part.Parent and touched and distance < bestDistance then
 			best, bestDistance = piece, distance
 		end
 	end
@@ -300,7 +301,8 @@ function Obstacles.crossedGlass(previous: Vector3, position: Vector3): { { glass
 	for _, glass in glasses do
 		if glass.part and previous.Z < glass.z and position.Z >= glass.z then
 			local crossing = previous:Lerp(position, (glass.z - previous.Z) / (position.Z - previous.Z))
-			if crossing.Y <= glass.top and crossing.X >= glass.minX and crossing.X <= glass.maxX then
+			-- Borne droite exclue : un passage pile entre deux colonnes ne brise qu'une vitre
+			if crossing.Y <= glass.top and crossing.X >= glass.minX and crossing.X < glass.maxX then
 				table.insert(crossed, { glass = glass, crossing = crossing })
 			end
 		end
@@ -352,7 +354,7 @@ function Obstacles.shatter(glass: Glass, impact: Vector3, velocity: Vector3)
 end
 
 -- Cette méthode permet d'inspecter l'emplacement d'une pièce lorsqu'elle va réapparaître : renvoie s'il est occupé par
--- un mannequin ou un éclat (les avatars, eux, sont repoussés), et les pièces d'obstacles déplacées qui l'encombrent.
+-- un mannequin (les avatars, eux, sont repoussés), et ajoute à `debris` les pièces déplacées qui l'encombrent.
 local function inspect(piece: Piece, debris: { Piece }): boolean
 	for _, hit in Workspace:GetPartBoundsInBox(piece.home, piece.template.Size * OCCUPIED_SCALE, overlap) do
 		local other = pieceOf[hit]
@@ -368,7 +370,7 @@ local function inspect(piece: Piece, debris: { Piece }): boolean
 end
 
 -- Cette méthode permet de vérifier les emplacements des pièces déplacées d'un obstacle lorsque sa réapparition est due :
--- renvoie les débris d'obstacles qui les encombrent, ou nil si un mannequin ou un éclat y est encore.
+-- renvoie les débris d'obstacles qui les encombrent, ou nil si un mannequin y est encore.
 local function clearance(group: Group): { Piece }?
 	local debris = {}
 	for _, piece in group.pieces do
@@ -389,7 +391,7 @@ local function remove(piece: Piece)
 end
 
 -- Cette méthode permet de remettre les pièces déplacées d'un obstacle à leur place, une par une de bas en haut, lorsque
--- sa réapparition est due et ses emplacements libres ; chaque pièce n'est ancrée que le temps de son apparition.
+-- sa réapparition est due ; chaque pièce, ancrée sans collision le temps de son apparition, ne bloque aucun mannequin.
 local function respawn(group: Group, debris: { Piece })
 	group.respawning = true
 	local homes, displaced = {}, {}
@@ -405,20 +407,31 @@ local function respawn(group: Group, debris: { Piece })
 	end
 	local order = ObstacleRules.respawnOrder(homes, displaced)
 	task.spawn(function()
+		local aborted = false
 		for _, index in order do
 			local piece = group.pieces[index]
 			-- L'emplacement a pu se remplir depuis le début de la réapparition (mannequin, débris)
 			local late = {}
 			local tries = 0
-			while inspect(piece, late) and tries < OCCUPIED_TRIES do
+			local occupied = inspect(piece, late)
+			while occupied and tries < OCCUPIED_TRIES do
 				tries += 1
 				task.wait(OCCUPIED_RETRY)
+				table.clear(late)
+				occupied = inspect(piece, late)
+			end
+			if occupied then
+				-- Toujours occupé : les pièces restantes attendent une prochaine surveillance
+				group.lastHit = os.clock()
+				aborted = true
+				break
 			end
 			for _, other in late do
 				remove(other)
 			end
 			local p = piece.template:Clone()
 			p.Anchored = true
+			p.CanCollide = false
 			p.CFrame = piece.home
 			p.Parent = folder
 			pop(p)
@@ -428,6 +441,7 @@ local function respawn(group: Group, debris: { Piece })
 			pieceOf[p] = piece
 			task.delay(POP_TIME, function()
 				if p.Parent then
+					p.CanCollide = true
 					p.Anchored = false
 					p:SetNetworkOwner(nil)
 				end
@@ -435,7 +449,9 @@ local function respawn(group: Group, debris: { Piece })
 			task.wait(GameConfig.RESPAWN_STAGGER)
 		end
 		task.wait(POP_TIME)
-		group.lastHit = nil
+		if not aborted then
+			group.lastHit = nil
+		end
 		group.respawning = false
 	end)
 end

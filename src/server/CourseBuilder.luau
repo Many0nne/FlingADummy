@@ -514,6 +514,23 @@ local function buildTrack(parent: Instance)
 		end
 		z += span
 	end
+	-- Près du départ, les marches hautes reculent (épaulements) : la paroi invisible y descend jusqu'à la première marche
+	local _, firstTop = CourseLayout.tier(0)
+	local shoulder = (CourseLayout.TIER_COUNT - 1) * CourseLayout.TIER_STEP
+	for _, side in { -1, 1 } do
+		Build.part({
+			Name = "SideWall",
+			Size = Vector3.new(1, topHeight - firstTop, shoulder),
+			Position = Vector3.new(
+				side * (innerTop + 0.5),
+				(firstTop + topHeight) / 2,
+				-GameConfig.LAUNCH_DEPTH + shoulder / 2
+			),
+			Transparency = 1,
+			CanQuery = false,
+			Parent = parent,
+		})
+	end
 	Build.part({
 		Name = "EndWall",
 		Size = Vector3.new(2 * innerTop + 2, GameConfig.SIDE_WALL_HEIGHT, 1),
