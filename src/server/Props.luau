@@ -42,7 +42,7 @@ end
 
 local builders: { [string]: Builder } = {}
 
--- Arbre feuillu : tronc carré, houppier en cubes empilés de deux verts (09 : Prairie)
+-- Cette méthode permet de construire un arbre feuillu (tronc carré, houppier en cubes de deux verts, 09 : Prairie) lorsque l'on habille une zone.
 builders.tree = function(parent, at, rng, solid)
 	local s = snap(rng, 0.8, 1.4, 0.2)
 	put(parent, at, Vector3.new(2, 7, 2) * s, Vector3.new(0, 3.5 * s, 0), TRUNK, solid)
@@ -77,15 +77,17 @@ local function pine(parent: Instance, at: CFrame, rng: Random, solid: boolean, s
 	end
 end
 
+-- Cette méthode permet de construire un sapin en étages lorsque l'on habille une zone.
 builders.pine = function(parent, at, rng, solid)
 	pine(parent, at, rng, solid, false)
 end
 
+-- Cette méthode permet de construire un sapin en étages coiffé de neige lorsque l'on habille une zone.
 builders.snowpine = function(parent, at, rng, solid)
 	pine(parent, at, rng, solid, true)
 end
 
--- Buisson : deux ou trois cubes verts
+-- Cette méthode permet de construire un buisson de deux ou trois cubes verts lorsque l'on habille une zone.
 builders.bush = function(parent, at, rng, solid)
 	for i = 1, rng:NextInteger(2, 3) do
 		local size = snap(rng, 2.5, 4, 0.5)
@@ -94,7 +96,7 @@ builders.bush = function(parent, at, rng, solid)
 	end
 end
 
--- Fleurs : petites têtes colorées sur tiges (toujours traversables)
+-- Cette méthode permet de construire un massif de fleurs colorées sur tiges (toujours traversable) lorsque l'on habille une zone.
 builders.flowers = function(parent, at, rng)
 	local colors = { rgb(255, 70, 70), rgb(255, 220, 40), WHITE, rgb(255, 120, 200), rgb(150, 110, 255) }
 	for _ = 1, rng:NextInteger(3, 6) do
@@ -130,19 +132,22 @@ local function boulder(parent: Instance, at: CFrame, rng: Random, solid: boolean
 	end
 end
 
+-- Cette méthode permet de construire un rocher gris en blocs lorsque l'on habille une zone.
 builders.rock = function(parent, at, rng, solid)
 	boulder(parent, at, rng, solid, STONE)
 end
 
+-- Cette méthode permet de construire un rocher de glace en blocs lorsque l'on habille une zone.
 builders.icerock = function(parent, at, rng, solid)
 	boulder(parent, at, rng, solid, rgb(170, 225, 255))
 end
 
+-- Cette méthode permet de construire un rocher de basalte à veine de lave lorsque l'on habille une zone.
 builders.lavarock = function(parent, at, rng, solid)
 	boulder(parent, at, rng, solid, rgb(70, 50, 55), rgb(255, 120, 20))
 end
 
--- Champignon géant rouge à pois blancs (09 : Forêt)
+-- Cette méthode permet de construire un champignon géant rouge à pois blancs (09 : Forêt) lorsque l'on habille une zone.
 builders.mushroom = function(parent, at, rng, solid)
 	local s = snap(rng, 0.8, 1.4, 0.2)
 	put(parent, at, Vector3.new(2, 5, 2) * s, Vector3.new(0, 2.5 * s, 0), rgb(245, 235, 215), solid)
@@ -153,7 +158,7 @@ builders.mushroom = function(parent, at, rng, solid)
 	end
 end
 
--- Palmier : tronc en segments décalés, palmes en lattes (01 / 09 : désert, jungle)
+-- Cette méthode permet de construire un palmier à tronc en segments et palmes en lattes (01 / 09 : désert) lorsque l'on habille une zone.
 builders.palm = function(parent, at, rng, solid)
 	local lean = rng:NextNumber(-0.4, 0.4)
 	local top = Vector3.zero
@@ -175,7 +180,7 @@ builders.palm = function(parent, at, rng, solid)
 	put(parent, at, Vector3.new(1, 1, 1), top + Vector3.new(0.9, 0.6, 0.9), rgb(110, 70, 35), false)
 end
 
--- Cactus en colonnes à deux bras
+-- Cette méthode permet de construire un cactus en colonnes à deux bras lorsque l'on habille une zone.
 builders.cactus = function(parent, at, rng, solid)
 	local h = snap(rng, 6, 10, 1)
 	local green = rgb(70, 175, 70)
@@ -187,7 +192,7 @@ builders.cactus = function(parent, at, rng, solid)
 	end
 end
 
--- Buisson sec du désert
+-- Cette méthode permet de construire un buisson sec du désert lorsque l'on habille une zone.
 builders.drybush = function(parent, at, rng)
 	for i = 1, 3 do
 		local size = snap(rng, 1.5, 2.5, 0.5)
@@ -195,7 +200,7 @@ builders.drybush = function(parent, at, rng)
 	end
 end
 
--- Plot de chantier orange à bande blanche
+-- Cette méthode permet de construire un plot de chantier orange à bande blanche lorsque l'on habille une zone.
 builders.cone = function(parent, at, rng)
 	local s = snap(rng, 1, 1.6, 0.2)
 	local orange = rgb(255, 120, 20)
@@ -205,7 +210,7 @@ builders.cone = function(parent, at, rng)
 	put(parent, at, Vector3.new(1.2, 1.4, 1.2) * s, Vector3.new(0, 3.3 * s, 0), orange, false)
 end
 
--- Barrière de chantier à rayures rouges et blanches
+-- Cette méthode permet de construire une barrière de chantier à rayures rouges et blanches lorsque l'on habille une zone.
 builders.barrier = function(parent, at, _rng, solid)
 	for _, side in { -1, 1 } do
 		put(parent, at, Vector3.new(0.8, 3.5, 0.8), Vector3.new(side * 4, 1.75, 0), rgb(60, 60, 70), solid)
@@ -222,7 +227,7 @@ builders.barrier = function(parent, at, _rng, solid)
 	end
 end
 
--- Pile de poutrelles orange
+-- Cette méthode permet de construire une pile de poutrelles orange lorsque l'on habille une zone.
 builders.girders = function(parent, at, rng, solid)
 	for i = 0, rng:NextInteger(2, 3) do
 		put(
@@ -237,7 +242,7 @@ builders.girders = function(parent, at, rng, solid)
 	end
 end
 
--- Bonhomme de neige
+-- Cette méthode permet de construire un bonhomme de neige lorsque l'on habille une zone.
 builders.snowman = function(parent, at, _rng, solid)
 	put(parent, at, Vector3.new(4, 4, 4), Vector3.new(0, 2, 0), WHITE, solid)
 	put(parent, at, Vector3.new(3, 3, 3), Vector3.new(0, 5.5, 0), WHITE, solid)
@@ -247,7 +252,7 @@ builders.snowman = function(parent, at, _rng, solid)
 	put(parent, at, Vector3.new(1.8, 1.2, 1.8), Vector3.new(0, 10.2, 0), rgb(40, 40, 50), false)
 end
 
--- Arbre mort du volcan
+-- Cette méthode permet de construire un arbre mort du volcan lorsque l'on habille une zone.
 builders.deadtree = function(parent, at, rng, solid)
 	local dark = rgb(70, 45, 35)
 	put(parent, at, Vector3.new(1.6, 9, 1.6), Vector3.new(0, 4.5, 0), dark, solid)
@@ -263,7 +268,7 @@ builders.deadtree = function(parent, at, rng, solid)
 	put(parent, at, Vector3.new(1, 3.5, 1), Vector3.new(-1.3, 5.5, 0), dark, solid, Vector3.new(0, 0, 45))
 end
 
--- Sucette géante
+-- Cette méthode permet de construire une sucette géante à spirale en carrés lorsque l'on habille une zone.
 builders.lollipop = function(parent, at, rng, solid)
 	local colors = { rgb(255, 80, 160), rgb(80, 200, 255), rgb(255, 210, 50), rgb(140, 100, 255) }
 	local color = colors[rng:NextInteger(1, #colors)]
@@ -281,7 +286,7 @@ builders.lollipop = function(parent, at, rng, solid)
 	end
 end
 
--- Sucre d'orge rayé rouge et blanc, à crosse
+-- Cette méthode permet de construire un sucre d'orge rayé à crosse lorsque l'on habille une zone.
 builders.candycane = function(parent, at, _rng, solid)
 	for i = 0, 6 do
 		put(
@@ -297,7 +302,7 @@ builders.candycane = function(parent, at, _rng, solid)
 	put(parent, at, Vector3.new(1.4, 1.4, 1.4), Vector3.new(2.8, 9.8, 0), rgb(235, 40, 50), solid)
 end
 
--- Boule de gomme
+-- Cette méthode permet de construire une boule de gomme lorsque l'on habille une zone.
 builders.gumdrop = function(parent, at, rng, solid)
 	local colors = { rgb(255, 90, 90), rgb(90, 220, 120), rgb(255, 200, 60), rgb(110, 160, 255) }
 	local color = colors[rng:NextInteger(1, #colors)]
@@ -305,7 +310,7 @@ builders.gumdrop = function(parent, at, rng, solid)
 	put(parent, at, Vector3.new(2.6, 1.5, 2.6), Vector3.new(0, 3.25, 0), Build.shade(color, 1.15), solid)
 end
 
--- Cristaux lumineux de la base lunaire
+-- Cette méthode permet de construire des cristaux lumineux de la base lunaire lorsque l'on habille une zone.
 builders.crystal = function(parent, at, rng)
 	local colors = { rgb(120, 230, 255), rgb(200, 120, 255), rgb(255, 120, 220) }
 	for i = 1, 3 do
@@ -325,7 +330,7 @@ builders.crystal = function(parent, at, rng)
 	end
 end
 
--- Cratère : couronne de blocs autour d'un creux
+-- Cette méthode permet de construire un cratère (couronne de blocs) lorsque l'on habille une zone.
 builders.crater = function(parent, at, rng)
 	local rim = rgb(140, 125, 190)
 	for i = 0, 5 do
@@ -334,7 +339,7 @@ builders.crater = function(parent, at, rng)
 	end
 end
 
--- Petite fusée blanche à ailerons rouges
+-- Cette méthode permet de construire une petite fusée blanche à ailerons rouges lorsque l'on habille une zone.
 builders.rocket = function(parent, at, _rng, solid)
 	local red = rgb(235, 50, 50)
 	put(parent, at, Vector3.new(3, 10, 3), Vector3.new(0, 6, 0), WHITE, solid)
@@ -355,11 +360,6 @@ function Props.build(kind: string, parent: Instance, at: CFrame, rng: Random, so
 	else
 		warn("[Props] élément inconnu : " .. kind)
 	end
-end
-
--- Cette méthode permet de savoir si `kind` est un élément de décor connu lorsque l'on vérifie la liste d'une zone.
-function Props.has(kind: string): boolean
-	return builders[kind] ~= nil
 end
 
 -- Cette méthode permet de poser une barrière en blocs de bois (poteaux carrés, deux lisses) de `from` à `to` au sol

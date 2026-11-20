@@ -6,6 +6,7 @@ local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
 
 local CourseLayout = require(ReplicatedStorage.Shared.CourseLayout)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
@@ -18,7 +19,7 @@ local SHARD_LIFETIME = 4
 local SCAN_PERIOD = 0.2 -- surveillance des pièces (s)
 local SETTLE_SPEED = 2 -- une pièce déplacée qui bouge encore repousse la réapparition
 local POP_TIME = 0.25
-local BLOCKER_RADIUS = 9 -- pas de réapparition sur un mannequin posé dans l'obstacle
+local OCCUPIED_SCALE = 0.9 -- emplacement vérifié avant réapparition (pièces voisines qui se touchent tolérées)
 
 -- Obstacles très légers : le mannequin les traverse et les projette au lieu de s'y arrêter
 local CRATE_DENSITY = 0.05
@@ -59,9 +60,9 @@ local folder: Folder
 local glasses: { Glass } = {}
 local pieces: { Piece } = {}
 local groups: { Group } = {}
-local blockers: () -> { Vector3 } = function()
-	return {}
-end
+local pieceOf: { [BasePart]: Piece } = {}
+local overlap = OverlapParams.new()
+overlap.RespectCanCollide = true
 
 -- Cette méthode permet de créer une pièce d'obstacle non ancrée et légère, et son gabarit de réapparition, lorsque
 -- l'on monte un obstacle.
@@ -85,6 +86,7 @@ local function addPiece(group: Group, props: { [string]: any }, density: number,
 	}
 	table.insert(group.pieces, piece)
 	table.insert(pieces, piece)
+	pieceOf[p] = piece
 end
 
 -- Cette méthode permet de créer un obstacle vide (groupe de pièces qui réapparaissent ensemble) lorsque l'on en monte
@@ -194,6 +196,7 @@ end
 -- la colonne centrée sur `x` à `z` lorsque la piste est construite.
 local function buildCar(x: number, z: number, color: Color3)
 	local group = newGroup()
+	-- Cette méthode permet d'ajouter une pièce de la voiture au décalage `offset` lorsque l'on l'assemble.
 	local function add(name: string, size: Vector3, offset: Vector3, partColor: Color3)
 		addPiece(group, {
 			Name = name,
@@ -266,12 +269,6 @@ function Obstacles.build(parent: Instance)
 	end)
 end
 
--- Cette méthode permet de donner la fonction qui liste les mannequins en vol (pas de réapparition sur eux) lorsque
--- LaunchService démarre.
-function Obstacles.setBlockers(callback: () -> { Vector3 })
-	blockers = callback
-end
-
 -- Cette méthode permet de donner toutes les pièces des obstacles lorsque LaunchService compte les objets projetés.
 function Obstacles.pieces(): { Piece }
 	return pieces
@@ -313,7 +310,8 @@ end
 local function pop(p: BasePart)
 	local size = p.Size
 	p.Size = size * 0.2
-	TweenService:Create(p, TweenInfo.new(POP_TIME, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = size })
+	-- Sans dépassement : la pièce ancrée ne doit pas bousculer ses voisines
+	TweenService:Create(p, TweenInfo.new(POP_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = size })
 		:Play()
 end
 
@@ -350,33 +348,56 @@ function Obstacles.shatter(glass: Glass, impact: Vector3, velocity: Vector3)
 	end
 end
 
--- Cette méthode permet de savoir si un mannequin en vol est posé dans l'obstacle lorsque sa réapparition est due.
-local function isBlocked(group: Group, dummies: { Vector3 }): boolean
-	for _, position in dummies do
-		for _, piece in group.pieces do
-			if piece.displaced and (piece.home.Position - position).Magnitude < BLOCKER_RADIUS then
-				return true
+-- Cette méthode permet de vérifier les emplacements des pièces déplacées d'un obstacle lorsque sa réapparition est due :
+-- renvoie les débris d'obstacles qui les encombrent, ou nil si un mannequin, un avatar ou un éclat y est encore.
+local function clearance(group: Group): { Piece }?
+	local debris = {}
+	for _, piece in group.pieces do
+		if not piece.displaced then
+			continue
+		end
+		for _, hit in Workspace:GetPartBoundsInBox(piece.home, piece.template.Size * OCCUPIED_SCALE, overlap) do
+			local other = pieceOf[hit]
+			if other then
+				if other.displaced then
+					table.insert(debris, other)
+				end
+			elseif not hit.Anchored then
+				return nil
 			end
 		end
 	end
-	return false
+	return debris
 end
 
--- Cette méthode permet de remettre à leur place, une par une et de bas en haut, les pièces déplacées d'un obstacle
--- lorsque sa réapparition est due ; elles restent ancrées jusqu'à ce que tout l'obstacle soit revenu.
-local function respawn(group: Group)
+-- Cette méthode permet de retirer une pièce déplacée du monde (son obstacle la fera réapparaître) lorsque l'on libère
+-- un emplacement ou que son tour de réapparaître vient.
+local function remove(piece: Piece)
+	pieceOf[piece.part] = nil
+	piece.part:Destroy()
+end
+
+-- Cette méthode permet de remettre les pièces déplacées d'un obstacle à leur place, une par une de bas en haut, lorsque
+-- sa réapparition est due et ses emplacements libres ; chaque pièce n'est ancrée que le temps de son apparition.
+local function respawn(group: Group, debris: { Piece })
 	group.respawning = true
 	local homes, displaced = {}, {}
 	for index, piece in group.pieces do
 		homes[index] = piece.home
 		displaced[index] = piece.displaced
+		if piece.displaced then
+			remove(piece)
+		end
+	end
+	for _, piece in debris do
+		if piece.part.Parent then
+			remove(piece)
+		end
 	end
 	local order = ObstacleRules.respawnOrder(homes, displaced)
 	task.spawn(function()
-		local fresh = {}
 		for _, index in order do
 			local piece = group.pieces[index]
-			piece.part:Destroy()
 			local p = piece.template:Clone()
 			p.Anchored = true
 			p.CFrame = piece.home
@@ -385,16 +406,16 @@ local function respawn(group: Group)
 			piece.part = p
 			piece.displaced = false
 			piece.claimed = false
-			table.insert(fresh, p)
+			pieceOf[p] = piece
+			task.delay(POP_TIME, function()
+				if p.Parent then
+					p.Anchored = false
+					p:SetNetworkOwner(nil)
+				end
+			end)
 			task.wait(GameConfig.RESPAWN_STAGGER)
 		end
 		task.wait(POP_TIME)
-		for _, p in fresh do
-			if p.Parent then
-				p.Anchored = false
-				p:SetNetworkOwner(nil)
-			end
-		end
 		group.lastHit = nil
 		group.respawning = false
 	end)
@@ -414,17 +435,19 @@ function Obstacles.scan(now: number)
 				group.lastHit = now
 			elseif piece.displaced and p.Parent and p.AssemblyLinearVelocity.Magnitude > SETTLE_SPEED then
 				group.lastHit = now
+			elseif not piece.displaced and piece.claimed and p.AssemblyLinearVelocity.Magnitude < SETTLE_SPEED then
+				-- Bousculée puis revenue au repos à sa place : elle pourra de nouveau compter
+				piece.claimed = false
 			end
 		end
 	end
-	local dummies: { Vector3 }? = nil
 	for _, group in groups do
 		if not group.respawning and ObstacleRules.isDue(group.lastHit, now) then
-			dummies = dummies or blockers()
-			if isBlocked(group, dummies :: { Vector3 }) then
-				group.lastHit = now
+			local debris = clearance(group)
+			if debris then
+				respawn(group, debris)
 			else
-				respawn(group)
+				group.lastHit = now
 			end
 		end
 	end

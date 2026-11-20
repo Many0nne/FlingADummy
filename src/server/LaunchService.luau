@@ -248,9 +248,8 @@ local function checkBones(flight: Flight, elapsed: number)
 	end
 end
 
--- Cette méthode permet de compter une fois chaque pièce d'obstacle projetée, pour le vol dont le mannequin est le
--- plus proche (piste partagée), lorsque Heartbeat tourne ; un seul choc « Smash » par vol, matériau et frame est
--- annoncé, avec le nombre d'objets.
+-- Cette méthode permet de compter une fois chaque pièce projetée pour le vol le plus proche (piste partagée) lorsque
+-- Heartbeat tourne ; un choc « Smash » par vol, matériau et frame est annoncé avec le nombre d'objets.
 local function checkSmashed(list: { Flight })
 	local positions = {}
 	for index, flight in list do
@@ -262,11 +261,11 @@ local function checkSmashed(list: { Flight })
 		if piece.claimed or p.Anchored or p.AssemblyLinearVelocity.Magnitude <= GameConfig.SMASH_SPEED then
 			continue
 		end
-		piece.claimed = true
 		local index = ObstacleRules.claimant(p.Position, positions)
 		if not index then
 			continue
 		end
+		piece.claimed = true
 		local flight = list[index]
 		flight.smashed += 1
 		local materials = byFlight[flight] or {}
@@ -399,9 +398,8 @@ local function launchBots(player: Player, count: number)
 	end
 end
 
--- Cette méthode permet de déclencher un lancer en écrivant l'attribut DebugLaunch (0-1) sur le joueur lorsque l'on
--- teste dans Studio sans simuler d'input (lancer depuis sa place, même si l'avatar n'y est pas) ; DebugLaunchBots (n)
--- lance n mannequins de test depuis les places libres.
+-- Cette méthode permet de lancer par attribut lorsque l'on teste dans Studio sans input : DebugLaunch (0-1) lance le
+-- mannequin du joueur depuis sa place, DebugLaunchBots (n) lance n mannequins de test depuis les places libres.
 local function watchDebugLaunch(player: Player)
 	player:GetAttributeChangedSignal("DebugLaunch"):Connect(function()
 		local value = player:GetAttribute("DebugLaunch")
@@ -430,14 +428,6 @@ end
 function LaunchService.init(createdRemotes: Remotes.Remotes, dummies: Folder)
 	remotes = createdRemotes
 	dummiesFolder = dummies
-	-- Pas de réapparition d'obstacle sur un mannequin en vol ou posé
-	Obstacles.setBlockers(function()
-		local positions = {}
-		for _, flight in flights do
-			table.insert(positions, flight.torso.Position)
-		end
-		return positions
-	end)
 	remotes.Launch.OnServerEvent:Connect(function(player, gauge)
 		LaunchService.launch(player, gauge)
 	end)

@@ -125,9 +125,8 @@ local function box(parent: Instance, low: Vector3, high: Vector3, color: Color3,
 	})
 end
 
--- Cette méthode permet de faire déborder l'herbe (ou la neige, le sable…) de la couverture d'une marche en blocs de
--- longueurs et de hauteurs variées, le long d'un bord droit qui fait face à `facing` (±X ou ±Z), lorsque l'on habille
--- une paroi.
+-- Cette méthode permet de faire déborder l'herbe (neige, sable…) d'une marche en blocs de tailles variées, le long d'un
+-- bord qui fait face à `facing`, lorsque l'on habille une paroi.
 local function drips(parent: Instance, edge: Vector3, facing: Vector3, length: number, color: Color3)
 	-- `edge` : début du bord, au niveau du dessous de la couverture ; le bord court le long de `along`
 	local along = Vector3.new(0, 1, 0):Cross(facing)
@@ -179,10 +178,8 @@ local function scatter(
 	end
 end
 
--- Cette méthode permet de monter une paroi en gradins le long d'un bord droit de la zone ouverte (hub ou piste) :
--- `start` / `finish` bornent le bord au sol, `facing` pointe vers la zone ouverte ; chaque marche recule de
--- TIER_STEP, est coiffée d'herbe qui déborde et porte le décor de la zone. `grow` (0 ou 1 à chaque bout) allonge les
--- marches hautes de TIER_STEP par marche pour rejoindre une paroi voisine (-1 les raccourcit : épaulement en gradins).
+-- Cette méthode permet de monter une paroi en gradins coiffés d'herbe et décorés (bord de `start` à `finish`, tournée vers
+-- `facing`) lorsque l'on borde le hub ou la piste ; `grow` ±1 allonge ou raccourcit les marches hautes à chaque bout.
 local function terraces(
 	parent: Instance,
 	start: Vector3,
