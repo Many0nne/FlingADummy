@@ -36,6 +36,7 @@ local valueLabel: TextLabel
 local promptLabel: TextLabel
 local shownAt = 0
 local locked: number? = nil -- valeur figée par le clic, en attendant le lâcher
+local shining: { [Instance]: boolean } = setmetatable({}, { __mode = "k" }) :: any -- reflets déjà animés
 
 -- Cette méthode permet de construire la jauge verticale au style des références (capsule à contour noir, dégradé
 -- vert en haut → rouge en bas, traits sombres, curseur blanc, valeur « +N » à droite, consigne dessous) lorsque le
@@ -135,9 +136,10 @@ end
 -- Cette méthode permet de faire glisser en boucle le reflet de la bande de lancer (un seul dégradé, animé par ce
 -- client : rien ne passe par le réseau) lorsqu'il apparaît dans le monde.
 local function animateShine(gradient: Instance)
-	if not gradient:IsA("UIGradient") then
+	if not gradient:IsA("UIGradient") or shining[gradient] then
 		return
 	end
+	shining[gradient] = true
 	gradient.Offset = Vector2.new(-1, 0)
 	local tween = TweenService:Create(
 		gradient,
@@ -151,6 +153,7 @@ local function animateShine(gradient: Instance)
 		if not gradient:IsDescendantOf(game) then
 			tween:Cancel()
 			connection:Disconnect()
+			shining[gradient] = nil
 		end
 	end)
 end

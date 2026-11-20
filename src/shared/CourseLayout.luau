@@ -17,6 +17,7 @@ CourseLayout.STATION_SIZE = 9 -- côté du podium de l'appareil
 -- Bande de lancer : toute la largeur de la piste, de z = -BAND_DEPTH au départ (z = 0), dessus à BAND_TOP
 CourseLayout.BAND_TOP = 0.3
 CourseLayout.BAND_Z = -GameConfig.BAND_DEPTH / 2 -- ligne où se figent les joueurs
+CourseLayout.BAND_EDGE = 1.2 -- liseré blanc, côté piste (z de 0 à BAND_EDGE), compté comme bande
 CourseLayout.BAND_REACH = 8 -- hauteur au-dessus de la bande où l'avatar compte comme posé dessus (studs)
 CourseLayout.BAND_SHINE_TAG = "LaunchBandShine" -- dégradé du reflet de la bande, que chaque client fait glisser
 
@@ -50,7 +51,7 @@ end
 function CourseLayout.isOnBand(position: Vector3): boolean
 	return math.abs(position.X) <= GameConfig.TRACK_WIDTH / 2
 		and position.Z >= -GameConfig.BAND_DEPTH
-		and position.Z <= 0
+		and position.Z <= CourseLayout.BAND_EDGE
 		and position.Y <= CourseLayout.BAND_TOP + CourseLayout.BAND_REACH
 end
 

@@ -344,8 +344,8 @@ local function buildLaunchZone(parent: Instance)
 	-- Liseré blanc en bordure, côté piste
 	Build.part({
 		Name = "BandEdge",
-		Size = Vector3.new(GameConfig.TRACK_WIDTH, 1.2, 1.2),
-		Position = Vector3.new(0, top + 0.1 - 0.6, 0.6),
+		Size = Vector3.new(GameConfig.TRACK_WIDTH, 1.2, CourseLayout.BAND_EDGE),
+		Position = Vector3.new(0, top + 0.1 - 0.6, CourseLayout.BAND_EDGE / 2),
 		Color = COLORS.line,
 		Variant = Build.BRICK,
 		Parent = model,
@@ -362,7 +362,7 @@ local function buildLaunchZone(parent: Instance)
 	Build.part({
 		Name = "AvatarBarrier",
 		Size = Vector3.new(2 * CourseLayout.OUTER, BARRIER_HEIGHT, 1),
-		Position = Vector3.new(0, BARRIER_HEIGHT / 2 - 2, 1.2 + 0.5),
+		Position = Vector3.new(0, BARRIER_HEIGHT / 2 - 2, CourseLayout.BAND_EDGE + 0.5),
 		Transparency = 1,
 		CanQuery = false,
 		CanTouch = false,

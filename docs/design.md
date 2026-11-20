@@ -28,7 +28,7 @@ multipliés par la zone atteinte.
    ou Espace l'arrête, avec un « pop » et un petit rebond de la jauge, puis le whoosh au lâcher. Pas de zone PERFECT ni
    de bonus : le haut de la jauge est le max (`+20`), comme dans les jeux de référence. **Valeur vérifiée par le
    serveur** (`Shared.Gauge.verify`) : il note l'ouverture de la jauge, estime l'instant du clic à la réception
-   (lâcher de l'animation et latence mesurée déduits, latence bornée à 0,4 s, tolérance 0,12 s, lâcher en retard de
+   (lâcher de l'animation et latence mesurée déduits, latence `GetNetworkPing` (aller-retour) bornée à 1 s, tolérance 0,12 s, lâcher en retard de
    0,25 s au plus) et garde la valeur du client si elle est atteignable dans cette fenêtre, sinon la sienne.
 3. **Élan** : l'avatar se penche en arrière puis projette le mannequin (0,35 s).
 4. **Vol** : bandes noires, caméra qui suit, compteurs (distance, os, objets), bannière de la zone traversée, radio du
@@ -63,7 +63,7 @@ multipliés par la zone atteinte.
   lancer. Plan dans `Shared.CourseLayout`.
 - **Zone de lancer commune** : pelouse du hub, puis la **bande de lancer** sur toute la largeur de la piste (8 studs de
   profond, carreaux de 4 studs à tenons orange et jaune, reflet blanc qui glisse, animé par chaque client) et un liseré
-  blanc côté piste, comme *Throw Food For Animals* et *Throw a Seed*. Pas de place attitrée : jusqu'à 15 joueurs figés
+  blanc côté piste (compté comme bande), comme *Throw Food For Animals* et *Throw a Seed*. Pas de place attitrée : jusqu'à 15 joueurs figés
   y tiennent côte à côte (4 par serveur). Le joueur réapparaît dans le hub, 6 studs derrière la bande, et y revient
   après chaque lancer.
 - **Piste fermée aux avatars** : barrière invisible juste derrière le liseré (groupe `AvatarBarrier`, qui ne

@@ -30,7 +30,7 @@ local GameConfig = {
 	GAUGE_STEPS         = 20,     -- valeur affichée à côté de l'aiguille : +1 à +20
 	-- Vérification par le serveur : il recalcule l'instant du clic depuis l'ouverture de la jauge (lâcher et latence
 	-- déduits) et garde la valeur du client si elle est atteignable dans cette fenêtre, sinon la sienne
-	GAUGE_MAX_LAG       = 0.4,    -- latence aller-retour prise en compte au plus (s)
+	GAUGE_MAX_LAG       = 1.0,    -- latence aller-retour (GetNetworkPing) prise en compte au plus (s)
 	GAUGE_LAG_TOLERANCE = 0.12,   -- marge autour de la latence mesurée (gigue, cadence réseau, s)
 	GAUGE_RELEASE_SLACK = 0.25,   -- retard possible du lâcher après THROW_RELEASE_TIME (= RELEASE_GRACE du client, s)
 
