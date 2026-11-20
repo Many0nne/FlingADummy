@@ -563,7 +563,7 @@ Describe 'fad-worktree.ps1 : auto-connexion Studio (plugin multi-projets)' {
   It 'liberation sans Rojo du checkout principal : cible vide (deconnexion), nouvelle rev' {
     $rev = (Get-Target).rev
     $r = Invoke-Wt $sb @($w, '-ReleaseStudio')
-    $r.Output | Should Match 'deconnectee'
+    $r.Output | Should Match 'deconnexion'
     (Get-Target).port | Should Be ''
     (Get-Target).rev | Should Not Be $rev
   }
@@ -614,11 +614,52 @@ Describe 'fad-worktree.ps1 : auto-connexion Studio (plugin multi-projets)' {
     Invoke-Wt $sb @($w, '-ReleaseStudio') | Out-Null
   }
 
-  It 'garde-fou : pas d''alerte pour un port du depot (worktree ou checkout principal)' {
-    [IO.File]::WriteAllText($p.Status, '{"rev":"x","state":"connected","port":"35801"}')
-    (Invoke-Wt $sb @('-StudioStatus')).Output | Should Not Match 'ALERTE'
-    [IO.File]::WriteAllText($p.Status, '{"rev":"x","state":"connected","port":"35800"}')
-    (Invoke-Wt $sb @('-StudioStatus')).Output | Should Not Match 'ALERTE'
+  It 'garde-fou : pas d''alerte pour un port du depot (worktree, checkout principal, worktree deja supprime)' {
+    foreach ($port in '35801', '35800', '35807') {
+      [IO.File]::WriteAllText($p.Status, "{`"rev`":`"x`",`"state`":`"connected`",`"port`":`"$port`"}")
+      (Invoke-Wt $sb @('-StudioStatus')).Output | Should Not Match 'ALERTE'
+    }
+  }
+
+  It 'Studio connecte a la main au checkout principal (test de l''utilisateur) : reservation d''un worktree refusee (code 2)' {
+    $env:FAD_FAKE_STUDIO_PORTS = '35800'
+    try {
+      [IO.File]::WriteAllText($p.Target, '{"port":"35801","rev":"1"}')
+      $r = Invoke-Wt $sb @($w, '-AcquireStudio')
+      $r.Code | Should Be 2
+      $r.Output | Should Match 'a la main au checkout principal'
+      Get-Holder | Should BeNullOrEmpty
+      (Get-Target).port | Should Be '35801'
+    } finally { $env:FAD_FAKE_STUDIO_PORTS = $null }
+  }
+
+  It 'Studio sur le checkout principal apres une liberation (cible 35800) : reservation acceptee' {
+    $env:FAD_FAKE_STUDIO_PORTS = '35800'
+    try {
+      [IO.File]::WriteAllText($p.Target, '{"port":"35800","rev":"2"}')
+      (Invoke-Wt $sb @($w, '-AcquireStudio')).Code | Should Be 0
+      (Get-Target).port | Should Be '35801'
+      Invoke-Wt $sb @($w, '-ReleaseStudio') | Out-Null
+    } finally { $env:FAD_FAKE_STUDIO_PORTS = $null }
+  }
+
+  It 'nettoyage : main avance quand Studio est sur 34900 par une liberation, pas quand il y a ete connecte a la main' {
+    $clone = Join-Path $sb.Root 'clone'
+    Invoke-Git $sb.Root clone --quiet $sb.Origin $clone | Out-Null
+    Add-Content (Join-Path $clone 'nouveau.txt') 'x'
+    Invoke-Git $clone add -A | Out-Null
+    Invoke-Git $clone -c user.name=Sandbox -c user.email=sandbox@example.invalid commit --quiet -m 'merge simule' | Out-Null
+    Invoke-Git $clone push --quiet origin main | Out-Null
+    $head = (Invoke-Git $clone rev-parse HEAD | Select-Object -First 1).Trim()
+    $env:FAD_FAKE_STUDIO_PORTS = '35800'
+    try {
+      [IO.File]::WriteAllText($p.Target, '{"port":"35801","rev":"3"}')
+      Invoke-Cleanup $sb | Out-Null
+      (Invoke-Git $sb.Repo rev-parse HEAD | Select-Object -First 1).Trim() | Should Not Be $head
+      [IO.File]::WriteAllText($p.Target, '{"port":"35800","rev":"4"}')
+      Invoke-Cleanup $sb | Out-Null
+      (Invoke-Git $sb.Repo rev-parse HEAD | Select-Object -First 1).Trim() | Should Be $head
+    } finally { $env:FAD_FAKE_STUDIO_PORTS = $null }
   }
 
   It 'serveur v3 en place : garde tel quel (ni arrete, ni pid remplace), attente puis procedure manuelle, verrou garde' {

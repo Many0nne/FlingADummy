@@ -131,8 +131,10 @@ vérification :
   Code 2 : continuer le travail sans Studio et réessayer plus tard, ou attendre avec `-WaitStudio`. Ne jamais déconnecter
   Studio d'un autre worktree sans le verrou.
 - Depuis le checkout principal (`rojo serve` lancé à la main sur 34900) : réserver avec la branche `main`
-  (`.\scripts\fad-worktree.ps1 main -AcquireStudio`, puis `main -ReleaseStudio`). Si la réservation signale Studio
-  connecté à 34900 hors verrou, c'est sans doute l'utilisateur qui teste : vérifier avant Disconnect.
+  (`.\scripts\fad-worktree.ps1 main -AcquireStudio`, puis `main -ReleaseStudio`). Au repos (après une libération), la
+  place est sur 34900 : c'est normal. Studio connecté à 34900 **à la main** (dernière cible publiée ailleurs) : sans doute
+  l'utilisateur qui teste ; la réservation d'un worktree répond alors code 2 et le nettoyage n'avance pas `main`.
+  Demander à l'utilisateur avant Disconnect. Pour protéger un long test sur 34900, réserver `main`.
 - Connexion automatique (#20) : après la prise du verrou, la réservation publie le port dans `worktrees/.run/studio.target`
   (checkout principal), inscrit le projet au registre commun (`%LOCALAPPDATA%\RojoAutoconnect\projects\fad.json`, place
   88580736516669), s'assure que le serveur de commande partagé répond (`http://127.0.0.1:34870/health` =

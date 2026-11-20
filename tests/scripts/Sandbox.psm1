@@ -74,8 +74,10 @@ while ($true) {
 '@
 
 $fakeLune = @'
-# Faux lune : `lune run <control-server.luau> <dossier>` demarre un faux serveur de commande v3 sur FAD_CONTROL_PORT.
-& (Join-Path $PSScriptRoot 'http.ps1') $env:FAD_CONTROL_PORT 'rojo-control 3' 'control-server.luau'
+# Faux lune : `lune run <control-server.luau> <dossier> <port>` demarre un faux serveur de commande v3 sur le port
+# passe en argument, comme le vrai serveur. Sans port, le vrai prendrait 34870 (celui du poste) : le faux refuse.
+if ($args.Count -lt 4) { exit 1 }
+& (Join-Path $PSScriptRoot 'http.ps1') $args[3] 'rojo-control 3' 'control-server.luau'
 '@
 
 $fakePlugin = @'
@@ -162,6 +164,8 @@ function Use-SandboxEnv($Sb, [string]$Session, [scriptblock]$Action) {
     PATH = "$($Sb.Bin);$env:PATH"; FAD_FAKE_T3 = $Sb.T3File; FAD_FAKE_GH = $Sb.GhFile
     CLAUDE_CODE_SESSION_ID = $(if ($Session) { $Session } else { $null }); GH_CONFIG_DIR = $null
     ROJO_AUTOCONNECT_DIR = $Sb.ControlDir; FAD_CONTROL_PORT = "$($Sb.ControlPort)"; FAD_CONNECT_WAIT = '2'
+    # Connexions de Studio simulees ('0' = aucune) : le vrai Studio du poste, connecte a 34900, ne compte jamais.
+    FAD_FAKE_STUDIO_PORTS = $(if ($env:FAD_FAKE_STUDIO_PORTS) { $env:FAD_FAKE_STUDIO_PORTS } else { '0' })
   }
   $saved = @{}
   foreach ($k in $vars.Keys) { $saved[$k] = [Environment]::GetEnvironmentVariable($k); [Environment]::SetEnvironmentVariable($k, $vars[$k]) }
