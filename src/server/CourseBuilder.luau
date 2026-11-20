@@ -1,541 +1,429 @@
--- Construction du décor, thème « centre d'essais de crash-test » : hub du labo (zones de lancer, postes
--- d'entraînement), piste de chaque couloir découpée en zones (arches, barrières colorées), obstacles régénérables.
--- Axe de la piste : +Z ; le couloir i est centré sur x = (i - 1) × LANE_SPACING ; ligne de départ à z = 0.
-local Debris = game:GetService("Debris")
+-- Construction du décor au style des jeux de référence (01 / 09) : hub en pelouse à damier (postes d'entraînement,
+-- bases des joueurs, stands à auvents), zone de lancer commune à SLOT_COUNT places, piste unique au fond d'un canyon
+-- en gradins (parois à briques, herbe voxel qui déborde, arbres et rochers voxel) qui change de couleurs à chaque zone,
+-- obstacles partagés (Server.Obstacles). Repère : Shared.CourseLayout.
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local CourseLayout = require(ReplicatedStorage.Shared.CourseLayout)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local Zones = require(ReplicatedStorage.Shared.Zones)
-local CollisionGroups = require(script.Parent.CollisionGroups)
+local Build = require(script.Parent.Build)
+local Obstacles = require(script.Parent.Obstacles)
+local Props = require(script.Parent.Props)
 
-local SEGMENT_LENGTH = 400 -- la piste est découpée (taille de pièce maximale : 2 048 studs)
-local ARCH_HEIGHT = 26
-local SHARD_COUNT = 12
-local SHARD_LIFETIME = 4
-local STATION_OFFSET = Vector3.new(-14, 0, -26) -- poste d'entraînement, relatif au centre du couloir
--- Obstacles très légers : le mannequin les traverse et les projette au lieu de s'y arrêter
-local CRATE_DENSITY = 0.05
-local BRICK_DENSITY = 0.08
+type Zone = Zones.Zone
 
-local GLASS_Z = { 45, 140, 240, 380, 560, 800, 1100, 1500, 2000 }
-local CRATES_Z = { 90, 300, 650, 1250, 1800 }
-local WALLS_Z = { 185, 480, 950, 1600, 2200 }
+local SEED = 20261120 -- décor identique d'un serveur à l'autre
+local SEGMENT_LENGTH = 400 -- longueur maximale d'une pièce de sol ou de paroi (limite : 2 048 studs)
+local CAP_THICKNESS = 1.2
+local CAP_OVERHANG = 1 -- l'herbe déborde du bord de chaque marche
+local END_Z = GameConfig.COURSE_LENGTH + 40 -- fond du canyon, derrière la paroi de bout de piste
 
+local rgb = Color3.fromRGB
 local COLORS = {
-	grass = Color3.fromRGB(110, 190, 80),
-	hub = Color3.fromRGB(225, 225, 230),
-	labWall = Color3.fromRGB(245, 245, 248),
-	asphalt = Color3.fromRGB(52, 54, 62),
-	line = Color3.fromRGB(245, 245, 245),
-	yellow = Color3.fromRGB(255, 205, 40),
-	black = Color3.fromRGB(25, 25, 30),
-	mat = Color3.fromRGB(40, 42, 50),
-	glass = Color3.fromRGB(170, 225, 255),
-	post = Color3.fromRGB(60, 64, 75),
-	crate = Color3.fromRGB(205, 140, 70),
-	brick = Color3.fromRGB(190, 80, 55),
+	launch = rgb(255, 175, 35),
+	line = rgb(250, 250, 250),
+	pad = rgb(255, 225, 60),
+	plot = rgb(175, 115, 65),
+	wood = rgb(200, 140, 80),
+	woodDark = rgb(150, 95, 50),
+	stone = rgb(200, 200, 210),
 }
 
-export type Glass = { part: BasePart, z: number, top: number, broken: boolean }
+export type Base = { model: Model, sign: TextLabel, displays: { BasePart } }
 
-export type Lane = {
+export type Slot = {
 	index: number,
-	x: number,
-	folder: Folder,
-	obstacles: Folder?,
-	pad: Vector3, -- centre de la zone de lancer, au sol
+	color: Color3,
+	pad: Vector3, -- centre de la place sur la zone de lancer, au sol
 	station: CFrame, -- position de l'avatar qui s'entraîne
 	prompt: ProximityPrompt, -- « Train » sur le poste d'entraînement
-	sign: TextLabel, -- nom du joueur et record, au-dessus de la zone de lancer
+	sign: TextLabel, -- nom du joueur et record, au-dessus de sa place
+	base: Base, -- présentoirs vides, remplis par la tâche collection
 	direction: Vector3,
 	spawn: CFrame,
-	glass: { Glass },
-	breakables: { BasePart },
 }
+
+export type Course = { slots: { Slot }, dummies: Folder }
 
 local CourseBuilder = {}
 
--- Cette méthode permet de créer une pièce ancrée avec ses propriétés lorsque le décor est construit.
-local function part(props: { [string]: any }): Part
-	local p = Instance.new("Part")
-	p.Anchored = true
-	p.TopSurface = Enum.SurfaceType.Smooth
-	p.BottomSurface = Enum.SurfaceType.Smooth
-	p.Material = Enum.Material.SmoothPlastic
-	for key, value in props do
-		if key ~= "Parent" then
-			(p :: any)[key] = value
-		end
-	end
-	-- Parent en dernier : la pièce entre dans le monde déjà configurée
-	p.Parent = props.Parent
-	return p
-end
+local rng = Random.new(SEED)
 
--- Cette méthode permet de créer une pièce décorative sans collision ni requête lorsque l'on pose un marquage.
-local function decor(props: { [string]: any }): Part
-	props.CanCollide = false
-	props.CanQuery = false
-	props.CanTouch = false
-	return part(props)
-end
-
--- Cette méthode permet de poser un gros texte au style du jeu sur une face de pièce lorsque l'on habille un panneau.
-local function surfaceText(target: BasePart, face: Enum.NormalId, text: string, color: Color3?): TextLabel
-	local gui = Instance.new("SurfaceGui")
-	gui.Face = face
-	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.PixelsPerStud = 20
-	gui.LightInfluence = 0
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.LuckiestGuy
-	label.TextScaled = true
-	label.TextColor3 = color or Color3.new(1, 1, 1)
-	label.Text = text
-	local stroke = Instance.new("UIStroke")
-	stroke.Thickness = 4
-	stroke.Color = Color3.new(0, 0, 0)
-	stroke.Parent = label
-	local padding = Instance.new("UIPadding")
-	padding.PaddingTop = UDim.new(0.12, 0)
-	padding.PaddingBottom = UDim.new(0.12, 0)
-	padding.PaddingLeft = UDim.new(0.04, 0)
-	padding.PaddingRight = UDim.new(0.04, 0)
-	padding.Parent = label
-	label.Parent = gui
-	gui.Parent = target
-	return label
-end
-
--- Cette méthode permet d'afficher un texte flottant au-dessus d'un point lorsque l'on pose un repère ou une enseigne.
-local function billboard(parent: Instance, position: Vector3, text: string, size: Vector2): TextLabel
-	local anchor = decor({ Name = "Label", Size = Vector3.one, Position = position, Transparency = 1, Parent = parent })
-	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.fromScale(size.X, size.Y)
-	gui.LightInfluence = 0
-	gui.MaxDistance = 500
-	gui.Parent = anchor
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.LuckiestGuy
-	label.TextScaled = true
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.Text = text
-	label.RichText = true
-	local stroke = Instance.new("UIStroke")
-	stroke.Thickness = 3
-	stroke.Parent = label
-	label.Parent = gui
-	return label
-end
-
--- Cette méthode permet de poser une bande de danger jaune et noire de `length` studs le long de X lorsque l'on marque
--- une limite au sol.
-local function hazardStripe(parent: Instance, center: Vector3, length: number, depth: number)
-	local count = math.floor(length / 4)
-	local width = length / count
-	for i = 0, count - 1 do
-		decor({
-			Name = "Hazard",
-			Size = Vector3.new(width, 0.08, depth),
-			Position = center + Vector3.new(-length / 2 + width * (i + 0.5), 0.04, 0),
-			Color = if i % 2 == 0 then COLORS.yellow else COLORS.black,
-			Parent = parent,
-		})
-	end
-end
-
--- Cette méthode permet de régler la lumière (plein jour saturé, comme les jeux du genre) lorsque le serveur démarre.
+-- Cette méthode permet de régler la lumière (plein jour saturé, nuages, comme les jeux de référence) lorsque le serveur
+-- démarre.
 local function setupLighting()
-	Lighting.ClockTime = 14
-	Lighting.Brightness = 3
-	Lighting.OutdoorAmbient = Color3.fromRGB(150, 150, 160)
-	Lighting.EnvironmentDiffuseScale = 0.6
-	Lighting.EnvironmentSpecularScale = 0.6
+	Lighting.ClockTime = 13.5
+	Lighting.Brightness = 3.2
+	Lighting.OutdoorAmbient = rgb(165, 165, 180)
+	Lighting.EnvironmentDiffuseScale = 0.5
+	Lighting.EnvironmentSpecularScale = 0.3
 	local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
-	atmosphere.Density = 0.25
-	atmosphere.Haze = 0.6
-	atmosphere.Color = Color3.fromRGB(200, 225, 255)
-	atmosphere.Decay = Color3.fromRGB(120, 160, 220)
+	atmosphere.Density = 0.18
+	atmosphere.Haze = 0.4
+	atmosphere.Glare = 0
+	atmosphere.Color = rgb(205, 230, 255)
+	atmosphere.Decay = rgb(140, 185, 240)
 	atmosphere.Parent = Lighting
 	local grading = Lighting:FindFirstChild("Grading") or Instance.new("ColorCorrectionEffect")
 	grading.Name = "Grading"
-	grading.Saturation = 0.2
-	grading.Contrast = 0.08
+	grading.Saturation = 0.25
+	grading.Contrast = 0.1
 	grading.Parent = Lighting
 	local bloom = Lighting:FindFirstChildOfClass("BloomEffect") or Instance.new("BloomEffect")
-	bloom.Intensity = 0.4
+	bloom.Intensity = 0.3
 	bloom.Size = 20
 	bloom.Threshold = 1.5
 	bloom.Parent = Lighting
+	local clouds = Workspace.Terrain:FindFirstChildOfClass("Clouds") or Instance.new("Clouds")
+	clouds.Cover = 0.55
+	clouds.Density = 0.7
+	clouds.Color = rgb(255, 255, 255)
+	clouds.Parent = Workspace.Terrain
 end
 
--- Cette méthode permet de construire la zone de lancer d'un couloir (pastille, chevrons, enseigne) lorsque le couloir
--- est créé.
-local function buildPad(lane: Lane)
-	local pad = lane.pad
-	local disc = CFrame.new(pad) * CFrame.Angles(0, 0, math.rad(90))
-	decor({
-		Name = "PadRing",
-		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(0.12, GameConfig.PAD_RADIUS * 2 + 1, GameConfig.PAD_RADIUS * 2 + 1),
-		CFrame = disc + Vector3.new(0, 0.06, 0),
-		Color = COLORS.black,
-		Parent = lane.folder,
-	})
-	decor({
-		Name = "Pad",
-		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(0.16, GameConfig.PAD_RADIUS * 2, GameConfig.PAD_RADIUS * 2),
-		CFrame = disc + Vector3.new(0, 0.08, 0),
-		Color = COLORS.yellow,
-		Material = Enum.Material.Neon,
-		Transparency = 0.15,
-		Parent = lane.folder,
-	})
-	for i = 1, 3 do
-		decor({
-			Name = "Chevron",
-			Size = Vector3.new(4, 0.1, 1),
-			CFrame = CFrame.new(pad + Vector3.new(0, 0.1, GameConfig.PAD_RADIUS + 1.5 * i))
-				* CFrame.Angles(0, math.rad(45), 0),
-			Color = COLORS.yellow,
-			Parent = lane.folder,
+-- Cette méthode permet de poser une dalle de sol à damier (axe-aligné, dessus à y = 0) sur le rectangle donné, découpée
+-- en pièces de SEGMENT_LENGTH au plus, lorsque l'on construit le hub, la zone de lancer ou la piste.
+local function ground(
+	parent: Instance,
+	minX: number,
+	maxX: number,
+	minZ: number,
+	maxZ: number,
+	color: Color3,
+	name: string
+)
+	local z = minZ
+	while z < maxZ - 0.01 do
+		local length = math.min(SEGMENT_LENGTH, maxZ - z)
+		Build.part({
+			Name = name,
+			Size = Vector3.new(maxX - minX, 2, length),
+			Position = Vector3.new((minX + maxX) / 2, -1, z + length / 2),
+			Color = color,
+			Variant = Build.CHECKER,
+			-- Frottement moyen : le mannequin glisse un peu après l'atterrissage
+			CustomPhysicalProperties = PhysicalProperties.new(2.4, 0.35, 0.25, 5, 1),
+			Parent = parent,
 		})
+		z += length
 	end
-	lane.sign = billboard(lane.folder, pad + Vector3.new(0, 15, 0), "FREE LANE", Vector2.new(9, 2.6))
-	billboard(lane.folder, pad + Vector3.new(0, 11.5, 0), "THROW!", Vector2.new(6, 1.8))
 end
 
--- Cette méthode permet de construire le poste d'entraînement d'un couloir (tapis, portique, invite « Train »)
--- lorsque le couloir est créé.
-local function buildStation(lane: Lane)
-	local center = lane.station.Position - Vector3.new(0, 3, 0)
-	decor({
-		Name = "TrainingMat",
-		Size = Vector3.new(10, 0.3, 10),
-		Position = center + Vector3.new(0, 0.15, 0),
-		Color = COLORS.mat,
-		Material = Enum.Material.Rubber,
-		Parent = lane.folder,
+-- Cette méthode permet de poser un bloc axe-aligné entre deux coins (minimum, maximum) lorsque l'on monte une marche de
+-- paroi ou sa couverture.
+local function box(parent: Instance, low: Vector3, high: Vector3, color: Color3, variant: string, name: string): Part
+	return Build.part({
+		Name = name,
+		Size = high - low,
+		Position = (low + high) / 2,
+		Color = color,
+		Variant = variant,
+		Parent = parent,
 	})
-	hazardStripe(lane.folder, center + Vector3.new(0, 0.3, 5.2), 10, 0.6)
-	hazardStripe(lane.folder, center + Vector3.new(0, 0.3, -5.2), 10, 0.6)
-	-- Portique décoratif derrière l'avatar
+end
+
+-- Cette méthode permet de faire déborder l'herbe (ou la neige, le sable…) de la couverture d'une marche en blocs de
+-- longueurs et de hauteurs variées, le long d'un bord droit qui fait face à `facing` (±X ou ±Z), lorsque l'on habille
+-- une paroi.
+local function drips(parent: Instance, edge: Vector3, facing: Vector3, length: number, color: Color3)
+	-- `edge` : début du bord, au niveau du dessous de la couverture ; le bord court le long de `along`
+	local along = Vector3.new(0, 1, 0):Cross(facing)
+	local t = rng:NextNumber(0, 3)
+	while t < length - 2 do
+		local size = math.min(rng:NextInteger(2, 6), length - t)
+		local height = rng:NextInteger(1, 3)
+		local center = edge + along * (t + size / 2) + facing * (CAP_OVERHANG / 2) - Vector3.new(0, height / 2, 0)
+		local extent = along * size + facing * CAP_OVERHANG
+		Build.decor({
+			Name = "Drip",
+			Size = Vector3.new(math.abs(extent.X), height, math.abs(extent.Z)),
+			Position = center,
+			Color = color,
+			Variant = Build.BRICK,
+			Parent = parent,
+		})
+		t += size + rng:NextInteger(0, 4)
+	end
+end
+
+-- Cette méthode permet de semer le décor de la zone sur une bande (de `from` à `to` au sol, espacement moyen
+-- `spacing`, écart latéral `jitter` le long de `side`) lorsque l'on habille une marche ou le pied d'une paroi.
+local function scatter(
+	parent: Instance,
+	zone: Zone,
+	from: Vector3,
+	to: Vector3,
+	spacing: number,
+	side: Vector3,
+	jitter: number,
+	solid: boolean
+)
+	local delta = to - from
+	local length = delta.Magnitude
+	local direction = delta.Unit
+	local t = rng:NextNumber(0, spacing)
+	while t < length do
+		local kind = zone.props[rng:NextInteger(1, #zone.props)]
+		local position = from + direction * t + side * rng:NextNumber(-jitter, jitter)
+		Props.build(
+			kind,
+			parent,
+			CFrame.new(position) * CFrame.Angles(0, math.rad(rng:NextInteger(0, 3) * 90), 0),
+			rng,
+			solid
+		)
+		t += spacing * rng:NextNumber(0.6, 1.4)
+	end
+end
+
+-- Cette méthode permet de monter une paroi en gradins le long d'un bord droit de la zone ouverte (hub ou piste) :
+-- `start` / `finish` bornent le bord au sol, `facing` pointe vers la zone ouverte ; chaque marche recule de
+-- TIER_STEP, est coiffée d'herbe qui déborde et porte le décor de la zone. `grow` (0 ou 1 à chaque bout) allonge les
+-- marches hautes de TIER_STEP par marche pour rejoindre une paroi voisine (-1 les raccourcit : épaulement en gradins).
+local function terraces(
+	parent: Instance,
+	start: Vector3,
+	finish: Vector3,
+	facing: Vector3,
+	zone: Zone,
+	growStart: number,
+	growEnd: number
+)
+	local along = (finish - start).Unit
+	for tier = 0, CourseLayout.TIER_COUNT - 1 do
+		local _, top = CourseLayout.tier(tier)
+		local back = tier * CourseLayout.TIER_STEP -- recul de la marche
+		local a = start - along * (growStart * back) - facing * back
+		local b = finish + along * (growEnd * back) - facing * back
+		-- Bloc de la marche : du bord jusqu'au bord extérieur du plateau
+		local depth = CourseLayout.OUTER - GameConfig.TRACK_WIDTH / 2 - back
+		local outer = -facing * depth
+		local low = Vector3.new(
+			math.min(a.X, b.X + outer.X, a.X + outer.X, b.X),
+			top - CourseLayout.TIER_HEIGHT,
+			math.min(a.Z, b.Z + outer.Z, a.Z + outer.Z, b.Z)
+		)
+		local high = Vector3.new(
+			math.max(a.X, b.X + outer.X, a.X + outer.X, b.X),
+			top,
+			math.max(a.Z, b.Z + outer.Z, a.Z + outer.Z, b.Z)
+		)
+		box(parent, low, high, zone.wall, Build.CHECKER, "Terrace")
+		-- Couverture de tout le dessus du bloc (cachée sous la marche suivante), qui déborde côté zone ouverte ; pas aux
+		-- bouts, où elle chevaucherait la couverture de la paroi voisine
+		local c0 = a + facing * CAP_OVERHANG
+		local c1 = b + outer
+		box(
+			parent,
+			Vector3.new(math.min(c0.X, c1.X), top - 0.4, math.min(c0.Z, c1.Z)),
+			Vector3.new(math.max(c0.X, c1.X), top + CAP_THICKNESS - 0.4, math.max(c0.Z, c1.Z)),
+			zone.top,
+			Build.CHECKER,
+			"TerraceTop"
+		)
+		drips(parent, a + Vector3.new(0, top - 0.4, 0), facing, (b - a).Magnitude, zone.top)
+		-- Décor du terre-plein (marches) ou du plateau (dernière marche, deux rangées)
+		local ground0 = a + Vector3.new(0, top + CAP_THICKNESS - 0.4, 0) - facing * (CourseLayout.TIER_STEP / 2)
+		local ground1 = b + Vector3.new(0, top + CAP_THICKNESS - 0.4, 0) - facing * (CourseLayout.TIER_STEP / 2)
+		if tier < CourseLayout.TIER_COUNT - 1 then
+			scatter(parent, zone, ground0, ground1, 26, facing, 1.5, true)
+		else
+			scatter(parent, zone, ground0, ground1, 16, facing, 2, true)
+			scatter(parent, zone, ground0 - facing * 22, ground1 - facing * 22, 18, facing, 8, true)
+		end
+	end
+end
+
+-- Cette méthode permet de construire la zone de lancer commune (bande orange à damier, ligne de départ blanche, une
+-- pastille colorée par place avec son enseigne) lorsque le serveur démarre.
+local function buildLaunchZone(parent: Instance, slots: { Slot })
+	local half = GameConfig.TRACK_WIDTH / 2
+	ground(parent, -half, half, -GameConfig.LAUNCH_DEPTH, 0, COLORS.launch, "LaunchZone")
+	Build.decor({
+		Name = "StartLine",
+		Size = Vector3.new(GameConfig.TRACK_WIDTH, 0.1, 1.2),
+		Position = Vector3.new(0, 0.05, 0.6),
+		Color = COLORS.line,
+		Parent = parent,
+	})
+	for _, slot in slots do
+		local disc = CFrame.new(slot.pad) * CFrame.Angles(0, 0, math.rad(90))
+		Build.decor({
+			Name = "PadRing",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.12, GameConfig.PAD_RADIUS * 2 + 1.2, GameConfig.PAD_RADIUS * 2 + 1.2),
+			CFrame = disc + Vector3.new(0, 0.06, 0),
+			Color = COLORS.line,
+			Parent = parent,
+		})
+		Build.decor({
+			Name = "Pad",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.16, GameConfig.PAD_RADIUS * 2, GameConfig.PAD_RADIUS * 2),
+			CFrame = disc + Vector3.new(0, 0.08, 0),
+			Color = slot.color,
+			Parent = parent,
+		})
+		slot.sign = Build.billboard(parent, slot.pad + Vector3.new(0, 13, 0), "FREE", Vector2.new(8, 2.4))
+	end
+end
+
+-- Cette méthode permet de construire le poste d'entraînement d'une place (deux poteaux en bois voxel, barre de
+-- traction, pastille jaune, invite « Train ») lorsque le hub est construit, au style de la barre de traction de 01 / 09.
+local function buildStation(parent: Instance, slot: Slot)
+	local center = slot.station.Position - Vector3.new(0, 3, 0)
+	local model = Instance.new("Model")
+	model.Name = "Station" .. slot.index
+	Build.decor({
+		Name = "TrainPad",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.16, 7, 7),
+		CFrame = CFrame.new(center + Vector3.new(0, 0.08, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+		Color = COLORS.pad,
+		Parent = model,
+	})
 	for _, side in { -1, 1 } do
-		part({
-			Name = "RackPost",
-			Size = Vector3.new(0.8, 9, 0.8),
-			Position = center + Vector3.new(side * 4.2, 4.5, -4),
-			Color = COLORS.black,
-			Material = Enum.Material.Metal,
-			Parent = lane.folder,
-		})
+		local x = side * 4.6
+		Build.block(model, Vector3.new(2, 13, 2), CFrame.new(center + Vector3.new(x, 6.5, 1.5)), COLORS.wood)
+		for _, y in { 3, 7, 11 } do
+			Build.block(model, Vector3.new(2.3, 0.8, 2.3), CFrame.new(center + Vector3.new(x, y, 1.5)), COLORS.woodDark)
+		end
+		Build.block(model, Vector3.new(2.6, 1.2, 2.6), CFrame.new(center + Vector3.new(x, 13.6, 1.5)), slot.color)
 	end
-	part({
-		Name = "RackBar",
-		Size = Vector3.new(9.2, 0.8, 0.8),
-		Position = center + Vector3.new(0, 9, -4),
-		Color = COLORS.yellow,
-		Material = Enum.Material.Metal,
-		Parent = lane.folder,
-	})
-	local anchor = decor({
+	Build.block(model, Vector3.new(7.2, 1, 1), CFrame.new(center + Vector3.new(0, 12, 1.5)), COLORS.woodDark)
+	model.Parent = parent
+	local anchor = Build.decor({
 		Name = "TrainSpot",
 		Size = Vector3.new(2, 2, 2),
 		Position = center + Vector3.new(0, 2, 0),
 		Transparency = 1,
-		Parent = lane.folder,
+		Parent = model,
 	})
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Train"
-	prompt.ObjectText = "Lift dummies"
+	prompt.ObjectText = "Pull-up bar"
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
 	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 12
+	prompt.MaxActivationDistance = 10
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = anchor
-	lane.prompt = prompt
-	billboard(lane.folder, center + Vector3.new(0, 12, -4), "💪 TRAIN", Vector2.new(7, 2.2))
+	slot.prompt = prompt
+	Build.billboard(model, center + Vector3.new(0, 17, 1.5), "💪 TRAIN", Vector2.new(6, 1.8))
 end
 
--- Cette méthode permet de construire la piste d'un couloir (bitume, lignes, repères, barrières et arches de zones)
--- lorsque le serveur démarre.
-local function buildTrack(lane: Lane)
-	local x, length, width = lane.x, GameConfig.COURSE_LENGTH, GameConfig.LANE_WIDTH
-	for start = 0, length - 1, SEGMENT_LENGTH do
-		local segment = math.min(SEGMENT_LENGTH, length - start)
-		part({
-			Name = "Track",
-			Size = Vector3.new(width, 2, segment),
-			Position = Vector3.new(x, -1, start + segment / 2),
-			Color = COLORS.asphalt,
-			Material = Enum.Material.Asphalt,
-			-- Frottement moyen : le mannequin glisse un peu après l'atterrissage
-			CustomPhysicalProperties = PhysicalProperties.new(2.4, 0.35, 0.25, 5, 1),
-			Parent = lane.folder,
-		})
-		for _, side in { -1, 1 } do
-			decor({
-				Name = "EdgeLine",
-				Size = Vector3.new(0.6, 0.06, segment),
-				Position = Vector3.new(x + side * (width / 2 - 1.5), 0.03, start + segment / 2),
-				Color = COLORS.line,
-				Parent = lane.folder,
-			})
+-- Cette méthode permet de construire la base d'une place (terrain clôturé, présentoirs vides, panneau au nom du
+-- joueur) lorsque le hub est construit ; les présentoirs attendent les mannequins de collection.
+local function buildBase(parent: Instance, slot: Slot)
+	local center = CourseLayout.basePosition(slot.index)
+	local size = CourseLayout.BASE_SIZE
+	local model = Instance.new("Model")
+	model.Name = "Base" .. slot.index
+	Build.decor({
+		Name = "Plot",
+		Size = Vector3.new(size.X, 0.3, size.Z),
+		Position = center + Vector3.new(0, 0.15, 0),
+		Color = COLORS.plot,
+		Variant = Build.BRICK,
+		Parent = model,
+	})
+	-- Clôture en blocs, ouverte du côté du centre du hub
+	local hx, hz = size.X / 2, size.Z / 2
+	local inward = if center.X > 0 then -1 else 1
+	local corners = {
+		Vector3.new(-hx, 0, -hz),
+		Vector3.new(hx, 0, -hz),
+		Vector3.new(hx, 0, hz),
+		Vector3.new(-hx, 0, hz),
+	}
+	for i, corner in corners do
+		local nextCorner = corners[i % 4 + 1]
+		local from, to = center + corner, center + nextCorner
+		if math.abs(corner.X - nextCorner.X) < 0.01 and math.sign(corner.X) == inward then
+			-- Côté du hub : deux tronçons de part et d'autre d'une entrée de 10 studs
+			local mid = (from + to) / 2
+			local dir = (to - from).Unit
+			Props.fence(model, from, mid - dir * 5)
+			Props.fence(model, mid + dir * 5, to)
+		else
+			Props.fence(model, from, to)
 		end
 	end
-	hazardStripe(lane.folder, Vector3.new(x, 0, 1), width, 2)
-
-	local markers = Instance.new("Folder")
-	markers.Name = "Markers"
-	for d = 50, length, 50 do
-		local major = d % 100 == 0
-		decor({
-			Name = "Marker",
-			Size = Vector3.new(if major then width - 4 else 6, 0.06, if major then 0.8 else 0.5),
-			Position = Vector3.new(x, 0.03, d),
-			Color = COLORS.line,
-			Parent = markers,
-		})
-		if major then
-			billboard(markers, Vector3.new(x - width / 2 + 4, 5, d), d .. " m", Vector2.new(10, 4))
-		end
+	local displays: { BasePart } = {}
+	for _, position in CourseLayout.displayPositions(slot.index) do
+		Build.block(model, Vector3.new(5, 1.6, 5), CFrame.new(position + Vector3.new(0, 0.8, 0)), COLORS.stone)
+		table.insert(
+			displays,
+			Build.block(model, Vector3.new(4, 0.4, 4), CFrame.new(position + Vector3.new(0, 1.8, 0)), slot.color)
+		)
 	end
-	markers.Parent = lane.folder
-
-	for index, zone in Zones.LIST do
-		local zoneEnd = if Zones.LIST[index + 1] then Zones.LIST[index + 1].start else length
-		local zoneLength = math.min(zoneEnd, length) - zone.start
-		for _, side in { -1, 1 } do
-			-- Barrière basse colorée de la zone, et paroi invisible qui garde le mannequin dans son couloir
-			part({
-				Name = "Barrier",
-				Size = Vector3.new(1.5, 3, zoneLength),
-				Position = Vector3.new(x + side * (width / 2 + 0.75), 1.5, zone.start + zoneLength / 2),
-				Color = zone.color,
-				Parent = lane.folder,
-			})
-			part({
-				Name = "SideWall",
-				Size = Vector3.new(1, GameConfig.SIDE_WALL_HEIGHT, zoneLength),
-				Position = Vector3.new(
-					x + side * (width / 2 + 0.75),
-					GameConfig.SIDE_WALL_HEIGHT / 2 + 3,
-					zone.start + zoneLength / 2
-				),
-				Transparency = 1,
-				Parent = lane.folder,
-			})
-		end
-		-- Arche d'entrée de zone (traversable) avec nom et multiplicateur
-		local z = math.max(zone.start, 6)
-		for _, side in { -1, 1 } do
-			decor({
-				Name = "ArchPillar",
-				Size = Vector3.new(2, ARCH_HEIGHT, 2),
-				Position = Vector3.new(x + side * (width / 2 + 2), ARCH_HEIGHT / 2, z),
-				Color = zone.color,
-				Parent = lane.folder,
-			})
-		end
-		local beam = decor({
-			Name = "ArchBeam",
-			Size = Vector3.new(width + 6, 5, 2),
-			Position = Vector3.new(x, ARCH_HEIGHT + 2.5, z),
-			Color = zone.color,
-			Parent = lane.folder,
-		})
-		surfaceText(beam, Enum.NormalId.Front, string.format("%s  x%s", string.upper(zone.name), zone.multiplier))
-	end
-end
-
--- Cette méthode permet de créer une pièce d'obstacle non ancrée et légère lorsque l'on monte une pile ou un mur.
-local function breakable(folder: Folder, props: { [string]: any }, density: number): Part
-	props.Anchored = false
-	props.CustomPhysicalProperties = PhysicalProperties.new(density, 0.5, 0.2)
-	props.Parent = folder
-	return part(props)
-end
-
--- Cette méthode permet d'ajouter une vitre (avec son cadre haut) au couloir lorsque les obstacles sont reconstruits ;
--- plus elle est loin, plus elle est haute, pour rester sur la trajectoire des lancers puissants.
-local function buildGlass(lane: Lane, folder: Folder, z: number)
-	local height = math.clamp(30 + z * 0.15, 30, 320)
-	local glass = part({
-		Name = "Glass",
-		Size = Vector3.new(GameConfig.LANE_WIDTH, height, 0.4),
-		Position = Vector3.new(lane.x, height / 2, z),
-		Color = COLORS.glass,
-		Material = Enum.Material.Glass,
-		Transparency = 0.5,
-		Reflectance = 0.15,
-		-- Traversée détectée par LaunchService (franchissement de z), pas par collision
-		CanCollide = false,
-		CanTouch = false,
-		Parent = folder,
-	})
-	decor({
-		Name = "GlassFrame",
-		Size = Vector3.new(GameConfig.LANE_WIDTH, 1.2, 1),
-		Position = Vector3.new(lane.x, height, z),
-		Color = COLORS.post,
-		Material = Enum.Material.Metal,
-		Parent = folder,
-	})
-	table.insert(lane.glass, { part = glass, z = z, top = height, broken = false })
-end
-
--- Cette méthode permet d'ajouter une pile de caisses (3 × 3) au couloir lorsque les obstacles sont reconstruits.
-local function buildCrates(lane: Lane, folder: Folder, z: number)
-	for row = 0, 2 do
-		for col = -1, 1 do
-			table.insert(
-				lane.breakables,
-				breakable(folder, {
-					Name = "Crate",
-					Size = Vector3.new(4, 4, 4),
-					Position = Vector3.new(lane.x + col * 4.05, 2 + row * 4, z),
-					Color = COLORS.crate,
-					Material = Enum.Material.WoodPlanks,
-				}, CRATE_DENSITY)
-			)
-		end
-	end
-end
-
--- Cette méthode permet d'ajouter un mur de briques en quinconce (6 × 5) au couloir lorsque les obstacles sont
--- reconstruits.
-local function buildWall(lane: Lane, folder: Folder, z: number)
-	for row = 0, 4 do
-		local offset = if row % 2 == 0 then -1 else 1
-		for col = 0, 5 do
-			table.insert(
-				lane.breakables,
-				breakable(folder, {
-					Name = "Brick",
-					Size = Vector3.new(3.96, 2, 2),
-					Position = Vector3.new(lane.x + (col - 2.5) * 4 + offset, 1 + row * 2, z),
-					Color = COLORS.brick,
-					Material = Enum.Material.Brick,
-				}, BRICK_DENSITY)
-			)
-		end
-	end
-end
-
--- Cette méthode permet de reconstruire tous les obstacles d'un couloir à neuf lorsque le lancer précédent est fini.
-function CourseBuilder.resetObstacles(lane: Lane)
-	if lane.obstacles then
-		lane.obstacles:Destroy()
-	end
-	table.clear(lane.glass)
-	table.clear(lane.breakables)
-	local folder = Instance.new("Folder")
-	folder.Name = "Obstacles"
-	for _, z in GLASS_Z do
-		buildGlass(lane, folder, z)
-	end
-	for _, z in CRATES_Z do
-		buildCrates(lane, folder, z)
-	end
-	for _, z in WALLS_Z do
-		buildWall(lane, folder, z)
-	end
-	folder.Parent = lane.folder
-	lane.obstacles = folder
-	-- Simulées par le serveur : sinon le joueur le plus proche prend la main sur la physique des débris
-	for _, p in lane.breakables do
-		p:SetNetworkOwner(nil)
-	end
-end
-
--- Cette méthode permet de briser une vitre en éclats lorsque le mannequin la traverse au point `impact`.
-function CourseBuilder.shatter(lane: Lane, glass: Glass, impact: Vector3, velocity: Vector3)
-	glass.broken = true
-	glass.part:Destroy()
-	local parent = lane.obstacles or lane.folder
-	for _ = 1, SHARD_COUNT do
-		local offset = Vector3.new(math.random() * 10 - 5, math.random() * 10 - 5, 0)
-		local position = Vector3.new(impact.X, math.clamp(impact.Y, 1, glass.top - 1), glass.z) + offset
-		local shard = part({
-			Name = "Shard",
-			Size = Vector3.new(0.6 + math.random() * 1.8, 0.6 + math.random() * 1.8, 0.15),
-			CFrame = CFrame.new(position) * CFrame.Angles(math.random() * 6, math.random() * 6, math.random() * 6),
-			Color = COLORS.glass,
-			Material = Enum.Material.Glass,
-			Transparency = 0.3,
-			Reflectance = 0.3,
-			Anchored = false,
-			CanQuery = false,
-			CanTouch = false,
-			CollisionGroup = CollisionGroups.DEBRIS,
-			Parent = parent,
-		})
-		local spread = Vector3.new(math.random() * 40 - 20, math.random() * 30, math.random() * 10)
-		shard.AssemblyLinearVelocity = velocity * 0.5 + spread
-		shard:SetNetworkOwner(nil)
-		Debris:AddItem(shard, SHARD_LIFETIME)
-	end
-end
-
--- Cette méthode permet de construire le hub du labo (pelouse, sol, mur du fond et son enseigne, point
--- d'apparition) lorsque le serveur démarre.
-local function buildHub(course: Folder, minX: number, maxX: number)
-	local centerX = (minX + maxX) / 2
-	local depth = GameConfig.HUB_DEPTH
-	local grassMinZ, grassMaxZ = -depth - 80, GameConfig.COURSE_LENGTH + 300
-	part({
-		Name = "Grass",
-		Size = Vector3.new(maxX - minX + 300, 2, grassMaxZ - grassMinZ),
-		Position = Vector3.new(centerX, -1.6, (grassMinZ + grassMaxZ) / 2),
-		Color = COLORS.grass,
-		Material = Enum.Material.Grass,
-		Parent = course,
-	})
-	part({
-		Name = "Hub",
-		Size = Vector3.new(maxX - minX, 2, depth),
-		Position = Vector3.new(centerX, -1, -depth / 2),
-		Color = COLORS.hub,
-		Material = Enum.Material.Concrete,
-		Parent = course,
-	})
-	part({
-		Name = "LabWall",
-		Size = Vector3.new(maxX - minX, 30, 2),
-		Position = Vector3.new(centerX, 15, -depth - 1),
-		Color = COLORS.labWall,
-		Parent = course,
-	})
-	part({
-		Name = "LabStripe",
-		Size = Vector3.new(maxX - minX, 3, 0.2),
-		Position = Vector3.new(centerX, 4, -depth + 0.1),
-		Color = COLORS.yellow,
-		Parent = course,
-	})
-	local sign = decor({
-		Name = "LabSign",
-		Size = Vector3.new(120, 14, 0.2),
-		Position = Vector3.new(centerX, 18, -depth + 0.1),
-		Transparency = 1,
-		Parent = course,
-	})
-	surfaceText(sign, Enum.NormalId.Back, "CRASH TEST LAB", COLORS.yellow)
+	-- Panneau à l'entrée, tourné vers le centre du hub
+	local front = center + Vector3.new(inward * (hx + 3), 0, 0)
+	local facing = CFrame.lookAt(front, front + Vector3.new(inward, 0, 0))
 	for _, side in { -1, 1 } do
-		part({
-			Name = "HubWall",
-			Size = Vector3.new(2, 12, depth),
-			Position = Vector3.new(if side < 0 then minX - 1 else maxX + 1, 6, -depth / 2),
-			Color = COLORS.labWall,
-			Parent = course,
-		})
+		Build.block(model, Vector3.new(1, 7, 1), facing * CFrame.new(side * 6, 3.5, 0), COLORS.woodDark)
+	end
+	local board = Build.block(model, Vector3.new(14, 3.6, 0.8), facing * CFrame.new(0, 6.5, 0), slot.color)
+	local sign = Build.surfaceText(board, Enum.NormalId.Front, "EMPTY BASE")
+	model.Parent = parent
+	slot.base = { model = model, sign = sign, displays = displays }
+end
+
+-- Cette méthode permet de construire le hub (pelouse à damier, parois en gradins, postes, bases, stands à auvents,
+-- chevrons vers la zone de lancer, point d'apparition) lorsque le serveur démarre.
+local function buildHub(parent: Instance, slots: { Slot })
+	local zone = Zones.LIST[1]
+	local halfW = GameConfig.HUB_WIDTH / 2
+	local front = -GameConfig.LAUNCH_DEPTH
+	local back = front - GameConfig.HUB_DEPTH
+	ground(parent, -halfW, halfW, back, front, zone.ground, "Hub")
+	-- Parois : côtés (jusqu'aux épaulements de la piste) et fond
+	terraces(parent, Vector3.new(halfW, 0, back), Vector3.new(halfW, 0, front), -Vector3.xAxis, zone, 1, 1)
+	terraces(parent, Vector3.new(-halfW, 0, front), Vector3.new(-halfW, 0, back), Vector3.xAxis, zone, 1, 1)
+	terraces(parent, Vector3.new(-halfW, 0, back), Vector3.new(halfW, 0, back), Vector3.zAxis, zone, 1, 1)
+	-- Les épaulements entre le hub (large) et la piste (étroite) sont les bouts des parois de la piste
+
+	for _, slot in slots do
+		buildStation(parent, slot)
+		buildBase(parent, slot)
+	end
+	-- Stands du fond (vente et boutique : branchés par les tâches collection et boutique)
+	local standZ = back + 14
+	Props.stand(
+		parent,
+		CFrame.new(-24, 0, standZ) * CFrame.Angles(0, math.pi, 0),
+		"SELL",
+		rgb(235, 45, 45),
+		rgb(235, 45, 45)
+	)
+	Props.stand(
+		parent,
+		CFrame.new(24, 0, standZ) * CFrame.Angles(0, math.pi, 0),
+		"SHOP",
+		rgb(50, 140, 255),
+		rgb(50, 140, 255)
+	)
+	-- Chevrons jaunes au sol vers la zone de lancer (01 / 09)
+	for i = 0, 3 do
+		for _, side in { -1, 1 } do
+			Build.decor({
+				Name = "Chevron",
+				Size = Vector3.new(3.2, 0.1, 1),
+				CFrame = CFrame.new(side * 1.1, 0.06, front - 30 + i * 6) * CFrame.Angles(0, math.rad(side * 45), 0),
+				Color = COLORS.pad,
+				Parent = parent,
+			})
+		end
+	end
+	-- Arbres et buissons aux coins du hub
+	for _, corner in { Vector3.new(-1, 0, 0), Vector3.new(1, 0, 0) } do
+		for _ = 1, 5 do
+			local position =
+				Vector3.new(corner.X * rng:NextNumber(halfW - 12, halfW - 4), 0, rng:NextNumber(back + 4, back + 20))
+			Props.build(if rng:NextNumber() < 0.6 then "tree" else "bush", parent, CFrame.new(position), rng, true)
+		end
 	end
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "SpawnLocation"
@@ -545,13 +433,107 @@ local function buildHub(course: Folder, minX: number, maxX: number)
 	spawn.Neutral = true
 	spawn.Duration = 0
 	spawn.Size = Vector3.new(6, 1, 6)
-	spawn.Position = Vector3.new(centerX, 0.5, -depth + 10)
-	spawn.Parent = course
+	spawn.Position = Vector3.new(0, 0.5, front - 36)
+	spawn.Parent = parent
 end
 
--- Cette méthode permet de construire tout le décor (hub, couloirs, obstacles, lumière) lorsque le serveur démarre ;
--- renvoie la liste des couloirs.
-function CourseBuilder.build(): { Lane }
+-- Cette méthode permet de construire la piste (sol de chaque zone, parois en gradins à ses couleurs, décor au pied des
+-- parois, ligne et panneaux d'entrée de zone, paroi de bout de piste) lorsque le serveur démarre.
+local function buildTrack(parent: Instance)
+	local half = GameConfig.TRACK_WIDTH / 2
+	local length = GameConfig.COURSE_LENGTH
+	for index, zone in Zones.LIST do
+		local folder = Instance.new("Folder")
+		folder.Name = "Zone" .. index
+		local zoneStart = zone.start
+		local zoneEnd = if index == #Zones.LIST then END_Z else Zones.finish(index, length)
+		ground(folder, -half, half, zoneStart, zoneEnd, zone.ground, "Track")
+		-- Les parois de la dernière zone dépassent la paroi de bout de piste (pas de trou aux coins)
+		local wallEnd = if index == #Zones.LIST then END_Z + 200 else zoneEnd
+		-- Parois : la première zone part des épaulements (z = -LAUNCH_DEPTH), les marches hautes reculent avec eux
+		local wallStart = if index == 1 then -GameConfig.LAUNCH_DEPTH else zoneStart
+		local grow = if index == 1 then -1 else 0
+		terraces(folder, Vector3.new(half, 0, wallStart), Vector3.new(half, 0, wallEnd), -Vector3.xAxis, zone, grow, 0)
+		terraces(folder, Vector3.new(-half, 0, wallEnd), Vector3.new(-half, 0, wallStart), Vector3.xAxis, zone, 0, grow)
+		-- Décor au pied des parois (traversable : le mannequin ne s'y accroche pas)
+		for _, side in { -1, 1 } do
+			local x = side * (half - 4)
+			scatter(
+				folder,
+				zone,
+				Vector3.new(x, 0, math.max(zoneStart, 8)),
+				Vector3.new(x, 0, zoneEnd),
+				22,
+				Vector3.xAxis,
+				1.5,
+				false
+			)
+		end
+		if index > 1 then
+			Build.decor({
+				Name = "ZoneLine",
+				Size = Vector3.new(GameConfig.TRACK_WIDTH, 0.1, 1.2),
+				Position = Vector3.new(0, 0.05, zoneStart),
+				Color = COLORS.line,
+				Parent = folder,
+			})
+		end
+		local label = string.format("%s  x%s", string.upper(zone.name), zone.multiplier)
+		for _, side in { -1, 1 } do
+			Props.signpost(folder, CFrame.new(side * (half - 9), 0, zoneStart + 4), label, zone.color)
+		end
+		folder.Parent = parent
+	end
+	-- Paroi de bout de piste, en gradins tournés vers le départ
+	local last = Zones.LIST[#Zones.LIST]
+	terraces(parent, Vector3.new(half, 0, END_Z), Vector3.new(-half, 0, END_Z), -Vector3.zAxis, last, 1, 1)
+	-- Parois invisibles au-dessus des gradins : les mannequins restent dans le canyon
+	local _, topHeight = CourseLayout.tier(CourseLayout.TIER_COUNT - 1)
+	local innerTop = CourseLayout.tier(CourseLayout.TIER_COUNT - 1)
+	for _, side in { -1, 1 } do
+		Build.part({
+			Name = "SideWall",
+			Size = Vector3.new(1, GameConfig.SIDE_WALL_HEIGHT, END_Z + GameConfig.LAUNCH_DEPTH),
+			Position = Vector3.new(
+				side * (innerTop + 0.5),
+				topHeight + GameConfig.SIDE_WALL_HEIGHT / 2,
+				(END_Z - GameConfig.LAUNCH_DEPTH) / 2
+			),
+			Transparency = 1,
+			CanQuery = false,
+			Parent = parent,
+		})
+	end
+end
+
+-- Cette méthode permet de créer les places des joueurs (position, couleur, repères) avant que le décor ne les habille
+-- lorsque le serveur démarre.
+local function newSlots(): { Slot }
+	local pitch = math.rad(GameConfig.LAUNCH_PITCH_DEG)
+	local direction = Vector3.new(0, math.sin(pitch), math.cos(pitch))
+	local slots = {}
+	for index = 1, GameConfig.SLOT_COUNT do
+		local pad = CourseLayout.padPosition(index)
+		local stationPos = CourseLayout.stationPosition(index) + Vector3.new(0, 3, 0)
+		local spawnPos = pad + Vector3.new(0, 3, -GameConfig.PAD_RADIUS - 3)
+		slots[index] = {
+			index = index,
+			color = CourseLayout.SLOT_COLORS[(index - 1) % #CourseLayout.SLOT_COLORS + 1],
+			pad = pad,
+			station = CFrame.lookAt(stationPos, stationPos + Vector3.zAxis),
+			prompt = nil :: any,
+			sign = nil :: any,
+			base = nil :: any,
+			direction = direction,
+			spawn = CFrame.lookAt(spawnPos, spawnPos + Vector3.zAxis),
+		}
+	end
+	return slots
+end
+
+-- Cette méthode permet de construire tout le décor (hub, zone de lancer, piste, obstacles, lumière) lorsque le serveur
+-- démarre ; renvoie les places des joueurs et le dossier des mannequins lancés.
+function CourseBuilder.build(): Course
 	for _, name in { "Baseplate", "SpawnLocation" } do
 		local existing = Workspace:FindFirstChild(name)
 		if existing then
@@ -559,46 +541,18 @@ function CourseBuilder.build(): { Lane }
 		end
 	end
 	setupLighting()
-
 	local course = Instance.new("Folder")
 	course.Name = "Course"
-	local count, spacing = GameConfig.LANE_COUNT, GameConfig.LANE_SPACING
-	buildHub(course, -spacing / 2, (count - 0.5) * spacing)
-
-	local pitch = math.rad(GameConfig.LAUNCH_PITCH_DEG)
-	local direction = Vector3.new(0, math.sin(pitch), math.cos(pitch))
-	local lanes = {}
-	for i = 1, count do
-		local x = (i - 1) * spacing
-		local folder = Instance.new("Folder")
-		folder.Name = "Lane" .. i
-		folder.Parent = course
-		local stationPos = Vector3.new(x, 3, 0) + STATION_OFFSET
-		local spawnPos = Vector3.new(x + 10, 3, GameConfig.PAD_Z - 8)
-		local lane: Lane = {
-			index = i,
-			x = x,
-			folder = folder,
-			obstacles = nil,
-			pad = Vector3.new(x, 0, GameConfig.PAD_Z),
-			station = CFrame.lookAt(stationPos, stationPos + Vector3.zAxis),
-			prompt = nil :: any,
-			sign = nil :: any,
-			direction = direction,
-			spawn = CFrame.lookAt(spawnPos, spawnPos + Vector3.zAxis),
-			glass = {},
-			breakables = {},
-		}
-		buildPad(lane)
-		buildStation(lane)
-		buildTrack(lane)
-		lanes[i] = lane
-	end
+	local slots = newSlots()
+	buildHub(course, slots)
+	buildLaunchZone(course, slots)
+	buildTrack(course)
+	local dummies = Instance.new("Folder")
+	dummies.Name = "Dummies"
+	dummies.Parent = course
 	course.Parent = Workspace
-	for _, lane in lanes do
-		CourseBuilder.resetObstacles(lane)
-	end
-	return lanes
+	Obstacles.build(course)
+	return { slots = slots, dummies = dummies }
 end
 
 return CourseBuilder

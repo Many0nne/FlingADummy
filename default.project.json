@@ -29,7 +29,7 @@
 
     "Players": {
       "$properties": {
-        "MaxPlayers": 6
+        "MaxPlayers": 4
       }
     },
 
@@ -38,6 +38,15 @@
         "ClockTime": 14.5,
         "Brightness": 3,
         "GlobalShadows": true
+      }
+    },
+
+    "MaterialService": {
+      "FadChecker": {
+        "$path": "src/materials/FadChecker.model.json"
+      },
+      "FadBrick": {
+        "$path": "src/materials/FadBrick.model.json"
       }
     },
 

@@ -6,8 +6,8 @@ local RunService = game:GetService("RunService")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local Training = require(ReplicatedStorage.Shared.Training)
-local LaneService = require(script.Parent.LaneService)
 local PlayerData = require(script.Parent.PlayerData)
+local SlotService = require(script.Parent.SlotService)
 
 local TrainingService = {}
 
@@ -27,20 +27,20 @@ function TrainingService.stop(player: Player)
 	end
 end
 
--- Cette méthode permet de démarrer l'entraînement lorsque le joueur active l'invite de SON poste et que son couloir
--- n'a pas de vol en cours.
+-- Cette méthode permet de démarrer l'entraînement lorsque le joueur active l'invite de SON poste et que son lancer
+-- précédent est fini.
 function TrainingService.start(player: Player)
-	local lane = LaneService.getLane(player)
+	local slot = SlotService.getSlot(player)
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-	if not lane or not root or player:GetAttribute("Action") == "Training" then
+	if not slot or not root or player:GetAttribute("Action") == "Training" then
 		return
 	end
 	if player:GetAttribute("LaneState") ~= "Ready" then
 		return
 	end
 	-- Debout sur le tapis, face à la piste ; ancré pour que la boucle d'animation ne le fasse pas dériver
-	character:PivotTo(lane.station)
+	character:PivotTo(slot.station)
 	root.Anchored = true
 	timers[player] = 0
 	player:SetAttribute("Action", "Training")
@@ -58,12 +58,12 @@ local function completeRep(player: Player)
 	player:SetAttribute("TrainLevel", progress.level)
 end
 
--- Cette méthode permet de brancher les invites des postes, l'arrêt demandé par le client et la boucle des
+-- Cette méthode permet de brancher les invites des postes (un par place), l'arrêt demandé par le client et la boucle des
 -- répétitions lorsque le serveur démarre.
-function TrainingService.init(lanes: { any }, stopRemote: RemoteEvent)
-	for _, lane in lanes do
-		lane.prompt.Triggered:Connect(function(player)
-			if LaneService.getLane(player) == lane then
+function TrainingService.init(slots: { any }, stopRemote: RemoteEvent)
+	for _, slot in slots do
+		slot.prompt.Triggered:Connect(function(player)
+			if SlotService.getSlot(player) == slot then
 				TrainingService.start(player)
 			end
 		end)

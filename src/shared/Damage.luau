@@ -47,6 +47,8 @@ local CAUSE_LABELS = {
 	Glass = "Went through a window",
 	Wall = "Hit a brick wall",
 	Crates = "Crashed into crates",
+	Car = "Smashed into a car",
+	Sign = "Crashed through a sign",
 	Ground = "Hit the ground",
 }
 

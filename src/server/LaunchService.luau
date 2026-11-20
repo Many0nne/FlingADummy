@@ -1,6 +1,7 @@
 -- Lancers : l'avatar projette le mannequin depuis ses mains, le serveur suit le vol (distance, zone, os cassés par
--- membre, vitres et objets détruits), annonce chaque choc aux clients (effets), calcule les gains puis remet le
--- couloir à neuf. Toute la physique est simulée par le serveur (propriétaire réseau nil).
+-- membre, vitres et objets détruits sur la piste partagée), annonce chaque choc aux clients (effets) et calcule les
+-- gains. Toute la physique est simulée par le serveur (propriétaire réseau nil) ; plusieurs vols coexistent (un par
+-- joueur, plus les mannequins de test lancés dans Studio).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -13,19 +14,22 @@ local Gauge = require(Shared.Gauge)
 local Remotes = require(Shared.Remotes)
 local Zones = require(Shared.Zones)
 
+local ObstacleRules = require(Shared.ObstacleRules)
+
 local CourseBuilder = require(script.Parent.CourseBuilder)
 local DummyFactory = require(script.Parent.DummyFactory)
-local LaneService = require(script.Parent.LaneService)
+local Obstacles = require(script.Parent.Obstacles)
 local PlayerData = require(script.Parent.PlayerData)
+local SlotService = require(script.Parent.SlotService)
 
-type Lane = CourseBuilder.Lane
+type Slot = CourseBuilder.Slot
 
 local GLASS_SLOWDOWN = 0.97 -- vitesse conservée en traversant une vitre (il y en a jusqu'à 9 par vol)
 local SPIN = Vector3.new(5, 2, 2) -- rotation aléatoire maximale au départ (rad/s par axe)
 local THUD_DV = 40 -- choc du torse sans os cassé qui mérite un « boum »
 local THUD_COOLDOWN = 0.25
 local GLASS_CAUSE_WINDOW = 0.15 -- un os cassé juste après une vitre est attribué à la vitre (s)
-local CAUSE_RADIUS = 7 -- un os cassé près d'une caisse ou d'une brique leur est attribué (studs)
+local CAUSE_RADIUS = 7 -- un os cassé près d'une pièce d'obstacle lui est attribué (studs)
 
 export type Impact = {
 	kind: string, -- "Throw" | "Glass" | "Bone" | "Smash" | "Thud"
@@ -36,8 +40,9 @@ export type Impact = {
 }
 
 type Flight = {
-	player: Player,
-	lane: Lane,
+	owner: Player?, -- nil pour un mannequin de test (DebugLaunchBots)
+	key: any, -- clé dans `flights` : le joueur, ou un identifiant de mannequin de test
+	slot: Slot,
 	dummy: Model,
 	torso: BasePart,
 	parts: { BasePart },
@@ -48,7 +53,6 @@ type Flight = {
 	bones: { [string]: number },
 	totalBones: number,
 	smashed: number,
-	counted: { [BasePart]: boolean },
 	distance: number,
 	prevPosition: Vector3,
 	restTime: number,
@@ -61,17 +65,19 @@ type Flight = {
 local LaunchService = {}
 
 local remotes: Remotes.Remotes
-local flights: { [Player]: Flight } = {}
+local dummiesFolder: Folder
+local flights: { [any]: Flight } = {}
 local rng = Random.new()
+local botCount = 0
 
 -- Cette méthode permet de donner le point de départ du mannequin (main de l'avatar au lâcher de l'animation de
--- lancer, au-dessus de la tête côté bras droit ; zone de lancer si le personnage manque) lorsqu'un lancer part.
-local function throwOrigin(player: Player, lane: Lane): Vector3
-	local character = player.Character
+-- lancer, au-dessus de la tête côté bras droit ; pastille de la place si le personnage manque) lorsqu'un lancer part.
+local function throwOrigin(player: Player?, slot: Slot): Vector3
+	local character = player and player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	-- Repère horizontal de l'avatar (là où sa main lâche le décoratif), sinon celui de la piste (la direction du
 	-- lancer est inclinée de LAUNCH_PITCH_DEG)
-	local look = if root then root.CFrame.LookVector else lane.direction
+	local look = if root then root.CFrame.LookVector else slot.direction
 	local flat = Vector3.new(look.X, 0, look.Z)
 	local forward = if flat.Magnitude > 1e-3 then flat.Unit else Vector3.zAxis
 	local right = forward:Cross(Vector3.yAxis)
@@ -81,37 +87,19 @@ local function throwOrigin(player: Player, lane: Lane): Vector3
 	if root then
 		return root.Position + offset
 	end
-	return lane.pad + Vector3.new(0, 3, 0) + offset
+	return slot.pad + Vector3.new(0, 3, 0) + offset
 end
 
--- Cette méthode permet de tirer le mannequin d'un joueur lorsqu'il le tient sur la zone de lancer (ou que `force`
--- vient de DebugLaunch) ; `gauge` vient du client et est borné ici.
-function LaunchService.launch(player: Player, gauge: any, force: boolean?)
-	if typeof(gauge) ~= "number" or gauge ~= gauge then
-		return
-	end
-	gauge = math.clamp(gauge, 0, 1)
-	if player:GetAttribute("LaneState") ~= "Ready" or not player:GetAttribute("DataReady") then
-		return
-	end
-	if not force and player:GetAttribute("Action") ~= "Holding" then
-		return
-	end
-	local lane = LaneService.getLane(player)
-	if not lane then
-		return
-	end
-	player:SetAttribute("LaneState", "Flying")
-	player:SetAttribute("Action", nil)
-
-	local power = (player:GetAttribute("ThrowPower") :: number?) or GameConfig.START_POWER
+-- Cette méthode permet de lancer un mannequin neuf depuis la main du lanceur (ou sa place) et de commencer à suivre
+-- son vol lorsqu'un joueur, ou un test, lance ; renvoie le mannequin, le point de départ et la vitesse.
+local function startFlight(owner: Player?, key: any, slot: Slot, power: number, gauge: number): (Model, Vector3, number)
 	local speed = Economy.launchSpeed(power) * Gauge.launchFactor(gauge)
-	local dir = lane.direction
-	local origin = throwOrigin(player, lane)
+	local dir = slot.direction
+	local origin = throwOrigin(owner, slot)
 	local dummy = DummyFactory.build()
 	-- Tête la première : l'axe vertical du mannequin suit la direction du lancer
 	dummy:PivotTo(CFrame.fromMatrix(origin, Vector3.xAxis, dir))
-	dummy.Parent = lane.folder
+	dummy.Parent = dummiesFolder
 
 	local spin =
 		Vector3.new(rng:NextNumber(-SPIN.X, SPIN.X), rng:NextNumber(-SPIN.Y, SPIN.Y), rng:NextNumber(-SPIN.Z, SPIN.Z))
@@ -131,9 +119,10 @@ function LaunchService.launch(player: Player, gauge: any, force: boolean?)
 	dummy:SetAttribute("Speed", math.floor(speed))
 
 	local torso = dummy.PrimaryPart :: BasePart
-	local flight: Flight = {
-		player = player,
-		lane = lane,
+	flights[key] = {
+		owner = owner,
+		key = key,
+		slot = slot,
 		dummy = dummy,
 		torso = torso,
 		parts = parts,
@@ -144,7 +133,6 @@ function LaunchService.launch(player: Player, gauge: any, force: boolean?)
 		bones = {},
 		totalBones = 0,
 		smashed = 0,
-		counted = {},
 		distance = 0,
 		prevPosition = torso.Position,
 		restTime = 0,
@@ -153,7 +141,31 @@ function LaunchService.launch(player: Player, gauge: any, force: boolean?)
 		worstImpact = nil,
 		impacts = {},
 	}
-	flights[player] = flight
+	return dummy, origin, speed
+end
+
+-- Cette méthode permet de tirer le mannequin d'un joueur lorsqu'il le tient sur la zone de lancer (ou que `force`
+-- vient de DebugLaunch) ; `gauge` vient du client et est borné ici.
+function LaunchService.launch(player: Player, gauge: any, force: boolean?)
+	if typeof(gauge) ~= "number" or gauge ~= gauge then
+		return
+	end
+	gauge = math.clamp(gauge, 0, 1)
+	if player:GetAttribute("LaneState") ~= "Ready" or not player:GetAttribute("DataReady") then
+		return
+	end
+	if not force and player:GetAttribute("Action") ~= "Holding" then
+		return
+	end
+	local slot = SlotService.getSlot(player)
+	if not slot then
+		return
+	end
+	player:SetAttribute("LaneState", "Flying")
+	player:SetAttribute("Action", nil)
+
+	local power = (player:GetAttribute("ThrowPower") :: number?) or GameConfig.START_POWER
+	local dummy, origin, speed = startFlight(player, player, slot, power, gauge)
 	remotes.LaunchStarted:FireClient(player, dummy)
 	remotes.Impact:FireAllClients({
 		{ kind = "Throw", position = origin, value = speed, userId = player.UserId },
@@ -167,14 +179,14 @@ local function addImpact(flight: Flight, kind: string, position: Vector3, value:
 		position = position,
 		value = value,
 		material = material,
-		userId = flight.player.UserId,
+		userId = if flight.owner then flight.owner.UserId else 0,
 	})
 end
 
 -- Cette méthode permet de briser une vitre et de ralentir un peu le mannequin lorsqu'il la traverse au point
 -- `crossing` ; les vitesses de référence sont recalées pour que le ralentissement ne compte pas comme un choc.
-local function shatterGlass(flight: Flight, glass: CourseBuilder.Glass, crossing: Vector3)
-	CourseBuilder.shatter(flight.lane, glass, crossing, flight.torso.AssemblyLinearVelocity)
+local function shatterGlass(flight: Flight, glass: Obstacles.Glass, crossing: Vector3)
+	Obstacles.shatter(glass, crossing, flight.torso.AssemblyLinearVelocity)
 	for _, p in flight.parts do
 		local v = p.AssemblyLinearVelocity * GLASS_SLOWDOWN
 		p.AssemblyLinearVelocity = v
@@ -190,31 +202,19 @@ end
 local function checkGlass(flight: Flight, position: Vector3)
 	local previous = flight.prevPosition
 	flight.prevPosition = position
-	if position.Z <= previous.Z then
-		return
-	end
-	for _, glass in flight.lane.glass do
-		if not glass.broken and previous.Z < glass.z and position.Z >= glass.z then
-			local crossing = previous:Lerp(position, (glass.z - previous.Z) / (position.Z - previous.Z))
-			if crossing.Y <= glass.top then
-				shatterGlass(flight, glass, crossing)
-			end
-		end
+	for _, hit in Obstacles.crossedGlass(previous, position) do
+		shatterGlass(flight, hit.glass, hit.crossing)
 	end
 end
 
--- Cette méthode permet de trouver ce qui a cassé un os (vitre, mur, caisses ou sol) lorsqu'un membre subit un choc
+-- Cette méthode permet de trouver ce qui a cassé un os (vitre, obstacle ou sol) lorsqu'un membre subit un choc
 -- au point `position`.
 local function classifyCause(flight: Flight, position: Vector3): string
 	if os.clock() - flight.lastGlass < GLASS_CAUSE_WINDOW then
 		return "Glass"
 	end
-	for _, p in flight.lane.breakables do
-		if p.Parent and (p.Position - position).Magnitude < CAUSE_RADIUS then
-			return if p.Name == "Brick" then "Wall" else "Crates"
-		end
-	end
-	return "Ground"
+	local piece = Obstacles.nearest(position, CAUSE_RADIUS)
+	return if piece then piece.kind else "Ground"
 end
 
 -- Cette méthode permet de casser des os lorsqu'un membre change brusquement de vitesse entre deux frames ; pas de
@@ -248,38 +248,48 @@ local function checkBones(flight: Flight, elapsed: number)
 	end
 end
 
--- Cette méthode permet de compter une fois chaque caisse ou brique du couloir lorsqu'elle est projetée ; un seul
--- choc « Smash » par type et par frame est annoncé, avec le nombre d'objets.
-local function checkSmashed(flight: Flight)
-	local byMaterial: { [string]: { count: number, position: Vector3 } } = {}
-	for _, p in flight.lane.breakables do
-		if not flight.counted[p] and p.AssemblyLinearVelocity.Magnitude > GameConfig.SMASH_SPEED then
-			flight.counted[p] = true
-			flight.smashed += 1
-			local entry = byMaterial[p.Name]
-			if entry then
-				entry.count += 1
-			else
-				byMaterial[p.Name] = { count = 1, position = p.Position }
-			end
+-- Cette méthode permet de compter une fois chaque pièce d'obstacle projetée, pour le vol dont le mannequin est le
+-- plus proche (piste partagée), lorsque Heartbeat tourne ; un seul choc « Smash » par vol, matériau et frame est
+-- annoncé, avec le nombre d'objets.
+local function checkSmashed(list: { Flight })
+	local positions = {}
+	for index, flight in list do
+		positions[index] = flight.torso.Position
+	end
+	local byFlight: { [Flight]: { [string]: { count: number, position: Vector3 } } } = {}
+	for _, piece in Obstacles.pieces() do
+		local p = piece.part
+		if piece.claimed or p.Anchored or p.AssemblyLinearVelocity.Magnitude <= GameConfig.SMASH_SPEED then
+			continue
+		end
+		piece.claimed = true
+		local index = ObstacleRules.claimant(p.Position, positions)
+		if not index then
+			continue
+		end
+		local flight = list[index]
+		flight.smashed += 1
+		local materials = byFlight[flight] or {}
+		byFlight[flight] = materials
+		local entry = materials[piece.material]
+		if entry then
+			entry.count += 1
+		else
+			materials[piece.material] = { count = 1, position = p.Position }
 		end
 	end
-	for material, entry in byMaterial do
-		addImpact(flight, "Smash", entry.position, entry.count, material)
+	for flight, materials in byFlight do
+		for material, entry in materials do
+			addImpact(flight, "Smash", entry.position, entry.count, material)
+		end
 	end
-end
-
--- Cette méthode permet de détruire le mannequin et de remettre le couloir à neuf lorsque le lancer est terminé.
-local function clearLane(flight: Flight)
-	flight.dummy:Destroy()
-	CourseBuilder.resetObstacles(flight.lane)
 end
 
 -- Cette méthode permet de clore un vol (gains, record, blessures et cause envoyées au client) lorsque le mannequin
--- s'est arrêté, puis de rendre le couloir prêt après RESULT_TIME.
+-- s'est arrêté, puis de retirer le mannequin et de rendre la main au joueur après RESULT_TIME.
 local function finish(flight: Flight, elapsed: number)
-	local player = flight.player
-	flights[player] = nil
+	flights[flight.key] = nil
+	local player = flight.owner
 	local zone = Zones.at(flight.distance)
 	local result: any = Economy.payout({
 		distance = flight.distance,
@@ -287,37 +297,40 @@ local function finish(flight: Flight, elapsed: number)
 		smashed = flight.smashed,
 		perfect = flight.perfect,
 		zoneMultiplier = zone.multiplier,
-	}, (player:GetAttribute("ValueLevel") :: number?) or 1)
-	local best = (player:GetAttribute("BestDistance") :: number?) or 0
-	result.record = result.distance > best and best > 0
+	}, if player then (player:GetAttribute("ValueLevel") :: number?) or 1 else 1)
 	result.zone = Zones.indexAt(flight.distance)
-	result.bonesByLimb = flight.bones
-	result.injuries = Damage.describe(flight.bones)
-	result.cause = if flight.worstImpact then Damage.cause(flight.worstImpact.kind, flight.worstImpact.speed) else nil
-	PlayerData.addMoney(player, result.total)
-	PlayerData.recordDistance(player, result.distance)
-	player:SetAttribute("LaneState", "Result")
-	remotes.LaunchResult:FireClient(player, result)
+	if player then
+		local best = (player:GetAttribute("BestDistance") :: number?) or 0
+		result.record = result.distance > best and best > 0
+		result.bonesByLimb = flight.bones
+		result.injuries = Damage.describe(flight.bones)
+		result.cause = if flight.worstImpact
+			then Damage.cause(flight.worstImpact.kind, flight.worstImpact.speed)
+			else nil
+		PlayerData.addMoney(player, result.total)
+		PlayerData.recordDistance(player, result.distance)
+		player:SetAttribute("LaneState", "Result")
+		remotes.LaunchResult:FireClient(player, result)
+	end
 	if RunService:IsStudio() then
 		print(
 			string.format(
-				"[Launch] distance=%d zone=%d bones=%d smashed=%d payout=%d gauge=%.2f power=%d time=%.1f | %s | %s",
+				"[Launch] %s distance=%d zone=%d bones=%d smashed=%d payout=%d gauge=%.2f time=%.1f | %s",
+				if player then player.Name else tostring(flight.key),
 				result.distance,
 				result.zone,
-				result.bones,
-				result.smashed,
+				flight.totalBones,
+				flight.smashed,
 				result.total,
 				flight.gauge,
-				(player:GetAttribute("ThrowPower") :: number?) or 0,
 				elapsed,
-				result.injuries,
 				tostring(result.cause)
 			)
 		)
 	end
 	task.delay(GameConfig.RESULT_TIME, function()
-		clearLane(flight)
-		if player.Parent and LaneService.getLane(player) == flight.lane then
+		flight.dummy:Destroy()
+		if player and player.Parent and SlotService.getSlot(player) == flight.slot then
 			player:SetAttribute("LaneState", "Ready")
 		end
 	end)
@@ -344,15 +357,14 @@ end
 local function step(flight: Flight, dt: number)
 	local elapsed = os.clock() - flight.startTime
 	local torso = flight.torso
-	if not flight.player.Parent or not torso.Parent then
-		flights[flight.player] = nil
-		clearLane(flight)
+	if (flight.owner and not flight.owner.Parent) or not torso.Parent then
+		flights[flight.key] = nil
+		flight.dummy:Destroy()
 		return
 	end
 	local position = torso.Position
 	checkGlass(flight, position)
 	checkBones(flight, elapsed)
-	checkSmashed(flight)
 	flight.distance = math.max(flight.distance, position.Z)
 	publish(flight)
 	if #flight.impacts > 0 then
@@ -374,8 +386,22 @@ local function step(flight: Flight, dt: number)
 	end
 end
 
+-- Cette méthode permet de lancer `count` mannequins de test depuis les places libres (puissance du joueur, jauge
+-- au maximum) lorsque l'on mesure plusieurs vols simultanés dans Studio sans autres joueurs.
+local function launchBots(player: Player, count: number)
+	local power = (player:GetAttribute("ThrowPower") :: number?) or GameConfig.START_POWER
+	for i, slot in SlotService.freeSlots() do
+		if i > count then
+			break
+		end
+		botCount += 1
+		startFlight(nil, "Bot" .. botCount, slot, power, 1)
+	end
+end
+
 -- Cette méthode permet de déclencher un lancer en écrivant l'attribut DebugLaunch (0-1) sur le joueur lorsque l'on
--- teste dans Studio sans simuler d'input (lancer depuis la zone de lancer, même si l'avatar n'y est pas).
+-- teste dans Studio sans simuler d'input (lancer depuis sa place, même si l'avatar n'y est pas) ; DebugLaunchBots (n)
+-- lance n mannequins de test depuis les places libres.
 local function watchDebugLaunch(player: Player)
 	player:GetAttributeChangedSignal("DebugLaunch"):Connect(function()
 		local value = player:GetAttribute("DebugLaunch")
@@ -389,17 +415,42 @@ local function watchDebugLaunch(player: Player)
 		end
 		LaunchService.launch(player, value, true)
 	end)
+	player:GetAttributeChangedSignal("DebugLaunchBots"):Connect(function()
+		local value = player:GetAttribute("DebugLaunchBots")
+		if typeof(value) ~= "number" then
+			return
+		end
+		player:SetAttribute("DebugLaunchBots", nil)
+		launchBots(player, value)
+	end)
 end
 
 -- Cette méthode permet de brancher les remotes, le suivi des vols et le nettoyage au départ lorsque le serveur
 -- démarre.
-function LaunchService.init(createdRemotes: Remotes.Remotes)
+function LaunchService.init(createdRemotes: Remotes.Remotes, dummies: Folder)
 	remotes = createdRemotes
+	dummiesFolder = dummies
+	-- Pas de réapparition d'obstacle sur un mannequin en vol ou posé
+	Obstacles.setBlockers(function()
+		local positions = {}
+		for _, flight in flights do
+			table.insert(positions, flight.torso.Position)
+		end
+		return positions
+	end)
 	remotes.Launch.OnServerEvent:Connect(function(player, gauge)
 		LaunchService.launch(player, gauge)
 	end)
 	RunService.Heartbeat:Connect(function(dt)
+		local list = {}
 		for _, flight in flights do
+			table.insert(list, flight)
+		end
+		if #list == 0 then
+			return
+		end
+		checkSmashed(list)
+		for _, flight in list do
 			step(flight, dt)
 		end
 	end)
@@ -407,7 +458,7 @@ function LaunchService.init(createdRemotes: Remotes.Remotes)
 		local flight = flights[player]
 		if flight then
 			flights[player] = nil
-			clearLane(flight)
+			flight.dummy:Destroy()
 		end
 	end)
 	if RunService:IsStudio() then

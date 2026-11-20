@@ -1,16 +1,20 @@
--- Constantes de jeu partagées par le serveur et le client (équilibrage, géométrie des couloirs, rythme de la boucle).
+-- Constantes de jeu partagées par le serveur et le client (équilibrage, géométrie de la carte, rythme de la boucle).
 -- stylua: ignore
 local GameConfig = {
-	-- Couloirs
-	LANE_COUNT          = 6,      -- un couloir par joueur (MaxPlayers du projet Rojo)
-	LANE_SPACING        = 70,     -- écart entre deux couloirs, axe X (studs)
-	LANE_WIDTH          = 44,     -- largeur de la piste d'un couloir (studs)
+	-- Carte : lobby de SLOT_COUNT joueurs, une piste partagée (canyon en gradins), axe +Z, départ à z = 0
+	SLOT_COUNT          = 4,      -- places par serveur (MaxPlayers du projet Rojo) : zone de lancer, poste, base
+	SLOT_SPACING        = 14,     -- écart entre deux places de la zone de lancer, axe X (studs)
+	TRACK_WIDTH         = 80,     -- largeur du fond du canyon (studs)
 	COURSE_LENGTH       = 2400,   -- longueur de la piste, axe +Z (studs = mètres affichés)
-	SIDE_WALL_HEIGHT    = 24,     -- barrières latérales : retiennent le mannequin qui glisse
-	HUB_DEPTH           = 60,     -- profondeur du hub (labo) derrière la piste
+	SIDE_WALL_HEIGHT    = 260,    -- paroi invisible au-dessus des gradins : garde les mannequins dans le canyon
+	HUB_WIDTH           = 180,    -- hub (postes, bases) derrière la zone de lancer, axe X
+	HUB_DEPTH           = 130,    -- profondeur du hub, axe -Z, depuis l'arrière de la zone de lancer
+	LAUNCH_DEPTH        = 16,     -- profondeur de la zone de lancer commune (z de -16 à 0)
+	STATION_Z           = -40,    -- rangée des postes d'entraînement dans le hub
+	STATION_SPACING     = 20,
 
 	-- Lancer
-	PAD_Z               = -8,     -- centre de la zone de lancer de chaque couloir
+	PAD_Z               = -8,     -- centre des places de la zone de lancer
 	PAD_RADIUS          = 5,
 	THROW_HEIGHT        = 2.3,    -- départ du mannequin au-dessus du HumanoidRootPart (main au lâcher, mesuré)
 	THROW_FORWARD       = 0.3,    -- départ du mannequin devant le HumanoidRootPart (main au lâcher, mesuré)
@@ -48,6 +52,10 @@ local GameConfig = {
 	DOUBLE_BONE_DV      = 150,    -- au-delà : deux os d'un coup
 	MAX_BONES_PER_LIMB  = 3,
 	IMPACT_GRACE_TIME   = 0.25,   -- pas de dégâts juste après le lancer (vitesse imposée)
+
+	-- Obstacles partagés : une pièce déplacée réapparaît à sa place
+	RESPAWN_DELAY       = 5,      -- délai après le dernier choc subi par l'obstacle (s)
+	RESPAWN_STAGGER     = 0.05,   -- écart entre deux pièces qui réapparaissent (s)
 
 	-- Fin de vol
 	REST_SPEED          = 3,      -- vitesse du torse en dessous de laquelle le mannequin est arrêté
