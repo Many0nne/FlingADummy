@@ -20,7 +20,8 @@ Assets.DUMMY_MESHES = {
 	Cape = 104540158359045,
 } :: { [string]: number }
 
--- Atlas (assets/dummy/export/dummy_atlas.png) : zones transparentes = couleur de la pièce, noir, cibles
+-- Atlas (assets/dummy/export/dummy_atlas.png) : zones transparentes = couleur de la pièce, noir, cibles. Posé par
+-- Shared.DummySurface (SurfaceAppearance) : changer aussi son ColorMap (un test vérifie qu'ils concordent)
 Assets.DUMMY_TEXTURE = 84498910179411
 
 -- Animations de l'avatar (assets/anim/export/<Nom>.rbxm)

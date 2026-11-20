@@ -166,6 +166,7 @@ local function trigger(): boolean
 	if Gauge.isPerfect(value) then
 		UIKit.banner(frame.Parent :: Instance, "PERFECT!", nil, C.gold, 210)
 	end
+	faceTrack() -- le joueur a pu tourner sur la zone depuis l'apparition de la jauge
 	ThrowCinematic.play(character)
 	setRooted(character, true)
 	CharacterPoser.playThrow(function()
@@ -176,6 +177,7 @@ local function trigger(): boolean
 		setRooted(character, false)
 		if player:GetAttribute("LaneState") ~= "Flying" then
 			ThrowCinematic.abort()
+			CharacterPoser.handOff()
 		end
 		locked = nil
 		refresh()

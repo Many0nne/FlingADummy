@@ -40,7 +40,8 @@ UV_TARGET = (0.5, 0.5, 1.0, 1.0)
 
 
 def rb(v):
-    """Convertit un vecteur Roblox (x, y, z) en Blender (x, -z, y)."""
+    """Cette methode permet de convertir un vecteur Roblox (x, y, z) en Blender (x, -z, y) lorsque l'on place une
+    forme."""
     return (v[0], -v[2], v[1])
 
 
@@ -50,7 +51,8 @@ def clear_scene():
 
 
 def build_atlas():
-    """Atlas RGBA : moitie gauche transparente, quart bas-droit noir, quart haut-droit cible jaune/noire."""
+    """Cette methode permet de peindre l'atlas RGBA (moitie gauche transparente, quart bas-droit noir, quart
+    haut-droit cible jaune/noire) lorsque le script construit les materiaux."""
     n = ATLAS_SIZE
     px = np.zeros((n, n, 4), dtype=np.float32)
     half = n // 2
@@ -81,7 +83,8 @@ def build_atlas():
 
 
 def make_material(name, atlas, region):
-    """Materiau d'apercu : atlas sur la couleur jaune (comme la piece Roblox teintee), region UV memorisee."""
+    """Cette methode permet de creer un materiau d'apercu (atlas sur la couleur jaune, comme la piece Roblox teintee,
+    region UV memorisee) lorsque le script prepare le rendu."""
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
     nodes = mat.node_tree.nodes
@@ -102,7 +105,8 @@ def make_material(name, atlas, region):
 
 
 def rounded_box(name, size, center, bevel, mat, segments=3):
-    """Pave aux aretes adoucies (taille et centre en coordonnees Roblox)."""
+    """Cette methode permet de creer un pave aux aretes adoucies (taille et centre Roblox) lorsque l'on modelise une
+    piece."""
     bpy.ops.mesh.primitive_cube_add(size=1, location=rb(center))
     obj = bpy.context.active_object
     obj.name = name
@@ -119,7 +123,8 @@ def rounded_box(name, size, center, bevel, mat, segments=3):
 
 
 def cylinder(name, radius, depth, center, axis, mat, bevel=0.04):
-    """Cylindre (articulation, cou) d'axe 'X', 'Y' ou 'Z' Roblox."""
+    """Cette methode permet de creer un cylindre (articulation, cou) d'axe 'X', 'Y' ou 'Z' Roblox lorsque l'on modelise
+    une piece."""
     rot = {"X": (0, math.pi / 2, 0), "Y": (0, 0, 0), "Z": (math.pi / 2, 0, 0)}[axis]
     bpy.ops.mesh.primitive_cylinder_add(vertices=20, radius=radius, depth=depth, location=rb(center), rotation=rot)
     obj = bpy.context.active_object
@@ -136,7 +141,8 @@ def cylinder(name, radius, depth, center, axis, mat, bevel=0.04):
 
 
 def target_disc(name, center, normal, diameter, mat):
-    """Cible plaquee (fine galette) dont la face visible regarde `normal` (Roblox), UV sur la region cible."""
+    """Cette methode permet de plaquer une cible (fine galette, face visible vers `normal` Roblox, UV sur la region
+    cible) lorsque l'on decore une piece."""
     axis = {"X": "X", "-X": "X", "Z": "Z", "-Z": "Z"}[normal]
     obj = cylinder(name, diameter / 2, 0.04, center, axis, mat, bevel=0.012)
     obj["disc_radius"] = diameter / 2
@@ -146,8 +152,8 @@ def target_disc(name, center, normal, diameter, mat):
 
 
 def assign_uvs(obj):
-    """Projette chaque face sur la region UV de son materiau : point unique pour le corps et le noir, projection
-    plane (dans le plan de la face) pour la cible."""
+    """Cette methode permet de projeter chaque face sur la region UV de son materiau (point unique pour le corps et le
+    noir, projection plane pour la cible) lorsqu'une piece est terminee."""
     me = obj.data
     if not me.uv_layers:
         me.uv_layers.new(name="UVMap")
@@ -187,7 +193,8 @@ def assign_uvs(obj):
 
 
 def join(name, parts, center):
-    """Fusionne les sous-formes d'une piece, origine au centre du gabarit."""
+    """Cette methode permet de fusionner les sous-formes d'une piece (origine au centre du gabarit) lorsqu'elle est
+    modelisee."""
     bpy.ops.object.select_all(action="DESELECT")
     for p in parts:
         assign_uvs(p)
@@ -288,8 +295,8 @@ def build_pieces(body, dark, target):
 
 
 def build_accessories(body, dark, target):
-    """Accessoires de declinaison (collection, boutique) : maillages separes, poses sur la piece porteuse.
-    Retourne nom -> (objet, piece porteuse)."""
+    """Cette methode permet de modeliser les accessoires de declinaison (maillages separes, poses sur leur piece
+    porteuse) lorsque le script construit le mannequin ; retourne nom -> (objet, piece porteuse)."""
     _, (hx, hy, hz) = PIECES["Head"]
     helmet = join(
         "Acc_Helmet",
@@ -324,8 +331,8 @@ def build_accessories(body, dark, target):
 
 
 def accessory_bounds(accs):
-    """Gabarit de chaque accessoire en coordonnees Roblox : taille et decalage du centre par rapport au centre de
-    sa piece porteuse (copie dans Shared.DummyShape.ACCESSORIES)."""
+    """Cette methode permet de mesurer le gabarit de chaque accessoire (taille et decalage par rapport a sa piece
+    porteuse, copie dans Shared.DummyShape.ACCESSORIES) lorsque l'export se prepare."""
     out = {}
     for name, (obj, piece) in accs.items():
         vs = np.array([obj.matrix_world @ v.co for v in obj.data.vertices])
@@ -341,8 +348,8 @@ def accessory_bounds(accs):
 
 
 def check_bounds(objs):
-    """Verifie que chaque piece remplit exactement la boite du gabarit (taille et centre), condition pour que la
-    MeshPart redimensionnee a la taille du gabarit garde ses proportions."""
+    """Cette methode permet de verifier que chaque piece remplit exactement la boite du gabarit lorsque l'export se
+    prepare (sinon la MeshPart redimensionnee au gabarit perd ses proportions)."""
     ok = True
     for name, (size, center) in PIECES.items():
         obj = objs[name]

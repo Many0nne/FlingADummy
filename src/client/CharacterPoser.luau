@@ -21,7 +21,8 @@ local FADE = 0.2 -- fondu d'entrée et de sortie des clips (s)
 local THROW_FADE = 0.08
 local RELEASE_GRACE = 0.25 -- lâcher de secours après le marqueur (clip absent ou en retard, s)
 local THROW_TIMEOUT = 3 -- fin forcée d'un lancer local (s)
-local HANDOFF_TIME = 0.6 -- attente du mannequin du serveur, décoratif figé au point de lâcher (s)
+local HANDOFF_TIME = 2 -- attente maximale du mannequin du serveur, décoratif figé au point de lâcher (s)
+local RETRY_TIME = 1 -- nouvel essai après un LoadAnimation raté (s)
 local ANSWER_TIME = 0.6 -- délai minimal entre le lâcher et la fin du geste, le temps que le serveur réponde (s)
 
 type State = { visual: Model?, key: string? }
@@ -42,7 +43,12 @@ local localPlayer = Players.LocalPlayer
 local states: { [Player]: State } = {}
 -- false = chargement raté, pas retenté à chaque frame
 local animations: { [string]: Animation | false } = {}
-local tracks: { character: Model?, byName: { [string]: AnimationTrack | false } } = { character = nil, byName = {} }
+local tracks: {
+	character: Model?,
+	byName: { [string]: AnimationTrack | false },
+	retryAt: { [string]: number },
+} =
+	{ character = nil, byName = {}, retryAt = {} }
 local throw: Throw? = nil
 local released: Released? = nil
 
@@ -84,7 +90,7 @@ local function trackFor(name: string): AnimationTrack?
 		return nil
 	end
 	if tracks.character ~= character then
-		tracks = { character = character, byName = {} }
+		tracks = { character = character, byName = {}, retryAt = {} }
 	end
 	local existing = tracks.byName[name]
 	if existing ~= nil then
@@ -100,11 +106,14 @@ local function trackFor(name: string): AnimationTrack?
 		tracks.byName[name] = false
 		return nil
 	end
+	if os.clock() < (tracks.retryAt[name] or 0) then
+		return nil
+	end
 	local ok, track = pcall(function()
 		return animator:LoadAnimation(animation)
 	end)
 	if not ok then
-		tracks.byName[name] = false
+		tracks.retryAt[name] = os.clock() + RETRY_TIME -- Animator en cours d'initialisation : on retentera
 		return nil
 	end
 	tracks.byName[name] = track
@@ -214,8 +223,8 @@ local function release()
 	current.release()
 end
 
--- Cette méthode permet de retirer le décoratif lâché lorsque le mannequin du serveur tarde (HANDOFF_TIME) ou que
--- le lancer a été refusé.
+-- Cette méthode permet de retirer le décoratif lâché lorsque le mannequin du serveur n'arrive pas (HANDOFF_TIME,
+-- filet de sécurité : le refus et l'arrivée du vrai passent par handOff).
 local function updateReleased(now: number)
 	local current = released
 	if current and (now - current.born > HANDOFF_TIME or not current.model.Parent) then

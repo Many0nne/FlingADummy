@@ -19,7 +19,7 @@ local GameConfig = {
 	GRAVITY             = 120,    -- Workspace.Gravity (196,2 par défaut) : vols plus longs, plus lisibles
 	SPEED_BASE          = 110,    -- vitesse de lancer à la puissance de départ (studs/s)
 	SPEED_PER_LOG       = 30,     -- + 30 studs/s chaque fois que la puissance est multipliée par e
-	THROW_RELEASE_TIME  = 0.7,    -- lâcher du mannequin dans l'animation de lancer (marqueur Release, s)
+	THROW_RELEASE_TIME  = 0.7,    -- lâcher dans l'animation de lancer (marqueur Release, s) : republier Throw si modifié
 
 	-- Jauge (1 clic : l'aiguille court toute seule, le clic l'arrête)
 	GAUGE_PERIOD        = 1.2,    -- durée d'un aller-retour de l'aiguille (s)

@@ -116,6 +116,37 @@ return function(T, Loader, Lib)
 		end)
 	end)
 
+	T.describe("assets/anim/export (fichiers publiés)", function()
+		T.it(
+			"correspondent aux clips (keyframes, marqueur Release) : sinon relancer tools/build-anims et republier",
+			function()
+				local fs = require("@lune/fs")
+				local roblox = require("@lune/roblox")
+				for _, clip in AnimationData.CLIPS do
+					local sequence =
+						roblox.deserializeModel(fs.readFile("assets/anim/export/" .. clip.name .. ".rbxm"))[1]
+					local times, markers = {}, {}
+					for _, keyframe in sequence:GetChildren() do
+						local marker = keyframe:FindFirstChildOfClass("KeyframeMarker")
+						if marker then
+							markers[marker.Name] = keyframe.Time
+						else
+							table.insert(times, keyframe.Time)
+						end
+					end
+					table.sort(times)
+					T.expectEqual(#times, #clip.keyframes, clip.name .. " : nombre de keyframes")
+					for i, keyframe in clip.keyframes do
+						T.expectNear(times[i], keyframe.t, 1e-4, clip.name .. " keyframe " .. i)
+					end
+					for name, t in clip.markers do
+						T.expectNear(markers[name] or -1, t, 1e-4, clip.name .. " marqueur " .. name)
+					end
+				end
+			end
+		)
+	end)
+
 	T.describe("AnimationData.buildSequence", function()
 		T.it("produit une KeyframeSequence complète, parents non animés à poids nul", function()
 			local clip = AnimationData.THROW

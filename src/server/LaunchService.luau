@@ -69,8 +69,10 @@ local rng = Random.new()
 local function throwOrigin(player: Player, lane: Lane): Vector3
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-	-- Repère horizontal de la piste (la direction du lancer est inclinée de LAUNCH_PITCH_DEG)
-	local flat = Vector3.new(lane.direction.X, 0, lane.direction.Z)
+	-- Repère horizontal de l'avatar (là où sa main lâche le décoratif), sinon celui de la piste (la direction du
+	-- lancer est inclinée de LAUNCH_PITCH_DEG)
+	local look = if root then root.CFrame.LookVector else lane.direction
+	local flat = Vector3.new(look.X, 0, look.Z)
 	local forward = if flat.Magnitude > 1e-3 then flat.Unit else Vector3.zAxis
 	local right = forward:Cross(Vector3.yAxis)
 	local offset = Vector3.new(0, GameConfig.THROW_HEIGHT, 0)
