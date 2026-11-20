@@ -82,10 +82,14 @@ function Get-Slug([string]$Name) { $Name -replace '[^A-Za-z0-9._-]', '-' }
 # Cette methode permet de lire un fichier texte en UTF-8 (y compris sous Windows PowerShell 5.1) ; $null s'il manque.
 function Read-Text([string]$Path) { if (Test-Path -LiteralPath $Path) { [IO.File]::ReadAllText($Path) } else { $null } }
 
-# Cette methode permet d'ecrire un fichier d'etat en UTF-8 sans BOM, en creant son dossier au besoin.
+# Cette methode permet d'ecrire un fichier d'etat en UTF-8 sans BOM, en creant son dossier au besoin ; ecriture dans un
+# fichier temporaire puis remplacement, pour qu'un lecteur sans mutex (nettoyage) ne lise jamais un fichier tronque.
 function Write-Text([string]$Path, [string]$Text) {
   New-Item -ItemType Directory -Force (Split-Path -Parent $Path) | Out-Null
-  [IO.File]::WriteAllText($Path, $Text, [Text.UTF8Encoding]::new($false))
+  $tmp = "$Path.$PID.tmp"
+  [IO.File]::WriteAllText($tmp, $Text, [Text.UTF8Encoding]::new($false))
+  # [NullString]::Value : un $null passe a un parametre string deviendrait "" (« The path is empty »).
+  if (Test-Path -LiteralPath $Path) { [IO.File]::Replace($tmp, $Path, [NullString]::Value) } else { [IO.File]::Move($tmp, $Path) }
 }
 
 # Cette methode permet de lire un entier (port, pid) dans un fichier d'etat ; 0 si le fichier manque ou est illisible.
@@ -231,6 +235,13 @@ function Get-WorktreeBranch([string]$Path) {
     if (-not [IO.Path]::IsPathRooted($gitDir)) { $gitDir = Join-Path $Path $gitDir }
   } else { $gitDir = $dotGit }
   $head = "$(Read-Text (Join-Path $gitDir 'HEAD'))".Trim()
+  # Rebase en cours : HEAD est detache, la branche est notee dans rebase-merge (ou rebase-apply)/head-name.
+  if ($head -notlike 'ref: *') {
+    foreach ($d in 'rebase-merge', 'rebase-apply') {
+      $name = "$(Read-Text (Join-Path $gitDir "$d\head-name"))".Trim()
+      if ($name) { $head = "ref: $name"; break }
+    }
+  }
   if ($head -like 'ref: refs/heads/*') { return $head.Substring('ref: refs/heads/'.Length) }
   return $null
 }
@@ -252,13 +263,14 @@ function Get-PortListener([int]$Port) {
 }
 
 # Cette methode permet de savoir si un processus est bien un serveur Rojo de ce port, et pas un pid recycle par Windows
-# apres un redemarrage : sa ligne de commande cite `rojo`, `serve` et `--port <port>`.
+# apres un redemarrage : sa ligne de commande cite `rojo`, `serve` et `--port <port>` (port 0 = inconnu : n'importe lequel).
 function Test-RojoProcess([int]$Id, [int]$Port) {
-  if ($Id -le 0 -or $Port -le 0) { return $false }
+  if ($Id -le 0) { return $false }
   $p = Get-CimInstance Win32_Process -Filter "ProcessId = $Id" -ErrorAction SilentlyContinue
   if (-not $p) { return $false }
   $cl = "$($p.CommandLine)"
-  return ($cl -match 'rojo') -and ($cl -match '\bserve\b') -and ($cl -match "--port\s+$Port\b")
+  $portPattern = if ($Port -gt 0) { "--port\s+$Port\b" } else { '--port\s+\d+' }
+  return ($cl -match 'rojo') -and ($cl -match '\bserve\b') -and ($cl -match $portPattern)
 }
 
 # Cette methode permet de savoir si le serveur Rojo enregistre pour un slug (pid et port de worktrees\.run) tourne encore.
@@ -327,12 +339,19 @@ function Get-StudioLockStaleReason($Lock) {
     if (-not (Test-Path (Join-Path $worktrees "fad-$(Get-Slug $Lock.branch)"))) { return 'worktree supprime' }
   }
   if (-not (Test-HolderRojo $Lock.branch)) { return 'Rojo arrete' }
-  # Threads du detenteur : ceux du registre, celui note dans le verrou, et ceux des sessions resolues depuis (une
-  # session inscrite pendant son premier tour n'avait pas encore de thread).
-  try { $entry = Get-Owners | Where-Object { $_.branch -eq $Lock.branch } | Select-Object -First 1 } catch { $entry = $null }
-  $threads = @($entry.threads) + @($Lock.thread)
-  foreach ($s in @($entry.sessions) + @($Lock.session)) { if ($s) { $threads += Get-ThreadOf $s } }
-  $threads = @($threads | Where-Object { $_ } | Select-Object -Unique)
+  # Threads du detenteur : celui de la session qui a reserve (note dans le verrou, ou resolu depuis si elle en etait a son
+  # premier tour). Session sans thread T3 (terminal) : rien ne permet de la dire finie, le verrou reste actif. Verrou
+  # sans session (pose hors de Claude) : threads du registre de la branche, sessions resolues comprises.
+  if ($Lock.session -or $Lock.thread) {
+    $threads = @($Lock.thread | Where-Object { $_ })
+    if (-not $threads) { $threads = @(Get-ThreadOf $Lock.session | Where-Object { $_ }) }
+    if (-not $threads) { return $null }
+  } else {
+    try { $entry = Get-Owners | Where-Object { $_.branch -eq $Lock.branch } | Select-Object -First 1 } catch { $entry = $null }
+    $threads = @($entry.threads)
+    foreach ($s in @($entry.sessions)) { if ($s) { $threads += Get-ThreadOf $s } }
+    $threads = @($threads | Where-Object { $_ } | Select-Object -Unique)
+  }
   if ($threads) {
     # Seuls des etats certains comptent : un thread `missing` (base T3 deplacee, id errone) n'est pas un thread fini.
     $states = Get-ThreadStates $threads
@@ -453,9 +472,14 @@ if ($RegisterThread) {
 
 if ($Stop -or $Remove) {
   Assert-OwnWorktree
-  # -Remove refuse avant de toucher a Rojo et au verrou : un refus ne fait pas perdre Studio a la tache.
-  if ($Remove -and (Test-Path $dir) -and (Test-WorktreeRegistered) -and (git -C $dir status --porcelain)) {
-    throw "Modifications non commitees dans $dir : commiter ou annuler avant -Remove."
+  # -Remove refuse avant de toucher a Rojo et au verrou : un refus previsible ne fait pas perdre Studio a la tache
+  # (seul un echec de `git worktree remove`, dossier ouvert ailleurs, arrive apres l'arret).
+  if ($Remove -and (Test-Path $dir)) {
+    if (Test-WorktreeRegistered) {
+      if (git -C $dir status --porcelain) { throw "Modifications non commitees dans $dir : commiter ou annuler avant -Remove." }
+    } elseif (Get-ChildItem -Path $dir -Recurse -File -Force) {
+      throw "$dir n'est pas un worktree git mais contient des fichiers : a verifier et supprimer a la main."
+    }
   }
   $s = Stop-Rojo $currentPort
   Write-Host $(if ($s) { "Rojo arrete (port $currentPort)." } else { "Aucun Rojo en cours pour '$Branch'." })

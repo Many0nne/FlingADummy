@@ -200,6 +200,27 @@ Describe 'fad-worktree.ps1 : entrees qui se chevauchent ou echouent' {
     (Invoke-Git (Get-SbPaths $sb 'feature/5-distante').Dir rev-parse --abbrev-ref '@{u}') | Should Be 'origin/feature/5-distante'
   }
 
+  It 'un worktree en plein rebase (HEAD detache) est repris' {
+    $br = 'feature/5-rebase'
+    (Invoke-Wt $sb @($br, '-NoUp', '-Slot', '606')).Code | Should Be 0
+    $d = (Get-SbPaths $sb $br).Dir
+    Invoke-Git $d checkout --quiet --detach | Out-Null
+    $gitDir = (Invoke-Git $d rev-parse --absolute-git-dir | Select-Object -First 1).Trim()
+    New-Item -ItemType Directory -Force (Join-Path $gitDir 'rebase-merge') | Out-Null
+    Set-Content (Join-Path $gitDir 'rebase-merge\head-name') "refs/heads/$br"
+    (Invoke-Wt $sb @($br, '-NoUp')).Code | Should Be 0
+  }
+
+  It '-Stop arrete Rojo meme si le fichier de port a disparu' {
+    $br = 'feature/5-sansport'
+    (Invoke-Wt $sb @($br, '-Slot', '607')).Output | Should Match 'OK \(200\)'
+    $rojo = Get-SbRojoPid $sb $br
+    Remove-Item (Get-SbPaths $sb $br).Port
+    Invoke-Wt $sb @($br, '-Stop') | Out-Null
+    Start-Sleep -Milliseconds 500
+    Test-Alive $rojo | Should Be $false
+  }
+
   It 'un dossier existant sur une autre branche est refuse' {
     $d = (Get-SbPaths $sb 'feature/5-distante').Dir
     Invoke-Git $d switch --quiet -c 'feature/5-autre' | Out-Null
@@ -322,6 +343,7 @@ Describe 'fad-worktree.ps1 : verrou Studio' {
   Set-FakeT3 $sb -Sessions @{ 'S-a' = 'T-a'; 'S-b' = 'T-b' } -Threads @{ 'T-a' = 'active'; 'T-b' = 'active' }
   $a = 'feature/7-studio-a'
   $b = 'feature/7-studio-b'
+  $c = 'feature/7-studio-c'
   $lockFile = (Get-SbPaths $sb $a).Lock
   Invoke-Wt $sb @($a, '-Slot', '606') 'S-a' | Out-Null
   Invoke-Wt $sb @($b, '-Slot', '607') 'S-b' | Out-Null
@@ -428,7 +450,6 @@ Describe 'fad-worktree.ps1 : verrou Studio' {
   }
 
   It 'detenteur inscrit pendant son premier tour (session seule) : reconnu fini une fois sa session resolue' {
-    $c = 'feature/7-studio-c'
     Set-FakeT3 $sb -Sessions @{ 'S-b' = 'T-b' } -Threads @{ 'T-b' = 'active'; 'T-c' = 'active' }
     Invoke-Wt $sb @($c, '-Slot', '609') 'S-c' | Out-Null
     @((Get-SbOwners $sb | Where-Object { $_.branch -eq $c }).threads).Count | Should Be 0
@@ -436,6 +457,13 @@ Describe 'fad-worktree.ps1 : verrou Studio' {
     (Invoke-Wt $sb @($c, '-AcquireStudio')).Code | Should Be 0
     Set-FakeT3 $sb -Sessions @{ 'S-b' = 'T-b'; 'S-c' = 'T-c' } -Threads @{ 'T-b' = 'active'; 'T-c' = 'settled' }
     (Invoke-Wt $sb @($b, '-AcquireStudio')).Output | Should Match 'threads T3 termines'
+  }
+
+  It 'detenteur en session de terminal (sans thread T3) : verrou garde meme si les anciens threads de la branche sont finis' {
+    Set-FakeT3 $sb -Sessions @{ 'S-b' = 'T-b' } -Threads @{ 'T-b' = 'settled'; 'T-c' = 'settled' }
+    (Invoke-Wt $sb @($b, '-AcquireStudio') 'S-terminal').Code | Should Be 0
+    (Invoke-Wt $sb @($c, '-AcquireStudio')).Output | Should Match "occupe par '$b'"
+    Set-FakeT3 $sb -Sessions @{ 'S-b' = 'T-b'; 'S-c' = 'T-c' } -Threads @{ 'T-b' = 'active'; 'T-c' = 'active' }
   }
 
   It '-Remove refuse avec des modifications non commitees garde Rojo et le verrou' {
@@ -617,6 +645,10 @@ Describe 'fad-worktree-cleanup.ps1 : decisions' {
     Invoke-Cleanup $sb | Out-Null
     (Get-SbPaths $sb $br).Dir | Should Exist
     (git -C $sb.Repo branch --list $br) | Should Not BeNullOrEmpty
+    # Meme chose avec une ancienne PR fermee sans merge.
+    Set-FakeGh $sb -Prs @{ $br = @(@{ number = 11; state = 'CLOSED'; headRefOid = $old }) }
+    Invoke-Cleanup $sb | Out-Null
+    (Get-SbPaths $sb $br).Dir | Should Exist
   }
 
   It 'registre illisible : le nettoyage le signale dans son journal sans planter' {

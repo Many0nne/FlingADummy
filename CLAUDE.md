@@ -101,7 +101,7 @@ Script idempotent, à relancer au début de chaque tâche (PowerShell, depuis la
   10 min, à réinstaller sur un nouveau poste) : `scripts/install-cleanup-task.ps1`. À chaque passage, elle avance aussi le
   checkout principal sur `origin/main` (fast-forward, seulement s'il est sur `main` sans modification). Journal :
   `worktrees/.cleanup.log`.
-- Tests de limites des scripts (bac à sable jetable dans `%TEMP%`, faux `gh`/T3/Rojo, ~3 min, Windows seulement, hors CI) :
+- Tests de limites des scripts (bac à sable jetable dans `%TEMP%`, faux `gh`/T3/Rojo, ~10 min, Windows seulement, hors CI) :
   `Import-Module Pester -RequiredVersion 3.4.0; Invoke-Pester tests/scripts`. À lancer après toute modification de
   `scripts/fad-worktree*.ps1` ; un cas limite découvert devient un test dans `tests/scripts/worktree.Tests.ps1`.
 
@@ -127,7 +127,7 @@ vérification :
 - Connexion à la main pour l'instant : la réservation affiche le port du worktree et celui auquel Studio est connecté ;
   plugin Rojo (mode Edit) > Disconnect > port du worktree > Connect. Après la libération, revenir sur `34900` si le
   checkout principal sert. L'auto-connexion par le plugin multi-projets (`Many0nne/CSGO_surf_combat#589`) se branchera
-  plus tard (issue de suivi).
+  plus tard (#20).
 - Un verrou est repris d'office si son détenteur n'a plus de worktree, plus de Rojo ou plus de thread T3 actif (threads
   settled, archivés ou supprimés ; un thread inconnu de T3 ne compte pas comme fini) : un agent qui s'arrête sans
   libérer ne bloque pas les autres.

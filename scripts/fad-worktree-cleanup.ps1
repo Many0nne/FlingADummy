@@ -74,7 +74,9 @@ function Invoke-Helper {
 # Cette methode permet de savoir si Studio est connecte au Rojo du checkout principal (port 34900) lorsqu'on veut
 # avancer main : un test y est sans doute en cours.
 function Test-StudioOnBase {
-  [bool](Get-NetTCPConnection -State Established -RemotePort 34900 -ErrorAction SilentlyContinue |
+  # Meme port de base que fad-worktree.ps1 (FAD_BASE_PORT ne sert qu'aux tests).
+  $basePort = if ($env:FAD_BASE_PORT) { [int]$env:FAD_BASE_PORT } else { 34900 }
+  [bool](Get-NetTCPConnection -State Established -RemotePort $basePort -ErrorAction SilentlyContinue |
     Where-Object { (Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue).ProcessName -like 'RobloxStudio*' })
 }
 
@@ -85,8 +87,8 @@ function Get-LockHolder {
   try { return ([IO.File]::ReadAllText($f) | ConvertFrom-Json).branch } catch { return $null }
 }
 
-# Cette methode permet de savoir si une PR mergee livre bien le travail actuel de la branche (sa pointe est contenue dans
-# la tete de la PR), lorsqu'un nom de branche a pu servir a une tache plus ancienne deja mergee.
+# Cette methode permet de savoir si une PR (mergee ou fermee) porte bien le travail actuel de la branche (sa pointe est
+# contenue dans la tete de la PR), lorsqu'un nom de branche a pu servir a une tache plus ancienne.
 function Test-PrCoversBranch([string]$Branch, $Pr) {
   git -C $root rev-parse --verify -q "refs/heads/$Branch" *> $null
   if ($LASTEXITCODE -ne 0) { return $true }  # branche locale deja supprimee : rien a perdre
@@ -186,7 +188,7 @@ try {
     $open = @($prs | Where-Object { $_.state -eq 'OPEN' })
     # Une ancienne PR mergee sous le meme nom de branche ne compte pas : il faut qu'elle contienne la pointe actuelle.
     $delivered = $null -ne $prs -and @($prs | Where-Object { $_.state -eq 'MERGED' -and (Test-PrCoversBranch $branch $_) }) -and -not $open
-    $abandoned = $null -ne $prs -and -not $delivered -and @($prs | Where-Object { $_.state -eq 'CLOSED' }) -and -not $open
+    $abandoned = $null -ne $prs -and -not $delivered -and @($prs | Where-Object { $_.state -eq 'CLOSED' -and (Test-PrCoversBranch $branch $_) }) -and -not $open
 
     # Palier 1 : threads termines mais travail non clos (PR ouverte ou absente, ou gh muet) -> arret de Rojo seulement.
     if (-not ($delivered -or $abandoned)) {
