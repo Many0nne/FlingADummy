@@ -8,9 +8,8 @@ return function(T, Loader)
 		local s = {
 			action = nil,
 			laneState = "Ready",
-			thrown = false,
+			step = "Train",
 			canBuyGear = false,
-			canBuyDummy = false,
 		}
 		for key, value in patch or {} do
 			s[key] = value
@@ -19,32 +18,36 @@ return function(T, Loader)
 	end
 
 	T.describe("Objectives.pick", function()
-		T.it("commence par lancer, puis alterne entraînement et lancer", function()
-			T.expectEqual(Objectives.pick(state()).id, "Throw")
-			T.expectEqual(Objectives.pick(state()).target, "Throw")
-			T.expectEqual(Objectives.pick(state({ thrown = true })).id, "Train")
-			T.expectEqual(Objectives.pick(state({ thrown = true })).target, "Train")
+		T.it("suit l'étape du tutoriel : entraînement, puis lancer", function()
+			T.expectEqual(Objectives.pick(state()).id, "Train")
+			T.expectEqual(Objectives.pick(state()).target, "Train")
+			T.expectEqual(Objectives.pick(state({ step = "Throw" })).id, "Throw")
+			T.expectEqual(Objectives.pick(state({ step = "Throw" })).target, "Throw")
+		end)
+		T.it("étape d'achat : rien tant que l'équipement n'est pas abordable, puis le bouton Shop", function()
+			T.expectEqual(Objectives.pick(state({ step = "BuyGear" })), nil)
+			local buy = Objectives.pick(state({ step = "BuyGear", canBuyGear = true }))
+			T.expectEqual(buy.id, "BuyGear")
+			T.expectEqual(buy.button, "Shop")
+		end)
+		T.it("plus aucun objectif une fois le tutoriel fini, même avec un achat possible", function()
+			local finished = state({ canBuyGear = true })
+			finished.step = nil -- (un nil dans `patch` ne remplacerait rien)
+			T.expectEqual(Objectives.pick(finished), nil)
 		end)
 		T.it("se tait pendant la jauge, le vol et le résultat", function()
-			T.expectEqual(Objectives.pick(state({ action = "Holding" })), nil)
+			T.expectEqual(Objectives.pick(state({ action = "Holding", step = "Throw" })), nil)
 			T.expectEqual(Objectives.pick(state({ laneState = "Flying" })), nil)
-			T.expectEqual(Objectives.pick(state({ laneState = "Result", canBuyGear = true })), nil)
+			T.expectEqual(Objectives.pick(state({ laneState = "Result", step = "BuyGear", canBuyGear = true })), nil)
 		end)
 		T.it("n'affiche rien pendant la séance d'entraînement (seul le bouton STOP en bas)", function()
 			T.expectEqual(Objectives.pick(state({ action = "Training" })), nil)
-			T.expectEqual(Objectives.pick(state({ action = "Training", thrown = true })), nil)
-			T.expectEqual(Objectives.pick(state({ action = "Training", canBuyGear = true, canBuyDummy = true })), nil)
-		end)
-		T.it("fait acheter l'équipement, puis le mannequin, avant de relancer", function()
-			local both = Objectives.pick(state({ thrown = true, canBuyGear = true, canBuyDummy = true }))
-			T.expectEqual(both.id, "BuyGear")
-			T.expectEqual(both.button, "Shop")
-			T.expectEqual(Objectives.pick(state({ canBuyDummy = true })).button, "Dummies")
+			T.expectEqual(Objectives.pick(state({ action = "Training", step = "Throw" })), nil)
 		end)
 		T.it("textes en anglais du brief", function()
-			T.expectEqual(Objectives.pick(state()).text, "Throw your dummy!")
-			T.expectEqual(Objectives.pick(state({ thrown = true })).text, "Train!")
-			T.expectEqual(Objectives.pick(state({ canBuyDummy = true })).text, "Buy a better dummy!")
+			T.expectEqual(Objectives.pick(state({ step = "Throw" })).text, "Throw your dummy!")
+			T.expectEqual(Objectives.pick(state()).text, "Train!")
+			T.expectEqual(Objectives.pick(state({ step = "BuyGear", canBuyGear = true })).text, "Buy better gear!")
 		end)
 	end)
 

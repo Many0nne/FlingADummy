@@ -3,10 +3,13 @@
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local Economy = require(ReplicatedStorage.Shared.Economy)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local Training = require(ReplicatedStorage.Shared.Training)
+local Tutorial = require(ReplicatedStorage.Shared.Tutorial)
 
 local STORE_NAME = "PlayerData_v2"
 
@@ -18,6 +21,7 @@ local DEFAULTS = {
 	TrainLevel = 1,
 	TrainExp = 0, -- EXP du niveau d'entraînement en cours (Shared.Training)
 	BestDistance = 0,
+	Tutorial = 0, -- étapes du tutoriel faites (drapeaux, Shared.Tutorial)
 }
 
 local PlayerData = {}
@@ -53,7 +57,12 @@ local function load(player: Player)
 		player:SetAttribute(key, value)
 	end
 	setupLeaderstats(player)
-	if store then
+	-- Studio : attribut FreshPlayer sur Workspace = nouveau joueur (données vierges, rien lu ni sauvegardé)
+	local fresh = RunService:IsStudio() and Workspace:GetAttribute("FreshPlayer") == true
+	if fresh then
+		print("[PlayerData] FreshPlayer : " .. player.Name .. " démarre à zéro, sans sauvegarde")
+	end
+	if store and not fresh then
 		local ok, data = pcall(function()
 			return (store :: DataStore):GetAsync(keyOf(player))
 		end)
@@ -65,6 +74,10 @@ local function load(player: Player)
 					if type(data[key]) == "number" then
 						player:SetAttribute(key, data[key])
 					end
+				end
+				-- Sauvegarde antérieure au tutoriel : étapes déduites de la progression
+				if type(data.Tutorial) ~= "number" then
+					player:SetAttribute("Tutorial", Tutorial.infer(data))
 				end
 			end
 			loaded[player] = true
@@ -123,7 +136,20 @@ function PlayerData.buyUpgrade(player: Player, kind: any): boolean
 	end
 	player:SetAttribute("Money", money - cost)
 	player:SetAttribute(attribute, ((player:GetAttribute(attribute) :: number?) or 1) + 1)
+	if kind == "Gear" then
+		PlayerData.tutorialStep(player, "BuyGear")
+	end
 	return true
+end
+
+-- Cette méthode permet de noter une étape du tutoriel faite (« Train », « Throw », « BuyGear ») lorsque le serveur
+-- la constate ; sans effet une fois le tutoriel fini.
+function PlayerData.tutorialStep(player: Player, event: string)
+	local flags = (player:GetAttribute("Tutorial") :: number?) or 0
+	local updated = Tutorial.complete(flags, event)
+	if updated ~= flags then
+		player:SetAttribute("Tutorial", updated)
+	end
 end
 
 -- Cette méthode permet d'ajouter de la Throw Power lorsque l'avatar franchit un niveau d'entraînement.

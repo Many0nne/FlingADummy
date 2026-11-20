@@ -75,6 +75,9 @@ local function completeRep(player: Player)
 	end
 	player:SetAttribute("TrainExp", progress.exp)
 	player:SetAttribute("TrainLevel", progress.level)
+	if power > 0 then
+		PlayerData.tutorialStep(player, "Train")
+	end
 end
 
 -- Cette méthode permet de démarrer ou d'arrêter l'entraînement par attribut lorsque l'on teste dans Studio sans

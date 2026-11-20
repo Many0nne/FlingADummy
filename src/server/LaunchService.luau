@@ -196,6 +196,7 @@ function LaunchService.launch(player: Player, gauge: any, force: boolean?)
 	end
 	player:SetAttribute("LaneState", "Flying")
 	player:SetAttribute("Action", nil)
+	PlayerData.tutorialStep(player, "Throw")
 
 	local power = (player:GetAttribute("ThrowPower") :: number?) or GameConfig.START_POWER
 	local dummy, origin, speed = startFlight(player, player, slot, power, gauge)

@@ -1,4 +1,4 @@
--- Objectif du moment au style des jeux de référence : texte blanc à contour en haut au centre, triangle jaune qui
+-- Objectif du tutoriel (3 étapes, Shared.Tutorial ; plus rien ensuite) au style des jeux de référence : texte blanc à contour en haut au centre, triangle jaune qui
 -- flotte et pulse au-dessus de la cible (pièce du décor marquée, cf. Shared.Objectives) ou du bouton du HUD désigné, et file
 -- de chevrons jaunes au sol qui défilent du joueur vers la cible.
 local CollectionService = game:GetService("CollectionService")
@@ -7,10 +7,9 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local Economy = require(Shared:WaitForChild("Economy"))
-local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Objectives = require(Shared:WaitForChild("Objectives"))
 local Training = require(Shared:WaitForChild("Training"))
+local Tutorial = require(Shared:WaitForChild("Tutorial"))
 local UIMotion = require(Shared:WaitForChild("UIMotion"))
 
 local Hud = require(script.Parent.Hud)
@@ -42,8 +41,6 @@ local hudArrowBob = Vector2.yAxis -- sens du balancement (vers le bouton)
 local chevrons: { { BasePart } } = {}
 local current: Objectives.Objective? = nil
 local targetPart: BasePart? = nil
-local thrown = false
-local lastPower = 0
 local lastTargetPick = 0
 
 -- Cette méthode permet de lire un attribut numérique du joueur (valeur par défaut si absent) lorsque l'état de
@@ -57,13 +54,13 @@ end
 local function state(): Objectives.State
 	local money = stat("Money", 0)
 	local gearCost = Training.nextGearCost(stat("GearTier", 1))
-	local valueCost = Economy.valueCost(stat("ValueLevel", 1))
+	-- Rien avant le chargement : un ancien joueur ne doit pas voir passer la première étape
+	local step = if player:GetAttribute("DataReady") == true then Tutorial.current(stat("Tutorial", 0)) else nil
 	return {
 		action = player:GetAttribute("Action") :: string?,
 		laneState = player:GetAttribute("LaneState") :: string?,
-		thrown = thrown,
+		step = step,
 		canBuyGear = gearCost ~= nil and money >= gearCost,
-		canBuyDummy = valueCost ~= nil and money >= valueCost,
 	}
 end
 
@@ -177,7 +174,18 @@ local function refresh()
 			UIKit.pop(label, 1.3)
 		end
 	end
-	local anchor = if current and current.button then Hud.anchor(current.button) else nil
+end
+
+-- Cette méthode permet de poser la flèche d'interface sur le bouton désigné (le bouton Upgrade du popup « NEW GEAR! »
+-- quand il est affiché, sinon le bouton du HUD) lorsque l'objectif ou le popup changent.
+local function updateHudAnchor()
+	local anchor = nil
+	if current and current.button then
+		anchor = Hud.offerButton() or Hud.anchor(current.button)
+	end
+	if anchor == hudArrow.Parent then
+		return
+	end
 	hudArrow.Parent = anchor
 	hudArrow.Visible = anchor ~= nil
 	placeHudArrow(anchor)
@@ -186,7 +194,9 @@ end
 
 -- Cette méthode permet d'animer le texte, la flèche et les chevrons à chaque image lorsque l'objectif est affiché.
 local function step()
-	label.Visible = current ~= nil and not Hud.isPopupShown()
+	updateHudAnchor()
+	-- Le popup « NEW GEAR! » dit déjà quoi faire : le texte se tait, la flèche désigne son bouton
+	label.Visible = current ~= nil and not Hud.isPopupShown() and Hud.offerButton() == nil
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -274,22 +284,7 @@ function Objective.init(localPlayer: Player, gui: ScreenGui)
 		chevrons[i] = makeChevron(folder)
 	end
 
-	lastPower = stat("ThrowPower", GameConfig.START_POWER)
-	player:GetAttributeChangedSignal("ThrowPower"):Connect(function()
-		local power = stat("ThrowPower", GameConfig.START_POWER)
-		if power > lastPower then
-			thrown = false
-		end
-		lastPower = power
-		refresh()
-	end)
-	player:GetAttributeChangedSignal("LaneState"):Connect(function()
-		if player:GetAttribute("LaneState") == "Flying" then
-			thrown = true
-		end
-		refresh()
-	end)
-	for _, attribute in { "Action", "Money", "GearTier", "ValueLevel" } do
+	for _, attribute in { "Action", "LaneState", "Money", "GearTier", "Tutorial", "DataReady" } do
 		player:GetAttributeChangedSignal(attribute):Connect(refresh)
 	end
 	RunService.RenderStepped:Connect(step)

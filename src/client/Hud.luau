@@ -1,7 +1,8 @@
 -- HUD permanent au style des jeux de référence : boutons à icône (Index et Shop à gauche, Dummies à droite, pastille
 -- « ! »), compteurs icône + valeur en bas à gauche (Throw Power, argent et revenu « +$N/s »), fenêtres à bandeau et
 -- cartes d'objets (équipements d'entraînement, mannequins, index), barre d'entraînement avec STOP, « +N EXP » qui
--- s'envole à chaque répétition, popups LEVEL UP! (Throw Power gagnée au niveau) / NEW EQUIPMENT!.
+-- s'envole à chaque répétition, popups LEVEL UP! (Throw Power gagnée au niveau) / NEW EQUIPMENT!, et popup « NEW GEAR! »
+-- qui propose l'équipement suivant dès qu'il est abordable (achat en un clic).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
@@ -13,6 +14,7 @@ local Format = require(Shared:WaitForChild("Format"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Training = require(Shared:WaitForChild("Training"))
+local Tutorial = require(Shared:WaitForChild("Tutorial"))
 local UIMotion = require(Shared:WaitForChild("UIMotion"))
 
 local UIKit = require(script.Parent.UIKit)
@@ -68,6 +70,11 @@ local lastRepFloat = 0
 local knownLevel = math.huge -- palier d'entraînement et équipement déjà annoncés (aucun avant le chargement)
 local knownTier = math.huge
 local popupEndsAt = 0
+-- Popup « NEW GEAR! » (référence 09, « Nouvel équipement ! ») : palier proposé, et paliers dont le joueur l'a fermé
+type Offer = { frame: Frame, button: TextButton, viewport: ViewportFrame, name: TextLabel, stat: TextLabel }
+local offer: Offer
+local offerTier: number? = nil
+local dismissedOffers: { [number]: boolean } = {}
 
 -- Cette méthode permet de lire un attribut numérique du joueur (valeur par défaut si absent) lorsque le HUD se
 -- rafraîchit.
@@ -87,8 +94,8 @@ local function toggle(name: string)
 	end
 	if open then
 		UIKit.openWindow(target)
-		Hud.refresh()
 	end
+	Hud.refresh()
 end
 
 -- Cette méthode permet de créer une ligne de compteur (icône dessinée + valeur à contour, ancrée à gauche pour
@@ -193,6 +200,143 @@ local function buildButtons()
 	end)
 end
 
+-- Cette méthode permet de construire le popup « NEW GEAR! » (bandeau dégradé et croix, rendu 3D, nom, prix et gain,
+-- bouton vert UPGRADE qui achète directement, comme « Nouvel équipement ! » de la référence 09) lorsque le HUD est construit.
+local function buildGearOffer()
+	local frame = UIKit.create("Frame", {
+		Name = "GearOffer",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 40),
+		Size = UDim2.fromOffset(440, 136),
+		BackgroundColor3 = C.panel,
+		Visible = false,
+		ZIndex = 15,
+		Parent = root,
+	})
+	UIKit.corner(frame, 12)
+	UIKit.outline(frame, 4)
+	local header = UIKit.create("Frame", {
+		Size = UDim2.new(1, 0, 0, 40),
+		BackgroundColor3 = Color3.new(1, 1, 1),
+		ZIndex = 15,
+		Parent = frame,
+	})
+	UIKit.corner(header, 12)
+	UIKit.create("UIGradient", {
+		Color = ColorSequence.new(Color3.fromRGB(150, 60, 230), Color3.fromRGB(255, 70, 170)),
+		Parent = header,
+	})
+	-- Bas du bandeau droit, cerné d'un trait épais (comme les fenêtres)
+	local flat = UIKit.create("Frame", {
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromScale(0, 1),
+		Size = UDim2.new(1, 0, 0, 12),
+		BackgroundColor3 = Color3.new(1, 1, 1),
+		BorderSizePixel = 0,
+		ZIndex = 15,
+		Parent = header,
+	})
+	UIKit.create("UIGradient", {
+		Color = ColorSequence.new(Color3.fromRGB(150, 60, 230), Color3.fromRGB(255, 70, 170)),
+		Parent = flat,
+	})
+	UIKit.create("Frame", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.fromScale(0, 1),
+		Size = UDim2.new(1, 0, 0, 3),
+		BackgroundColor3 = C.ink,
+		BorderSizePixel = 0,
+		ZIndex = 16,
+		Parent = header,
+	})
+	UIKit.text({
+		Position = UDim2.fromOffset(14, 0),
+		Size = UDim2.new(1, -60, 1, 0),
+		Text = "NEW GEAR!",
+		TextSize = 28,
+		StrokeThickness = 2.5,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 17,
+		Parent = header,
+	})
+	UIKit.button({
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -8, 0.5, 0),
+		Size = UDim2.fromOffset(32, 32),
+		BackgroundColor3 = C.red,
+		Text = "X",
+		TextSize = 22,
+		ZIndex = 17,
+		Parent = header,
+	}, function()
+		if offerTier then
+			dismissedOffers[offerTier] = true
+		end
+		Hud.refresh()
+	end)
+	local well = UIKit.create("Frame", {
+		Position = UDim2.fromOffset(10, 48),
+		Size = UDim2.fromOffset(78, 78),
+		BackgroundColor3 = Color3.fromRGB(28, 31, 40),
+		ZIndex = 16,
+		Parent = frame,
+	})
+	UIKit.corner(well, 8)
+	UIKit.outline(well, 2)
+	local viewport = UIKit.create("ViewportFrame", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Ambient = Color3.fromRGB(170, 170, 170),
+		LightColor = Color3.new(1, 1, 1),
+		LightDirection = Vector3.new(-1, -1.5, 1),
+		ZIndex = 17,
+		Parent = well,
+	})
+	UIKit.text({
+		Position = UDim2.fromOffset(98, 50),
+		Size = UDim2.fromOffset(190, 18),
+		Text = "You can now buy",
+		TextSize = 17,
+		TextColor3 = Color3.fromRGB(190, 195, 210),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 17,
+		Parent = frame,
+	})
+	local name = UIKit.text({
+		Position = UDim2.fromOffset(98, 68),
+		Size = UDim2.fromOffset(190, 30),
+		TextSize = 26,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 17,
+		Parent = frame,
+	})
+	local statLabel = UIKit.text({
+		Position = UDim2.fromOffset(98, 100),
+		Size = UDim2.fromOffset(190, 22),
+		TextSize = 18,
+		TextColor3 = C.green,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 17,
+		Parent = frame,
+	})
+	local button = UIKit.button({
+		Name = "Upgrade",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -12, 0, 88),
+		Size = UDim2.fromOffset(136, 50),
+		Text = "UPGRADE",
+		TextSize = 26,
+		Shine = true,
+		ZIndex = 17,
+		Parent = frame,
+	}, function()
+		if offerTier == stat("GearTier", 1) + 1 then
+			Hud.onBuy("Gear")
+		end
+	end)
+	offer = { frame = frame, button = button, viewport = viewport, name = name, stat = statLabel }
+end
+
 -- Cette méthode permet de créer une rangée défilante de cartes dans le corps d'une fenêtre lorsque la fenêtre est
 -- construite.
 local function cardRow(body: Frame): ScrollingFrame
@@ -235,6 +379,7 @@ local function buildWindows()
 		size = size,
 	}, function()
 		UIKit.closeWindow(windows.Shop)
+		Hud.refresh()
 	end)
 	windows.Shop = shop.frame
 	local gearRow = cardRow(shop.body)
@@ -317,6 +462,16 @@ local function buildWindows()
 	end
 end
 
+-- Cette méthode permet de construire le rendu 3D d'un équipement (néon à la place du verre et du champ de force, qui
+-- ne se rendent pas en ViewportFrame) lorsqu'une carte ou le popup « NEW GEAR! » l'affichent.
+local function gearModel(tier: number): Model
+	local gear = Training.GEARS[tier]
+	local material = if gear.material == Enum.Material.Glass or gear.material == Enum.Material.ForceField
+		then Enum.Material.Neon
+		else gear.material
+	return DummyShape.buildVisual(1, { color = gear.color, material = material })
+end
+
 -- Cette méthode permet de (re)construire les rendus 3D des cartes (mannequins soulevés, mannequin lancé) lorsque une
 -- fenêtre s'ouvre pour la première fois ou que les maillages publiés viennent d'arriver.
 local function buildModels()
@@ -326,12 +481,7 @@ local function buildModels()
 	end
 	modelsMeshed = meshed
 	for tier, card in gearCards do
-		local gear = Training.GEARS[tier]
-		-- Verre et champ de force ne se rendent pas en ViewportFrame : néon de la même couleur à la place
-		local material = if gear.material == Enum.Material.Glass or gear.material == Enum.Material.ForceField
-			then Enum.Material.Neon
-			else gear.material
-		UIKit.showModel(card.viewport, DummyShape.buildVisual(1, { color = gear.color, material = material }))
+		UIKit.showModel(card.viewport, gearModel(tier))
 	end
 	UIKit.showModel(dummyCard.viewport, DummyShape.buildVisual(1))
 	for _, viewport in lockedViewports do
@@ -410,6 +560,30 @@ local function refreshDummy(money: number)
 	end
 end
 
+-- Cette méthode permet d'afficher, de mettre à jour ou de masquer le popup « NEW GEAR! » lorsque l'argent affiché,
+-- l'équipement ou l'état du joueur changent : palier suivant abordable, pas fermé par le joueur, écran libre.
+local function refreshOffer(money: number, cost: number?)
+	local free = seeded
+		and player:GetAttribute("LaneState") == "Ready"
+		and player:GetAttribute("Action") ~= "Holding"
+		and not UIKit.isWindowOpen(windows.Shop)
+	local tier = if free then Tutorial.gearOffer(stat("GearTier", 1), cost, money, dismissedOffers) else nil
+	if tier == offerTier then
+		return
+	end
+	offerTier = tier
+	if not tier then
+		UIKit.closeWindow(offer.frame, player:GetAttribute("LaneState") ~= "Ready")
+		return
+	end
+	local gear = Training.GEARS[tier]
+	offer.name.Text = gear.name
+	offer.stat.Text = Format.money(gear.cost) .. "  •  +" .. Format.short(gear.gain) .. " EXP / rep"
+	UIKit.showModel(offer.viewport, gearModel(tier))
+	UIKit.openWindow(offer.frame, false)
+	UIKit.playSound("LevelUp", 1.4)
+end
+
 -- Cette méthode permet de rafraîchir compteurs, cartes et pastilles « ! » lorsque l'argent, la puissance,
 -- l'équipement, la valeur ou le revenu changent.
 function Hud.refresh()
@@ -433,6 +607,7 @@ function Hud.refresh()
 		refreshGear(money)
 		refreshDummy(money)
 	end
+	refreshOffer(money, gearCost)
 end
 
 -- Cette méthode permet de faire s'envoler « +N EXP » (EXP de l'équipement) au-dessus de la barre d'entraînement lorsque
@@ -496,6 +671,7 @@ local function refreshState()
 			UIKit.closeWindow(window, true)
 		end
 	end
+	Hud.refresh() -- popup « NEW GEAR! » seulement écran libre
 end
 
 -- Cette méthode permet de construire la barre d'entraînement (piste vert foncé, remplissage bleu, niveau et
@@ -701,6 +877,12 @@ function Hud.anchor(name: string): GuiObject?
 	return anchors[name]
 end
 
+-- Cette méthode permet de donner le bouton UPGRADE du popup « NEW GEAR! » lorsque la flèche du tutoriel cherche où
+-- pointer ; nil quand le popup n'est pas affiché.
+function Hud.offerButton(): GuiObject?
+	return if offerTier ~= nil then offer.button else nil
+end
+
 -- Cette méthode permet de savoir si un popup de palier occupe le haut de l'écran lorsque l'objectif s'affiche.
 function Hud.isPopupShown(): boolean
 	return os.clock() < popupEndsAt
@@ -730,6 +912,7 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 	})
 	buildCounters()
 	buildButtons()
+	buildGearOffer()
 	buildWindows()
 	buildTrainBar(onStop)
 
@@ -775,6 +958,7 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 		lastMoney = stat("Money", 0)
 		knownLevel = stat("TrainLevel", 1)
 		knownTier = stat("GearTier", 1)
+		Hud.refresh()
 	end
 	if player:GetAttribute("DataReady") == true then
 		seed()
