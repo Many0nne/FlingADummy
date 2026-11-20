@@ -6,7 +6,7 @@ local serde = require("@lune/serde")
 return function(T)
 	local build = fs.readFile("src/server/Build.luau")
 	local project = fs.readFile("default.project.json")
-	local expected = { FadChecker = 16, FadBrick = 2 }
+	local expected = { FadChecker = 16, FadWall = 16, FadBrick = 2 }
 
 	T.describe("MaterialVariant du décor", function()
 		for name, studs in expected do

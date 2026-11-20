@@ -17,10 +17,10 @@ export type Zone = {
 -- stylua: ignore
 Zones.LIST = {
 	{ start = 0,    name = "Meadow",       multiplier = 1,   color = Color3.fromRGB(95, 215, 50),
-	  ground = Color3.fromRGB(105, 225, 45),  wall = Color3.fromRGB(160, 100, 55),  top = Color3.fromRGB(95, 215, 50),
+	  ground = Color3.fromRGB(90, 240, 35),   wall = Color3.fromRGB(128, 92, 60),   top = Color3.fromRGB(95, 245, 35),
 	  props = { "tree", "tree", "bush", "flowers", "rock" } },
 	{ start = 100,  name = "Forest",       multiplier = 1.5, color = Color3.fromRGB(40, 160, 70),
-	  ground = Color3.fromRGB(60, 185, 60),   wall = Color3.fromRGB(125, 80, 45),   top = Color3.fromRGB(45, 160, 60),
+	  ground = Color3.fromRGB(60, 200, 50),   wall = Color3.fromRGB(110, 80, 60),   top = Color3.fromRGB(50, 185, 50),
 	  props = { "pine", "pine", "tree", "mushroom", "bush" } },
 	{ start = 250,  name = "Desert",       multiplier = 2.2, color = Color3.fromRGB(240, 185, 70),
 	  ground = Color3.fromRGB(250, 215, 120), wall = Color3.fromRGB(225, 140, 70),  top = Color3.fromRGB(175, 185, 70),

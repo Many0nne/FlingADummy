@@ -45,6 +45,9 @@
       "FadChecker": {
         "$path": "src/materials/FadChecker.model.json"
       },
+      "FadWall": {
+        "$path": "src/materials/FadWall.model.json"
+      },
       "FadBrick": {
         "$path": "src/materials/FadBrick.model.json"
       }

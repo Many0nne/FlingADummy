@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local CourseLayout = require(ReplicatedStorage.Shared.CourseLayout)
+local Drips = require(ReplicatedStorage.Shared.Drips)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local Objectives = require(ReplicatedStorage.Shared.Objectives)
 local Zones = require(ReplicatedStorage.Shared.Zones)
@@ -19,7 +20,7 @@ type Zone = Zones.Zone
 
 local SEED = 20261120 -- décor identique d'un serveur à l'autre
 local SEGMENT_LENGTH = 400 -- longueur maximale d'une pièce de sol ou de paroi (limite : 2 048 studs)
-local CAP_THICKNESS = 1.2
+local CAP_THICKNESS = Drips.CAP_THICKNESS
 local CAP_OVERHANG = 1 -- l'herbe déborde du bord de chaque marche
 local END_Z = GameConfig.COURSE_LENGTH + 40 -- fond du canyon, derrière la paroi de bout de piste
 
@@ -62,14 +63,16 @@ local function markObjective(part: BasePart, objective: string, slot: number)
 	CollectionService:AddTag(part, Objectives.TAG)
 end
 
--- Cette méthode permet de régler la lumière (plein jour saturé, nuages, comme les jeux de référence) lorsque le serveur
--- démarre.
+-- Cette méthode permet de régler la lumière (plein jour clair et saturé, ombres douces et peu marquées, nuages, comme
+-- les jeux de référence) lorsque le serveur démarre.
 local function setupLighting()
 	Lighting.ClockTime = 13.5
-	Lighting.Brightness = 3.2
-	Lighting.OutdoorAmbient = rgb(165, 165, 180)
-	Lighting.EnvironmentDiffuseScale = 0.5
-	Lighting.EnvironmentSpecularScale = 0.3
+	Lighting.Brightness = 3
+	Lighting.Ambient = rgb(110, 110, 120)
+	Lighting.OutdoorAmbient = rgb(190, 195, 210)
+	Lighting.ShadowSoftness = 0.6
+	Lighting.EnvironmentDiffuseScale = 1
+	Lighting.EnvironmentSpecularScale = 0.2
 	local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
 	atmosphere.Density = 0.18
 	atmosphere.Haze = 0.4
@@ -79,8 +82,9 @@ local function setupLighting()
 	atmosphere.Parent = Lighting
 	local grading = Lighting:FindFirstChild("Grading") or Instance.new("ColorCorrectionEffect")
 	grading.Name = "Grading"
-	grading.Saturation = 0.25
-	grading.Contrast = 0.1
+	grading.Saturation = 0.2
+	grading.Contrast = 0
+	grading.Brightness = 0.04
 	grading.Parent = Lighting
 	local bloom = Lighting:FindFirstChildOfClass("BloomEffect") or Instance.new("BloomEffect")
 	bloom.Intensity = 0.3
@@ -135,26 +139,42 @@ local function box(parent: Instance, low: Vector3, high: Vector3, color: Color3,
 	})
 end
 
--- Cette méthode permet de faire déborder l'herbe (neige, sable…) d'une marche en blocs de tailles variées, le long d'un
--- bord qui fait face à `facing`, lorsque l'on habille une paroi.
-local function drips(parent: Instance, edge: Vector3, facing: Vector3, length: number, color: Color3)
+-- Cette méthode permet de faire déborder l'herbe (neige, sable…) d'une marche en blocs qui descendent en escalier
+-- (tracé : Shared.Drips) le long d'un bord tourné vers `facing`, lorsque l'on habille une paroi ; `low`, `high` : coins de
+-- la marche, dont Roblox fait partir le damier de la face.
+local function drips(
+	parent: Instance,
+	edge: Vector3,
+	facing: Vector3,
+	length: number,
+	color: Color3,
+	low: Vector3,
+	high: Vector3
+)
 	-- `edge` : début du bord, au niveau du dessous de la couverture ; le bord court le long de `along`
 	local along = Vector3.new(0, 1, 0):Cross(facing)
-	local t = rng:NextNumber(0, 3)
-	while t < length - 2 do
-		local size = math.min(rng:NextInteger(2, 6), length - t)
-		local height = rng:NextInteger(1, 3)
-		local center = edge + along * (t + size / 2) + facing * (CAP_OVERHANG / 2) - Vector3.new(0, height / 2, 0)
-		local extent = along * size + facing * CAP_OVERHANG
+	-- Le damier de la face part du bout de la marche où commence `along` (vérifié en jeu sur les quatre orientations)
+	local start = math.min(low:Dot(along), high:Dot(along))
+	local blocks = Drips.layout(edge:Dot(along) - start, length, function(a, b)
+		return rng:NextInteger(a, b)
+	end, function()
+		return rng:NextNumber()
+	end)
+	for _, block in blocks do
+		local center = edge
+			+ along * (block.t + block.width / 2)
+			+ facing * (CAP_OVERHANG / 2)
+			- Vector3.new(0, block.top + block.height / 2, 0)
+		local extent = along * block.width + facing * CAP_OVERHANG
 		Build.decor({
 			Name = "Drip",
-			Size = Vector3.new(math.abs(extent.X), height, math.abs(extent.Z)),
+			Size = Vector3.new(math.abs(extent.X), block.height, math.abs(extent.Z)),
 			Position = center,
 			Color = color,
+			-- Tenons seuls (pas de damier) : chaque bloc ancre sa texture à son propre coin, un damier y serait décalé
 			Variant = Build.BRICK,
 			Parent = parent,
 		})
-		t += size + rng:NextInteger(0, 4)
 	end
 end
 
@@ -218,7 +238,7 @@ local function terraces(
 			top,
 			math.max(a.Z, b.Z + outer.Z, a.Z + outer.Z, b.Z)
 		)
-		box(parent, low, high, zone.wall, Build.CHECKER, "Terrace")
+		box(parent, low, high, zone.wall, Build.WALL, "Terrace")
 		-- Couverture de tout le dessus du bloc (cachée sous la marche suivante), qui déborde côté zone ouverte ; pas aux
 		-- bouts, où elle chevaucherait la couverture de la paroi voisine
 		local c0 = a + facing * CAP_OVERHANG
@@ -228,10 +248,10 @@ local function terraces(
 			Vector3.new(math.min(c0.X, c1.X), top - 0.4, math.min(c0.Z, c1.Z)),
 			Vector3.new(math.max(c0.X, c1.X), top + CAP_THICKNESS - 0.4, math.max(c0.Z, c1.Z)),
 			zone.top,
-			Build.CHECKER,
+			Build.WALL,
 			"TerraceTop"
 		)
-		drips(parent, a + Vector3.new(0, top - 0.4, 0), facing, (b - a).Magnitude, zone.top)
+		drips(parent, a + Vector3.new(0, top - 0.4, 0), facing, (b - a).Magnitude, zone.top, low, high)
 		-- Décor du terre-plein (marches) ou du plateau (dernière marche, deux rangées)
 		local ground0 = a + Vector3.new(0, top + CAP_THICKNESS - 0.4, 0) - facing * (CourseLayout.TIER_STEP / 2)
 		local ground1 = b + Vector3.new(0, top + CAP_THICKNESS - 0.4, 0) - facing * (CourseLayout.TIER_STEP / 2)
