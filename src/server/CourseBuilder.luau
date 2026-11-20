@@ -254,17 +254,26 @@ local function buildLaunchZone(parent: Instance, slots: { Slot })
 		Build.decor({
 			Name = "PadRing",
 			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(0.12, GameConfig.PAD_RADIUS * 2 + 1.2, GameConfig.PAD_RADIUS * 2 + 1.2),
-			CFrame = disc + Vector3.new(0, 0.06, 0),
+			Size = Vector3.new(0.1, GameConfig.PAD_RADIUS * 2 + 2.4, GameConfig.PAD_RADIUS * 2 + 2.4),
+			CFrame = disc + Vector3.new(0, 0.05, 0),
+			Color = slot.color,
+			Parent = parent,
+		})
+		Build.decor({
+			Name = "PadEdge",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.12, GameConfig.PAD_RADIUS * 2 + 0.8, GameConfig.PAD_RADIUS * 2 + 0.8),
+			CFrame = disc + Vector3.new(0, 0.07, 0),
 			Color = COLORS.line,
 			Parent = parent,
 		})
+		-- Pastille jaune comme dans les références (et l'aide à l'écran « yellow pad ») ; la couronne dit à qui elle est
 		Build.decor({
 			Name = "Pad",
 			Shape = Enum.PartType.Cylinder,
 			Size = Vector3.new(0.16, GameConfig.PAD_RADIUS * 2, GameConfig.PAD_RADIUS * 2),
-			CFrame = disc + Vector3.new(0, 0.08, 0),
-			Color = slot.color,
+			CFrame = disc + Vector3.new(0, 0.09, 0),
+			Color = COLORS.pad,
 			Parent = parent,
 		})
 		slot.sign = Build.billboard(parent, slot.pad + Vector3.new(0, 13, 0), "FREE", Vector2.new(8, 2.4))
@@ -477,10 +486,11 @@ local function buildTrack(parent: Instance)
 				Color = COLORS.line,
 				Parent = folder,
 			})
-		end
-		local label = string.format("%s  x%s", string.upper(zone.name), zone.multiplier)
-		for _, side in { -1, 1 } do
-			Props.signpost(folder, CFrame.new(side * (half - 9), 0, zoneStart + 4), label, zone.color)
+			-- Panneaux d'entrée de zone (pas au départ : la zone de lancer reste dégagée, comme dans les références)
+			local label = string.format("%s  x%s", string.upper(zone.name), zone.multiplier)
+			for _, side in { -1, 1 } do
+				Props.signpost(folder, CFrame.new(side * (half - 9), 0, zoneStart + 4), label, zone.color)
+			end
 		end
 		folder.Parent = parent
 	end

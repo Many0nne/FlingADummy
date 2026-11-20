@@ -177,8 +177,9 @@ local function buildWall(z: number)
 	local span = GameConfig.SLOT_COUNT * GameConfig.SLOT_SPACING
 	local count = math.floor(span / 4)
 	for row = 0, 6 do
-		local offset = if row % 2 == 0 then -1 else 1
-		for col = 0, count - 1 do
+		-- Appareil en quinconce : une rangée sur deux décalée d'une demi-brique, une brique de moins (rien en porte-à-faux)
+		local offset = if row % 2 == 0 then 0 else 2
+		for col = 0, count - 1 - row % 2 do
 			addPiece(group, {
 				Name = "Brick",
 				Size = Vector3.new(3.96, 3, 2.5),

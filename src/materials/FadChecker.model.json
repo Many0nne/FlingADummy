@@ -3,6 +3,8 @@
   "properties": {
     "BaseMaterial": "Plastic",
     "MaterialPattern": "Regular",
-    "StudsPerTile": 16.0
+    "StudsPerTile": 16.0,
+    "ColorMap": "rbxassetid://95869174019099",
+    "NormalMap": "rbxassetid://88127827021001"
   }
 }

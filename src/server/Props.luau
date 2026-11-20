@@ -268,9 +268,17 @@ builders.lollipop = function(parent, at, rng, solid)
 	local colors = { rgb(255, 80, 160), rgb(80, 200, 255), rgb(255, 210, 50), rgb(140, 100, 255) }
 	local color = colors[rng:NextInteger(1, #colors)]
 	put(parent, at, Vector3.new(0.8, 9, 0.8), Vector3.new(0, 4.5, 0), WHITE, solid)
-	put(parent, at, Vector3.new(6, 6, 1.2), Vector3.new(0, 11, 0), color, solid)
-	put(parent, at, Vector3.new(6.6, 1.2, 1.4), Vector3.new(0, 11, 0), WHITE, false, Vector3.new(0, 0, 45))
-	put(parent, at, Vector3.new(6.6, 1.2, 1.4), Vector3.new(0, 11, 0), WHITE, false, Vector3.new(0, 0, -45))
+	-- Spirale en carrés concentriques, de plus en plus épais pour ressortir sur les deux faces
+	for i, width in { 6, 4.6, 3.2, 1.8 } do
+		put(
+			parent,
+			at,
+			Vector3.new(width, width, 1 + i * 0.2),
+			Vector3.new(0, 11, 0),
+			if i % 2 == 1 then color else WHITE,
+			i == 1 and solid
+		)
+	end
 end
 
 -- Sucre d'orge rayé rouge et blanc, à crosse
