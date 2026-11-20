@@ -43,7 +43,7 @@ base, il rapporte des $/s, seule source d'argent.
    crash dessous (« BRUTAL! »), « NEW RECORD! » au-dessus en cas de record, comme le « X1.22 » de 09 ; pas d'écran de
    détail, comme 01. S'il repart (calé un instant contre un obstacle), le vol reprend. Le tirage part dès que le
    serveur a compté le lancer (1 s d'arrêt), « X » au moins 0,9 s à l'écran : **arrêt → silhouette ≈ 1,1 s** (cible
-   < 1,5 s). Le détail reste sur la radio X-RAY, dans son coin jusqu'à 4 s après le comptage : bilan à sa gauche
+   < 1,5 s). Le détail reste sur la radio X-RAY, dans son coin jusqu'à 3 s après le comptage : bilan à sa gauche
    (distance, os, objets détruits, blessures « Shattered skull, broken left arm », cause « Hit a brick wall at
    140 km/h »).
 6. **Tirage « 1 en N »** (`Client.Prize`, suspense calé sur 09 et 01) : silhouette noire debout au point

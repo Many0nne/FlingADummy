@@ -23,9 +23,8 @@ local XRAY_TOP = 2.85 -- haut de la tête (studs)
 local BONE_COLOR = Color3.fromRGB(190, 230, 255)
 local LAUNCH_GRACE = 0.5 -- s après le lancer pendant lesquels on ne cherche pas l'arrêt
 local REST_CONFIRM = 0.15 -- s sous REST_SPEED avant d'afficher la CHANCE finale (évite le sommet d'un rebond)
-local RESUME_SPEED = 2 * GameConfig.REST_SPEED -- le mannequin repart (calé contre un obstacle) : le vol reprend
 local TAG_MIN = 0.9 -- s minimum de « X1.36 » à l'écran avant le tirage
-local REPORT_TIME = 4 -- s de radio et bilan après l'arrêt
+local REPORT_TIME = 3 -- s de radio et bilan après le comptage (partis avant la révélation du tirage)
 local TAG_OFFSET = 4.5 -- studs au-dessus du torse
 
 -- Titre selon le score de crash (os + objets / 2), du plus faible au plus fort
@@ -64,6 +63,7 @@ local currentZone = 1
 local flightModel: Model? = nil
 local token = 0
 local restSince: number? = nil -- os.clock() du début de l'arrêt en cours
+local moveSince: number? = nil -- os.clock() depuis lequel le mannequin « arrêté » bouge de nouveau
 local landedAt: number? = nil -- os.clock() de l'affichage de la CHANCE finale
 local stoppedAt: number? = nil -- os.clock() de l'arrêt du mannequin (début de l'immobilité)
 local settled = false -- résultat du serveur reçu : l'arrêt est définitif
@@ -382,6 +382,7 @@ local function resume()
 	landedAt = nil
 	stoppedAt = nil
 	restSince = nil
+	moveSince = nil
 	FlightView.hideTag()
 	report.Visible = false
 	showFlightHud(true)
@@ -391,8 +392,9 @@ local function resume()
 end
 
 -- Cette méthode permet de guetter l'arrêt du mannequin (torse sous REST_SPEED pendant REST_CONFIRM) à chaque frame
--- pendant le vol, pour afficher la CHANCE finale sans attendre la seconde d'arrêt du serveur ; s'il repart avant
--- le résultat, le vol reprend. Attend que le torse soit répliqué (2 s au plus).
+-- pendant le vol, pour afficher la CHANCE finale sans attendre la seconde d'arrêt du serveur ; s'il repart (au-dessus
+-- de REST_SPEED pendant REST_CONFIRM, même seuil que le serveur) avant le résultat, le vol reprend. Attend que le
+-- torse soit répliqué (2 s au plus).
 local function watchRest(model: Model, launchedAt: number)
 	local current = token
 	task.spawn(function()
@@ -407,13 +409,18 @@ local function watchRest(model: Model, launchedAt: number)
 					return
 				end
 				local speed = torso.AssemblyLinearVelocity.Magnitude
+				local now = os.clock()
 				if landedAt then
-					if speed >= RESUME_SPEED then
+					if speed < GameConfig.REST_SPEED then
+						moveSince = nil
+						return
+					end
+					moveSince = moveSince or now
+					if now - (moveSince :: number) >= REST_CONFIRM then
 						resume()
 					end
 					return
 				end
-				local now = os.clock()
 				if now - launchedAt < LAUNCH_GRACE or speed >= GameConfig.REST_SPEED then
 					restSince = nil
 					return
@@ -475,8 +482,16 @@ end
 -- Cette méthode permet de figer l'étiquette et le bilan sur le résultat du serveur (CHANCE comptée, blessures, cause)
 -- lorsqu'il arrive, et de donner le délai (s) avant le tirage pour que « X1.36 » reste au moins TAG_MIN à l'écran.
 function FlightView.settle(result: any): number
+	if not landedAt then
+		-- Arrêt pas vu par le client (latence, chute, vol trop long) : le serveur l'a compté REST_TIME plus tôt
+		stoppedAt = os.clock() - GameConfig.REST_TIME
+	end
 	land()
 	settled = true
+	for _, connection in connections do
+		connection:Disconnect()
+	end
+	table.clear(connections)
 	fillLanding(result.total or 1, result.distance or 0, result.bones or 0, result.smashed or 0)
 	tagRecord.Visible = result.record == true
 	if result.record == true then
@@ -515,6 +530,7 @@ function FlightView.hide()
 	token += 1
 	flightModel = nil
 	restSince = nil
+	moveSince = nil
 	landedAt = nil
 	stoppedAt = nil
 	settled = false
