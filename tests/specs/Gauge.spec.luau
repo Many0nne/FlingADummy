@@ -1,4 +1,4 @@
--- Jauge : onde triangle, facteur de vitesse, zone PERFECT.
+-- Jauge : onde triangle, facteur de vitesse (pas de zone PERFECT).
 return function(T, Loader)
 	local loader = Loader.new()
 	local Gauge = loader:require("src/shared/Gauge")
@@ -27,10 +27,11 @@ return function(T, Loader)
 		end)
 	end)
 
-	T.describe("Gauge.isPerfect", function()
-		T.it("à partir du seuil seulement", function()
-			T.expect(Gauge.isPerfect(GameConfig.PERFECT_THRESHOLD), "seuil inclus")
-			T.expect(not Gauge.isPerfect(GameConfig.PERFECT_THRESHOLD - 0.01), "sous le seuil")
+	T.describe("pas de PERFECT", function()
+		T.it("ni fonction ni constante : le haut de la jauge est le max, sans bonus", function()
+			T.expectEqual((Gauge :: any).isPerfect, nil)
+			T.expectEqual((GameConfig :: any).PERFECT_THRESHOLD, nil)
+			T.expectEqual((GameConfig :: any).PERFECT_BONUS, nil)
 		end)
 	end)
 end

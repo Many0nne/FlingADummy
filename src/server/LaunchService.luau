@@ -43,7 +43,6 @@ type Flight = {
 	parts: { BasePart },
 	startTime: number,
 	gauge: number,
-	perfect: boolean,
 	prevVelocity: { [BasePart]: Vector3 },
 	bones: { [string]: number },
 	totalBones: number,
@@ -139,7 +138,6 @@ function LaunchService.launch(player: Player, gauge: any, force: boolean?)
 		parts = parts,
 		startTime = os.clock(),
 		gauge = gauge,
-		perfect = Gauge.isPerfect(gauge),
 		prevVelocity = {},
 		bones = {},
 		totalBones = 0,
@@ -285,7 +283,6 @@ local function finish(flight: Flight, elapsed: number)
 		distance = flight.distance,
 		bones = flight.totalBones,
 		smashed = flight.smashed,
-		perfect = flight.perfect,
 		zoneMultiplier = zone.multiplier,
 	}, (player:GetAttribute("ValueLevel") :: number?) or 1)
 	local best = (player:GetAttribute("BestDistance") :: number?) or 0

@@ -98,7 +98,6 @@ local function build(gui: ScreenGui)
 	injuryLabel = UIKit.text({
 		Position = UDim2.fromOffset(20, 320),
 		Size = UDim2.new(1, -40, 0, 84),
-		Font = UIKit.BODY_FONT,
 		TextSize = 24,
 		TextWrapped = true,
 		TextColor3 = Color3.fromRGB(255, 210, 200),
@@ -184,9 +183,6 @@ function ResultScreen.show(result: any)
 	end
 	if result.valueMultiplier and result.valueMultiplier ~= 1 then
 		table.insert(lines, { "Dummy value", string.format("x%.2f", result.valueMultiplier), C.green })
-	end
-	if result.perfect then
-		table.insert(lines, { "PERFECT", "x1.2", C.gold })
 	end
 	task.spawn(function()
 		for order, line in lines do

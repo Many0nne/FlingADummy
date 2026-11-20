@@ -8,7 +8,6 @@ export type Stats = {
 	distance: number,
 	bones: number,
 	smashed: number,
-	perfect: boolean,
 	zoneMultiplier: number,
 }
 
@@ -22,7 +21,6 @@ export type Payout = {
 	smashMoney: number,
 	zoneMultiplier: number,
 	valueMultiplier: number,
-	perfect: boolean,
 }
 
 -- Cette méthode permet de calculer la vitesse de lancer (studs/s, jauge pleine) lorsque le joueur a `power` de Throw
@@ -53,7 +51,7 @@ function Economy.payout(stats: Stats, valueLevel: number): Payout
 	local bonesMoney = stats.bones * GameConfig.MONEY_PER_BONE
 	local smashMoney = stats.smashed * GameConfig.MONEY_PER_SMASH
 	local valueMultiplier = Economy.valueMultiplier(valueLevel)
-	local multiplier = stats.zoneMultiplier * valueMultiplier * (if stats.perfect then GameConfig.PERFECT_BONUS else 1)
+	local multiplier = stats.zoneMultiplier * valueMultiplier
 	return {
 		total = math.floor((distanceMoney + bonesMoney + smashMoney) * multiplier + 0.5),
 		distance = distance,
@@ -64,7 +62,6 @@ function Economy.payout(stats: Stats, valueLevel: number): Payout
 		smashMoney = smashMoney,
 		zoneMultiplier = stats.zoneMultiplier,
 		valueMultiplier = valueMultiplier,
-		perfect = stats.perfect,
 	}
 end
 

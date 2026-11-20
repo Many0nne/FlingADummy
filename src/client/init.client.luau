@@ -1,4 +1,4 @@
--- Amorçage du client : HUD, poses des avatars, lancer, caméra et écran de vol, effets des crashs, résultat,
+-- Amorçage du client : HUD, objectif, poses des avatars, lancer, caméra et écran de vol, effets des crashs, résultat,
 -- branchés sur les remotes du serveur.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,6 +10,7 @@ local Effects = require(script.Effects)
 local FlightCamera = require(script.FlightCamera)
 local FlightView = require(script.FlightView)
 local Hud = require(script.Hud)
+local Objective = require(script.Objective)
 local ResultScreen = require(script.ResultScreen)
 local ThrowCinematic = require(script.ThrowCinematic)
 local ThrowController = require(script.ThrowController)
@@ -29,6 +30,7 @@ Hud.onBuy = function(kind: string)
 end
 Hud.init(player, stopTraining)
 local gui = Hud.screen()
+Objective.init(player, gui)
 FlightView.init(gui)
 ResultScreen.init(gui)
 CharacterPoser.init()

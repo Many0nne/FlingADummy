@@ -17,7 +17,8 @@ local ThrowCinematic = require(script.Parent.ThrowCinematic)
 local UIKit = require(script.Parent.UIKit)
 
 local C = UIKit.COLORS
-local GAUGE_HEIGHT = 300
+local GAUGE_HEIGHT = 320 -- ≈ 0,45 h à 720 px, comme les références
+local GAUGE_WIDTH = 64
 
 local ThrowController = {}
 
@@ -30,84 +31,79 @@ local promptLabel: TextLabel
 local shownAt = 0
 local locked: number? = nil -- valeur figée par le clic, en attendant le lâcher
 
--- Cette méthode permet de construire la jauge verticale (dégradé, zone PERFECT, aiguille, valeur) lorsque le client
--- démarre.
+-- Cette méthode permet de construire la jauge verticale au style des références (capsule à contour noir, dégradé
+-- vert en haut → rouge en bas, traits sombres, curseur blanc, valeur « +N » à droite, consigne dessous) lorsque le
+-- client démarre. Pas de zone PERFECT : le haut est le max.
 local function build(gui: ScreenGui)
 	frame = UIKit.create("Frame", {
 		Name = "ThrowGauge",
 		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0.5, 150, 0.5, -20),
-		Size = UDim2.fromOffset(64, GAUGE_HEIGHT),
+		Position = UDim2.new(0.5, 110, 0.5, -30),
+		Size = UDim2.fromOffset(GAUGE_WIDTH, GAUGE_HEIGHT),
 		BackgroundColor3 = C.white,
 		Visible = false,
 		Parent = gui,
 	})
-	UIKit.corner(frame, 32)
+	UIKit.corner(frame, GAUGE_WIDTH // 2)
 	UIKit.outline(frame, 5)
 	UIKit.create("UIGradient", {
 		Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(110, 230, 80)),
-			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 215, 50)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(240, 70, 50)),
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(125, 235, 95)),
+			ColorSequenceKeypoint.new(0.35, Color3.fromRGB(215, 230, 70)),
+			ColorSequenceKeypoint.new(0.6, Color3.fromRGB(255, 175, 50)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(235, 60, 45)),
 		}),
 		Rotation = 90,
 		Parent = frame,
 	})
-	-- Graduations
-	for i = 1, 9 do
+	-- Reflet vertical (relief de la capsule)
+	local gloss = UIKit.create("Frame", {
+		Position = UDim2.fromOffset(8, 14),
+		Size = UDim2.new(0, 10, 1, -28),
+		BackgroundColor3 = C.white,
+		BackgroundTransparency = 0.55,
+		BorderSizePixel = 0,
+		Parent = frame,
+	})
+	UIKit.corner(gloss, 5)
+	-- Traits sombres (4, comme les références)
+	for i = 1, 4 do
 		UIKit.create("Frame", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, i / 10),
-			Size = UDim2.new(1, -12, 0, 3),
+			Position = UDim2.fromScale(0.5, i / 5),
+			Size = UDim2.new(1, -4, 0, 3),
 			BackgroundColor3 = C.ink,
-			BackgroundTransparency = 0.6,
+			BackgroundTransparency = 0.45,
 			BorderSizePixel = 0,
 			Parent = frame,
 		})
 	end
-	local perfect = UIKit.create("Frame", {
-		Name = "Perfect",
-		Size = UDim2.fromScale(1, 1 - GameConfig.PERFECT_THRESHOLD),
-		BackgroundColor3 = C.gold,
-		Parent = frame,
-	})
-	UIKit.corner(perfect, 32)
-	UIKit.text({
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.fromOffset(-14, 14),
-		Size = UDim2.fromOffset(130, 30),
-		Text = "PERFECT",
-		TextSize = 26,
-		TextColor3 = C.gold,
-		TextXAlignment = Enum.TextXAlignment.Right,
-		Parent = frame,
-	})
 	needle = UIKit.create("Frame", {
 		Name = "Needle",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 1),
-		Size = UDim2.new(1, 22, 0, 12),
+		Size = UDim2.new(1, 20, 0, 14),
 		BackgroundColor3 = C.white,
 		ZIndex = 3,
 		Parent = frame,
 	})
-	UIKit.corner(needle, 6)
-	UIKit.outline(needle, 3)
+	UIKit.corner(needle, 7)
+	UIKit.outline(needle, 3, Color3.fromRGB(60, 60, 70))
 	valueLabel = UIKit.text({
 		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(1, 12, 0.5, 0),
+		Position = UDim2.new(1, 10, 0.5, 0),
 		Size = UDim2.fromOffset(90, 40),
-		TextSize = 40,
+		TextSize = 36,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		ZIndex = 3,
 		Parent = needle,
 	})
 	promptLabel = UIKit.text({
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 1, 22),
+		Position = UDim2.new(0.5, 0, 1, 14),
 		Size = UDim2.fromOffset(360, 40),
 		Text = if UserInputService.TouchEnabled then "Tap to throw!" else "Click to throw!",
-		TextSize = 36,
+		TextSize = 34,
 		Parent = frame,
 	})
 end
@@ -163,9 +159,6 @@ local function trigger(): boolean
 	local value = currentValue()
 	locked = value
 	UIKit.pop(needle, 1.5)
-	if Gauge.isPerfect(value) then
-		UIKit.banner(frame.Parent :: Instance, "PERFECT!", nil, C.gold, 210)
-	end
 	faceTrack() -- le joueur a pu tourner sur la zone depuis l'apparition de la jauge
 	ThrowCinematic.play(character)
 	setRooted(character, true)
@@ -233,7 +226,6 @@ function ThrowController.init(localPlayer: Player, createdRemotes: Remotes.Remot
 			local value = currentValue()
 			needle.Position = UDim2.fromScale(0.5, 1 - value)
 			valueLabel.Text = "+" .. (1 + math.floor(value * (GameConfig.GAUGE_STEPS - 1) + 0.5))
-			valueLabel.TextColor3 = if Gauge.isPerfect(value) then C.gold else C.white
 			promptLabel.Visible = locked == nil
 		end
 	end)
