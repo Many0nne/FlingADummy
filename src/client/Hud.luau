@@ -327,7 +327,10 @@ local function refreshGear(money: number)
 		card.title.Text = (string.gsub(gear.name, " Dummy$", ""))
 		card.rarity.Text = rarity.name
 		card.rarity.TextColor3 = rarity.color
-		card.stat.Text = "+" .. Format.short(gear.gain) .. " / rep"
+		-- Throw Power mise de côté à chaque répétition (versée au niveau), pas de l'EXP : cyan comme le compteur de puissance
+		card.stat.Text = "+" .. Format.short(gear.gain) .. " Power / rep"
+		card.stat.TextColor3 = C.cyan
+		card.stat.TextSize = 20
 		local stroke = card.frame:FindFirstChildOfClass("UIStroke") :: UIStroke
 		stroke.Color = if tier == owned then C.green else C.ink
 		stroke.Thickness = if tier == owned then 4 else 3
