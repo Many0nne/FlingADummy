@@ -210,6 +210,49 @@ return function(T, Loader, Lib)
 		)
 	end)
 
+	T.describe("assets/anim/published.json (clips republiés)", function()
+		local fs = require("@lune/fs")
+		local roblox = require("@lune/roblox")
+		local serde = require("@lune/serde")
+		local Assets = loader:require("src/shared/Assets")
+		local hint = " : exporter (lune run tools/build-anims.luau), publier puis lune run tools/build-anims.luau --published"
+			.. " (procédure : assets/anim/README.md ; si aucun clip n'a changé, version de Lune/rbx-dom modifiée : ré-exporter)"
+		local published = serde.decode("json", fs.readFile("assets/anim/published.json"))
+
+		for _, clip in AnimationData.CLIPS do
+			T.it(clip.name .. " : id, export et empreinte publiée concordent", function()
+				local entry = published[clip.name]
+				T.expect(entry ~= nil, clip.name .. " absent de published.json" .. hint)
+				local id = Assets.ANIMATIONS[clip.name]
+				T.expect(id ~= nil and id ~= 0, clip.name .. " : id absent ou 0 dans Assets.ANIMATIONS" .. hint)
+				T.expectEqual(
+					entry.id,
+					string.format("%d", id),
+					clip.name .. " : id différent de Assets.ANIMATIONS" .. hint
+				)
+				-- Le clip reconstruit depuis AnimationData doit donner le .rbxm exporté, qui doit être le publié
+				local built = serde.hash("sha256", roblox.serializeModel({ AnimationData.buildSequence(clip) }))
+				local exported = serde.hash("sha256", fs.readFile("assets/anim/export/" .. clip.name .. ".rbxm"))
+				T.expectEqual(exported, built, clip.name .. " : AnimationData modifié sans réexport" .. hint)
+				T.expectEqual(
+					exported,
+					entry.sha256,
+					clip.name .. " : .rbxm exporté différent du .rbxm publié" .. hint
+				)
+			end)
+		end
+
+		T.it("ne garde aucune entrée pour un clip supprimé ou renommé", function()
+			local names = {}
+			for _, clip in AnimationData.CLIPS do
+				names[clip.name] = true
+			end
+			for name in published do
+				T.expect(names[name], name .. " : entrée orpheline dans published.json" .. hint)
+			end
+		end)
+	end)
+
 	T.describe("AnimationData.buildSequence", function()
 		T.it("produit une KeyframeSequence complète, parents non animés à poids nul", function()
 			local clip = AnimationData.THROW
