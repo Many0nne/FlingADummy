@@ -315,7 +315,8 @@ local function fillRow(row: RowUI, view: Inventory.Row, data: Inventory.Data)
 	if view.display then
 		setButton(row.sell, "SELL", C.red, false) -- un posé ne se vend pas : le retirer d'abord
 	else
-		setButton(row.sell, "SELL " .. Format.money(price), C.red, true)
+		-- Première pose du tutoriel : le mannequin gagné se pose, il ne se vend pas
+		setButton(row.sell, "SELL " .. Format.money(price), C.red, not firstPlacePending())
 	end
 	local primary = row.primary
 	if not primary then
@@ -400,7 +401,7 @@ local function refreshSell(data: Inventory.Data)
 		local text = if confirmRarity == rarity
 			then "SURE?\n" .. Format.money(totals[rarity] or 0)
 			else string.upper(tier.name) .. "\nx" .. count
-		setButton(button, text, tier.color, count > 0)
+		setButton(button, text, tier.color, count > 0 and not firstPlacePending())
 	end
 	local views = Inventory.rows({}, 0, data.stock)
 	syncRows(sellRows, sellList, views, data, false)

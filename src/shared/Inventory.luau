@@ -86,11 +86,12 @@ end
 
 -- Cette méthode permet de relire la collection sauvegardée (entrées inconnues ou abîmées ignorées) lorsque les données
 -- d'un joueur sont chargées. Migration de #13 : l'ancien mannequin en main (`pending`) passe au stock, la liste
--- `discovered` devient l'Index (taille 1, relevée par ce qui est possédé).
-function Inventory.read(saved: any): Data
+-- `discovered` devient l'Index (taille 1, relevée par ce qui est possédé). Renvoie aussi l'argent des mannequins vendus
+-- d'office si le stock dépasse INVENTORY_MAX (à créditer).
+function Inventory.read(saved: any): (Data, number)
 	local data = Inventory.new()
 	if type(saved) ~= "table" then
-		return data
+		return data, 0
 	end
 	if type(saved.displays) == "number" then
 		data.displays = math.clamp(math.floor(saved.displays), GameConfig.DISPLAY_START, CourseLayout.DISPLAY_MAX)
@@ -118,9 +119,10 @@ function Inventory.read(saved: any): Data
 		table.insert(data.stock, pending)
 		data.last = { id = pending.id, size = pending.size } -- toujours à poser : le panneau le propose
 	end
-	-- Plafond du stock (migration comprise) : les moins rentables en trop sont écartés
+	-- Plafond du stock (migration comprise) : les moins rentables en trop sont vendus, comme à l'ajout
+	local sold = 0
 	while #data.stock > GameConfig.INVENTORY_MAX do
-		table.remove(data.stock, worstInStock(data.stock) :: number)
+		sold += Inventory.sellValue(table.remove(data.stock, worstInStock(data.stock) :: number) :: Entry)
 	end
 	Inventory.checkLast(data)
 	if type(saved.index) == "table" then
@@ -147,7 +149,7 @@ function Inventory.read(saved: any): Data
 			Inventory.discover(data, entry)
 		end
 	end
-	return data
+	return data, sold
 end
 
 -- Cette méthode permet de mettre la collection au format sauvegardé (le dernier gagné n'est pas gardé : il est déjà

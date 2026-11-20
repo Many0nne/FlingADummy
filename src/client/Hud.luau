@@ -794,11 +794,12 @@ local function flyExpected(gain: number)
 	local now = os.clock()
 	local left = gain
 	local kept = {}
-	-- Montant exact d'abord (une vente refusée ne prend pas la place d'une vraie), puis les plus anciennes qui tiennent
+	-- Montant exact, ou vente arrivée avec le revenu de la seconde : le revenu seul ne fait pas voler une vente
+	local income = stat("Income", 0)
 	for pass = 1, 2 do
 		kept = {}
 		for _, expected in expectedGains do
-			local fits = if pass == 1 then expected.amount == left else expected.amount <= left
+			local fits = if pass == 1 then expected.amount == left else expected.amount + income == left
 			if now > expected.untilTime then
 				continue
 			elseif seeded and fits and left > 0 then

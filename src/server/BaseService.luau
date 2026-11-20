@@ -265,7 +265,7 @@ end
 function BaseService.place(player: Player, display: any, force: boolean?): boolean
 	local data = PlayerData.collection(player)
 	local last = data and data.last
-	if not data or not last then
+	if not data or not last or not player:GetAttribute("DataReady") then
 		return false
 	end
 	local position = Inventory.findStock(data, Inventory.key(last))
@@ -300,8 +300,8 @@ function BaseService.act(player: Player, action: any, arg: any): boolean
 	local changed = false
 	if action == "Place" or action == "Sell" then
 		local position = if type(arg) == "string" then Inventory.findStock(data, arg) else nil
-		if not position then
-			return false
+		if not position or (action == "Sell" and firstPlacePending(player)) then
+			return false -- première pose du tutoriel : le mannequin gagné se pose, il ne se vend pas
 		end
 		if action == "Place" then
 			changed = not firstPlacePending(player) and Inventory.place(data, position, nil) ~= nil
@@ -317,7 +317,7 @@ function BaseService.act(player: Player, action: any, arg: any): boolean
 	elseif action == "BuyDisplay" then
 		return BaseService.buyDisplay(player)
 	elseif action == "SellRarity" then
-		if typeof(arg) == "number" and Rarity.LIST[arg] then
+		if typeof(arg) == "number" and Rarity.LIST[arg] and not firstPlacePending(player) then
 			local count, total = Inventory.sellRarity(data, arg)
 			PlayerData.addMoney(player, total)
 			changed = count > 0
@@ -434,7 +434,7 @@ local function bindDebug(player: Player)
 		local entry = Inventory.parseKey(player:GetAttribute("DebugGive"))
 		local data = PlayerData.collection(player)
 		player:SetAttribute("DebugGive", nil)
-		if entry and data then
+		if entry and data and player:GetAttribute("DataReady") then
 			receive(player, data, entry)
 		end
 	end)

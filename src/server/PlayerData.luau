@@ -86,7 +86,11 @@ local function load(player: Player)
 				if type(data.Tutorial) ~= "number" then
 					player:SetAttribute("Tutorial", Tutorial.infer(data))
 				end
-				collections[player] = Inventory.read(data.Collection)
+				local collection, sold = Inventory.read(data.Collection)
+				collections[player] = collection
+				if sold > 0 then
+					PlayerData.addMoney(player, sold) -- stock au-delà du plafond : vendu, pas perdu
+				end
 			end
 			loaded[player] = true
 		end
