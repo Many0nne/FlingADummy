@@ -68,7 +68,7 @@ local function buildXray(parent: Instance)
 			BackgroundTransparency = 0.35,
 			Parent = body,
 		})
-		UIKit.corner(limb, if piece.shape == Enum.PartType.Ball then 100 else 5)
+		UIKit.corner(limb, 5)
 		xrayLimbs[piece.name] = limb
 	end
 	xrayCount = UIKit.text({

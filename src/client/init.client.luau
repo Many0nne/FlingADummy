@@ -11,6 +11,7 @@ local FlightCamera = require(script.FlightCamera)
 local FlightView = require(script.FlightView)
 local Hud = require(script.Hud)
 local ResultScreen = require(script.ResultScreen)
+local ThrowCinematic = require(script.ThrowCinematic)
 local ThrowController = require(script.ThrowController)
 
 local player = Players.LocalPlayer
@@ -40,6 +41,8 @@ remotes.LaunchStarted.OnClientEvent:Connect(function(model: Model)
 	if typeof(model) ~= "Instance" then
 		return
 	end
+	ThrowCinematic.finish()
+	CharacterPoser.handOff()
 	FlightView.show(model)
 	FlightCamera.follow(model)
 	Effects.setFlying(model)

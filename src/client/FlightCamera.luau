@@ -1,4 +1,5 @@
--- Caméra de vol : suit le torse du mannequin lancé (arrière, côté, haut), secousses proportionnelles aux chocs,
+-- Caméra du lancer et du vol : gros plan sur l'avatar pendant le geste (côté du bras qui lance, léger
+-- rapprochement), puis suit le torse du mannequin lancé (arrière, côté, haut), secousses proportionnelles aux chocs,
 -- coup de champ de vision au départ ; rend la caméra normale quand le couloir redevient prêt.
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -12,14 +13,22 @@ local MAX_SHAKE = 2.5 -- amplitude maximale (studs)
 local BASE_FOV = 70
 local BIND_NAME = "FlightCamera"
 
+-- Gros plan du lancer, dans le repère du personnage (X à droite, -Z devant) : départ, arrivée, point visé
+local CLOSE_FROM = Vector3.new(5.6, 2.9, -3.2)
+local CLOSE_TO = Vector3.new(4.5, 2.6, -2.5)
+local CLOSE_FOCUS = Vector3.new(0.5, 2.6, 0)
+local CLOSE_FOV = 50
+local CLOSE_ROLL = math.rad(-5)
+
 local FlightCamera = {}
 
 local player: Player
 local following = false
 local shake = 0
 
--- Cette méthode permet de rendre la caméra normale (suivie du personnage) lorsque le vol et son résultat sont finis.
-local function stop()
+-- Cette méthode permet de rendre la caméra normale (suivie du personnage) lorsque le vol et son résultat sont finis,
+-- ou que le lancer n'a pas eu lieu.
+function FlightCamera.stop()
 	if not following then
 		return
 	end
@@ -49,6 +58,29 @@ function FlightCamera.punch()
 	}):Play()
 end
 
+-- Cette méthode permet de cadrer l'avatar en gros plan pendant son geste de lancer (repère figé au départ, caméra
+-- qui se rapproche en `duration` secondes, légère inclinaison) lorsque le joueur clique ; follow prend le relais.
+function FlightCamera.closeUp(root: BasePart, duration: number)
+	FlightCamera.stop()
+	following = true
+	local camera = Workspace.CurrentCamera
+	camera.CameraType = Enum.CameraType.Scriptable
+	camera.FieldOfView = CLOSE_FOV
+	local base = root.CFrame
+	local start = os.clock()
+	RunService:BindToRenderStep(BIND_NAME, Enum.RenderPriority.Camera.Value + 1, function()
+		if not root.Parent then
+			FlightCamera.stop() -- personnage mort ou réapparu pendant le geste
+			return
+		end
+		local k = math.clamp((os.clock() - start) / duration, 0, 1)
+		local eased = 1 - (1 - k) ^ 3
+		local position = base:PointToWorldSpace(CLOSE_FROM:Lerp(CLOSE_TO, eased))
+		local focus = base:PointToWorldSpace(CLOSE_FOCUS)
+		camera.CFrame = CFrame.lookAt(position, focus) * CFrame.Angles(0, 0, CLOSE_ROLL * eased)
+	end)
+end
+
 -- Cette méthode permet de suivre un mannequin lancé lorsque le serveur annonce le lancer ; la caméra avance avec la
 -- vitesse du torse et le lissage ne corrige que l'écart, d'où aucun retard même à grande vitesse.
 function FlightCamera.follow(model: Model)
@@ -56,7 +88,7 @@ function FlightCamera.follow(model: Model)
 	if not torso then
 		return
 	end
-	stop()
+	FlightCamera.stop()
 	following = true
 	shake = 0
 	local camera = Workspace.CurrentCamera
@@ -65,7 +97,7 @@ function FlightCamera.follow(model: Model)
 	local focus = torso.Position
 	RunService:BindToRenderStep(BIND_NAME, Enum.RenderPriority.Camera.Value + 1, function(dt)
 		if not torso.Parent then
-			stop()
+			FlightCamera.stop()
 			return
 		end
 		local target = torso.Position
@@ -83,7 +115,7 @@ function FlightCamera.init(localPlayer: Player)
 	player = localPlayer
 	player:GetAttributeChangedSignal("LaneState"):Connect(function()
 		if player:GetAttribute("LaneState") == "Ready" then
-			stop()
+			FlightCamera.stop()
 		end
 	end)
 end

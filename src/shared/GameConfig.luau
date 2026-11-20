@@ -12,12 +12,14 @@ local GameConfig = {
 	-- Lancer
 	PAD_Z               = -8,     -- centre de la zone de lancer de chaque couloir
 	PAD_RADIUS          = 5,
-	THROW_HEIGHT        = 3.4,    -- départ du mannequin au-dessus du HumanoidRootPart (mains levées)
+	THROW_HEIGHT        = 2.3,    -- départ du mannequin au-dessus du HumanoidRootPart (main au lâcher, mesuré)
+	THROW_FORWARD       = 0.3,    -- départ du mannequin devant le HumanoidRootPart (main au lâcher, mesuré)
+	THROW_SIDE          = 2.1,    -- départ du mannequin à droite du HumanoidRootPart (main qui lance, mesuré)
 	LAUNCH_PITCH_DEG    = 32,     -- angle du lancer au-dessus de l'horizontale
 	GRAVITY             = 120,    -- Workspace.Gravity (196,2 par défaut) : vols plus longs, plus lisibles
 	SPEED_BASE          = 110,    -- vitesse de lancer à la puissance de départ (studs/s)
 	SPEED_PER_LOG       = 30,     -- + 30 studs/s chaque fois que la puissance est multipliée par e
-	WIND_UP_TIME        = 0.35,   -- durée de l'élan de l'avatar avant que le mannequin parte (s)
+	THROW_RELEASE_TIME  = 0.7,    -- lâcher dans l'animation de lancer (marqueur Release, s) : republier Throw si modifié
 
 	-- Jauge (1 clic : l'aiguille court toute seule, le clic l'arrête)
 	GAUGE_PERIOD        = 1.2,    -- durée d'un aller-retour de l'aiguille (s)

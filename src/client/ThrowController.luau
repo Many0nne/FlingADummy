@@ -1,5 +1,6 @@
 -- Lancer : sur la zone de lancer, une jauge verticale apparaît et son aiguille court toute seule ; un clic (toucher,
--- Espace) l'arrête, l'avatar prend son élan et le mannequin part au lâcher avec la valeur de la jauge.
+-- Espace) l'arrête, la cinématique démarre (gros plan, bandes noires), l'avatar joue son geste de lancer et le
+-- mannequin part au lâcher avec la valeur de la jauge.
 local ContextActionService = game:GetService("ContextActionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -12,6 +13,7 @@ local Gauge = require(Shared:WaitForChild("Gauge"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local CharacterPoser = require(script.Parent.CharacterPoser)
+local ThrowCinematic = require(script.Parent.ThrowCinematic)
 local UIKit = require(script.Parent.UIKit)
 
 local C = UIKit.COLORS
@@ -129,10 +131,33 @@ local function faceTrack()
 	camera.CFrame = CFrame.lookAt(position + Vector3.new(5, 7, -15), position + Vector3.new(0, 4, 25))
 end
 
--- Cette méthode permet d'arrêter l'aiguille et de lancer l'élan lorsque le joueur clique pendant qu'il tient le
--- mannequin ; renvoie true si le clic a servi.
+-- Cette méthode permet d'immobiliser l'avatar pendant le geste (ou de lui rendre ses déplacements) lorsque le
+-- lancer commence ou finit : quitter la zone de lancer en plein geste ferait refuser le lancer par le serveur.
+local function setRooted(character: Model, rooted: boolean)
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return
+	end
+	if rooted then
+		humanoid:SetAttribute("WalkSpeedBeforeThrow", humanoid.WalkSpeed)
+		humanoid.WalkSpeed = 0
+	else
+		local speed = humanoid:GetAttribute("WalkSpeedBeforeThrow")
+		if typeof(speed) == "number" then
+			humanoid.WalkSpeed = speed
+		end
+		humanoid:SetAttribute("WalkSpeedBeforeThrow", nil)
+	end
+	humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, not rooted)
+end
+
+local refresh: () -> ()
+
+-- Cette méthode permet d'arrêter l'aiguille, de démarrer la cinématique et le geste lorsque le joueur clique pendant
+-- qu'il tient le mannequin ; renvoie true si le clic a servi.
 local function trigger(): boolean
-	if not frame.Visible or locked or CharacterPoser.isThrowing() then
+	local character = player.Character
+	if not frame.Visible or locked or CharacterPoser.isThrowing() or not character then
 		return false
 	end
 	local value = currentValue()
@@ -141,14 +166,27 @@ local function trigger(): boolean
 	if Gauge.isPerfect(value) then
 		UIKit.banner(frame.Parent :: Instance, "PERFECT!", nil, C.gold, 210)
 	end
+	faceTrack() -- le joueur a pu tourner sur la zone depuis l'apparition de la jauge
+	ThrowCinematic.play(character)
+	setRooted(character, true)
 	CharacterPoser.playThrow(function()
 		remotes.Launch:FireServer(value)
+		ThrowCinematic.release()
+	end, function()
+		-- Geste fini : lancer parti (la jauge se cache au vol) ou refusé (caméra rendue, jauge réarmée)
+		setRooted(character, false)
+		if player:GetAttribute("LaneState") ~= "Flying" then
+			ThrowCinematic.abort()
+			CharacterPoser.handOff()
+		end
+		locked = nil
+		refresh()
 	end)
 	return true
 end
 
 -- Cette méthode permet d'afficher ou de masquer la jauge lorsque le joueur entre sur la zone de lancer ou la quitte.
-local function refresh()
+function refresh()
 	local holding = player:GetAttribute("Action") == "Holding"
 	if holding and not frame.Visible then
 		shownAt = os.clock()
@@ -167,6 +205,7 @@ function ThrowController.init(localPlayer: Player, createdRemotes: Remotes.Remot
 	player = localPlayer
 	remotes = createdRemotes
 	build(gui)
+	ThrowCinematic.init(gui)
 	player:GetAttributeChangedSignal("Action"):Connect(refresh)
 	player:GetAttributeChangedSignal("LaneState"):Connect(function()
 		if player:GetAttribute("LaneState") == "Flying" then
