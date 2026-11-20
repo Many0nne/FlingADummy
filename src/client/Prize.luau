@@ -644,7 +644,7 @@ local function refreshPanel()
 	local entry = pendingEntry()
 	local visible = entry ~= nil and canPlace()
 	if visible and entry then
-		local key = entry.id .. ":" .. entry.size
+		local key = Inventory.key(entry)
 		if key ~= placeKey then
 			placeKey = key
 			local dummy = Collection.get(entry.id) :: Collection.Dummy

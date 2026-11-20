@@ -315,7 +315,14 @@ function BaseService.act(player: Player, action: any, arg: any): boolean
 	elseif action == "PlaceBest" then
 		changed = not firstPlacePending(player) and Inventory.placeBest(data)
 	elseif action == "BuyDisplay" then
-		return BaseService.buyDisplay(player)
+		-- Le pad est devant la base : l'achat se fait sur place
+		local slot = slotOf[player]
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		return slot ~= nil
+			and root ~= nil
+			and CourseLayout.isNearBase(slot.index, root.Position)
+			and BaseService.buyDisplay(player)
 	elseif action == "SellRarity" then
 		if typeof(arg) == "number" and Rarity.LIST[arg] and not firstPlacePending(player) then
 			local count, total = Inventory.sellRarity(data, arg)

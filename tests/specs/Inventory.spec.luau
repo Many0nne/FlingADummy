@@ -267,12 +267,12 @@ return function(T, Loader)
 		end)
 		T.it("stock plafonné à INVENTORY_MAX, migration comprise (les moins rentables écartés)", function()
 			local stock = {}
-			for _ = 1, GameConfig.INVENTORY_MAX do
+			for _ = 1, GameConfig.INVENTORY_MAX + 1 do
 				table.insert(stock, mint)
 			end
 			local data, sold = Inventory.read({ stock = stock, pending = gold, base = { [1] = crash } })
 			T.expectEqual(#data.stock, GameConfig.INVENTORY_MAX)
-			T.expectEqual(sold, Inventory.sellValue(mint), "le surplus est vendu")
+			T.expectEqual(sold, 2 * Inventory.sellValue(mint), "le surplus est vendu, rien ne se perd")
 			T.expect(Inventory.findStock(data, "gold:1") ~= nil, "Gold gardé")
 		end)
 		T.it("un posé sur un présentoir non acheté retourne au stock", function()

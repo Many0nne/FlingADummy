@@ -99,7 +99,7 @@ function Inventory.read(saved: any): (Data, number)
 	if type(saved.stock) == "table" then
 		for _, value in saved.stock do
 			local entry = copyEntry(value)
-			if entry and #data.stock < GameConfig.INVENTORY_MAX then
+			if entry then
 				table.insert(data.stock, entry)
 			end
 		end
