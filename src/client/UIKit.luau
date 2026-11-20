@@ -378,7 +378,8 @@ local function bindPress(button: GuiButton, onClick: () -> ())
 		-- Relâché écouté partout : un doigt glissé hors du bouton avant d'être levé le fait aussi revenir
 		local connection
 		connection = UserInputService.InputEnded:Connect(function(ended)
-			if ended.UserInputType ~= kind then
+			-- Au doigt, seul ce doigt-là relâche (un autre doigt levé ne compte pas)
+			if ended.UserInputType ~= kind or (kind == Enum.UserInputType.Touch and ended ~= input) then
 				return
 			end
 			connection:Disconnect()
@@ -395,9 +396,12 @@ local function bindPress(button: GuiButton, onClick: () -> ())
 		end
 		UIKit.playSound("Click")
 		onClick()
-		-- Bouton masqué par son clic (croix, STOP) : MouseLeave n'arrivera pas, il reprendrait au survol à 1,06
-		task.delay(0.3, function()
-			if not UIKit.isShown(button) then
+	end)
+	-- Bouton masqué (lui ou un parent : croix, STOP, HUD en vol) : MouseLeave n'arrivera pas, il reprendrait à 1,06
+	local node: Instance? = button
+	while node and node:IsA("GuiObject") do
+		(node :: GuiObject):GetPropertyChangedSignal("Visible"):Connect(function()
+			if (hovered or pressed) and not UIKit.isShown(button) then
 				hovered = false
 				pressed = false
 				local scale = UIKit.scaleOf(button)
@@ -405,7 +409,8 @@ local function bindPress(button: GuiButton, onClick: () -> ())
 				scale.Scale = 1
 			end
 		end)
-	end)
+		node = node.Parent
+	end
 end
 
 -- Cette méthode permet de faire traverser le reflet d'un bouton (bande claire en diagonale) lorsque le minuteur des
@@ -665,7 +670,10 @@ function UIKit.closeWindow(frame: GuiObject, instant: boolean?)
 		frame.Visible = false
 		return
 	end
-	UIKit.playKeys(frame, UIMotion.WINDOW_CLOSE, function()
+	-- Part de l'échelle actuelle : une fenêtre fermée en pleine ouverture ne saute pas à 1
+	local close = table.clone(UIMotion.WINDOW_CLOSE)
+	close[1] = { time = 0, scale = scale.Scale }
+	UIKit.playKeys(frame, close, function()
 		frame.Visible = false
 		scale.Scale = 1
 	end)

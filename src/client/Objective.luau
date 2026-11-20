@@ -181,6 +181,7 @@ local function refresh()
 	hudArrow.Parent = anchor
 	hudArrow.Visible = anchor ~= nil
 	placeHudArrow(anchor)
+	hudArrow.Position = hudArrowBase -- pas d'image à l'ancienne place en changeant de bouton
 end
 
 -- Cette méthode permet d'animer le texte, la flèche et les chevrons à chaque image lorsque l'objectif est affiché.

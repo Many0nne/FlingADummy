@@ -594,7 +594,9 @@ local function flyGain(kind: string, amount: number, from: Vector2)
 			end
 			c.pending = math.max(0, c.pending - flight.total)
 			Hud.refresh()
-			UIKit.bump(c.label, c.flash)
+			if flight.total > 0 then
+				UIKit.bump(c.label, c.flash)
+			end
 		end,
 	})
 end
@@ -628,6 +630,7 @@ local function clampPending(kind: string, value: number)
 			excess -= cut
 			if flight.label then
 				flight.label.Text = "+" .. c.format(flight.total)
+				flight.label.Visible = flight.total > 0 -- tout dépensé : plus rien à faire voler
 			end
 		end
 	end
