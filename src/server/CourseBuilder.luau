@@ -42,6 +42,7 @@ local COLORS = {
 	bandLight = rgb(255, 205, 50),
 	line = rgb(250, 250, 250),
 	pad = rgb(255, 225, 60),
+	padGreen = rgb(80, 200, 70),
 	plot = rgb(175, 115, 65),
 	wood = rgb(200, 140, 80),
 	woodDark = rgb(150, 95, 50),
@@ -51,12 +52,17 @@ local COLORS = {
 	metal = rgb(70, 72, 80),
 }
 
+-- Pad d'achat de présentoir devant la base (panneau « 6 > 7 » et prix, mis à jour par Server.BaseService)
+export type Pad = { title: TextLabel, price: TextLabel, prompt: ProximityPrompt }
+
 export type Base = {
 	model: Model,
 	sign: TextLabel,
 	income: TextLabel, -- revenu de la base, au-dessus du panneau
-	displays: { BasePart }, -- dessus des présentoirs (invite « Place » dedans)
+	displays: { BasePart }, -- dessus des DISPLAY_MAX présentoirs (invite « Place » dedans), grisés tant que pas achetés
+	pedestals: { BasePart }, -- socles des présentoirs
 	facing: number, -- côté de l'entrée (±1 sur X) : les mannequins posés regardent par là
+	pad: Pad,
 }
 
 export type Slot = {
@@ -563,6 +569,41 @@ local function buildStation(parent: Instance, slot: Slot)
 	Build.billboard(model, label.Position, "💪 TRAIN", Vector2.new(6, 1.8))
 end
 
+-- Cette méthode permet de construire le pad d'achat de présentoir d'une place (dalle en briques vertes au sol,
+-- panneau en bois « 6 > 7 » avec le prix sur une plaque verte, comme le pad « 8 > 9 » de la référence 09) devant la
+-- base, lorsque le hub est construit ; l'invite « Buy display » est activée par le client du propriétaire.
+local function buildPad(parent: Instance, slot: Slot): Pad
+	local spot, facing = CourseLayout.padPosition(slot.index)
+	local model = Instance.new("Model")
+	model.Name = "DisplayPad" .. slot.index
+	-- Repère : regard vers le centre du hub ; le panneau est derrière la dalle
+	local frame = CFrame.lookAt(spot, spot + facing)
+	local slab = Build.block(model, Vector3.new(6, 0.3, 6), frame * CFrame.new(0, 0.15, -3), COLORS.padGreen)
+	slab.Name = "Slab"
+	for _, side in { -1, 1 } do
+		Build.block(model, Vector3.new(1, 7.6, 1), frame * CFrame.new(side * 5, 3.8, 2), COLORS.woodDark)
+	end
+	Build.block(model, Vector3.new(11, 5.6, 0.8), frame * CFrame.new(0, 5, 2), COLORS.wood)
+	local titlePlate = Build.block(model, Vector3.new(9, 2.6, 0.2), frame * CFrame.new(0, 6.2, 1.5), COLORS.woodDark)
+	local title = Build.surfaceText(titlePlate, Enum.NormalId.Front, "6 > 7")
+	local pricePlate = Build.block(model, Vector3.new(6, 1.6, 0.3), frame * CFrame.new(0, 3.6, 1.45), COLORS.padGreen)
+	local price = Build.surfaceText(pricePlate, Enum.NormalId.Front, "")
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "BuyDisplay"
+	prompt.ActionText = "Buy display"
+	prompt.ObjectText = ""
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 8
+	prompt.RequiresLineOfSight = false
+	prompt.Enabled = false
+	prompt:SetAttribute("Slot", slot.index)
+	CollectionService:AddTag(prompt, Collection.PAD_TAG)
+	prompt.Parent = slab
+	model.Parent = parent
+	return { title = title, price = price, prompt = prompt }
+end
+
 -- Cette méthode permet de construire la base d'une place (terrain clôturé, présentoirs vides, panneau au nom du
 -- joueur) lorsque le hub est construit ; les présentoirs attendent les mannequins de collection.
 local function buildBase(parent: Instance, slot: Slot)
@@ -601,8 +642,11 @@ local function buildBase(parent: Instance, slot: Slot)
 		end
 	end
 	local displays: { BasePart } = {}
+	local pedestals: { BasePart } = {}
 	for index, position in CourseLayout.displayPositions(slot.index) do
-		Build.block(model, Vector3.new(5, 1.6, 5), CFrame.new(position + Vector3.new(0, 0.8, 0)), COLORS.stone)
+		local pedestal =
+			Build.block(model, Vector3.new(5, 1.6, 5), CFrame.new(position + Vector3.new(0, 0.8, 0)), COLORS.stone)
+		table.insert(pedestals, pedestal)
 		local top =
 			Build.block(model, Vector3.new(4, 0.4, 4), CFrame.new(position + Vector3.new(0, 1.8, 0)), slot.color)
 		top.Name = "Display" .. index
@@ -638,7 +682,15 @@ local function buildBase(parent: Instance, slot: Slot)
 	local income = Build.billboard(model, (facing * CFrame.new(0, 10, 0)).Position, "", Vector2.new(10, 2.4), 200)
 	income.TextColor3 = Color3.fromRGB(90, 235, 80)
 	model.Parent = parent
-	slot.base = { model = model, sign = sign, income = income, displays = displays, facing = inward }
+	slot.base = {
+		model = model,
+		sign = sign,
+		income = income,
+		displays = displays,
+		pedestals = pedestals,
+		facing = inward,
+		pad = buildPad(parent, slot),
+	}
 end
 
 -- Cette méthode permet de construire le hub (pelouse à damier, parois en gradins, bases et leurs appareils, stands à
@@ -659,15 +711,27 @@ local function buildHub(parent: Instance, slots: { Slot })
 		buildStation(parent, slot)
 		buildBase(parent, slot)
 	end
-	-- Stands du fond (vente et boutique : branchés par les tâches collection et boutique)
+	-- Stands du fond (vente ; boutique : branchée par la tâche boutique)
 	local standZ = back + 14
-	Props.stand(
-		parent,
-		CFrame.new(-24, 0, standZ) * CFrame.Angles(0, math.pi, 0),
-		"SELL",
-		rgb(235, 45, 45),
-		rgb(235, 45, 45)
-	)
+	local sellAt = CFrame.new(-24, 0, standZ) * CFrame.Angles(0, math.pi, 0)
+	Props.stand(parent, sellAt, "SELL", rgb(235, 45, 45), rgb(235, 45, 45))
+	-- Invite du stand SELL, devant le comptoir : chaque client y ouvre sa fenêtre de vente
+	local sellAnchor = Build.decor({
+		Name = "SellPrompt",
+		Size = Vector3.one,
+		CFrame = sellAt * CFrame.new(0, 3, -5),
+		Transparency = 1,
+		Parent = parent,
+	})
+	local sellPrompt = Instance.new("ProximityPrompt")
+	sellPrompt.ActionText = "Sell dummies"
+	sellPrompt.ObjectText = "SELL"
+	sellPrompt.KeyboardKeyCode = Enum.KeyCode.E
+	sellPrompt.HoldDuration = 0
+	sellPrompt.MaxActivationDistance = 10
+	sellPrompt.RequiresLineOfSight = false
+	CollectionService:AddTag(sellPrompt, Collection.SELL_TAG)
+	sellPrompt.Parent = sellAnchor
 	Props.stand(
 		parent,
 		CFrame.new(24, 0, standZ) * CFrame.Angles(0, math.pi, 0),

@@ -150,7 +150,7 @@ return function(T, Loader)
 					T.expect(apart, string.format("bases %d et %d séparées", other, index))
 				end
 				local displays = CourseLayout.displayPositions(index)
-				T.expectEqual(#displays, CourseLayout.DISPLAY_COUNT)
+				T.expectEqual(#displays, CourseLayout.DISPLAY_MAX)
 				for _, position in displays do
 					T.expect(math.abs(position.X - base.X) < half.X - 3, "présentoir dans la base (x)")
 					T.expect(math.abs(position.Z - base.Z) < half.Z - 3, "présentoir dans la base (z)")
@@ -180,6 +180,32 @@ return function(T, Loader)
 				T.expect(not CourseLayout.isNearBase(1, Vector3.new(0, 0, -8)), "bande de lancer")
 			end
 		)
+	end)
+
+	T.describe("CourseLayout.displayPositions / padPosition", function()
+		T.it("présentoirs écartés les uns des autres, les 6 premiers aux places de #13", function()
+			local center = CourseLayout.basePosition(1)
+			local displays = CourseLayout.displayPositions(1)
+			T.expectEqual(displays[1], center + Vector3.new(-9, 0, -7))
+			T.expectEqual(displays[6], center + Vector3.new(9, 0, 7))
+			for i = 1, #displays do
+				for j = i + 1, #displays do
+					T.expect((displays[i] - displays[j]).Magnitude >= 7, string.format("présentoirs %d et %d", i, j))
+				end
+			end
+		end)
+		T.it("pad devant la base, hors de la clôture, à côté de l'entrée, loin de l'appareil", function()
+			for index = 1, count do
+				local pad, facing = CourseLayout.padPosition(index)
+				local base = CourseLayout.basePosition(index)
+				local station = CourseLayout.stationPosition(index)
+				T.expect(math.abs(pad.X - base.X) > CourseLayout.BASE_SIZE.X / 2, "hors de la base")
+				T.expect(CourseLayout.isNearBase(index, pad), "près de la base")
+				T.expect(math.abs(pad.Z - base.Z) > 5, "pas devant l'entrée")
+				T.expect((pad - station).Magnitude > 15, "loin de l'appareil")
+				T.expectEqual(facing.X, CourseLayout.entranceSide(index))
+			end
+		end)
 	end)
 
 	T.describe("CourseLayout.columnAt", function()

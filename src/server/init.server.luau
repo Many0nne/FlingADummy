@@ -22,7 +22,7 @@ local remotes = Remotes.create()
 PlayerData.init()
 SlotService.init(course.slots)
 TrainingService.init(course.slots, remotes.StopTraining)
-BaseService.init(course.slots, remotes.PlaceDummy)
+BaseService.init(course.slots, remotes.PlaceDummy, remotes.Inventory)
 LaunchService.init(remotes, course.dummies)
 
 remotes.BuyUpgrade.OnServerEvent:Connect(function(player, kind)

@@ -48,7 +48,10 @@ local GameConfig = {
 
 	-- Base : mannequins de collection posés sur des présentoirs, seule source d'argent
 	INCOME_TICK         = 1,      -- versement du revenu de la base (s)
-	SELL_SECONDS        = 120,    -- revente d'un mannequin (base pleine) : 2 min de son revenu
+	SELL_MINUTES        = 2,      -- prix de vente d'un mannequin (stand SELL, inventaire) : 2 min de son revenu
+	INVENTORY_MAX       = 200,    -- mannequins en stock au plus ; au-delà, le moins rentable est vendu d'office
+	DISPLAY_START       = 6,      -- présentoirs d'une base neuve
+	DISPLAY_PRICES      = { 1000, 5000, 25000, 100000 }, -- présentoirs 7 à 10 (pad « 6 > 7 » devant la base)
 
 	-- Dégâts
 	BONE_IMPACT_DV      = 70,     -- variation de vitesse d'un membre en une frame qui casse un os (studs/s)
