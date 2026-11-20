@@ -20,7 +20,7 @@ type Zone = Zones.Zone
 
 local SEED = 20261120 -- décor identique d'un serveur à l'autre
 local SEGMENT_LENGTH = 400 -- longueur maximale d'une pièce de sol ou de paroi (limite : 2 048 studs)
-local CAP_THICKNESS = 1.2
+local CAP_THICKNESS = 1.2 -- Shared.Drips.CLEARANCE en dépend (place sous les coulées)
 local CAP_OVERHANG = 1 -- l'herbe déborde du bord de chaque marche
 local END_Z = GameConfig.COURSE_LENGTH + 40 -- fond du canyon, derrière la paroi de bout de piste
 
@@ -140,12 +140,22 @@ local function box(parent: Instance, low: Vector3, high: Vector3, color: Color3,
 end
 
 -- Cette méthode permet de faire déborder l'herbe (neige, sable…) d'une marche en blocs qui descendent en escalier
--- (tracé : Shared.Drips) le long d'un bord tourné vers `facing`, lorsque l'on habille une paroi ; `corner` : coin de la
--- marche, où Roblox ancre son damier.
-local function drips(parent: Instance, edge: Vector3, facing: Vector3, length: number, color: Color3, corner: Vector3)
+-- (tracé : Shared.Drips) le long d'un bord tourné vers `facing`, lorsque l'on habille une paroi ; `low`, `high` : coins de
+-- la marche, dont Roblox fait partir le damier de la face.
+local function drips(
+	parent: Instance,
+	edge: Vector3,
+	facing: Vector3,
+	length: number,
+	color: Color3,
+	low: Vector3,
+	high: Vector3
+)
 	-- `edge` : début du bord, au niveau du dessous de la couverture ; le bord court le long de `along`
 	local along = Vector3.new(0, 1, 0):Cross(facing)
-	local blocks = Drips.layout((edge - corner):Dot(along), length, function(a, b)
+	-- Le damier de la face part du bout de la marche où commence `along` (vérifié en jeu sur les quatre orientations)
+	local start = math.min(low:Dot(along), high:Dot(along))
+	local blocks = Drips.layout(edge:Dot(along) - start, length, function(a, b)
 		return rng:NextInteger(a, b)
 	end, function()
 		return rng:NextNumber()
@@ -161,7 +171,8 @@ local function drips(parent: Instance, edge: Vector3, facing: Vector3, length: n
 			Size = Vector3.new(math.abs(extent.X), block.height, math.abs(extent.Z)),
 			Position = center,
 			Color = color,
-			Variant = Build.WALL,
+			-- Tenons seuls (pas de damier) : chaque bloc ancre sa texture à son propre coin, un damier y serait décalé
+			Variant = Build.BRICK,
 			Parent = parent,
 		})
 	end
@@ -240,7 +251,7 @@ local function terraces(
 			Build.WALL,
 			"TerraceTop"
 		)
-		drips(parent, a + Vector3.new(0, top - 0.4, 0), facing, (b - a).Magnitude, zone.top, low)
+		drips(parent, a + Vector3.new(0, top - 0.4, 0), facing, (b - a).Magnitude, zone.top, low, high)
 		-- Décor du terre-plein (marches) ou du plateau (dernière marche, deux rangées)
 		local ground0 = a + Vector3.new(0, top + CAP_THICKNESS - 0.4, 0) - facing * (CourseLayout.TIER_STEP / 2)
 		local ground1 = b + Vector3.new(0, top + CAP_THICKNESS - 0.4, 0) - facing * (CourseLayout.TIER_STEP / 2)

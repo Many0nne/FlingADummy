@@ -1,11 +1,14 @@
 -- Coulées d'herbe (neige, sable…) qui débordent des marches des parois, comme dans 01 / 09 : blocs qui descendent en
 -- escalier (un bloc large, parfois un plus étroit dessous), calés sur les demi-carreaux du damier des parois (FadWall,
--- carreaux de 8 studs : Roblox ancre la texture au coin de chaque pièce). Logique pure : Server.CourseBuilder pose les
+-- carreaux de 8 studs : Roblox ancre la texture au coin de chaque pièce) ; les blocs portent FadBrick, dont les tenons
+-- (un tous les 2 studs) tombent alors sur ceux de la paroi. Logique pure : Server.CourseBuilder pose les
 -- blocs.
 local Drips = {}
 
 Drips.GRID = 4 -- largeur des blocs et des écarts : par demi-carreau du damier
-Drips.MAX_DROP = 10 -- descente maximale sous la couverture (bloc de 6 studs + marche de 4), sous une marche de 12
+Drips.MAX_DROP = 10 -- descente maximale sous la couverture (bloc de 6 studs + marche de 4)
+Drips.CLEARANCE = 1.2 -- place à laisser sous une marche : départ 0,4 sous son dessus, couverture de la marche du
+-- dessous 0,8 au-dessus de son bloc (CAP_THICKNESS de Server.CourseBuilder)
 
 export type Block = {
 	t: number, -- début du bloc le long du bord (studs depuis son origine)

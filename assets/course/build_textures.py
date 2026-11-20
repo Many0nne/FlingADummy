@@ -5,7 +5,7 @@ Produit dans assets/course/export/ :
   sur deux assombri de CHECKER_DARK) portant chacun 4 × 4 tenons (un tous les 2 studs). Sol (MaterialVariant
   « FadChecker »).
 - wall_color.png : même tuile au damier plus doux (WALL_DARK), avec checker_normal.png. Parois en gradins, couverture
-  d'herbe et blocs qui en débordent (MaterialVariant « FadWall »).
+  d'herbe (MaterialVariant « FadWall »).
 - brick_color.png / brick_normal.png : un tenon sur une cellule de 2 × 2 studs, sans damier. Accessoires, barrières,
   poteaux, stands, obstacles (MaterialVariant « FadBrick »).
 

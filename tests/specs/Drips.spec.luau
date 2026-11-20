@@ -68,7 +68,10 @@ return function(T, Loader)
 		end)
 
 		T.it("reste au-dessus de la marche suivante des parois", function()
-			T.expect(Drips.MAX_DROP < CourseLayout.TIER_HEIGHT, "descente sous la hauteur d'une marche")
+			T.expect(
+				Drips.MAX_DROP + Drips.CLEARANCE < CourseLayout.TIER_HEIGHT,
+				"descente au-dessus de la couverture de la marche du dessous"
+			)
 		end)
 
 		T.it("ne pose rien sur un bord plus court qu'un demi-carreau", function()

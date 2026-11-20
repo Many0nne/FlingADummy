@@ -5,7 +5,7 @@ local Build = {}
 -- Matériaux des jeux de référence (01 / 09) : tenons en relief teintés par la couleur de la pièce
 -- (assets/course/build_textures.py ; MaterialVariant dans default.project.json, cartes publiées sur le compte)
 Build.CHECKER = "FadChecker" -- damier marqué de carreaux de 8 studs à 4 × 4 tenons : sol
-Build.WALL = "FadWall" -- même damier, plus doux : parois en gradins, herbe qui les coiffe et en déborde
+Build.WALL = "FadWall" -- même damier, plus doux : parois en gradins et herbe qui les coiffe
 Build.BRICK = "FadBrick" -- un tenon tous les 2 studs : accessoires, obstacles, végétation voxel
 
 -- Cette méthode permet de créer une pièce ancrée avec ses propriétés lorsque le décor est construit ; `Variant`
