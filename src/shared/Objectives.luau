@@ -4,7 +4,9 @@
 -- Point d'accroche des cibles du décor : toute BasePart portant le tag `ObjectiveTarget` (CollectionService) et
 -- l'attribut `Objective` (« Throw » zone de lancer, « Train » appareil d'entraînement ; d'autres valeurs pour #13 /
 -- #14). Facultatifs : `Slot` (place du lobby : la cible ne vaut que pour le joueur de cette place) et `OwnerUserId`
--- (cible d'un seul joueur). Sans l'un ni l'autre, la cible est partagée et le joueur suit la plus proche.
+-- (cible d'un seul joueur). Sans l'un ni l'autre, la cible est partagée et le joueur suit la plus proche. `Span`
+-- (studs) : cible allongée sur l'axe X (bande de lancer) ; la flèche et les chevrons visent son point le plus proche
+-- du joueur, à `Span` au plus de son centre.
 local Objectives = {}
 
 Objectives.TAG = "ObjectiveTarget"
@@ -66,6 +68,15 @@ function Objectives.chooseTarget(candidates: { Candidate }, slot: number?, userI
 		end
 	end
 	return best
+end
+
+-- Cette méthode permet de donner le point visé d'une cible centrée en `center` lorsque la flèche se place depuis
+-- `from` : le centre, ou pour une cible allongée sur X (`span` > 0) son point le plus proche du joueur.
+function Objectives.aimPoint(center: Vector3, span: number?, from: Vector3): Vector3
+	if not span or span <= 0 then
+		return center
+	end
+	return Vector3.new(math.clamp(from.X, center.X - span, center.X + span), center.Y, center.Z)
 end
 
 -- Cette méthode permet de placer les chevrons au sol entre le joueur et la cible lorsque le tracé se met à jour :

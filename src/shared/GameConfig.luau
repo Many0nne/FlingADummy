@@ -11,9 +11,10 @@ local GameConfig = {
 	HUB_DEPTH           = 130,    -- profondeur du hub, axe -Z, depuis l'arrière de la zone de lancer
 	LAUNCH_DEPTH        = 16,     -- profondeur de la zone de lancer commune (z de -16 à 0)
 
-	-- Lancer
-	PAD_Z               = -8,     -- centre des places de la zone de lancer
-	PAD_RADIUS          = 5,
+	-- Lancer : bande commune au bord de la piste (z de -BAND_DEPTH à 0), le joueur s'y fige jusqu'au lancer
+	BAND_DEPTH          = 8,      -- profondeur de la bande de lancer (studs)
+	BAND_SPACING        = 5,      -- écart minimal entre deux joueurs figés sur la bande, axe X (studs)
+	BAND_MARGIN         = 3,      -- un joueur figé reste à cette distance des bords de la bande (studs)
 	THROW_HEIGHT        = 2.3,    -- départ du mannequin au-dessus du HumanoidRootPart (main au lâcher, mesuré)
 	THROW_FORWARD       = 0.3,    -- départ du mannequin devant le HumanoidRootPart (main au lâcher, mesuré)
 	THROW_SIDE          = 2.1,    -- départ du mannequin à droite du HumanoidRootPart (main qui lance, mesuré)
@@ -27,6 +28,11 @@ local GameConfig = {
 	GAUGE_PERIOD        = 1.2,    -- durée d'un aller-retour de l'aiguille (s)
 	GAUGE_MIN_FACTOR    = 0.6,    -- fraction de la vitesse quand l'aiguille est en bas
 	GAUGE_STEPS         = 20,     -- valeur affichée à côté de l'aiguille : +1 à +20
+	-- Vérification par le serveur : il recalcule l'instant du clic depuis l'ouverture de la jauge (lâcher et latence
+	-- déduits) et garde la valeur du client si elle est atteignable dans cette fenêtre, sinon la sienne
+	GAUGE_MAX_LAG       = 0.4,    -- latence aller-retour prise en compte au plus (s)
+	GAUGE_LAG_TOLERANCE = 0.12,   -- marge autour de la latence mesurée (gigue, cadence réseau, s)
+	GAUGE_RELEASE_SLACK = 0.25,   -- retard possible du lâcher après THROW_RELEASE_TIME (= RELEASE_GRACE du client, s)
 
 	-- Entraînement
 	START_POWER         = 10,     -- Throw Power de départ

@@ -12,6 +12,7 @@ local Sounds = {
 	Cash = { id = "rbxassetid://120891770644830", volume = 0.6 },
 	Wind = { id = "rbxassetid://130796038173607", volume = 0 },
 	Click = { id = "rbxassetid://17779566040", volume = 0.5 },
+	GaugeStop = { id = "rbxassetid://15675055424", volume = 0.8 }, -- « Roblox_UI_Cute_Pop » (Roblox) : clic de la jauge
 }
 
 return Sounds

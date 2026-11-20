@@ -1,7 +1,6 @@
--- Plan de la carte (logique pure, testée) : places des joueurs (zone de lancer commune, bases, appareil d'entraînement
--- devant chaque base),
--- colonnes des obstacles partagés, gradins du canyon. Repère : piste vers +Z, départ à z = 0, hub derrière (z < 0) ;
--- +X est à gauche quand on regarde la piste.
+-- Plan de la carte (logique pure, testée) : places des joueurs (bases, appareil d'entraînement devant chaque base),
+-- bande de lancer commune (où se fige chaque joueur), colonnes des obstacles partagés, gradins du canyon. Repère :
+-- piste vers +Z, départ à z = 0, hub derrière (z < 0) ; +X est à gauche quand on regarde la piste.
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 
@@ -15,7 +14,13 @@ CourseLayout.STATION_GAP = 10 -- de la clôture d'entrée de la base au centre d
 CourseLayout.STATION_SHIFT = 12 -- décalage de l'appareil sur le côté de l'entrée, vers la zone de lancer (+Z)
 CourseLayout.STATION_SIZE = 9 -- côté du podium de l'appareil
 
--- Couleur de chaque place (pastille de la zone de lancer, base, appareil) : on retrouve ses affaires d'un coup d'œil
+-- Bande de lancer : toute la largeur de la piste, de z = -BAND_DEPTH au départ (z = 0), dessus à BAND_TOP
+CourseLayout.BAND_TOP = 0.3
+CourseLayout.BAND_Z = -GameConfig.BAND_DEPTH / 2 -- ligne où se figent les joueurs
+CourseLayout.BAND_REACH = 8 -- hauteur au-dessus de la bande où l'avatar compte comme posé dessus (studs)
+CourseLayout.BAND_SHINE_TAG = "LaunchBandShine" -- dégradé du reflet de la bande, que chaque client fait glisser
+
+-- Couleur de chaque place (base, appareil) : on retrouve ses affaires d'un coup d'œil
 CourseLayout.SLOT_COLORS = {
 	Color3.fromRGB(255, 75, 75),
 	Color3.fromRGB(60, 150, 255),
@@ -29,14 +34,56 @@ CourseLayout.TIER_STEP = 10 -- recul de chaque marche (studs)
 CourseLayout.OUTER = 220 -- bord extérieur (|x|) du plateau au-dessus des gradins
 
 -- Cette méthode permet de donner l'abscisse de la place `index` (1 à SLOT_COUNT, centrées sur x = 0) lorsque l'on
--- pose une place de la zone de lancer ou une colonne d'obstacles.
+-- pose une colonne d'obstacles ou le point de lancer d'un mannequin de test.
 function CourseLayout.slotX(index: number): number
 	return (index - (GameConfig.SLOT_COUNT + 1) / 2) * GameConfig.SLOT_SPACING
 end
 
--- Cette méthode permet de donner le centre, au sol, de la place `index` de la zone de lancer commune.
-function CourseLayout.padPosition(index: number): Vector3
-	return Vector3.new(CourseLayout.slotX(index), 0, GameConfig.PAD_Z)
+-- Cette méthode permet de donner le point, au sol sur la ligne de la bande, d'où partent les mannequins de test de la
+-- place `index` (Studio) et les lancers dont l'avatar manque.
+function CourseLayout.launchPoint(index: number): Vector3
+	return Vector3.new(CourseLayout.slotX(index), 0, CourseLayout.BAND_Z)
+end
+
+-- Cette méthode permet de savoir si un avatar (position de son HumanoidRootPart) est au-dessus de la bande de lancer
+-- lorsque le serveur cherche les joueurs à figer.
+function CourseLayout.isOnBand(position: Vector3): boolean
+	return math.abs(position.X) <= GameConfig.TRACK_WIDTH / 2
+		and position.Z >= -GameConfig.BAND_DEPTH
+		and position.Z <= 0
+		and position.Y <= CourseLayout.BAND_TOP + CourseLayout.BAND_REACH
+end
+
+-- Cette méthode permet de donner l'abscisse où figer un joueur entré sur la bande en `x`, lorsque d'autres joueurs y
+-- sont déjà figés aux abscisses `taken` : la plus proche de `x` qui laisse BAND_SPACING avec chacun, sans sortir des
+-- bords (BAND_MARGIN) ; nil si la bande est pleine.
+function CourseLayout.bandSpot(x: number, taken: { number }): number?
+	local limit = GameConfig.TRACK_WIDTH / 2 - GameConfig.BAND_MARGIN
+	local spacing = GameConfig.BAND_SPACING
+	-- Candidats : l'entrée elle-même, et juste à côté de chaque joueur déjà figé
+	local candidates = { math.clamp(x, -limit, limit) }
+	for _, other in taken do
+		table.insert(candidates, other - spacing)
+		table.insert(candidates, other + spacing)
+	end
+	local best, bestDistance = nil, math.huge
+	for _, candidate in candidates do
+		if math.abs(candidate) > limit + 1e-6 then
+			continue
+		end
+		local free = true
+		for _, other in taken do
+			if math.abs(candidate - other) < spacing - 1e-6 then
+				free = false
+				break
+			end
+		end
+		local distance = math.abs(candidate - x)
+		if free and distance < bestDistance then
+			best, bestDistance = candidate, distance
+		end
+	end
+	return best
 end
 
 -- Cette méthode permet de donner le centre, au sol, de la base du joueur de la place `index` : les places de gauche

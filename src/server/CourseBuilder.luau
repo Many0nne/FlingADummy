@@ -1,5 +1,5 @@
 -- Construction du décor au style des jeux de référence (01 / 09) : hub en pelouse à damier (bases des joueurs avec leur
--- appareil d'entraînement devant l'entrée, stands à auvents), zone de lancer commune à SLOT_COUNT places, piste unique
+-- appareil d'entraînement devant l'entrée, stands à auvents), bande de lancer commune, piste unique
 -- au fond d'un canyon en gradins (parois à briques, herbe voxel qui déborde, arbres et rochers voxel) qui change de
 -- couleurs à chaque zone, obstacles partagés (Server.Obstacles). Repère : Shared.CourseLayout.
 local CollectionService = game:GetService("CollectionService")
@@ -15,6 +15,7 @@ local Objectives = require(ReplicatedStorage.Shared.Objectives)
 local Training = require(ReplicatedStorage.Shared.Training)
 local Zones = require(ReplicatedStorage.Shared.Zones)
 local Build = require(script.Parent.Build)
+local CollisionGroups = require(script.Parent.CollisionGroups)
 local Obstacles = require(script.Parent.Obstacles)
 local Props = require(script.Parent.Props)
 
@@ -30,10 +31,14 @@ local STATION_SPOT = 0.6 -- avance de la place de l'avatar devant le centre du p
 local RACK_SCALE = 0.5 -- taille des mannequins suspendus au râtelier (sans se toucher)
 local RACK_HEIGHT = 7.2 -- hauteur des montants du râtelier au-dessus du podium
 local RACK_ROPE = 0.7 -- longueur de la corde qui suspend chaque mannequin du râtelier
+local BAND_TILE = 4 -- côté des carreaux de la bande de lancer (studs)
+local BARRIER_HEIGHT = 120 -- barrière des avatars : plus haute que les gradins et qu'un saut depuis leur sommet
+local SPAWN_BACK = 6 -- réapparition à cette distance derrière la bande (studs)
 
 local rgb = Color3.fromRGB
 local COLORS = {
-	launch = rgb(255, 175, 35),
+	band = rgb(255, 170, 30),
+	bandLight = rgb(255, 205, 50),
 	line = rgb(250, 250, 250),
 	pad = rgb(255, 225, 60),
 	plot = rgb(175, 115, 65),
@@ -50,13 +55,12 @@ export type Base = { model: Model, sign: TextLabel, displays: { BasePart } }
 export type Slot = {
 	index: number,
 	color: Color3,
-	pad: Vector3, -- centre de la place sur la zone de lancer, au sol
+	launchPoint: Vector3, -- point de la bande, au sol, d'où partent les mannequins de test de la place (Studio)
 	station: CFrame, -- position de l'avatar qui s'entraîne (sur le podium, face au centre du hub)
 	prompt: ProximityPrompt, -- « Lift » sur l'appareil d'entraînement, devant la base
-	sign: TextLabel, -- nom du joueur et record, au-dessus de sa place
 	base: Base, -- présentoirs vides, remplis par la tâche collection
 	direction: Vector3,
-	spawn: CFrame,
+	spawn: CFrame, -- réapparition et retour après un lancer : dans le hub, juste derrière la bande, face à la piste
 }
 
 export type Course = { slots: { Slot }, dummies: Folder }
@@ -67,7 +71,7 @@ local rng = Random.new(SEED)
 local rackPlacers: { () -> () } = {} -- reposent les mannequins des râteliers quand les gabarits maillés arrivent
 
 -- Cette méthode permet de désigner une pièce comme cible d'objectif du HUD (réservée au joueur de la place `slot`)
--- lorsque l'on construit sa pastille ou son appareil d'entraînement.
+-- lorsque l'on construit son appareil d'entraînement.
 local function markObjective(part: BasePart, objective: string, slot: number)
 	part:SetAttribute("Objective", objective)
 	part:SetAttribute("Slot", slot)
@@ -275,48 +279,97 @@ local function terraces(
 	end
 end
 
--- Cette méthode permet de construire la zone de lancer commune (bande orange à damier, ligne de départ blanche, une
--- pastille colorée par place avec son enseigne) lorsque le serveur démarre.
-local function buildLaunchZone(parent: Instance, slots: { Slot })
-	local half = GameConfig.TRACK_WIDTH / 2
-	ground(parent, -half, half, -GameConfig.LAUNCH_DEPTH, 0, COLORS.launch, "LaunchZone")
-	Build.decor({
-		Name = "StartLine",
-		Size = Vector3.new(GameConfig.TRACK_WIDTH, 0.1, 1.2),
-		Position = Vector3.new(0, 0.05, 0.6),
-		Color = COLORS.line,
+-- Cette méthode permet de poser le reflet de la bande de lancer (bandeau blanc en dégradé sur son dessus, que chaque
+-- client fait glisser lui-même : rien ne se réplique à chaque image) lorsque la zone de lancer est construite.
+local function bandShine(parent: Instance, size: Vector3, position: Vector3): Part
+	local overlay = Build.decor({
+		Name = "LaunchBandShine",
+		Size = size,
+		Position = position,
+		Transparency = 1,
 		Parent = parent,
 	})
-	for _, slot in slots do
-		local disc = CFrame.new(slot.pad) * CFrame.Angles(0, 0, math.rad(90))
-		Build.decor({
-			Name = "PadRing",
-			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(0.1, GameConfig.PAD_RADIUS * 2 + 2.4, GameConfig.PAD_RADIUS * 2 + 2.4),
-			CFrame = disc + Vector3.new(0, 0.05, 0),
-			Color = slot.color,
-			Parent = parent,
-		})
-		Build.decor({
-			Name = "PadEdge",
-			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(0.12, GameConfig.PAD_RADIUS * 2 + 0.8, GameConfig.PAD_RADIUS * 2 + 0.8),
-			CFrame = disc + Vector3.new(0, 0.07, 0),
-			Color = COLORS.line,
-			Parent = parent,
-		})
-		-- Pastille jaune comme dans les références (et l'aide à l'écran « yellow pad ») ; la couronne dit à qui elle est
-		local pad = Build.decor({
-			Name = "Pad",
-			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(0.16, GameConfig.PAD_RADIUS * 2, GameConfig.PAD_RADIUS * 2),
-			CFrame = disc + Vector3.new(0, 0.09, 0),
-			Color = COLORS.pad,
-			Parent = parent,
-		})
-		markObjective(pad, "Throw", slot.index)
-		slot.sign = Build.billboard(parent, slot.pad + Vector3.new(0, 13, 0), "FREE", Vector2.new(8, 2.4))
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Top
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 8
+	gui.LightInfluence = 0
+	local sheen = Instance.new("Frame")
+	sheen.Size = UDim2.fromScale(1, 1)
+	sheen.BorderSizePixel = 0
+	sheen.BackgroundColor3 = Color3.new(1, 1, 1)
+	sheen.Parent = gui
+	local gradient = Instance.new("UIGradient")
+	gradient.Rotation = 20
+	-- Bandeau étroit et doux, transparent ailleurs ; décalé hors de la bande au repos
+	gradient.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.42, 1),
+		NumberSequenceKeypoint.new(0.5, 0.45),
+		NumberSequenceKeypoint.new(0.58, 1),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	gradient.Offset = Vector2.new(-1, 0)
+	gradient.Parent = sheen
+	CollectionService:AddTag(gradient, CourseLayout.BAND_SHINE_TAG)
+	gui.Parent = overlay
+	return overlay
+end
+
+-- Cette méthode permet de construire la zone de lancer commune (pelouse du hub, bande de lancer à tenons orange-jaune
+-- sur toute la largeur avec son reflet, liseré blanc côté piste, barrière invisible pour les avatars juste derrière)
+-- lorsque le serveur démarre.
+local function buildLaunchZone(parent: Instance)
+	local half = GameConfig.TRACK_WIDTH / 2
+	local depth = GameConfig.BAND_DEPTH
+	local top = CourseLayout.BAND_TOP
+	ground(parent, -half, half, -GameConfig.LAUNCH_DEPTH, 0, Zones.LIST[1].ground, "LaunchZone")
+	-- Carreaux de BAND_TILE studs aux deux teintes alternées, comme la bande des références 01 / 09
+	local model = Instance.new("Model")
+	model.Name = "LaunchBand"
+	local columns = math.floor(GameConfig.TRACK_WIDTH / BAND_TILE + 0.5)
+	local rows = math.max(1, math.floor(depth / BAND_TILE + 0.5))
+	local tileX, tileZ = GameConfig.TRACK_WIDTH / columns, depth / rows
+	for col = 1, columns do
+		for row = 1, rows do
+			Build.part({
+				Name = "BandTile",
+				Size = Vector3.new(tileX, 1, tileZ),
+				Position = Vector3.new(-half + (col - 0.5) * tileX, top - 0.5, -depth + (row - 0.5) * tileZ),
+				Color = if (col + row) % 2 == 0 then COLORS.band else COLORS.bandLight,
+				Variant = Build.BRICK,
+				Parent = model,
+			})
+		end
 	end
+	-- Liseré blanc en bordure, côté piste
+	Build.part({
+		Name = "BandEdge",
+		Size = Vector3.new(GameConfig.TRACK_WIDTH, 1.2, 1.2),
+		Position = Vector3.new(0, top + 0.1 - 0.6, 0.6),
+		Color = COLORS.line,
+		Variant = Build.BRICK,
+		Parent = model,
+	})
+	local shine =
+		bandShine(model, Vector3.new(GameConfig.TRACK_WIDTH, 0.05, depth), Vector3.new(0, top + 0.03, -depth / 2))
+	-- Cible partagée de l'objectif « Lancer » : la flèche vise le point de la bande le plus proche du joueur
+	shine:SetAttribute("Objective", "Throw")
+	shine:SetAttribute("Span", half - GameConfig.BAND_MARGIN)
+	CollectionService:AddTag(shine, Objectives.TAG)
+	model.Parent = parent
+	-- Barrière invisible juste derrière le liseré (#26) : arrête les avatars (même en sautant, même sur les gradins),
+	-- laisse passer mannequins et obstacles
+	Build.part({
+		Name = "AvatarBarrier",
+		Size = Vector3.new(2 * CourseLayout.OUTER, BARRIER_HEIGHT, 1),
+		Position = Vector3.new(0, BARRIER_HEIGHT / 2 - 2, 1.2 + 0.5),
+		Transparency = 1,
+		CanQuery = false,
+		CanTouch = false,
+		CollisionGroup = CollisionGroups.AVATAR_BARRIER,
+		Parent = parent,
+	})
 end
 
 -- Cette méthode permet de poser une pièce de l'appareil d'entraînement en briques fines (un tenon par stud, à l'échelle
@@ -729,18 +782,17 @@ local function newSlots(): { Slot }
 	local direction = Vector3.new(0, math.sin(pitch), math.cos(pitch))
 	local slots = {}
 	for index = 1, GameConfig.SLOT_COUNT do
-		local pad = CourseLayout.padPosition(index)
+		local launchPoint = CourseLayout.launchPoint(index)
 		local stationGround, stationFacing = CourseLayout.stationPosition(index)
 		-- Avatar debout sur la pastille du podium (HumanoidRootPart à 3 studs au-dessus des pieds), dos au râtelier
 		local stationPos = stationGround + Vector3.new(0, STATION_HEIGHT + 3, 0) + stationFacing * STATION_SPOT
-		local spawnPos = pad + Vector3.new(0, 3, -GameConfig.PAD_RADIUS - 3)
+		local spawnPos = Vector3.new(launchPoint.X, 3, -GameConfig.BAND_DEPTH - SPAWN_BACK)
 		slots[index] = {
 			index = index,
 			color = CourseLayout.SLOT_COLORS[(index - 1) % #CourseLayout.SLOT_COLORS + 1],
-			pad = pad,
+			launchPoint = launchPoint,
 			station = CFrame.lookAt(stationPos, stationPos + stationFacing),
 			prompt = nil :: any,
-			sign = nil :: any,
 			base = nil :: any,
 			direction = direction,
 			spawn = CFrame.lookAt(spawnPos, spawnPos + Vector3.zAxis),
@@ -763,7 +815,7 @@ function CourseBuilder.build(): Course
 	course.Name = "Course"
 	local slots = newSlots()
 	buildHub(course, slots)
-	buildLaunchZone(course, slots)
+	buildLaunchZone(course)
 	buildTrack(course)
 	local dummies = Instance.new("Folder")
 	dummies.Name = "Dummies"

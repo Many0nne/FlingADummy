@@ -68,10 +68,11 @@ local overlap = OverlapParams.new()
 overlap.RespectCanCollide = true
 
 -- Cette méthode permet de créer une pièce d'obstacle non ancrée et légère, et son gabarit de réapparition, lorsque
--- l'on monte un obstacle.
+-- l'on monte un obstacle ; elle ignore les avatars (seuls les mannequins la bousculent).
 local function addPiece(group: Group, props: { [string]: any }, density: number, kind: string, material: string)
 	props.Anchored = false
 	props.Variant = Build.BRICK
+	props.CollisionGroup = CollisionGroups.OBSTACLES
 	props.CustomPhysicalProperties = PhysicalProperties.new(density, 0.5, 0.2)
 	props.Parent = folder
 	local p = Build.part(props)

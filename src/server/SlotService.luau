@@ -1,25 +1,92 @@
--- Places du lobby (SLOT_COUNT joueurs sur une piste partagée) : chaque joueur reçoit une place (sa pastille sur la
--- zone de lancer commune, sa base et son appareil d'entraînement), réapparaît à côté de sa pastille, et passe à l'état
--- « Holding » (mannequin dans les bras) quand il s'y tient et que son lancer précédent est fini.
+-- Places du lobby (SLOT_COUNT joueurs sur une piste partagée) : chaque joueur reçoit une place (sa base et son appareil
+-- d'entraînement) et réapparaît dans le hub, juste derrière la bande de lancer commune. Un joueur prêt qui pose le
+-- pied sur la bande y est figé par le serveur, face à la piste (à l'endroit où il est entré, écarté de ses voisins), et
+-- passe à l'état « Holding » (mannequin dans les bras, jauge ouverte) jusqu'à son lancer ; après le vol, il revient
+-- dans le hub, derrière la bande.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local Format = require(ReplicatedStorage.Shared.Format)
-local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local CourseLayout = require(ReplicatedStorage.Shared.CourseLayout)
 local CollisionGroups = require(script.Parent.CollisionGroups)
 local CourseBuilder = require(script.Parent.CourseBuilder)
 
 type Slot = CourseBuilder.Slot
+
+-- Joueur figé sur la bande : son abscisse, l'instant où sa jauge s'est ouverte et les réglages rendus à la fin
+type Frozen = {
+	x: number,
+	since: number,
+	root: BasePart,
+	humanoid: Humanoid,
+	walkSpeed: number,
+	jumpPower: number,
+	jumpHeight: number,
+}
 
 local SlotService = {}
 
 local slots: { Slot } = {}
 local owners: { [number]: Player } = {}
 local slotOf: { [Player]: Slot } = {}
+local frozen: { [Player]: Frozen } = {}
+
+-- Cette méthode permet de rendre au joueur ses déplacements (et de le ramener dans le hub derrière la bande si
+-- `toHub`) lorsque son lancer est fini ; sans effet s'il n'est pas figé.
+local function unfreeze(player: Player, toHub: boolean)
+	local state = frozen[player]
+	if not state then
+		return
+	end
+	frozen[player] = nil
+	local humanoid = state.humanoid
+	humanoid.WalkSpeed = state.walkSpeed
+	humanoid.JumpPower = state.jumpPower
+	humanoid.JumpHeight = state.jumpHeight
+	state.root.Anchored = false
+	local slot = slotOf[player]
+	if toHub and slot and state.root.Parent and player.Character then
+		player.Character:PivotTo(slot.spawn)
+	end
+	if player:GetAttribute("Action") == "Holding" then
+		player:SetAttribute("Action", nil)
+	end
+end
+
+-- Cette méthode permet de figer le joueur sur la bande (face à la piste, à l'abscisse où il est entré ou juste à côté
+-- d'un voisin, debout sur la bande) et d'ouvrir sa jauge lorsqu'il y pose le pied, prêt à lancer.
+local function freeze(player: Player, character: Model, root: BasePart, humanoid: Humanoid)
+	local taken = {}
+	for _, other in frozen do
+		table.insert(taken, other.x)
+	end
+	local x = CourseLayout.bandSpot(root.Position.X, taken)
+	if not x then
+		return -- bande pleine : il attend sans être figé
+	end
+	-- Debout sur la bande même s'il y arrive en sautant : HumanoidRootPart à HipHeight + demi-hauteur des pieds
+	local position = Vector3.new(x, CourseLayout.BAND_TOP + humanoid.HipHeight + root.Size.Y / 2, CourseLayout.BAND_Z)
+	frozen[player] = {
+		x = x,
+		since = os.clock(),
+		root = root,
+		humanoid = humanoid,
+		walkSpeed = humanoid.WalkSpeed,
+		jumpPower = humanoid.JumpPower,
+		jumpHeight = humanoid.JumpHeight,
+	}
+	humanoid.WalkSpeed = 0
+	humanoid.JumpPower = 0
+	humanoid.JumpHeight = 0
+	root.AssemblyLinearVelocity = Vector3.zero
+	character:PivotTo(CFrame.lookAt(position, position + Vector3.zAxis))
+	-- Ancré par le serveur : le client ne peut plus le déplacer
+	root.Anchored = true
+	player:SetAttribute("Action", "Holding")
+end
 
 -- Cette méthode permet de mettre toutes les pièces du personnage dans le groupe Characters lorsqu'il apparaît
--- (accessoires chargés après coup compris) : il ne gêne ni le mannequin ni les éclats.
+-- (accessoires chargés après coup compris) : il ne gêne ni le mannequin ni les éclats ni les obstacles.
 local function setupCharacter(player: Player, character: Model)
 	CollisionGroups.assign(character, CollisionGroups.CHARACTERS)
 	character.DescendantAdded:Connect(function(descendant)
@@ -27,6 +94,8 @@ local function setupCharacter(player: Player, character: Model)
 			descendant.CollisionGroup = CollisionGroups.CHARACTERS
 		end
 	end)
+	-- Nouveau personnage : l'ancien, figé, a disparu avec ses réglages
+	frozen[player] = nil
 	player:SetAttribute("Action", nil)
 	local slot = slotOf[player]
 	if slot and character:WaitForChild("HumanoidRootPart", 5) then
@@ -34,18 +103,10 @@ local function setupCharacter(player: Player, character: Model)
 	end
 end
 
--- Cette méthode permet d'afficher le nom et le record du joueur au-dessus de sa place et sur sa base lorsqu'il arrive,
--- part ou bat son record (statut visible des autres, comme dans les jeux de référence).
-local function refreshSigns(slot: Slot)
+-- Cette méthode permet d'afficher le nom du joueur sur sa base lorsqu'il arrive ou part.
+local function refreshSign(slot: Slot)
 	local owner = owners[slot.index]
-	if not owner then
-		slot.sign.Text = "FREE"
-		slot.base.sign.Text = "EMPTY BASE"
-		return
-	end
-	local best = (owner:GetAttribute("BestDistance") :: number?) or 0
-	slot.sign.Text = string.format('%s\n<font color="#FFD23C">BEST %s</font>', owner.DisplayName, Format.meters(best))
-	slot.base.sign.Text = string.upper(owner.DisplayName) .. "'S BASE"
+	slot.base.sign.Text = if owner then string.upper(owner.DisplayName) .. "'S BASE" else "EMPTY BASE"
 end
 
 -- Cette méthode permet de donner au joueur la première place libre lorsqu'il arrive.
@@ -56,18 +117,19 @@ local function assign(player: Player)
 			slotOf[player] = slot
 			player:SetAttribute("Slot", index)
 			player:SetAttribute("LaneState", "Ready")
-			refreshSigns(slot)
-			player:GetAttributeChangedSignal("BestDistance"):Connect(function()
-				if slotOf[player] == slot then
-					refreshSigns(slot)
-				end
-			end)
+			refreshSign(slot)
 			break
 		end
 	end
 	if not slotOf[player] then
 		warn("[SlotService] aucune place libre pour " .. player.Name)
 	end
+	-- Retour au hub quand le lancer est fini (LaunchService repasse le joueur à « Ready » après le résultat)
+	player:GetAttributeChangedSignal("LaneState"):Connect(function()
+		if player:GetAttribute("LaneState") == "Ready" then
+			unfreeze(player, true)
+		end
+	end)
 	player.CharacterAdded:Connect(function(character)
 		setupCharacter(player, character)
 	end)
@@ -76,22 +138,33 @@ local function assign(player: Player)
 	end
 end
 
--- Cette méthode permet de savoir si l'avatar se tient sur sa pastille de la zone de lancer lorsque l'état « Holding »
--- est recalculé.
-local function isOnPad(player: Player, slot: Slot): boolean
+-- Cette méthode permet de figer sur la bande le joueur prêt qui y pose le pied lorsque Heartbeat tourne.
+local function watchBand(player: Player)
+	if frozen[player] or player:GetAttribute("Action") ~= nil then
+		return -- déjà figé, ou à l'entraînement
+	end
+	if player:GetAttribute("LaneState") ~= "Ready" or not player:GetAttribute("DataReady") then
+		return
+	end
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-	if not root then
-		return false
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if character and root and humanoid and humanoid.Health > 0 and CourseLayout.isOnBand(root.Position) then
+		freeze(player, character, root, humanoid)
 	end
-	local offset = root.Position - slot.pad
-	return Vector2.new(offset.X, offset.Z).Magnitude <= GameConfig.PAD_RADIUS and offset.Y < 8
 end
 
 -- Cette méthode permet de donner la place d'un joueur lorsque le serveur traite son lancer ou son entraînement ; nil
 -- s'il n'en a pas.
 function SlotService.getSlot(player: Player): Slot?
 	return slotOf[player]
+end
+
+-- Cette méthode permet de donner l'instant (os.clock du serveur) où la jauge du joueur s'est ouverte lorsque le
+-- serveur vérifie la valeur de son lancer ; nil s'il n'est pas figé sur la bande.
+function SlotService.gaugeOpenedAt(player: Player): number?
+	local state = frozen[player]
+	return state and state.since
 end
 
 -- Cette méthode permet de donner les places sans joueur lorsque l'on lance des mannequins de test (Studio).
@@ -105,8 +178,8 @@ function SlotService.freeSlots(): { Slot }
 	return free
 end
 
--- Cette méthode permet de brancher l'attribution, la libération des places et l'état « Holding » lorsque le serveur
--- démarre.
+-- Cette méthode permet de brancher l'attribution, la libération des places et le figeage sur la bande lorsque le
+-- serveur démarre.
 function SlotService.init(builtSlots: { Slot })
 	slots = builtSlots
 	Players.PlayerAdded:Connect(assign)
@@ -114,25 +187,17 @@ function SlotService.init(builtSlots: { Slot })
 		assign(player)
 	end
 	Players.PlayerRemoving:Connect(function(player)
+		frozen[player] = nil
 		local slot = slotOf[player]
 		if slot then
 			owners[slot.index] = nil
 			slotOf[player] = nil
-			refreshSigns(slot)
+			refreshSign(slot)
 		end
 	end)
 	RunService.Heartbeat:Connect(function()
-		for player, slot in slotOf do
-			local action = player:GetAttribute("Action")
-			if action == "Training" then
-				continue
-			end
-			local holding = player:GetAttribute("LaneState") == "Ready" and isOnPad(player, slot)
-			if holding and action == nil then
-				player:SetAttribute("Action", "Holding")
-			elseif not holding and action == "Holding" then
-				player:SetAttribute("Action", nil)
-			end
+		for player in slotOf do
+			watchBand(player)
 		end
 	end)
 end

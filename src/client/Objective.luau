@@ -190,18 +190,26 @@ local function step()
 		targetPart = findTarget(kind, root.Position)
 	end
 	local target = if kind then targetPart else nil
+	-- Point visé : le centre de la cible, ou pour la bande de lancer son point le plus proche du joueur
+	local aim = if target
+		then Objectives.aimPoint(
+			target.Position,
+			target:GetAttribute("Span") :: number?,
+			if root then root.Position else target.Position
+		)
+		else nil
 	local bob = math.sin(os.clock() * 4) * 0.5
 	worldArrow.Enabled = target ~= nil
-	if target then
-		arrowAnchor.CFrame = CFrame.new(target.Position + Vector3.new(0, ARROW_HEIGHT + bob, 0))
+	if aim then
+		arrowAnchor.CFrame = CFrame.new(aim + Vector3.new(0, ARROW_HEIGHT + bob, 0))
 	end
 	if hudArrow.Parent then
 		placeHudArrow(hudArrow.Parent :: GuiObject) -- suit les changements de taille d'écran (rotation du mobile)
 	end
 	hudArrow.Position = hudArrowBase + UDim2.fromOffset(hudArrowBob.X * bob * 8, hudArrowBob.Y * bob * 8)
-	if target and root and humanoid then
+	if aim and root and humanoid then
 		local feet = root.Position - Vector3.new(0, humanoid.HipHeight + root.Size.Y / 2 - 0.12, 0)
-		updateChevrons(feet, Vector3.new(target.Position.X, feet.Y, target.Position.Z))
+		updateChevrons(feet, Vector3.new(aim.X, feet.Y, aim.Z))
 	else
 		updateChevrons(nil, nil)
 	end

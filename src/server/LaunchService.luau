@@ -70,7 +70,8 @@ local rng = Random.new()
 local botCount = 0
 
 -- Cette méthode permet de donner le point de départ du mannequin (main de l'avatar au lâcher de l'animation de
--- lancer, au-dessus de la tête côté bras droit ; pastille de la place si le personnage manque) lorsqu'un lancer part.
+-- lancer, au-dessus de la tête côté bras droit ; point de la place sur la bande si le personnage manque) lorsqu'un
+-- lancer part.
 local function throwOrigin(player: Player?, slot: Slot): Vector3
 	local character = player and player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -86,7 +87,7 @@ local function throwOrigin(player: Player?, slot: Slot): Vector3
 	if root then
 		return root.Position + offset
 	end
-	return slot.pad + Vector3.new(0, 3, 0) + offset
+	return slot.launchPoint + Vector3.new(0, 3, 0) + offset
 end
 
 -- Cette méthode permet de lancer un mannequin neuf depuis la main du lanceur (ou sa place) et de commencer à suivre
@@ -142,8 +143,38 @@ local function startFlight(owner: Player?, key: any, slot: Slot, power: number, 
 	return dummy, origin, speed
 end
 
--- Cette méthode permet de tirer le mannequin d'un joueur lorsqu'il le tient sur la zone de lancer (ou que `force`
--- vient de DebugLaunch) ; `gauge` vient du client et est borné ici.
+-- Cette méthode permet de donner la latence aller-retour du joueur (s) lorsque le serveur vérifie la valeur de sa
+-- jauge ; 0 si elle n'est pas mesurable.
+local function networkLag(player: Player): number
+	local ok, ping = pcall(function()
+		return player:GetNetworkPing()
+	end)
+	return if ok and typeof(ping) == "number" then ping else 0
+end
+
+-- Cette méthode permet de retenir la valeur de jauge d'un lancer lorsque le serveur le reçoit : celle du client si
+-- elle est compatible avec l'instant où la jauge s'est ouverte (Shared.Gauge.verify), sinon celle du serveur.
+local function verifiedGauge(player: Player, claimed: number, openedAt: number): number
+	local elapsed = os.clock() - openedAt
+	local lag = networkLag(player)
+	local value, accepted = Gauge.verify(claimed, elapsed, lag)
+	if RunService:IsStudio() then
+		print(
+			string.format(
+				"[Launch] jauge %s : client=%.2f serveur=%.2f (%.2f s après ouverture, latence %.3f s)",
+				if accepted then "acceptée" else "refusée",
+				claimed,
+				value,
+				elapsed,
+				lag
+			)
+		)
+	end
+	return value
+end
+
+-- Cette méthode permet de tirer le mannequin d'un joueur lorsqu'il est figé sur la bande de lancer (ou que `force`
+-- vient de DebugLaunch) ; `gauge` vient du client, bornée puis vérifiée ici (sauf DebugLaunch).
 function LaunchService.launch(player: Player, gauge: any, force: boolean?)
 	if typeof(gauge) ~= "number" or gauge ~= gauge then
 		return
@@ -152,12 +183,16 @@ function LaunchService.launch(player: Player, gauge: any, force: boolean?)
 	if player:GetAttribute("LaneState") ~= "Ready" or not player:GetAttribute("DataReady") then
 		return
 	end
-	if not force and player:GetAttribute("Action") ~= "Holding" then
-		return
-	end
 	local slot = SlotService.getSlot(player)
 	if not slot then
 		return
+	end
+	if not force then
+		local openedAt = SlotService.gaugeOpenedAt(player)
+		if player:GetAttribute("Action") ~= "Holding" or not openedAt then
+			return
+		end
+		gauge = verifiedGauge(player, gauge, openedAt)
 	end
 	player:SetAttribute("LaneState", "Flying")
 	player:SetAttribute("Action", nil)
