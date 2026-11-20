@@ -39,6 +39,7 @@ local trainLevel: TextLabel
 local trainFill: Frame
 local trainCount: TextLabel
 local lastPower = 0
+local levelGain = 0 -- dernière Throw Power gagnée à l'entraînement (versée juste avant le passage de niveau)
 local knownLevel = math.huge -- palier d'entraînement et équipement déjà annoncés (aucun avant le chargement)
 local knownTier = math.huge
 local popupEndsAt = 0
@@ -556,7 +557,8 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 	player:GetAttributeChangedSignal("ThrowPower"):Connect(function()
 		local power = stat("ThrowPower", GameConfig.START_POWER)
 		if power > lastPower and player:GetAttribute("Action") == "Training" then
-			UIKit.pop(powerLabel, 1.2) -- gain du niveau franchi
+			levelGain = power - lastPower
+			UIKit.pop(powerLabel, 1.2)
 		end
 		lastPower = power
 		Hud.refresh()
@@ -579,9 +581,9 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 			return
 		end
 		knownLevel = level
-		-- Même calcul que le serveur (Shared.Training) : gain de l'équipement × répétitions du niveau franchi
-		local gained = Training.levelPower(stat("GearTier", 1), level - 1)
-		showPopup("LEVEL UP!", "Throw Power +" .. Format.short(gained), C.cyan)
+		-- Le serveur verse la puissance du niveau juste avant de changer TrainLevel (même ordre à la réplication)
+		showPopup("LEVEL UP!", "Throw Power +" .. Format.short(levelGain), C.cyan)
+		levelGain = 0
 		UIKit.playSound("LevelUp")
 		refreshTraining()
 	end)

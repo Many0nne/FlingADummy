@@ -36,8 +36,9 @@ multipliés par la zone atteinte.
   invite « Lift » / « Training dummy ») : l'avatar soulève au-dessus de la tête (développé) le mannequin de son palier
   d'équipement, en boucle. Pendant la séance, l'invite est masquée et aucun objectif ne s'affiche : seul le bouton STOP.
 - Chaque répétition (0,8 s) donne **+1 EXP** et remplit la barre de niveau, 3 répétitions au premier niveau puis × 1,2
-  par niveau. Le passage de niveau (« LEVEL UP! Throw Power +N ») donne la **Throw Power** : N = gain de l'équipement ×
-  répétitions du niveau franchi (`Training.levelPower`), soit le même rythme qu'un gain à chaque répétition.
+  par niveau. La **Throw Power** de chaque répétition (gain de l'équipement tenu) est mise de côté (`TrainBank`) et versée
+  d'un coup au passage de niveau (« LEVEL UP! Throw Power +N », N = gain × répétitions du niveau à équipement constant) :
+  même rythme qu'un gain à chaque répétition.
 - **Équipements** (achetés avec l'argent) : mannequin en bois +1, pierre +3, fer +10, or +40, diamant +160, néon +700,
   cosmique +3 000 par répétition ; prix 100 $, 1,5 K, 25 K, 150 K, 2 M, 25 M.
 - Vitesse de lancer = 110 + 30 × ln(puissance / 10) studs/s : la puissance explose (10 → 1 M), la distance monte

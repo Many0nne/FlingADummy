@@ -27,7 +27,7 @@ local CAP_OVERHANG = 1 -- l'herbe déborde du bord de chaque marche
 local END_Z = GameConfig.COURSE_LENGTH + 40 -- fond du canyon, derrière la paroi de bout de piste
 local STATION_HEIGHT = 1.4 -- hauteur du podium de l'appareil d'entraînement
 local STATION_SPOT = 0.6 -- avance de la place de l'avatar devant le centre du podium (le râtelier est derrière)
-local RACK_MESH_WAIT = 20 -- attente maximale des gabarits maillés pour les mannequins du râtelier (s)
+local RACK_SCALE = 0.45 -- taille des mannequins du râtelier (sous la traverse, sans se toucher)
 
 local rgb = Color3.fromRGB
 local COLORS = {
@@ -318,7 +318,7 @@ end
 local function rackDummy(parent: Instance, gear: Training.Gear, feet: CFrame)
 	local model = Instance.new("Model")
 	model.Name = "RackDummy"
-	local parts = DummyShape.buildPieces(model, gear.scale, { color = gear.color, material = gear.material })
+	local parts = DummyShape.buildPieces(model, RACK_SCALE, { color = gear.color, material = gear.material })
 	local lowest = math.huge
 	for _, part in parts do
 		lowest = math.min(lowest, part.Position.Y - part.Size.Y / 2)
@@ -333,9 +333,8 @@ local function rackDummy(parent: Instance, gear: Training.Gear, feet: CFrame)
 	model.Parent = parent
 end
 
--- Cette méthode permet de construire l'appareil d'entraînement d'une place devant l'entrée de sa base (podium en
--- briques à tenons, pastille jaune où l'avatar soulève son mannequin, râtelier de mannequins derrière lui, invite
--- « Lift ») lorsque le hub est construit, à la place de la barre de traction de 01 / 09.
+-- Cette méthode permet de construire l'appareil d'entraînement d'une place devant l'entrée de sa base (podium à tenons,
+-- pastille jaune, râtelier de mannequins derrière l'avatar, invite « Lift ») lorsque le hub est construit.
 local function buildStation(parent: Instance, slot: Slot)
 	local size = CourseLayout.STATION_SIZE
 	local center, facing = CourseLayout.stationPosition(slot.index)
@@ -372,26 +371,39 @@ local function buildStation(parent: Instance, slot: Slot)
 		Color = COLORS.pad,
 		Parent = model,
 	})
-	-- Râtelier derrière l'avatar : deux montants, une traverse, les mannequins des premiers paliers debout devant
+	-- Râtelier bas derrière l'avatar (il ne cache pas le panneau de la base) : deux montants, une traverse, les
+	-- mannequins des premiers paliers debout devant
 	local rackZ = size / 2 - 1.2
 	for _, side in { -1, 1 } do
-		Build.block(model, Vector3.new(1, 6.4, 1), top * CFrame.new(side * 3.9, 3.2, rackZ), COLORS.wood)
-		Build.block(model, Vector3.new(1.3, 0.6, 1.3), top * CFrame.new(side * 3.9, 6.5, rackZ), slot.color)
+		Build.block(model, Vector3.new(1, 3.6, 1), top * CFrame.new(side * 3.9, 1.8, rackZ), COLORS.wood)
+		Build.block(model, Vector3.new(1.3, 0.6, 1.3), top * CFrame.new(side * 3.9, 3.9, rackZ), slot.color)
 	end
-	Build.block(model, Vector3.new(8.8, 0.8, 0.8), top * CFrame.new(0, 5.4, rackZ), COLORS.woodDark)
-	Build.block(model, Vector3.new(8.2, 0.5, 1.6), top * CFrame.new(0, 0.25, rackZ - 0.2), COLORS.woodDark)
+	Build.block(model, Vector3.new(8.8, 0.8, 0.8), top * CFrame.new(0, 3.1, rackZ), COLORS.woodDark)
+	Build.block(model, Vector3.new(8.2, 0.5, 1.6), top * CFrame.new(0, 0.25, rackZ - 0.4), COLORS.woodDark)
 	model.Parent = parent
-	-- Mannequins maillés quand les gabarits sont prêts (blocs du gabarit s'ils ne se chargent pas)
-	task.spawn(function()
-		local waited = 0
-		while not DummyShape.isMeshed() and waited < RACK_MESH_WAIT do
-			waited += task.wait(0.5)
+	-- Cette méthode permet de poser (ou reposer) les mannequins du râtelier lorsque l'appareil est construit puis
+	-- quand les gabarits maillés arrivent (blocs du gabarit en attendant).
+	local function placeRack()
+		for _, child in model:GetChildren() do
+			if child.Name == "RackDummy" then
+				child:Destroy()
+			end
 		end
 		for i, x in { -2.1, 0, 2.1 } do
-			local feet = top * CFrame.new(x, 0.5, rackZ - 0.3) -- tournés vers le hub, comme l'avatar
+			local feet = top * CFrame.new(x, 0.5, rackZ - 0.7) -- devant la traverse, tournés vers le hub
 			rackDummy(model, Training.GEARS[i], feet)
 		end
-	end)
+	end
+	placeRack()
+	if not DummyShape.isMeshed() then
+		local connection
+		connection = ReplicatedStorage.ChildAdded:Connect(function(child)
+			if child.Name == DummyShape.TEMPLATES and DummyShape.isMeshed() then
+				connection:Disconnect()
+				placeRack()
+			end
+		end)
+	end
 	local anchor = Build.decor({
 		Name = "TrainSpot",
 		Size = Vector3.new(2, 2, 2),
@@ -429,7 +441,7 @@ local function buildBase(parent: Instance, slot: Slot)
 	})
 	-- Clôture en blocs, ouverte du côté du centre du hub
 	local hx, hz = size.X / 2, size.Z / 2
-	local inward = if center.X > 0 then -1 else 1
+	local inward = CourseLayout.entranceSide(slot.index)
 	local corners = {
 		Vector3.new(-hx, 0, -hz),
 		Vector3.new(hx, 0, -hz),

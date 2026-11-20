@@ -66,11 +66,13 @@ local function completeRep(player: Player)
 	local progress, power = Training.completeRep({
 		level = (player:GetAttribute("TrainLevel") :: number?) or 1,
 		reps = (player:GetAttribute("TrainReps") :: number?) or 0,
+		bank = (player:GetAttribute("TrainBank") :: number?) or 0,
 	}, (player:GetAttribute("GearTier") :: number?) or 1)
 	-- Puissance d'abord : le client la lit déjà à jour quand il annonce le niveau
 	if power > 0 then
 		PlayerData.addPower(player, power)
 	end
+	player:SetAttribute("TrainBank", progress.bank)
 	player:SetAttribute("TrainReps", progress.reps)
 	player:SetAttribute("TrainLevel", progress.level)
 end
@@ -108,6 +110,11 @@ function TrainingService.init(slots: { any }, stopRemote: RemoteEvent)
 		for player, session in sessions do
 			if not player.Character or player:GetAttribute("Action") ~= "Training" then
 				endSession(player) -- avatar réapparu (Action remise à zéro) ou disparu
+				continue
+			end
+			local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+			if not humanoid or humanoid.Health <= 0 then
+				TrainingService.stop(player) -- avatar mort : pas de répétitions pendant la réapparition
 				continue
 			end
 			session.elapsed += dt

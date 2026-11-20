@@ -55,9 +55,8 @@ function CourseLayout.entranceSide(index: number): number
 	return if CourseLayout.basePosition(index).X > 0 then -1 else 1
 end
 
--- Cette méthode permet de donner le centre, au sol, de l'appareil d'entraînement de la place `index` et la direction
--- vers laquelle l'avatar s'y tient : devant l'entrée de sa base, au milieu, face au centre du hub (comme la barre de
--- Throw a Seed devant le terrain du joueur), avec un passage libre entre l'appareil et la clôture.
+-- Cette méthode permet de donner le centre au sol de l'appareil d'entraînement de la place `index` (devant l'entrée de
+-- sa base, au milieu, passage libre devant la clôture) et la direction où regarde l'avatar (centre du hub).
 function CourseLayout.stationPosition(index: number): (Vector3, Vector3)
 	local side = CourseLayout.entranceSide(index)
 	local base = CourseLayout.basePosition(index)

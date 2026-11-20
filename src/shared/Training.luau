@@ -1,6 +1,6 @@
 -- Entraînement : l'avatar soulève un mannequin d'entraînement au-dessus de la tête ; chaque répétition donne 1 EXP qui
--- remplit la barre de niveau, et chaque niveau franchi (popup « LEVEL UP! ») donne la Throw Power de l'équipement pour
--- toutes les répétitions du niveau (comme les jeux de référence 01 / 09).
+-- remplit la barre de niveau et met de côté la Throw Power de l'équipement, versée d'un coup au niveau franchi (popup
+-- « LEVEL UP! », comme les jeux de référence 01 / 09).
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 
@@ -75,7 +75,8 @@ Training.GEARS = {
 	},
 } :: { Gear }
 
-export type Progress = { level: number, reps: number }
+-- `bank` : Throw Power mise de côté depuis le début du niveau (gain de l'équipement tenu à chaque répétition)
+export type Progress = { level: number, reps: number, bank: number? }
 
 -- Cette méthode permet de donner le nombre de répétitions qui remplit le niveau `level` lorsque la barre est affichée.
 function Training.repsForLevel(level: number): number
@@ -92,17 +93,23 @@ function Training.addRep(progress: Progress): (Progress, boolean)
 	return { level = progress.level, reps = reps }, false
 end
 
--- Cette méthode permet de donner la Throw Power gagnée en franchissant le niveau `level` avec l'équipement du palier
--- `tier` (gain par répétition × répétitions du niveau) lorsque le niveau est franchi ou annoncé.
+-- Cette méthode permet de donner la Throw Power d'un niveau `level` entièrement fait avec l'équipement du palier `tier`
+-- (gain par répétition × répétitions du niveau) lorsque l'on estime le rythme de l'entraînement.
 function Training.levelPower(tier: number, level: number): number
 	return Training.gear(tier).gain * Training.repsForLevel(level)
 end
 
--- Cette méthode permet de compter une répétition terminée avec l'équipement du palier `tier` lorsque REP_TIME s'est
--- écoulé ; renvoie la nouvelle progression et la Throw Power gagnée (0 tant que le niveau n'est pas franchi).
+-- Cette méthode permet de compter une répétition faite avec l'équipement du palier `tier` lorsque REP_TIME s'est écoulé ;
+-- renvoie la progression (gain mis de côté) et la Throw Power versée : tout le niveau quand il est franchi, 0 sinon.
 function Training.completeRep(progress: Progress, tier: number): (Progress, number)
 	local nextProgress, leveled = Training.addRep(progress)
-	return nextProgress, if leveled then Training.levelPower(tier, progress.level) else 0
+	local bank = (progress.bank or 0) + Training.gear(tier).gain
+	if leveled then
+		nextProgress.bank = 0
+		return nextProgress, bank
+	end
+	nextProgress.bank = bank
+	return nextProgress, 0
 end
 
 -- Cette méthode permet de donner le prix du palier suivant lorsque le joueur possède le palier `tier` ; nil au dernier.
