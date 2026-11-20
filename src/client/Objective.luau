@@ -38,7 +38,6 @@ local chevrons: { { BasePart } } = {}
 local current: Objectives.Objective? = nil
 local targetPart: BasePart? = nil
 local thrown = false
-local levelsThisSession = 0
 local lastPower = 0
 local lastTargetPick = 0
 
@@ -58,7 +57,6 @@ local function state(): Objectives.State
 		action = player:GetAttribute("Action") :: string?,
 		laneState = player:GetAttribute("LaneState") :: string?,
 		thrown = thrown,
-		levelsThisSession = levelsThisSession,
 		canBuyGear = gearCost ~= nil and money >= gearCost,
 		canBuyDummy = valueCost ~= nil and money >= valueCost,
 	}
@@ -137,7 +135,7 @@ local function updateChevrons(from: Vector3?, to: Vector3?)
 end
 
 -- Cette méthode permet de placer la flèche d'interface à côté du bouton désigné, pointe vers lui : sur le côté pour
--- les boutons des bords (elle masquerait le bouton voisin), au-dessus sinon (STOP), lorsque l'objectif change.
+-- les boutons des bords (elle masquerait le bouton voisin), au-dessus sinon, lorsque l'objectif change.
 local function placeHudArrow(anchor: GuiObject?)
 	if not anchor then
 		return
@@ -269,20 +267,7 @@ function Objective.init(localPlayer: Player, gui: ScreenGui)
 		end
 		refresh()
 	end)
-	player:GetAttributeChangedSignal("Action"):Connect(function()
-		if player:GetAttribute("Action") == "Training" then
-			levelsThisSession = 0
-		end
-		refresh()
-	end)
-	player:GetAttributeChangedSignal("TrainLevel"):Connect(function()
-		if player:GetAttribute("Action") ~= "Training" then
-			return -- niveau sauvegardé chargé, pas un niveau gagné à l'entraînement
-		end
-		levelsThisSession += 1
-		refresh()
-	end)
-	for _, attribute in { "Money", "GearTier", "ValueLevel" } do
+	for _, attribute in { "Action", "Money", "GearTier", "ValueLevel" } do
 		player:GetAttributeChangedSignal(attribute):Connect(refresh)
 	end
 	RunService.RenderStepped:Connect(step)

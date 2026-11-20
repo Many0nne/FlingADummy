@@ -109,10 +109,73 @@ return function(T, Loader, Lib)
 				T.expect(armDirection(keyframe.poses.RightUpperArm).Y > 0.9, "t = " .. keyframe.t)
 			end
 		end)
-		T.it("développe le poids au-dessus de la tête au sommet (marqueur Top)", function()
+		T.it("développe le mannequin au-dessus de la tête au sommet (marqueur Top)", function()
 			local top = keyframeAt(AnimationData.TRAIN, AnimationData.TRAIN.markers.Top).poses
 			T.expect(armDirection(top.RightUpperArm).Y > 0.9, "bras droit")
 			T.expect(armDirection(top.LeftUpperArm).Y > 0.9, "bras gauche")
+		end)
+	end)
+
+	T.describe("AnimationData.TRAIN (pose de l'avatar, tests/lib/R15Rig)", function()
+		local clip = AnimationData.TRAIN
+		local Training = loader:require("src/shared/Training")
+		local DummyShape = loader:require("src/shared/DummyShape")
+		-- Pose du mannequin soulevé, comme Client.CharacterPoser (liftFrame) : couché sur le dos au-dessus du milieu des
+		-- mains, à PALM_GAP + LIFT_OFFSET × échelle ; sa demi-épaisseur (dos-ventre, verticale) vient du gabarit
+		local PALM_GAP, LIFT_OFFSET = AnimationData.PALM_GAP, AnimationData.LIFT_OFFSET
+		local depth = 0
+		for _, piece in DummyShape.PIECES do
+			depth = math.max(depth, math.abs(piece.position.Z) + piece.size.Z / 2)
+		end
+		local HEAD_HALF = 0.6 -- demi-hauteur de la tête R15
+
+		-- Cette méthode permet de donner les positions des deux mains et de la tête (repère de HumanoidRootPart) à une
+		-- keyframe du clip lorsqu'un test vérifie la pose d'entraînement.
+		local function bodyAt(poses)
+			-- Cette méthode permet de donner la position d'une pièce pour les poses de la keyframe.
+			local function at(name)
+				return R15Rig.partFrame(name, poses, AnimationData.toCFrame).Position
+			end
+			return at("RightHand"), at("LeftHand"), at("Head")
+		end
+
+		T.it("tient le mannequin des deux mains, écartées comme une barre et symétriques", function()
+			for _, keyframe in AnimationData.filledKeyframes(clip) do
+				local right, left = bodyAt(keyframe.poses)
+				local grip = right.X - left.X
+				T.expect(grip > 2.2 and grip < 3.4, "t = " .. keyframe.t .. " : écart des mains " .. grip)
+				T.expectNear(right.Y, left.Y, 0.05, "t = " .. keyframe.t .. " : mains à la même hauteur")
+				T.expectNear(right.Z, left.Z, 0.05, "t = " .. keyframe.t .. " : mains au même niveau")
+			end
+		end)
+		T.it("bras tendus au-dessus de la tête au sommet, mains au ras du haut de la tête en bas", function()
+			local frames = AnimationData.filledKeyframes(clip)
+			local low = select(1, bodyAt(frames[1].poses))
+			local topRight, _, topHead = bodyAt(keyframeAt({ keyframes = frames }, clip.markers.Top).poses)
+			T.expect(
+				topRight.Y > topHead.Y + HEAD_HALF - 0.1,
+				"sommet : mains au-dessus de la tête, " .. tostring(topRight)
+			)
+			T.expect(topRight.Y - low.Y > 0.6, "course des mains d'au moins 0,6 stud, obtenu " .. (topRight.Y - low.Y))
+		end)
+		T.it("le mannequin soulevé (tous les paliers) passe au-dessus de la tête, sans la traverser", function()
+			for _, keyframe in AnimationData.filledKeyframes(clip) do
+				local right, left, head = bodyAt(keyframe.poses)
+				local hands = (right.Y + left.Y) / 2
+				for _, gear in Training.GEARS do
+					local bottom = hands + PALM_GAP + LIFT_OFFSET * gear.scale - depth * gear.scale
+					T.expect(
+						bottom > head.Y + HEAD_HALF - 0.05,
+						string.format(
+							"t = %s, %s : dessous %.2f, haut de la tête %.2f",
+							keyframe.t,
+							gear.name,
+							bottom,
+							head.Y + HEAD_HALF
+						)
+					)
+				end
+			end
 		end)
 	end)
 

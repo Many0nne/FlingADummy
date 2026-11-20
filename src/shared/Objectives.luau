@@ -2,21 +2,17 @@
 -- jeux de référence) et cible désignée : une pièce du décor (flèche au-dessus, chevrons au sol) ou un bouton du HUD.
 --
 -- Point d'accroche des cibles du décor : toute BasePart portant le tag `ObjectiveTarget` (CollectionService) et
--- l'attribut `Objective` (« Throw » zone de lancer, « Train » poste d'entraînement ; d'autres valeurs pour #13 / #14).
--- Facultatifs : `Slot` (place du lobby : la cible ne vaut que pour le joueur de cette place) et `OwnerUserId` (cible
--- d'un seul joueur). Sans l'un ni l'autre, la cible est partagée et le joueur suit la plus proche.
+-- l'attribut `Objective` (« Throw » zone de lancer, « Train » appareil d'entraînement ; d'autres valeurs pour #13 /
+-- #14). Facultatifs : `Slot` (place du lobby : la cible ne vaut que pour le joueur de cette place) et `OwnerUserId`
+-- (cible d'un seul joueur). Sans l'un ni l'autre, la cible est partagée et le joueur suit la plus proche.
 local Objectives = {}
 
 Objectives.TAG = "ObjectiveTarget"
-
--- Niveaux d'entraînement gagnés dans la séance avant de proposer d'arrêter pour aller lancer
-Objectives.LEVELS_BEFORE_STOP = 1
 
 export type State = {
 	action: string?, -- attribut Action du joueur : nil, "Holding", "Training"
 	laneState: string?, -- attribut LaneState : "Ready", "Flying", "Result"
 	thrown: boolean, -- a lancé depuis son dernier gain de Throw Power
-	levelsThisSession: number, -- niveaux d'entraînement gagnés depuis le début de la séance en cours
 	canBuyGear: boolean,
 	canBuyDummy: boolean,
 }
@@ -25,25 +21,24 @@ export type Objective = {
 	id: string,
 	text: string,
 	target: string?, -- valeur de l'attribut Objective de la cible du décor
-	button: string?, -- bouton du HUD désigné : "Stop", "Shop", "Dummies"
+	button: string?, -- bouton du HUD désigné : "Shop", "Dummies"
 }
 
 export type Candidate = { position: Vector3, slot: number?, owner: number? }
 
 local THROW = { id = "Throw", text = "Throw your dummy!", target = "Throw" }
 local TRAIN = { id = "Train", text = "Train!", target = "Train" }
-local STOP = { id = "Stop", text = "Press STOP to throw!", button = "Stop" }
 local BUY_GEAR = { id = "BuyGear", text = "Buy better gear!", button = "Shop" }
 local BUY_DUMMY = { id = "BuyDummy", text = "Buy a better dummy!", button = "Dummies" }
 
--- Cette méthode permet de choisir l'objectif à afficher lorsque l'état du joueur change ; nil quand l'écran est déjà
--- occupé (jauge, vol, résultat). Ordre : achats possibles, puis alternance lancer / entraînement.
+-- Cette méthode permet de choisir l'objectif (achats, puis alternance lancer / entraînement) lorsque l'état du joueur
+-- change ; nil quand l'écran est occupé (jauge, vol, résultat, séance d'entraînement où seul STOP reste).
 function Objectives.pick(state: State): Objective?
-	if state.laneState == "Flying" or state.laneState == "Result" or state.action == "Holding" then
+	if state.laneState == "Flying" or state.laneState == "Result" then
 		return nil
 	end
-	if state.action == "Training" then
-		return if state.levelsThisSession >= Objectives.LEVELS_BEFORE_STOP then STOP else nil
+	if state.action == "Holding" or state.action == "Training" then
+		return nil
 	end
 	if state.canBuyGear then
 		return BUY_GEAR

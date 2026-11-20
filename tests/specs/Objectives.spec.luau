@@ -9,7 +9,6 @@ return function(T, Loader)
 			action = nil,
 			laneState = "Ready",
 			thrown = false,
-			levelsThisSession = 0,
 			canBuyGear = false,
 			canBuyDummy = false,
 		}
@@ -31,12 +30,10 @@ return function(T, Loader)
 			T.expectEqual(Objectives.pick(state({ laneState = "Flying" })), nil)
 			T.expectEqual(Objectives.pick(state({ laneState = "Result", canBuyGear = true })), nil)
 		end)
-		T.it("propose STOP après un niveau gagné à l'entraînement, rien avant", function()
+		T.it("n'affiche rien pendant la séance d'entraînement (seul le bouton STOP en bas)", function()
 			T.expectEqual(Objectives.pick(state({ action = "Training" })), nil)
-			local stop = Objectives.pick(state({ action = "Training", levelsThisSession = 1 }))
-			T.expectEqual(stop.id, "Stop")
-			T.expectEqual(stop.button, "Stop")
-			T.expectEqual(stop.target, nil)
+			T.expectEqual(Objectives.pick(state({ action = "Training", thrown = true })), nil)
+			T.expectEqual(Objectives.pick(state({ action = "Training", canBuyGear = true, canBuyDummy = true })), nil)
 		end)
 		T.it("fait acheter l'équipement, puis le mannequin, avant de relancer", function()
 			local both = Objectives.pick(state({ thrown = true, canBuyGear = true, canBuyDummy = true }))

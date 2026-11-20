@@ -50,6 +50,9 @@
       },
       "FadBrick": {
         "$path": "src/materials/FadBrick.model.json"
+      },
+      "FadBrickFine": {
+        "$path": "src/materials/FadBrickFine.model.json"
       }
     },
 

@@ -16,7 +16,7 @@ local DEFAULTS = {
 	GearTier = 1,
 	ValueLevel = 1,
 	TrainLevel = 1,
-	TrainReps = 0,
+	TrainExp = 0, -- EXP du niveau d'entraînement en cours (Shared.Training)
 	BestDistance = 0,
 }
 
@@ -126,7 +126,7 @@ function PlayerData.buyUpgrade(player: Player, kind: any): boolean
 	return true
 end
 
--- Cette méthode permet d'ajouter de la Throw Power lorsque l'avatar termine une répétition d'entraînement.
+-- Cette méthode permet d'ajouter de la Throw Power lorsque l'avatar franchit un niveau d'entraînement.
 function PlayerData.addPower(player: Player, amount: number)
 	player:SetAttribute("ThrowPower", ((player:GetAttribute("ThrowPower") :: number?) or 0) + amount)
 end

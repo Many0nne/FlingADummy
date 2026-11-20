@@ -5,32 +5,65 @@ return function(T, Loader)
 	local Zones = loader:require("src/shared/Zones")
 	local GameConfig = loader:require("src/shared/GameConfig")
 
-	T.describe("Training.repsForLevel", function()
-		T.it("démarre à LEVEL_BASE_REPS et ne décroît jamais", function()
-			T.expectEqual(Training.repsForLevel(1), GameConfig.LEVEL_BASE_REPS)
+	T.describe("Training.expForLevel", function()
+		T.it("démarre à LEVEL_BASE_EXP et ne décroît jamais", function()
+			T.expectEqual(Training.expForLevel(1), GameConfig.LEVEL_BASE_EXP)
 			for level = 1, 40 do
-				T.expect(Training.repsForLevel(level + 1) >= Training.repsForLevel(level), "niveau " .. level)
+				T.expect(Training.expForLevel(level + 1) >= Training.expForLevel(level), "niveau " .. level)
 			end
 		end)
 	end)
 
-	T.describe("Training.addRep", function()
-		T.it("remplit le niveau puis passe au suivant en remettant les répétitions à zéro", function()
-			local progress = { level = 1, reps = 0 }
-			local leveled
-			for _ = 1, Training.repsForLevel(1) - 1 do
-				progress, leveled = Training.addRep(progress)
-				T.expect(not leveled, "pas encore de niveau")
+	T.describe("Training.completeRep (EXP de l'équipement, puissance au niveau)", function()
+		-- Cette méthode permet de faire `count` répétitions avec le palier `tier` lorsqu'un test simule une séance ;
+		-- renvoie la progression et la Throw Power versée au total.
+		local function train(progress, tier, count)
+			local total = 0
+			for _ = 1, count do
+				local power
+				progress, power = Training.completeRep(progress, tier)
+				total += power
 			end
-			progress, leveled = Training.addRep(progress)
-			T.expect(leveled, "niveau franchi")
+			return progress, total
+		end
+
+		T.it("chaque répétition donne l'EXP de l'équipement, sans puissance avant le niveau", function()
+			local progress, power = Training.completeRep({ level = 1, exp = 0 }, 1)
+			T.expectEqual(progress.exp, Training.GEARS[1].gain, "EXP du bois")
+			T.expectEqual(power, 0)
+			progress, power = Training.completeRep({ level = 10, exp = 0 }, 2)
+			T.expectEqual(progress.exp, Training.GEARS[2].gain, "EXP de la pierre")
+			T.expectEqual(progress.level, 10)
+			T.expectEqual(power, 0)
+		end)
+		T.it("le niveau franchi verse l'EXP qu'il demandait en Throw Power, barre vidée", function()
+			local needed = Training.expForLevel(1)
+			local progress, total = train({ level = 1, exp = 0 }, 1, needed)
 			T.expectEqual(progress.level, 2)
-			T.expectEqual(progress.reps, 0)
+			T.expectEqual(progress.exp, 0, "barre vidée")
+			T.expectEqual(total, needed)
+		end)
+		T.it("un meilleur équipement remplit les niveaux plus vite et reporte l'EXP en trop", function()
+			-- Fer (+10) au niveau 1 (3 EXP), 2 (4), 3 (5) : 10 = 3 + 4, il reste 3 sur 5
+			local progress, power = Training.completeRep({ level = 1, exp = 0 }, 3)
+			T.expectEqual(Training.GEARS[3].gain, 10)
+			T.expectEqual(progress.level, 3, "deux niveaux d'un coup")
+			T.expectEqual(progress.exp, 10 - Training.expForLevel(1) - Training.expForLevel(2), "EXP reportée")
+			T.expectEqual(power, Training.expForLevel(1) + Training.expForLevel(2))
+			local _, woodPower = train({ level = 1, exp = 0 }, 1, 20)
+			local _, ironPower = train({ level = 1, exp = 0 }, 3, 20)
+			T.expect(ironPower > 5 * woodPower, "le fer rapporte bien plus que le bois")
+		end)
+		T.it("garde le rythme : puissance + EXP en cours = gain de l'équipement × répétitions", function()
+			for _, tier in { 1, 2, 4, #Training.GEARS } do
+				local progress, total = train({ level = 1, exp = 0 }, tier, 50)
+				T.expectEqual(total + progress.exp, Training.GEARS[tier].gain * 50, "palier " .. tier)
+			end
 		end)
 	end)
 
 	T.describe("Training.GEARS", function()
-		T.it("premier palier offert, prix et gains strictement croissants", function()
+		T.it("premier palier offert, prix et EXP par répétition strictement croissants", function()
 			T.expectEqual(Training.GEARS[1].cost, 0)
 			for tier = 2, #Training.GEARS do
 				T.expect(Training.GEARS[tier].cost > Training.GEARS[tier - 1].cost, "prix du palier " .. tier)

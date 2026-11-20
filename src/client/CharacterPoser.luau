@@ -1,7 +1,8 @@
 -- Animations des avatars (R15) et mannequins décoratifs : le joueur local joue les clips de Shared.AnimationData
 -- (tenu, entraînement, lancer) sur son Animator, qui les réplique et pilote aussi bien les Motor6D que les
 -- AnimationConstraint des avatars récents. Chaque client pose, pour tous les joueurs, le mannequin tenu sur la main
--- droite ou le poids d'entraînement sur les deux mains, d'après les attributs et la position des mains.
+-- droite ou le mannequin d'entraînement (celui du palier d'équipement) couché sur les deux mains, d'après les attributs
+-- et la position des mains.
 local KeyframeSequenceProvider = game:GetService("KeyframeSequenceProvider")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -16,7 +17,8 @@ local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Training = require(Shared:WaitForChild("Training"))
 
 local HELD_SCALE = 0.6
-local PALM_GAP = 0.3 -- demi-épaisseur de la main sous le mannequin couché (studs)
+local PALM_GAP = AnimationData.PALM_GAP
+local LIFT_OFFSET = AnimationData.LIFT_OFFSET
 local FADE = 0.2 -- fondu d'entrée et de sortie des clips (s)
 local THROW_FADE = 0.08
 local RELEASE_GRACE = 0.25 -- lâcher de secours après le marqueur (clip absent ou en retard, s)
@@ -160,12 +162,12 @@ local function palmFrame(character: Model, root: BasePart, scale: number): CFram
 	end
 	head = head.Unit
 	local back = -up
-	local center = hand.Position + up * (PALM_GAP + 0.55 * scale) + head * (0.5 * scale)
+	local center = hand.Position + up * (PALM_GAP + LIFT_OFFSET * scale) + head * (0.5 * scale)
 	return CFrame.fromMatrix(center, head:Cross(back), head, back)
 end
 
--- Cette méthode permet de calculer où poser le poids d'entraînement (couché en travers des deux mains, à plat)
--- lorsque le personnage s'entraîne.
+-- Cette méthode permet de calculer où poser le mannequin d'entraînement (couché sur le dos en travers des deux mains,
+-- au-dessus de la tête) lorsque le personnage s'entraîne.
 local function liftFrame(character: Model, root: BasePart, scale: number): CFrame
 	local left = character:FindFirstChild("LeftHand") :: BasePart?
 	local right = character:FindFirstChild("RightHand") :: BasePart?
@@ -176,7 +178,7 @@ local function liftFrame(character: Model, root: BasePart, scale: number): CFram
 	local across = right.Position - left.Position
 	across -= up * across:Dot(up)
 	across = if across.Magnitude > 0.05 then across.Unit else root.CFrame.RightVector
-	local center = (left.Position + right.Position) / 2 + up * (PALM_GAP + 0.55 * scale)
+	local center = (left.Position + right.Position) / 2 + up * (PALM_GAP + LIFT_OFFSET * scale)
 	local back = -up
 	return CFrame.fromMatrix(center, across:Cross(back), across, back)
 end
@@ -353,12 +355,15 @@ function CharacterPoser.init()
 	end)
 	-- Le serveur compte la répétition au sommet : on y recale le clip à chaque répétition (le premier lancement
 	-- d'un clip publié encore en chargement ignore TimePosition)
-	localPlayer:GetAttributeChangedSignal("ThrowPower"):Connect(function()
+	-- Cette méthode permet de recaler le clip au sommet lorsqu'une répétition change l'EXP ou le niveau.
+	local function resyncTrain()
 		local train = tracks.byName.Train
 		if train and train.IsPlaying and localPlayer:GetAttribute("Action") == "Training" then
 			train.TimePosition = CLIPS.Train.markers.Top
 		end
-	end)
+	end
+	localPlayer:GetAttributeChangedSignal("TrainExp"):Connect(resyncTrain)
+	localPlayer:GetAttributeChangedSignal("TrainLevel"):Connect(resyncTrain)
 end
 
 return CharacterPoser
