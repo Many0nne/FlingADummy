@@ -25,8 +25,12 @@ $root = (Resolve-Path (Split-Path -Parent (git -C $PSScriptRoot rev-parse --path
 $script = Join-Path $root 'scripts\fad-worktree-cleanup.ps1'
 if (-not (Test-Path $script)) { throw "$script absent du checkout principal : merger la branche de l'outillage dans main, puis relancer." }
 $pwsh = (Get-Command pwsh).Source
+# La tache tourne sans profil (-NoProfile), donc sans ce qu'il ajoute au PATH (ex. ~\bin\gh.exe, shim qui choisit le compte
+# GitHub du depot) : le gh de cette session est fige dans la tache (#35). Le relancer apres avoir change de gh.
+$gh = (Get-Command gh -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+if (-not $gh) { throw "gh introuvable dans le PATH de cette session : l'installer (ou charger le profil qui l'ajoute), puis relancer." }
 # conhost --headless : pas de fenetre qui clignote toutes les 10 minutes.
-$action = New-ScheduledTaskAction -Execute 'conhost.exe' -Argument "--headless `"$pwsh`" -NoProfile -NonInteractive -File `"$script`""
+$action = New-ScheduledTaskAction -Execute 'conhost.exe' -Argument "--headless `"$pwsh`" -NoProfile -NonInteractive -File `"$script`" -Gh `"$gh`""
 $triggers = @(
   New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
   New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 10)
@@ -35,4 +39,4 @@ $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoi
   -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 15)
 Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $triggers -Settings $settings `
   -Description 'Arrete le Rojo des worktrees Fling a Dummy dont les threads T3 sont termines, supprime ceux dont la PR est mergee ou fermee.' -Force | Out-Null
-Write-Host "Tache '$taskName' installee (toutes les 10 minutes et a l'ouverture de session)."
+Write-Host "Tache '$taskName' installee (toutes les 10 minutes et a l'ouverture de session), gh : $gh"

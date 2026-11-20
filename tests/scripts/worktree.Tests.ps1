@@ -777,6 +777,8 @@ Describe 'fad-worktree-cleanup.ps1 : decisions' {
     Test-Alive $pidOf['mrg'] | Should Be $false
     (Get-SbPaths $sb 'feature/8-mrg').Dir | Should Exist
     (Get-SbPaths $sb 'feature/8-clo').Dir | Should Exist
+    # Cause de la panne journalisee (#35) : code de retour et sortie d'erreur de gh.
+    (Get-Content (Get-SbPaths $sb 'x').Log -Raw) | Should Match 'gh sans reponse pour feature/8-mrg .*\(code 1 : .*panne simulee'
     Set-FakeGh $sb -Prs @{
       'feature/8-mrg' = @(@{ number = 1; state = 'MERGED'; headRefOid = $shaMrg })
       'feature/8-unp' = @(@{ number = 2; state = 'MERGED'; headRefOid = $shaUnp })
@@ -784,8 +786,15 @@ Describe 'fad-worktree-cleanup.ps1 : decisions' {
     }
   }
 
-  It 'le nettoyage se termine sans erreur' {
-    (Invoke-Cleanup $sb).Code | Should Be 0
+  It 'gh introuvable (-Gh errone) : rien n''est supprime et la cause est journalisee' {
+    (Invoke-Cleanup $sb @('-Gh', (Join-Path $sb.Bin 'absent\gh.exe'))).Code | Should Be 0
+    (Get-SbPaths $sb 'feature/8-clo').Dir | Should Exist
+    (Get-Content (Get-SbPaths $sb 'x').Log -Raw) | Should Match 'gh sans reponse pour feature/8-clo .*introuvable'
+  }
+
+  # Chemin explicite de gh, comme la tache planifiee qui tourne sans profil ni shim dans le PATH (#35).
+  It 'le nettoyage se termine sans erreur (gh passe par -Gh)' {
+    (Invoke-Cleanup $sb @('-Gh', (Join-Path $sb.Bin 'gh.ps1'))).Code | Should Be 0
   }
 
   It 'thread actif : Rojo garde' {
