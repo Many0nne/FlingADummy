@@ -242,7 +242,9 @@ local function track(player: Player)
 		end)
 		player:GetAttributeChangedSignal("GearTier"):Connect(function()
 			if player:GetAttribute("GearTier") == 2 then
-				print(string.format("[Mesure] premier équipement acheté à %.1f s de l'arrivée", os.clock() - joined))
+				print(
+					string.format("[Mesure] premier équipement acheté à %.1f s de l'arrivée", os.clock() - joined)
+				)
 			end
 		end)
 	end
