@@ -25,10 +25,15 @@ local function writePublished()
 		if not id or id == 0 then
 			error(clip.name .. " : id absent ou 0 dans Assets.ANIMATIONS (README, étape « Créer une nouvelle animation »)")
 		end
-		published[clip.name] = {
-			id = string.format("%d", id),
-			sha256 = serde.hash("sha256", fs.readFile(OUT .. "/" .. clip.name .. ".rbxm")),
-		}
+		local path = OUT .. "/" .. clip.name .. ".rbxm"
+		if not fs.isFile(path) then
+			error(clip.name .. " : " .. path .. " absent, exporter d'abord (lune run tools/build-anims.luau)")
+		end
+		local sha256 = serde.hash("sha256", fs.readFile(path))
+		if sha256 ~= serde.hash("sha256", roblox.serializeModel({ AnimationData.buildSequence(clip) })) then
+			error(clip.name .. " : export périmé par rapport à AnimationData, exporter puis republier d'abord")
+		end
+		published[clip.name] = { id = string.format("%d", id), sha256 = sha256 }
 	end
 	fs.writeFile("assets/anim/published.json", serde.encode("json", published, true) .. "\n")
 	print("assets/anim/published.json réécrit")

@@ -211,15 +211,16 @@ return function(T, Loader, Lib)
 	end)
 
 	T.describe("assets/anim/published.json (clips republiés)", function()
-		T.it("liste chaque clip avec l'id de Shared.Assets et l'empreinte du .rbxm exporté", function()
-			local fs = require("@lune/fs")
-			local roblox = require("@lune/roblox")
-			local serde = require("@lune/serde")
-			local Assets = loader:require("src/shared/Assets")
-			local hint = " : exporter (lune run tools/build-anims.luau), publier puis lune run tools/build-anims.luau --published"
-				.. " (procédure : assets/anim/README.md)"
-			local published = serde.decode("json", fs.readFile("assets/anim/published.json"))
-			for _, clip in AnimationData.CLIPS do
+		local fs = require("@lune/fs")
+		local roblox = require("@lune/roblox")
+		local serde = require("@lune/serde")
+		local Assets = loader:require("src/shared/Assets")
+		local hint = " : exporter (lune run tools/build-anims.luau), publier puis lune run tools/build-anims.luau --published"
+			.. " (procédure : assets/anim/README.md ; si aucun clip n'a changé, version de Lune/rbx-dom modifiée : ré-exporter)"
+		local published = serde.decode("json", fs.readFile("assets/anim/published.json"))
+
+		for _, clip in AnimationData.CLIPS do
+			T.it(clip.name .. " : id, export et empreinte publiée concordent", function()
 				local entry = published[clip.name]
 				T.expect(entry ~= nil, clip.name .. " absent de published.json" .. hint)
 				local id = Assets.ANIMATIONS[clip.name]
@@ -238,6 +239,16 @@ return function(T, Loader, Lib)
 					entry.sha256,
 					clip.name .. " : .rbxm exporté différent du .rbxm publié" .. hint
 				)
+			end)
+		end
+
+		T.it("ne garde aucune entrée pour un clip supprimé ou renommé", function()
+			local names = {}
+			for _, clip in AnimationData.CLIPS do
+				names[clip.name] = true
+			end
+			for name in published do
+				T.expect(names[name], name .. " : entrée orpheline dans published.json" .. hint)
 			end
 		end)
 	end)
