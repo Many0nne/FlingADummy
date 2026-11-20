@@ -232,6 +232,20 @@ local function track(player: Player)
 	end
 	slotOf[player] = slot
 	player:SetAttribute("Income", 0)
+	if RunService:IsStudio() then
+		-- Mesures du démarrage (cibles #13) : premier mannequin gagné < 25 s, premier équipement < 1 min
+		local joined = os.clock()
+		player:GetAttributeChangedSignal("Draws"):Connect(function()
+			if player:GetAttribute("Draws") == 1 then
+				print(string.format("[Mesure] premier mannequin gagné à %.1f s de l'arrivée", os.clock() - joined))
+			end
+		end)
+		player:GetAttributeChangedSignal("GearTier"):Connect(function()
+			if player:GetAttribute("GearTier") == 2 then
+				print(string.format("[Mesure] premier équipement acheté à %.1f s de l'arrivée", os.clock() - joined))
+			end
+		end)
+	end
 	if player:GetAttribute("DataReady") then
 		refresh(player)
 	end
