@@ -11,7 +11,8 @@ local BASE_X = 64 -- centre des bases, de part et d'autre du hub
 local BASE_Z = { -48, -100 } -- rangée avant, rangée arrière
 CourseLayout.BASE_SIZE = Vector3.new(34, 0, 40)
 CourseLayout.DISPLAY_COUNT = 6 -- présentoirs par base (2 rangées de 3)
-CourseLayout.STATION_GAP = 13 -- de la clôture d'entrée de la base au centre de son appareil d'entraînement (studs)
+CourseLayout.STATION_GAP = 10 -- de la clôture d'entrée de la base au centre de son appareil d'entraînement (studs)
+CourseLayout.STATION_SHIFT = 12 -- décalage de l'appareil sur le côté de l'entrée, vers la zone de lancer (+Z)
 CourseLayout.STATION_SIZE = 9 -- côté du podium de l'appareil
 
 -- Couleur de chaque place (pastille de la zone de lancer, base, appareil) : on retrouve ses affaires d'un coup d'œil
@@ -55,13 +56,13 @@ function CourseLayout.entranceSide(index: number): number
 	return if CourseLayout.basePosition(index).X > 0 then -1 else 1
 end
 
--- Cette méthode permet de donner le centre au sol de l'appareil d'entraînement de la place `index` (devant l'entrée de
--- sa base, au milieu, passage libre devant la clôture) et la direction où regarde l'avatar (centre du hub).
+-- Cette méthode permet de donner le centre au sol de l'appareil d'entraînement de la place `index` (devant la base, à
+-- côté de son entrée qu'il laisse libre) et la direction où regarde l'avatar (centre du hub).
 function CourseLayout.stationPosition(index: number): (Vector3, Vector3)
 	local side = CourseLayout.entranceSide(index)
 	local base = CourseLayout.basePosition(index)
 	local x = base.X + side * (CourseLayout.BASE_SIZE.X / 2 + CourseLayout.STATION_GAP)
-	return Vector3.new(x, 0, base.Z), Vector3.new(side, 0, 0)
+	return Vector3.new(x, 0, base.Z + CourseLayout.STATION_SHIFT), Vector3.new(side, 0, 0)
 end
 
 -- Cette méthode permet de donner les emplacements des présentoirs d'une base (2 rangées de 3, centrés sur la base)

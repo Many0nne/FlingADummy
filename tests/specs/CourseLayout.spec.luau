@@ -30,19 +30,23 @@ return function(T, Loader)
 			T.expect(math.abs(sum) < 1e-6, "places centrées")
 		end)
 
-		T.it("place l'appareil d'entraînement devant l'entrée de la base, au milieu, passage libre", function()
+		T.it("place l'appareil d'entraînement devant la base, à côté de l'entrée qu'il laisse libre", function()
 			local half = CourseLayout.BASE_SIZE / 2
 			local podium = CourseLayout.STATION_SIZE / 2
 			for index = 1, count do
 				local station, facing = CourseLayout.stationPosition(index)
 				local base = CourseLayout.basePosition(index)
 				local side = CourseLayout.entranceSide(index)
-				T.expectEqual(station.Z, base.Z, "au milieu de l'entrée")
+				-- Entrée de 10 studs au milieu du côté de la base : l'appareil ne la couvre pas, sans quitter la base
+				local beside = math.abs(station.Z - base.Z) - podium
+				T.expect(beside >= 5, "entrée libre, obtenu " .. beside)
+				T.expect(math.abs(station.Z - base.Z) + podium <= half.Z, "le long de la base")
 				T.expectEqual(math.sign(station.X - base.X), side, "du côté de l'entrée (centre du hub)")
 				T.expect(-side * base.X > 0, "entrée tournée vers le centre du hub")
 				T.expectEqual(facing, Vector3.new(side, 0, 0), "avatar face au centre du hub")
 				local gap = math.abs(station.X - base.X) - half.X - podium
 				T.expect(gap >= 4, "passage libre entre l'appareil et la clôture, obtenu " .. gap)
+				T.expect(gap <= 8, "près de la base, obtenu " .. gap)
 				T.expect(math.abs(station.X) + podium <= GameConfig.HUB_WIDTH / 2, "dans la largeur du hub")
 				T.expect(station.Z + podium < -GameConfig.LAUNCH_DEPTH, "derrière la zone de lancer")
 				for other = 1, count do

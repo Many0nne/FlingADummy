@@ -7,9 +7,10 @@ local Build = {}
 Build.CHECKER = "FadChecker" -- damier marqué de carreaux de 8 studs à 4 × 4 tenons : sol
 Build.WALL = "FadWall" -- même damier, plus doux : parois en gradins et herbe qui les coiffe
 Build.BRICK = "FadBrick" -- un tenon tous les 2 studs : accessoires, obstacles, végétation voxel
+Build.FINE = "FadBrickFine" -- mêmes cartes, un tenon par stud : objets à l'échelle de l'avatar (appareil d'entraînement)
 
 -- Cette méthode permet de créer une pièce ancrée avec ses propriétés lorsque le décor est construit ; `Variant`
--- (Build.CHECKER, Build.WALL, Build.BRICK) pose le matériau à tenons.
+-- (Build.CHECKER, Build.WALL, Build.BRICK, Build.FINE) pose le matériau à tenons.
 function Build.part(props: { [string]: any }): Part
 	local p = Instance.new("Part")
 	p.Anchored = true
