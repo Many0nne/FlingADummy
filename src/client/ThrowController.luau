@@ -122,7 +122,7 @@ end
 
 -- Cette méthode permet de placer la caméra derrière l'avatar, vers la piste, lorsque le joueur est figé sur la bande
 -- (le serveur l'a déjà tourné face à la piste).
-local function faceTrack()
+local function aimCamera()
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not root then
@@ -196,7 +196,7 @@ function refresh()
 		locked = nil
 		frame.Visible = true
 		UIKit.pop(frame, 0.6)
-		faceTrack()
+		aimCamera()
 	elseif not holding and frame.Visible and not CharacterPoser.isThrowing() then
 		frame.Visible = false
 	end
