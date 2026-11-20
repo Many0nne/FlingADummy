@@ -71,6 +71,31 @@ function Invoke-Helper {
   return "$out".Trim()
 }
 
+# Cette methode permet de savoir si Studio est connecte au Rojo du checkout principal (port 34900) lorsqu'on veut
+# avancer main : un test y est sans doute en cours.
+function Test-StudioOnBase {
+  [bool](Get-NetTCPConnection -State Established -RemotePort 34900 -ErrorAction SilentlyContinue |
+    Where-Object { (Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue).ProcessName -like 'RobloxStudio*' })
+}
+
+# Cette methode permet de lire la branche qui detient le verrou Studio ($null s'il est libre ou illisible).
+function Get-LockHolder {
+  $f = Join-Path $runDir 'studio.lock'
+  if (-not (Test-Path $f)) { return $null }
+  try { return ([IO.File]::ReadAllText($f) | ConvertFrom-Json).branch } catch { return $null }
+}
+
+# Cette methode permet de savoir si une PR mergee livre bien le travail actuel de la branche (sa pointe est contenue dans
+# la tete de la PR), lorsqu'un nom de branche a pu servir a une tache plus ancienne deja mergee.
+function Test-PrCoversBranch([string]$Branch, $Pr) {
+  git -C $root rev-parse --verify -q "refs/heads/$Branch" *> $null
+  if ($LASTEXITCODE -ne 0) { return $true }  # branche locale deja supprimee : rien a perdre
+  git -C $root cat-file -e "$($Pr.headRefOid)^{commit}" *> $null
+  if ($LASTEXITCODE -ne 0) { return $false }
+  git -C $root merge-base --is-ancestor "refs/heads/$Branch" $Pr.headRefOid *> $null
+  return ($LASTEXITCODE -eq 0)
+}
+
 # Cette methode permet de lister les PR d'une branche (etat, commit de tete) lorsqu'il faut savoir si son travail est merge ;
 # $null si gh ne repond pas (on ne supprime alors rien).
 function Get-BranchPrs([string]$Branch) {
@@ -119,7 +144,11 @@ try {
   $ErrorActionPreference = 'Stop'
   # Scripts du checkout principal (dont celui-ci) a jour apres un merge : fast-forward de main, seulement si le checkout
   # est sur main sans modification suivie. Pris en compte des le -Remove ci-dessous, et pour ce script au passage suivant.
-  if (-not $DryRun -and (git -C $root branch --show-current) -eq $mainBranch -and -not (git -C $root status --porcelain --untracked-files=no)) {
+  # Pas pendant un test sur le checkout principal (Studio connecte au port de base, ou verrou tenu par main) : Rojo
+  # pousserait le nouveau code dans la place en plein test.
+  $mainInUse = (Test-StudioOnBase) -or ((Get-LockHolder) -eq $mainBranch)
+  if ($mainInUse) { Write-Log "MAJ $mainBranch reportee : Studio utilise le checkout principal" -Once }
+  if (-not $DryRun -and -not $mainInUse -and (git -C $root branch --show-current) -eq $mainBranch -and -not (git -C $root status --porcelain --untracked-files=no)) {
     $ErrorActionPreference = 'Continue'
     git -C $root merge --ff-only --quiet "origin/$mainBranch" *>&1 | Out-Null
     $ErrorActionPreference = 'Stop'
@@ -155,7 +184,8 @@ try {
     # Travail clos : PR mergee (ou fermee sans merge) et aucune PR encore ouverte sur la branche -> suppression.
     $prs = Get-BranchPrs $branch
     $open = @($prs | Where-Object { $_.state -eq 'OPEN' })
-    $delivered = $null -ne $prs -and @($prs | Where-Object { $_.state -eq 'MERGED' }) -and -not $open
+    # Une ancienne PR mergee sous le meme nom de branche ne compte pas : il faut qu'elle contienne la pointe actuelle.
+    $delivered = $null -ne $prs -and @($prs | Where-Object { $_.state -eq 'MERGED' -and (Test-PrCoversBranch $branch $_) }) -and -not $open
     $abandoned = $null -ne $prs -and -not $delivered -and @($prs | Where-Object { $_.state -eq 'CLOSED' }) -and -not $open
 
     # Palier 1 : threads termines mais travail non clos (PR ouverte ou absente, ou gh muet) -> arret de Rojo seulement.

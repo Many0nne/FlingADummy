@@ -427,6 +427,26 @@ Describe 'fad-worktree.ps1 : verrou Studio' {
     Get-Holder | Should Be $b
   }
 
+  It 'detenteur inscrit pendant son premier tour (session seule) : reconnu fini une fois sa session resolue' {
+    $c = 'feature/7-studio-c'
+    Set-FakeT3 $sb -Sessions @{ 'S-b' = 'T-b' } -Threads @{ 'T-b' = 'active'; 'T-c' = 'active' }
+    Invoke-Wt $sb @($c, '-Slot', '609') 'S-c' | Out-Null
+    @((Get-SbOwners $sb | Where-Object { $_.branch -eq $c }).threads).Count | Should Be 0
+    Invoke-Wt $sb @($b, '-ReleaseStudio') | Out-Null
+    (Invoke-Wt $sb @($c, '-AcquireStudio')).Code | Should Be 0
+    Set-FakeT3 $sb -Sessions @{ 'S-b' = 'T-b'; 'S-c' = 'T-c' } -Threads @{ 'T-b' = 'active'; 'T-c' = 'settled' }
+    (Invoke-Wt $sb @($b, '-AcquireStudio')).Output | Should Match 'threads T3 termines'
+  }
+
+  It '-Remove refuse avec des modifications non commitees garde Rojo et le verrou' {
+    $d = (Get-SbPaths $sb $b).Dir
+    Set-Content (Join-Path $d 'brouillon.txt') 'x'
+    (Invoke-Wt $sb @($b, '-Remove')).Code | Should Not Be 0
+    Get-Holder | Should Be $b
+    Test-Alive (Get-SbRojoPid $sb $b) | Should Be $true
+    Remove-Item (Join-Path $d 'brouillon.txt')
+  }
+
   It '-Stop libere le verrou de la branche' {
     Invoke-Wt $sb @($b, '-Stop') | Out-Null
     Get-Holder | Should BeNullOrEmpty
@@ -455,6 +475,20 @@ Describe 'fad-worktree.ps1 : verrou Studio tenu par le checkout principal' {
     (Invoke-Wt $sb @($w, '-AcquireStudio')).Code | Should Be 2
   }
 
+  It 'agent du checkout principal parti sans liberer (thread termine) : le verrou est repris malgre son Rojo' {
+    Invoke-Wt $sb @($w, '-ReleaseStudio') | Out-Null
+    Set-FakeT3 $sb -Sessions @{ 'S-w' = 'T-w'; 'S-m' = 'T-m' } -Threads @{ 'T-w' = 'active'; 'T-m' = 'active' }
+    (Invoke-Wt $sb @('main', '-AcquireStudio') 'S-m').Code | Should Be 0
+    (Get-Content $lockFile -Raw | ConvertFrom-Json).thread | Should Be 'T-m'
+    (Invoke-Wt $sb @($w, '-AcquireStudio')).Code | Should Be 2
+    Set-FakeT3 $sb -Sessions @{ 'S-w' = 'T-w'; 'S-m' = 'T-m' } -Threads @{ 'T-w' = 'active'; 'T-m' = 'settled' }
+    $r = Invoke-Wt $sb @($w, '-AcquireStudio')
+    $r.Code | Should Be 0
+    $r.Output | Should Match 'threads T3 termines'
+    Invoke-Wt $sb @($w, '-ReleaseStudio') | Out-Null
+    (Invoke-Wt $sb @('main', '-AcquireStudio')).Code | Should Be 0
+  }
+
   It 'Rojo du checkout principal arrete : le verrou est repris' {
     Stop-Process -Id $script:mainRojo -Force; Start-Sleep -Milliseconds 300
     $r = Invoke-Wt $sb @($w, '-AcquireStudio')
@@ -480,7 +514,7 @@ Describe 'fad-worktree-cleanup.ps1 : decisions' {
   }
   $shaMrg = Add-SbCommit $sb 'feature/8-mrg' -Push
   $shaUnp = Add-SbCommit $sb 'feature/8-unp' -Push
-  Add-SbCommit $sb 'feature/8-unp' 'oubli.txt' | Out-Null
+  Set-Content (Join-Path (Get-SbPaths $sb 'feature/8-unp').Dir 'oubli.txt') 'pas commite'
   $shaClo = Add-SbCommit $sb 'feature/8-clo' -Push
   Set-FakeGh $sb -Prs @{
     'feature/8-mrg' = @(@{ number = 1; state = 'MERGED'; headRefOid = $shaMrg })
@@ -527,7 +561,7 @@ Describe 'fad-worktree-cleanup.ps1 : decisions' {
     (git -C $sb.Repo branch --list 'feature/8-mrg') | Should BeNullOrEmpty
     @(Get-SbOwners $sb | Where-Object { $_.branch -eq 'feature/8-mrg' }).Count | Should Be 0
   }
-  It 'PR mergee mais commit non pousse : worktree garde et signale dans le journal' {
+  It 'PR mergee mais modification non commitee : worktree garde et signale dans le journal' {
     (Get-SbPaths $sb 'feature/8-unp').Dir | Should Exist
     (Get-Content (Get-SbPaths $sb 'x').Log -Raw) | Should Match 'GARDE feature/8-unp'
   }
@@ -570,7 +604,19 @@ Describe 'fad-worktree-cleanup.ps1 : decisions' {
     Set-FakeGh $sb -Prs @{ $br = @(@{ number = 9; state = 'MERGED'; headRefOid = $sha }) }
     Invoke-Cleanup $sb | Out-Null
     (git -C $sb.Repo branch --list $br) | Should Not BeNullOrEmpty
-    (Get-Content (Get-SbPaths $sb 'x').Log -Raw) | Should Match "GARDE $br"
+  }
+
+  It 'nom de branche reutilise : une ancienne PR mergee ne fait pas supprimer le nouveau travail, meme pousse' {
+    $br = 'feature/8-reprise'
+    Invoke-Wt $sb @($br, '-NoUp', '-Slot', '622', '-NoRegister') | Out-Null
+    $old = Add-SbCommit $sb $br -Push
+    Add-SbCommit $sb $br 'suite.txt' -Push | Out-Null
+    Invoke-Wt $sb @($br, '-RegisterThread', 'T-fin') | Out-Null
+    Set-FakeT3 $sb -Sessions $sessions -Threads $threads
+    Set-FakeGh $sb -Prs @{ $br = @(@{ number = 10; state = 'MERGED'; headRefOid = $old }) }
+    Invoke-Cleanup $sb | Out-Null
+    (Get-SbPaths $sb $br).Dir | Should Exist
+    (git -C $sb.Repo branch --list $br) | Should Not BeNullOrEmpty
   }
 
   It 'registre illisible : le nettoyage le signale dans son journal sans planter' {

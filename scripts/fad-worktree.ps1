@@ -323,15 +323,16 @@ function Get-StudioLock {
 # Cette methode permet de dire pourquoi le detenteur du verrou Studio ne l'utilise plus (worktree supprime, Rojo arrete,
 # threads T3 tous termines) lorsqu'une autre branche le demande ; renvoie $null si le detenteur est encore actif.
 function Get-StudioLockStaleReason($Lock) {
-  if ($Lock.branch -eq $mainBranch) {
-    if (-not (Test-HolderRojo $mainBranch)) { return 'Rojo arrete' }
-    return $null
+  if ($Lock.branch -ne $mainBranch) {
+    if (-not (Test-Path (Join-Path $worktrees "fad-$(Get-Slug $Lock.branch)"))) { return 'worktree supprime' }
   }
-  $holderSlug = Get-Slug $Lock.branch
-  if (-not (Test-Path (Join-Path $worktrees "fad-$holderSlug"))) { return 'worktree supprime' }
-  if (-not (Test-RojoRunning $holderSlug)) { return 'Rojo arrete' }
+  if (-not (Test-HolderRojo $Lock.branch)) { return 'Rojo arrete' }
+  # Threads du detenteur : ceux du registre, celui note dans le verrou, et ceux des sessions resolues depuis (une
+  # session inscrite pendant son premier tour n'avait pas encore de thread).
   try { $entry = Get-Owners | Where-Object { $_.branch -eq $Lock.branch } | Select-Object -First 1 } catch { $entry = $null }
-  $threads = @($entry.threads | Where-Object { $_ })
+  $threads = @($entry.threads) + @($Lock.thread)
+  foreach ($s in @($entry.sessions) + @($Lock.session)) { if ($s) { $threads += Get-ThreadOf $s } }
+  $threads = @($threads | Where-Object { $_ } | Select-Object -Unique)
   if ($threads) {
     # Seuls des etats certains comptent : un thread `missing` (base T3 deplacee, id errone) n'est pas un thread fini.
     $states = Get-ThreadStates $threads
@@ -346,8 +347,10 @@ function Get-StudioLockStaleReason($Lock) {
 function Get-StudioConnectedPorts {
   $ports = @($basePort) + @(Get-ChildItem -Path $runDir -Filter '*.port' -File -ErrorAction SilentlyContinue |
       ForEach-Object { Read-Int $_.FullName })
+  # Cote client, seulement les connexions ouvertes par Studio (pas les sondes HTTP des autres agents).
   @(Get-NetTCPConnection -State Established -ErrorAction SilentlyContinue |
-      Where-Object { $_.LocalPort -in $ports } | Select-Object -ExpandProperty LocalPort -Unique | Sort-Object)
+      Where-Object { $_.RemotePort -in $ports -and (Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue).ProcessName -like 'RobloxStudio*' } |
+      Select-Object -ExpandProperty RemotePort -Unique | Sort-Object)
 }
 
 # Cette methode permet de decrire en une ligne le detenteur du verrou Studio lorsqu'on l'affiche.
@@ -410,6 +413,9 @@ if ($AcquireStudio) {
     throw "Rojo ne tourne pas pour '$Branch' : lancer d'abord .\scripts\fad-worktree.ps1 $Branch."
   }
   if ($Branch -eq $mainBranch) { $currentPort = $basePort }
+  # Session et thread du demandeur, notes dans le verrou : un detenteur qui s'arrete sans liberer est reconnu (y compris main).
+  $holderSession = $env:CLAUDE_CODE_SESSION_ID
+  $holderThread = if ($holderSession) { Get-ThreadOf $holderSession } else { $null }
   $deadline = (Get-Date).AddMinutes($WaitStudio)
   while ($true) {
     $result = Invoke-Locked 'studio' {
@@ -421,7 +427,8 @@ if ($AcquireStudio) {
         $taken = "verrou de $(Format-StudioLock $lock) repris ($stale)"
       }
       $since = if ($lock -and $lock.branch -eq $Branch) { $lock.since } else { Get-Date -Format 'yyyy-MM-dd HH:mm' }
-      Write-Text $studioLock ([pscustomobject]@{ branch = $Branch; port = $currentPort; since = $since } | ConvertTo-Json)
+      $content = [pscustomobject]@{ branch = $Branch; port = $currentPort; since = $since; session = $holderSession; thread = $holderThread }
+      Write-Text $studioLock ($content | ConvertTo-Json)
       return @{ ok = $true; taken = $taken }
     }
     if ($result.ok) { break }
@@ -446,6 +453,10 @@ if ($RegisterThread) {
 
 if ($Stop -or $Remove) {
   Assert-OwnWorktree
+  # -Remove refuse avant de toucher a Rojo et au verrou : un refus ne fait pas perdre Studio a la tache.
+  if ($Remove -and (Test-Path $dir) -and (Test-WorktreeRegistered) -and (git -C $dir status --porcelain)) {
+    throw "Modifications non commitees dans $dir : commiter ou annuler avant -Remove."
+  }
   $s = Stop-Rojo $currentPort
   Write-Host $(if ($s) { "Rojo arrete (port $currentPort)." } else { "Aucun Rojo en cours pour '$Branch'." })
   if (Release-StudioLock) { Write-Host "Studio libere par '$Branch'." }
@@ -454,7 +465,6 @@ if ($Stop -or $Remove) {
   $exists = Test-Path $dir
   if ($exists) {
     if (Test-WorktreeRegistered) {
-      if (git -C $dir status --porcelain) { throw "Modifications non commitees dans $dir : commiter ou annuler avant -Remove." }
       Invoke-GitLoud -C $root worktree remove --force $dir
       if ($LASTEXITCODE -ne 0) { throw "Suppression echouee : fermer les terminaux ouverts dans $dir (y compris le repertoire courant d'une session Claude), puis relancer -Remove." }
     } elseif (-not (Get-ChildItem -Path $dir -Recurse -File -Force)) {
@@ -548,7 +558,8 @@ if (-not $NoUp) {
     if ($listener -and (Test-RojoProcess $listener $port)) {
       # `rojo serve --port <port>` lance a la main (worktree cree avant ce script) : repris tel quel.
       Write-Text $pidFile "$listener"
-      Write-Host "Rojo deja lance sur le port $port (pid $listener) : repris."
+      # Limite : Windows n'expose pas simplement le dossier courant d'un processus ; le port attribue au worktree fait foi.
+      Write-Host "Rojo deja lance sur le port $port (pid $listener) : repris. Verifier qu'il a bien ete lance dans $dir."
     } elseif ($listener) {
       throw "Port $port deja pris par un autre processus (pid $listener) : liberer le port ou relancer avec -Slot <autre>."
     } else {
@@ -556,7 +567,7 @@ if (-not $NoUp) {
       if (-not $rojo) { throw "rojo introuvable : lancer ``rokit install`` dans $root." }
       $shell = (Get-Process -Id $PID).Path
       $proc = Start-Process -FilePath $shell -WorkingDirectory $dir -WindowStyle Hidden -PassThru `
-        -ArgumentList '-NoProfile', '-NonInteractive', '-Command', "& '$rojo' serve default.project.json --port $port *> '$logFile'"
+        -ArgumentList '-NoProfile', '-NonInteractive', '-Command', "& '$($rojo -replace "'", "''")' serve default.project.json --port $port *> '$($logFile -replace "'", "''")'"
       Write-Text $pidFile "$($proc.Id)"
     }
   }

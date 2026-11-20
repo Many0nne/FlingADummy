@@ -56,5 +56,6 @@ Ajouter au brief, section regles :
 ## 5. Compte rendu
 
 Le script de worktree autorise la session a ecrire dans `worktrees/.briefs` et `%TEMP%` : le compte rendu s'ecrit a la
-fin du brief, sans script de contournement. Si l'ecriture est quand meme refusee, relancer
-`.\scripts\fad-worktree.ps1 <branche> -NoUp` depuis la racine (qui reecrit ce fichier) et le signaler dans la session.
+fin du brief, sans script de contournement. Si l'ecriture est quand meme refusee : verifier que
+`.claude/settings.local.json` du worktree liste bien ces dossiers (sinon relancer `.\scripts\fad-worktree.ps1 <branche> -NoUp`
+depuis la racine), puis relancer la session (le fichier n'est lu qu'au demarrage) ; ne pas contourner par un script.
