@@ -7,8 +7,9 @@ local Drips = {}
 
 Drips.GRID = 4 -- largeur des blocs et des écarts : par demi-carreau du damier
 Drips.MAX_DROP = 10 -- descente maximale sous la couverture (bloc de 6 studs + marche de 4)
-Drips.CLEARANCE = 1.2 -- place à laisser sous une marche : départ 0,4 sous son dessus, couverture de la marche du
--- dessous 0,8 au-dessus de son bloc (CAP_THICKNESS de Server.CourseBuilder)
+-- Épaisseur de la couverture d'herbe des marches (posée 0,4 sous le dessus du bloc) : c'est aussi la place à laisser sous
+-- une coulée, qui part 0,4 sous le dessus d'une marche quand la couverture du dessous dépasse de 0,8 son bloc
+Drips.CAP_THICKNESS = 1.2
 
 export type Block = {
 	t: number, -- début du bloc le long du bord (studs depuis son origine)

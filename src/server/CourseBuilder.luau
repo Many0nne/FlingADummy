@@ -20,7 +20,7 @@ type Zone = Zones.Zone
 
 local SEED = 20261120 -- décor identique d'un serveur à l'autre
 local SEGMENT_LENGTH = 400 -- longueur maximale d'une pièce de sol ou de paroi (limite : 2 048 studs)
-local CAP_THICKNESS = 1.2 -- Shared.Drips.CLEARANCE en dépend (place sous les coulées)
+local CAP_THICKNESS = Drips.CAP_THICKNESS
 local CAP_OVERHANG = 1 -- l'herbe déborde du bord de chaque marche
 local END_Z = GameConfig.COURSE_LENGTH + 40 -- fond du canyon, derrière la paroi de bout de piste
 
