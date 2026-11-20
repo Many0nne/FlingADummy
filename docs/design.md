@@ -83,13 +83,14 @@ sombre, sur le mannequin et sur le panneau radio.
 ## Direction artistique
 Calée sur les jeux de référence (01 *Throw Food For Animals*, 09 *Throw a Seed*, 02 *Break and Steal an Egg*) : tout en
 **briques à tenons** (tenons en relief, biseau clair en haut à gauche) aux couleurs saturées, sol en damier deux tons de
-carreaux de 8 studs à 4 × 4 tenons, canyon en gradins à damier brun coiffés d'herbe voxel qui déborde en escalier, arbres et
-rochers voxel, barrières en blocs, stands à auvents rayés, ciel bleu à nuages, lumière de plein jour claire et saturée aux
-ombres douces. Matériaux : trois `MaterialVariant` synchronisés par Rojo dans `MaterialService`, teintés par la couleur de
-chaque pièce : `FadChecker` (16 studs, damier marqué : sol), `FadWall` (16 studs, damier plus doux : parois, herbe et
-coulées), `FadBrick` (2 studs : accessoires, obstacles) ; textures produites par `assets/course/build_textures.py`
-(contrastes mesurés en jeu contre 01, captures `docs/captures/textures/`). Le thème crash-test reste dans les objets (mannequin, voitures-cibles, panneaux en damier
-jaune et noir), pas dans le décor. Interface : section suivante.
+carreaux de 8 studs à 4 × 4 tenons, canyon en gradins à damier brun coiffés d'herbe voxel qui déborde en escalier,
+arbres et rochers voxel, barrières en blocs, stands à auvents rayés, ciel bleu à nuages, lumière de plein jour claire et
+saturée aux ombres douces. Matériaux : trois `MaterialVariant` synchronisés par Rojo dans `MaterialService`, teintés par
+la couleur de chaque pièce : `FadChecker` (16 studs, damier marqué : sol), `FadWall` (16 studs, damier plus doux :
+parois, herbe et coulées), `FadBrick` (2 studs : accessoires, obstacles) ; textures produites par
+`assets/course/build_textures.py` (contrastes mesurés en jeu contre 01, captures `docs/captures/textures/`). Le thème
+crash-test reste dans les objets (mannequin, voitures-cibles, panneaux en damier jaune et noir), pas dans le décor.
+Interface : section suivante.
 
 ## Interface (grammaire des jeux de référence 01 / 09)
 - **Police** : Fredoka One partout, blanc à contour noir fin ; grands nombres abrégés (`1.2K`, `3.4M`).

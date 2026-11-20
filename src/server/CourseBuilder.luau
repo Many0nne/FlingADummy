@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local CourseLayout = require(ReplicatedStorage.Shared.CourseLayout)
+local Drips = require(ReplicatedStorage.Shared.Drips)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local Objectives = require(ReplicatedStorage.Shared.Objectives)
 local Zones = require(ReplicatedStorage.Shared.Zones)
@@ -21,7 +22,6 @@ local SEED = 20261120 -- décor identique d'un serveur à l'autre
 local SEGMENT_LENGTH = 400 -- longueur maximale d'une pièce de sol ou de paroi (limite : 2 048 studs)
 local CAP_THICKNESS = 1.2
 local CAP_OVERHANG = 1 -- l'herbe déborde du bord de chaque marche
-local DRIP_GRID = 4 -- blocs d'herbe qui débordent : par demi-carreau du damier (carreaux de 8 studs, grille du monde)
 local END_Z = GameConfig.COURSE_LENGTH + 40 -- fond du canyon, derrière la paroi de bout de piste
 
 local rgb = Color3.fromRGB
@@ -139,43 +139,31 @@ local function box(parent: Instance, low: Vector3, high: Vector3, color: Color3,
 	})
 end
 
--- Cette méthode permet de faire déborder l'herbe (neige, sable…) d'une marche en blocs qui descendent en escalier (un
--- bloc large, parfois un plus étroit dessous, comme dans 01 / 09) le long d'un bord tourné vers `facing`, lorsque l'on
--- habille une paroi.
-local function drips(parent: Instance, edge: Vector3, facing: Vector3, length: number, color: Color3)
+-- Cette méthode permet de faire déborder l'herbe (neige, sable…) d'une marche en blocs qui descendent en escalier
+-- (tracé : Shared.Drips) le long d'un bord tourné vers `facing`, lorsque l'on habille une paroi ; `corner` : coin de la
+-- marche, où Roblox ancre son damier.
+local function drips(parent: Instance, edge: Vector3, facing: Vector3, length: number, color: Color3, corner: Vector3)
 	-- `edge` : début du bord, au niveau du dessous de la couverture ; le bord court le long de `along`
 	local along = Vector3.new(0, 1, 0):Cross(facing)
-	-- Cette méthode permet de poser un bloc d'herbe de `width` studs (à `t` le long du bord) qui descend de `top` à
-	-- `top + height` sous la couverture lorsque l'on monte une coulée.
-	local function block(t: number, width: number, top: number, height: number)
+	local blocks = Drips.layout((edge - corner):Dot(along), length, function(a, b)
+		return rng:NextInteger(a, b)
+	end, function()
+		return rng:NextNumber()
+	end)
+	for _, block in blocks do
 		local center = edge
-			+ along * (t + width / 2)
+			+ along * (block.t + block.width / 2)
 			+ facing * (CAP_OVERHANG / 2)
-			- Vector3.new(0, top + height / 2, 0)
-		local extent = along * width + facing * CAP_OVERHANG
+			- Vector3.new(0, block.top + block.height / 2, 0)
+		local extent = along * block.width + facing * CAP_OVERHANG
 		Build.decor({
 			Name = "Drip",
-			Size = Vector3.new(math.abs(extent.X), height, math.abs(extent.Z)),
+			Size = Vector3.new(math.abs(extent.X), block.height, math.abs(extent.Z)),
 			Position = center,
 			Color = color,
 			Variant = Build.WALL,
 			Parent = parent,
 		})
-	end
-	-- Départ calé sur la grille du monde (le damier est projeté en coordonnées monde), puis largeurs et écarts multiples
-	-- de DRIP_GRID : chaque bloc tombe sur les demi-carreaux de la paroi
-	local t = (-edge:Dot(along)) % DRIP_GRID + DRIP_GRID * rng:NextInteger(0, 1)
-	while t <= length - DRIP_GRID do
-		local room = math.floor((length - t) / DRIP_GRID) * DRIP_GRID
-		local width = math.min(DRIP_GRID * rng:NextInteger(1, 3), room)
-		local height = 2 * rng:NextInteger(1, 3)
-		block(t, width, 0, height)
-		-- Marche du dessous, plus étroite d'un demi-carreau, calée sur un bord du bloc
-		if width >= 2 * DRIP_GRID and rng:NextNumber() < 0.6 then
-			local offset = if rng:NextNumber() < 0.5 then 0 else DRIP_GRID
-			block(t + offset, width - DRIP_GRID, height, 2 * rng:NextInteger(1, 2))
-		end
-		t += width + DRIP_GRID * rng:NextInteger(0, 2)
 	end
 end
 
@@ -252,7 +240,7 @@ local function terraces(
 			Build.WALL,
 			"TerraceTop"
 		)
-		drips(parent, a + Vector3.new(0, top - 0.4, 0), facing, (b - a).Magnitude, zone.top)
+		drips(parent, a + Vector3.new(0, top - 0.4, 0), facing, (b - a).Magnitude, zone.top, low)
 		-- Décor du terre-plein (marches) ou du plateau (dernière marche, deux rangées)
 		local ground0 = a + Vector3.new(0, top + CAP_THICKNESS - 0.4, 0) - facing * (CourseLayout.TIER_STEP / 2)
 		local ground1 = b + Vector3.new(0, top + CAP_THICKNESS - 0.4, 0) - facing * (CourseLayout.TIER_STEP / 2)
