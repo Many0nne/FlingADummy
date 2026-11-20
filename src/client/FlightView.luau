@@ -23,6 +23,7 @@ local XRAY_TOP = 2.85 -- haut de la tête (studs)
 local BONE_COLOR = Color3.fromRGB(190, 230, 255)
 local LAUNCH_GRACE = 0.5 -- s après le lancer pendant lesquels on ne cherche pas l'arrêt
 local REST_CONFIRM = 0.15 -- s sous REST_SPEED avant d'afficher la CHANCE finale (évite le sommet d'un rebond)
+local RESUME_SPEED = 2 * GameConfig.REST_SPEED -- le mannequin repart (calé contre un obstacle) : le vol reprend
 local TAG_MIN = 0.9 -- s minimum de « X1.36 » à l'écran avant le tirage
 local REPORT_TIME = 4 -- s de radio et bilan après l'arrêt
 local TAG_OFFSET = 4.5 -- studs au-dessus du torse
@@ -57,6 +58,7 @@ local tag: BillboardGui
 local tagBody: Frame
 local tagChance: TextLabel
 local tagTitle: TextLabel
+local tagRecord: TextLabel
 local connections: { RBXScriptConnection } = {}
 local currentZone = 1
 local flightModel: Model? = nil
@@ -64,6 +66,7 @@ local token = 0
 local restSince: number? = nil -- os.clock() du début de l'arrêt en cours
 local landedAt: number? = nil -- os.clock() de l'affichage de la CHANCE finale
 local stoppedAt: number? = nil -- os.clock() de l'arrêt du mannequin (début de l'immobilité)
+local settled = false -- résultat du serveur reçu : l'arrêt est définitif
 
 -- Cette méthode permet de choisir le titre du crash lorsque l'on connaît le nombre d'os et d'objets.
 local function titleFor(bones: number, smashed: number)
@@ -162,7 +165,7 @@ end
 local function buildTag(screen: ScreenGui)
 	tag = UIKit.create("BillboardGui", {
 		Name = "LandingChance",
-		Size = UDim2.fromOffset(340, 130),
+		Size = UDim2.fromOffset(340, 170),
 		StudsOffsetWorldSpace = Vector3.new(0, TAG_OFFSET, 0),
 		AlwaysOnTop = true,
 		ResetOnSpawn = false,
@@ -176,7 +179,17 @@ local function buildTag(screen: ScreenGui)
 		BackgroundTransparency = 1,
 		Parent = tag,
 	})
+	tagRecord = UIKit.text({
+		Size = UDim2.new(1, 0, 0, 36),
+		Text = "NEW RECORD!",
+		TextSize = 32,
+		TextColor3 = C.gold,
+		Rotation = 4,
+		Visible = false,
+		Parent = tagBody,
+	})
 	tagChance = UIKit.text({
+		Position = UDim2.fromOffset(0, 36),
 		Size = UDim2.new(1, 0, 0, 80),
 		TextSize = 72,
 		StrokeThickness = 4,
@@ -184,7 +197,7 @@ local function buildTag(screen: ScreenGui)
 	})
 	UIKit.gradientText(tagChance, Color3.fromRGB(255, 255, 255), Color3.fromRGB(190, 255, 140))
 	tagTitle = UIKit.text({
-		Position = UDim2.fromOffset(0, 80),
+		Position = UDim2.fromOffset(0, 118),
 		Size = UDim2.new(1, 0, 0, 44),
 		TextSize = 38,
 		StrokeThickness = 3,
@@ -303,19 +316,39 @@ local function paintLimb(name: string, bones: number)
 	end
 end
 
--- Cette méthode permet de remplir l'étiquette (« 🍀 X1.36 », titre du crash) et la ligne de bilan lorsque le
--- mannequin s'arrête ou que le résultat du serveur arrive.
-local function fillLanding(chance: number, bones: number, smashed: number)
+-- Cette méthode permet de remplir l'étiquette (« 🍀 X1.36 », titre du crash) et la ligne de bilan (distance, os,
+-- objets) lorsque le mannequin s'arrête ou que le résultat du serveur arrive.
+local function fillLanding(chance: number, distance: number, bones: number, smashed: number)
 	tagChance.Text = "🍀 " .. Format.multiplier(chance)
 	local title = titleFor(bones, smashed)
 	tagTitle.Text = title.text
 	UIKit.gradientText(tagTitle, title.color:Lerp(Color3.new(1, 1, 1), 0.6), title.color)
-	reportStats.Text = "🦴 " .. bones .. "   💥 " .. smashed
+	reportStats.Text = Format.meters(distance) .. "   🦴 " .. bones .. "   💥 " .. smashed
 end
 
--- Cette méthode permet de passer en fin de vol (bandes et compteurs rangés, « X1.36 » au-dessus du mannequin, radio
--- et bilan dans leur coin pendant REPORT_TIME) lorsque le mannequin vient de s'arrêter, ou que le résultat arrive
--- sans arrêt détecté (vol trop long, chute).
+-- Cette méthode permet de lire un attribut numérique du mannequin lancé lorsque l'étiquette ou le bilan se remplit ;
+-- 0 sans mannequin.
+local function attribute(name: string): number
+	local model = flightModel
+	return (model and (model:GetAttribute(name) :: number?)) or 0
+end
+
+-- Cette méthode permet de montrer ou ranger les bandes noires et les compteurs du vol lorsque le mannequin s'arrête
+-- (`flying` faux) ou repart avant que le serveur ait compté le lancer.
+local function showFlightHud(flying: boolean)
+	for _, bar in bars do
+		TweenService:Create(bar, TweenInfo.new(0.3), { Size = UDim2.fromScale(1, if flying then 0.09 else 0) }):Play()
+	end
+	distanceLabel.Visible = flying
+	chanceBox.Visible = flying
+	zoneBanner.Visible = flying
+	bonesLabel.Visible = flying
+	smashedLabel.Visible = flying
+end
+
+-- Cette méthode permet de passer en fin de vol (bandes et compteurs rangés, « X1.36 » au-dessus du mannequin, bilan
+-- à côté de la radio) lorsque le mannequin vient de s'arrêter, ou que le résultat arrive sans arrêt détecté (vol
+-- trop long, chute).
 local function land()
 	if landedAt then
 		return
@@ -326,19 +359,10 @@ local function land()
 	stoppedAt = stopped
 	local model = flightModel
 	local torso = model and model:FindFirstChild("Torso")
-	for _, bar in bars do
-		TweenService:Create(bar, TweenInfo.new(0.3), { Size = UDim2.fromScale(1, 0) }):Play()
-	end
-	distanceLabel.Visible = false
-	chanceBox.Visible = false
-	zoneBanner.Visible = false
-	bonesLabel.Visible = false
-	smashedLabel.Visible = false
-	local function attribute(name: string): number
-		return (model and (model:GetAttribute(name) :: number?)) or 0
-	end
-	fillLanding(attribute("Chance"), attribute("Bones"), attribute("Smashed"))
+	showFlightHud(false)
+	fillLanding(attribute("Chance"), attribute("Distance"), attribute("Bones"), attribute("Smashed"))
 	reportInjury.Text = ""
+	tagRecord.Visible = false
 	report.Visible = true
 	UIKit.pop(report, 1.2)
 	if torso and torso:IsA("BasePart") then
@@ -350,40 +374,58 @@ local function land()
 	if RunService:IsStudio() then
 		print(string.format("[Landing] arrêt t=%.3f, X affiché t=%.3f", stopped, now))
 	end
-	local current = token
-	task.delay(REPORT_TIME, function()
-		if current == token then
-			xray.Visible = false
-			report.Visible = false
-		end
-	end)
+end
+
+-- Cette méthode permet de revenir à l'écran de vol lorsque le mannequin repart après un faux arrêt (calé un instant
+-- contre un obstacle), tant que le serveur n'a pas compté le lancer.
+local function resume()
+	landedAt = nil
+	stoppedAt = nil
+	restSince = nil
+	FlightView.hideTag()
+	report.Visible = false
+	showFlightHud(true)
+	if RunService:IsStudio() then
+		print("[Landing] le mannequin repart, vol repris")
+	end
 end
 
 -- Cette méthode permet de guetter l'arrêt du mannequin (torse sous REST_SPEED pendant REST_CONFIRM) à chaque frame
--- pendant le vol, pour afficher la CHANCE finale sans attendre la seconde d'arrêt du serveur.
+-- pendant le vol, pour afficher la CHANCE finale sans attendre la seconde d'arrêt du serveur ; s'il repart avant
+-- le résultat, le vol reprend. Attend que le torse soit répliqué (2 s au plus).
 local function watchRest(model: Model, launchedAt: number)
-	local torso = model:FindFirstChild("Torso")
-	if not (torso and torso:IsA("BasePart")) then
-		return
-	end
-	table.insert(
-		connections,
-		RunService.Heartbeat:Connect(function()
-			if landedAt or not torso.Parent then
-				return
-			end
-			local now = os.clock()
-			if now - launchedAt < LAUNCH_GRACE or torso.AssemblyLinearVelocity.Magnitude >= GameConfig.REST_SPEED then
-				restSince = nil
-				return
-			end
-			restSince = restSince or now
-			if now - (restSince :: number) >= REST_CONFIRM then
-				stoppedAt = restSince
-				land()
-			end
-		end)
-	)
+	local current = token
+	task.spawn(function()
+		local torso = model:WaitForChild("Torso", 2)
+		if current ~= token or not (torso and torso:IsA("BasePart")) then
+			return
+		end
+		table.insert(
+			connections,
+			RunService.Heartbeat:Connect(function()
+				if settled or not torso.Parent then
+					return
+				end
+				local speed = torso.AssemblyLinearVelocity.Magnitude
+				if landedAt then
+					if speed >= RESUME_SPEED then
+						resume()
+					end
+					return
+				end
+				local now = os.clock()
+				if now - launchedAt < LAUNCH_GRACE or speed >= GameConfig.REST_SPEED then
+					restSince = nil
+					return
+				end
+				restSince = restSince or now
+				if now - (restSince :: number) >= REST_CONFIRM then
+					stoppedAt = restSince
+					land()
+				end
+			end)
+		)
+	end)
 end
 
 -- Cette méthode permet d'afficher l'écran de vol et de le brancher sur le mannequin lancé lorsque le serveur annonce
@@ -403,12 +445,8 @@ function FlightView.show(model: Model)
 		if zone ~= currentZone then
 			showZone(zone)
 		end
-		if landedAt then
-			fillLanding(
-				(model:GetAttribute("Chance") :: number?) or 1,
-				bones,
-				(model:GetAttribute("Smashed") :: number?) or 0
-			)
+		if landedAt and not settled then
+			fillLanding(attribute("Chance"), attribute("Distance"), bones, attribute("Smashed"))
 		end
 	end
 	table.insert(connections, model.AttributeChanged:Connect(update))
@@ -438,12 +476,24 @@ end
 -- lorsqu'il arrive, et de donner le délai (s) avant le tirage pour que « X1.36 » reste au moins TAG_MIN à l'écran.
 function FlightView.settle(result: any): number
 	land()
-	fillLanding(result.total or 1, result.bones or 0, result.smashed or 0)
+	settled = true
+	fillLanding(result.total or 1, result.distance or 0, result.bones or 0, result.smashed or 0)
+	tagRecord.Visible = result.record == true
+	if result.record == true then
+		UIKit.pop(tagRecord, 1.8)
+	end
 	local injury = result.injuries or ""
 	if result.cause then
 		injury = injury .. (if injury ~= "" then "\n" else "") .. "<i>" .. result.cause .. "</i>"
 	end
 	reportInjury.Text = injury
+	local current = token
+	task.delay(REPORT_TIME, function()
+		if current == token then
+			xray.Visible = false
+			report.Visible = false
+		end
+	end)
 	return math.max(0, TAG_MIN - (os.clock() - (landedAt :: number)))
 end
 
@@ -467,6 +517,7 @@ function FlightView.hide()
 	restSince = nil
 	landedAt = nil
 	stoppedAt = nil
+	settled = false
 	FlightView.hideTag()
 	root.Visible = false
 	distanceLabel.Visible = true

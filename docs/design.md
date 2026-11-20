@@ -40,10 +40,12 @@ base, il rapporte des $/s, seule source d'argent.
    (« +1 BONE », « SMASH x6 », combos).
 5. **Atterrissage** (≈ 1 s, #53) : dès que le mannequin s'arrête (détecté par le client), trèfle et CHANCE finale
    « 🍀 X1.36 » au-dessus de lui (même police et même vert que la bannière du vol, apparition en rebond) et titre du
-   crash dessous (« BRUTAL! »), comme le « X1.22 » de 09 ; pas d'écran de détail, comme 01. Le tirage part dès que le
+   crash dessous (« BRUTAL! »), « NEW RECORD! » au-dessus en cas de record, comme le « X1.22 » de 09 ; pas d'écran de
+   détail, comme 01. S'il repart (calé un instant contre un obstacle), le vol reprend. Le tirage part dès que le
    serveur a compté le lancer (1 s d'arrêt), « X » au moins 0,9 s à l'écran : **arrêt → silhouette ≈ 1,1 s** (cible
-   < 1,5 s). Le détail reste sur la radio X-RAY, dans son coin pendant 4 s : bilan à sa gauche (os, objets détruits,
-   blessures « Shattered skull, broken left arm », cause « Hit a brick wall at 140 km/h »).
+   < 1,5 s). Le détail reste sur la radio X-RAY, dans son coin jusqu'à 4 s après le comptage : bilan à sa gauche
+   (distance, os, objets détruits, blessures « Shattered skull, broken left arm », cause « Hit a brick wall at
+   140 km/h »).
 6. **Tirage « 1 en N »** (`Client.Prize`, suspense calé sur 09 et 01) : silhouette noire debout au point
    d'atterrissage, caméra de face qui se rapproche. La cote défile en continu depuis « 1 IN 1 » (un tic par chiffre, de
    plus en plus aigu, vite puis de plus en plus lentement : `Collection.climbOdds`, 0,7 à 1,5 s par palier selon
