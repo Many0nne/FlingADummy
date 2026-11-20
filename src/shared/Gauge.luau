@@ -35,10 +35,8 @@ function Gauge.range(a: number, b: number): (number, number)
 	return low, high
 end
 
--- Cette méthode permet de retenir la valeur d'un lancer lorsque le serveur la reçoit `elapsed` secondes après avoir
--- ouvert la jauge, avec une latence aller-retour mesurée `lag` : la valeur du client si elle est atteignable par un
--- clic dans la fenêtre (lâcher de l'animation et latence déduits, avec tolérance), sinon celle du serveur. Renvoie
--- la valeur retenue et si celle du client a été acceptée.
+-- Cette méthode permet de retenir la valeur `claimed` d'un lancer reçu `elapsed` s après l'ouverture de la jauge (latence
+-- `lag`) : celle du client si un clic dans la fenêtre l'atteint, sinon celle du serveur ; renvoie aussi l'acceptation.
 function Gauge.verify(claimed: number, elapsed: number, lag: number): (number, boolean)
 	local measured = math.clamp(lag, 0, GameConfig.GAUGE_MAX_LAG)
 	-- Instant du clic estimé par le serveur, depuis l'apparition de la jauge chez le client

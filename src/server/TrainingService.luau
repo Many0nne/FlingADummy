@@ -46,7 +46,8 @@ function TrainingService.start(player: Player)
 	local slot = SlotService.getSlot(player)
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-	if not slot or not root or player:GetAttribute("Action") == "Training" then
+	-- Ni pendant une séance, ni figé sur la bande de lancer (il doit d'abord lancer)
+	if not slot or not root or player:GetAttribute("Action") ~= nil then
 		return
 	end
 	-- Pas avant le chargement des données : il écraserait les répétitions faites entre-temps

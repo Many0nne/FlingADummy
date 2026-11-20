@@ -64,8 +64,10 @@ local function freeze(player: Player, character: Model, root: BasePart, humanoid
 	if not x then
 		return -- bande pleine : il attend sans être figé
 	end
-	-- Debout sur la bande même s'il y arrive en sautant : HumanoidRootPart à HipHeight + demi-hauteur des pieds
-	local position = Vector3.new(x, CourseLayout.BAND_TOP + humanoid.HipHeight + root.Size.Y / 2, CourseLayout.BAND_Z)
+	-- Debout sur la bande même s'il y arrive en sautant : HumanoidRootPart à hauteur des jambes + sa demi-hauteur
+	-- (R6 : HipHeight vaut 0, jambes de 2 studs)
+	local legs = if humanoid.RigType == Enum.HumanoidRigType.R6 then 2 else humanoid.HipHeight
+	local position = Vector3.new(x, CourseLayout.BAND_TOP + legs + root.Size.Y / 2, CourseLayout.BAND_Z)
 	frozen[player] = {
 		x = x,
 		since = os.clock(),

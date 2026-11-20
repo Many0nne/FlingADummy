@@ -54,9 +54,8 @@ function CourseLayout.isOnBand(position: Vector3): boolean
 		and position.Y <= CourseLayout.BAND_TOP + CourseLayout.BAND_REACH
 end
 
--- Cette méthode permet de donner l'abscisse où figer un joueur entré sur la bande en `x`, lorsque d'autres joueurs y
--- sont déjà figés aux abscisses `taken` : la plus proche de `x` qui laisse BAND_SPACING avec chacun, sans sortir des
--- bords (BAND_MARGIN) ; nil si la bande est pleine.
+-- Cette méthode permet de donner l'abscisse où figer un joueur entré sur la bande en `x` (voisins figés en `taken`) :
+-- la plus proche de `x` à BAND_SPACING de chacun, dans les bords (BAND_MARGIN) ; nil si la bande est pleine.
 function CourseLayout.bandSpot(x: number, taken: { number }): number?
 	local limit = GameConfig.TRACK_WIDTH / 2 - GameConfig.BAND_MARGIN
 	local spacing = GameConfig.BAND_SPACING

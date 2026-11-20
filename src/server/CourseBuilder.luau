@@ -316,9 +316,8 @@ local function bandShine(parent: Instance, size: Vector3, position: Vector3): Pa
 	return overlay
 end
 
--- Cette méthode permet de construire la zone de lancer commune (pelouse du hub, bande de lancer à tenons orange-jaune
--- sur toute la largeur avec son reflet, liseré blanc côté piste, barrière invisible pour les avatars juste derrière)
--- lorsque le serveur démarre.
+-- Cette méthode permet de construire la zone de lancer (pelouse, bande à tenons orange-jaune sur toute la largeur et son
+-- reflet, liseré blanc côté piste, barrière invisible des avatars juste derrière) lorsque le serveur démarre.
 local function buildLaunchZone(parent: Instance)
 	local half = GameConfig.TRACK_WIDTH / 2
 	local depth = GameConfig.BAND_DEPTH

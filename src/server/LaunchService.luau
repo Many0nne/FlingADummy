@@ -396,6 +396,10 @@ local function step(flight: Flight, dt: number)
 	if (flight.owner and not flight.owner.Parent) or not torso.Parent then
 		flights[flight.key] = nil
 		flight.dummy:Destroy()
+		-- Mannequin perdu en vol : le joueur encore là reprend la main (et quitte la bande)
+		if flight.owner and flight.owner.Parent then
+			flight.owner:SetAttribute("LaneState", "Ready")
+		end
 		return
 	end
 	local position = torso.Position
