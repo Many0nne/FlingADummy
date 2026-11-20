@@ -23,6 +23,7 @@ local XRAY_TOP = 2.85 -- haut de la tête (studs)
 local BONE_COLOR = Color3.fromRGB(190, 230, 255)
 local LAUNCH_GRACE = 0.5 -- s après le lancer pendant lesquels on ne cherche pas l'arrêt
 local REST_CONFIRM = 0.15 -- s sous REST_SPEED avant d'afficher la CHANCE finale (évite le sommet d'un rebond)
+local RESUME_CONFIRM = 0.4 -- s au-dessus de REST_SPEED avant de reprendre le vol (pas de clignotement sur une glissade)
 local TAG_MIN = 0.9 -- s minimum de « X1.36 » à l'écran avant le tirage
 local REPORT_TIME = 3 -- s de radio et bilan après le comptage (partis avant la révélation du tirage)
 local TAG_OFFSET = 4.5 -- studs au-dessus du torse
@@ -67,6 +68,7 @@ local moveSince: number? = nil -- os.clock() depuis lequel le mannequin « arrê
 local landedAt: number? = nil -- os.clock() de l'affichage de la CHANCE finale
 local stoppedAt: number? = nil -- os.clock() de l'arrêt du mannequin (début de l'immobilité)
 local settled = false -- résultat du serveur reçu : l'arrêt est définitif
+local stopEstimated = false -- arrêt pas vu par le client, instant estimé (mesure approximative)
 
 -- Cette méthode permet de choisir le titre du crash lorsque l'on connaît le nombre d'os et d'objets.
 local function titleFor(bones: number, smashed: number)
@@ -393,13 +395,13 @@ end
 
 -- Cette méthode permet de guetter l'arrêt du mannequin (torse sous REST_SPEED pendant REST_CONFIRM) à chaque frame
 -- pendant le vol, pour afficher la CHANCE finale sans attendre la seconde d'arrêt du serveur ; s'il repart (au-dessus
--- de REST_SPEED pendant REST_CONFIRM, même seuil que le serveur) avant le résultat, le vol reprend. Attend que le
+-- de REST_SPEED pendant RESUME_CONFIRM, même seuil que le serveur) avant le résultat, le vol reprend. Attend que le
 -- torse soit répliqué (2 s au plus).
 local function watchRest(model: Model, launchedAt: number)
 	local current = token
 	task.spawn(function()
 		local torso = model:WaitForChild("Torso", 2)
-		if current ~= token or not (torso and torso:IsA("BasePart")) then
+		if current ~= token or settled or not (torso and torso:IsA("BasePart")) then
 			return
 		end
 		table.insert(
@@ -416,7 +418,7 @@ local function watchRest(model: Model, launchedAt: number)
 						return
 					end
 					moveSince = moveSince or now
-					if now - (moveSince :: number) >= REST_CONFIRM then
+					if now - (moveSince :: number) >= RESUME_CONFIRM then
 						resume()
 					end
 					return
@@ -483,8 +485,9 @@ end
 -- lorsqu'il arrive, et de donner le délai (s) avant le tirage pour que « X1.36 » reste au moins TAG_MIN à l'écran.
 function FlightView.settle(result: any): number
 	if not landedAt then
-		-- Arrêt pas vu par le client (latence, chute, vol trop long) : le serveur l'a compté REST_TIME plus tôt
+		-- Arrêt pas vu par le client (latence, chute, vol trop long) : estimé REST_TIME avant le comptage du serveur
 		stoppedAt = os.clock() - GameConfig.REST_TIME
+		stopEstimated = true
 	end
 	land()
 	settled = true
@@ -501,6 +504,9 @@ function FlightView.settle(result: any): number
 	if result.cause then
 		injury = injury .. (if injury ~= "" then "\n" else "") .. "<i>" .. result.cause .. "</i>"
 	end
+	if result.record == true then
+		injury = '<font color="#FFD23C">NEW RECORD!</font>' .. (if injury ~= "" then "\n" else "") .. injury
+	end
 	reportInjury.Text = injury
 	local current = token
 	task.delay(REPORT_TIME, function()
@@ -509,13 +515,16 @@ function FlightView.settle(result: any): number
 			report.Visible = false
 		end
 	end)
+	if not tag.Enabled then
+		return 0
+	end
 	return math.max(0, TAG_MIN - (os.clock() - (landedAt :: number)))
 end
 
 -- Cette méthode permet de donner l'instant (os.clock) de l'arrêt du mannequin lorsque l'on mesure le délai jusqu'au
--- tirage ; nil avant l'arrêt.
-function FlightView.stoppedAt(): number?
-	return stoppedAt
+-- tirage ; nil avant l'arrêt, et vrai en second si l'instant est estimé (arrêt pas vu par le client).
+function FlightView.stoppedAt(): (number?, boolean)
+	return stoppedAt, stopEstimated
 end
 
 -- Cette méthode permet de retirer l'étiquette « X1.36 » lorsque la silhouette du tirage apparaît.
@@ -534,6 +543,7 @@ function FlightView.hide()
 	landedAt = nil
 	stoppedAt = nil
 	settled = false
+	stopEstimated = false
 	FlightView.hideTag()
 	root.Visible = false
 	distanceLabel.Visible = true

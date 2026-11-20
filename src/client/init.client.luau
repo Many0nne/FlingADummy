@@ -57,12 +57,19 @@ end)
 -- Cette méthode permet de lancer le tirage du mannequin gagné lorsque la CHANCE finale a été assez vue ; en Studio,
 -- écrit le délai mesuré entre l'arrêt du mannequin et l'apparition de la silhouette.
 local function playPrize(result: any)
-	local stoppedAt = FlightView.stoppedAt()
+	local stoppedAt, estimated = FlightView.stoppedAt()
 	FlightView.hideTag()
 	Prize.play(result)
 	if RunService:IsStudio() and stoppedAt then
 		local now = os.clock()
-		print(string.format("[Landing] silhouette t=%.3f, arrêt → silhouette %.2f s", now, now - stoppedAt))
+		print(
+			string.format(
+				"[Landing] silhouette t=%.3f, arrêt → silhouette %.2f s%s",
+				now,
+				now - stoppedAt,
+				if estimated then " (arrêt estimé)" else ""
+			)
+		)
 	end
 end
 
