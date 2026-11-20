@@ -102,9 +102,11 @@ Script idempotent, à relancer au début de chaque tâche (PowerShell, depuis la
   10 min, à réinstaller sur un nouveau poste) : `scripts/install-cleanup-task.ps1`. À chaque passage, elle avance aussi le
   checkout principal sur `origin/main` (fast-forward, seulement s'il est sur `main` sans modification). Journal :
   `worktrees/.cleanup.log`.
-- Tests de limites des scripts (bac à sable jetable dans `%TEMP%`, faux `gh`/T3/Rojo, ~10 min, Windows seulement, hors CI) :
+- Tests de limites des scripts (bac à sable jetable dans `%TEMP%`, faux `gh`/T3/Rojo, ~10 min sur le poste chargé, Windows seulement) :
   `Import-Module Pester -RequiredVersion 3.4.0; Invoke-Pester tests/scripts`. À lancer après toute modification de
   `scripts/fad-worktree*.ps1` ; un cas limite découvert devient un test dans `tests/scripts/worktree.Tests.ps1`.
+  Ils tournent aussi en CI (job `pester`, `windows-latest`, ~5 min), seulement quand `scripts/**`, `tests/scripts/**` ou
+  `.github/workflows/ci.yml` changent : une PR qui casse un cas limite a une CI rouge.
 
 ## Studio et Blender partagés
 Une seule place Studio (placeId 88580736516669) sert tous les worktrees (une fenêtre ne suit qu'un serveur Rojo à la
