@@ -175,6 +175,9 @@ end
 -- Cette méthode permet de brancher le clic d'un bouton (son, enfoncement, action) lorsque l'on construit un bouton.
 local function onActivated(button: GuiButton, onClick: () -> ())
 	button.Activated:Connect(function()
+		if button:GetAttribute("Disabled") == true then
+			return
+		end
 		UIKit.playSound("Click")
 		UIKit.pop(button, 0.88)
 		onClick()

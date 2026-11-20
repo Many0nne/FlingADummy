@@ -40,6 +40,8 @@ local trainFill: Frame
 local trainCount: TextLabel
 local lastPower = 0
 local levelStartPower = 0
+local knownLevel = math.huge -- palier d'entraînement et équipement déjà annoncés (aucun avant le chargement)
+local knownTier = math.huge
 local popupEndsAt = 0
 
 -- Cette méthode permet de lire un attribut numérique du joueur (valeur par défaut si absent) lorsque le HUD se
@@ -212,6 +214,7 @@ local function buildWindows()
 		locked.stat.Text = "???"
 		locked.action.Text = "LOCKED"
 		locked.action.BackgroundColor3 = C.equipped
+		locked.action:SetAttribute("Disabled", true)
 		locked.viewport.ImageColor3 = Color3.new(0, 0, 0)
 		table.insert(lockedViewports, locked.viewport)
 	end
@@ -271,7 +274,11 @@ local function buildModels()
 	modelsMeshed = meshed
 	for tier, card in gearCards do
 		local gear = Training.GEARS[tier]
-		UIKit.showModel(card.viewport, DummyShape.buildVisual(1, { color = gear.color, material = gear.material }))
+		-- Verre et champ de force ne se rendent pas en ViewportFrame : néon de la même couleur à la place
+		local material = if gear.material == Enum.Material.Glass or gear.material == Enum.Material.ForceField
+			then Enum.Material.Neon
+			else gear.material
+		UIKit.showModel(card.viewport, DummyShape.buildVisual(1, { color = gear.color, material = material }))
 	end
 	UIKit.showModel(dummyCard.viewport, DummyShape.buildVisual(1))
 	for _, viewport in lockedViewports do
@@ -282,6 +289,7 @@ end
 -- Cette méthode permet de reconstruire les rendus 3D d'une fenêtre ouverte lorsque les gabarits maillés du mannequin
 -- arrivent (dossier créé puis marqué Ready par Server.DummyAssets).
 local function watchTemplates()
+	-- Cette méthode permet de rafraîchir les fenêtres lorsque le dossier des gabarits passe à Ready.
 	local function watch(folder: Instance)
 		folder:GetAttributeChangedSignal("Ready"):Connect(Hud.refresh)
 	end
@@ -299,10 +307,12 @@ local function watchTemplates()
 	end
 end
 
--- Cette méthode permet d'habiller le bouton d'action d'une carte (texte, couleur) lorsque la carte se rafraîchit.
-local function setAction(card: UIKit.Card, text: string, color: Color3)
+-- Cette méthode permet d'habiller le bouton d'action d'une carte (texte, couleur) lorsque la carte se rafraîchit ;
+-- `enabled` à false le rend inerte (pas de son ni d'enfoncement : possédé, équipé, verrouillé, au maximum).
+local function setAction(card: UIKit.Card, text: string, color: Color3, enabled: boolean)
 	card.action.Text = text
 	card.action.BackgroundColor3 = color
+	card.action:SetAttribute("Disabled", not enabled)
 end
 
 -- Cette méthode permet de rafraîchir les cartes d'équipement (possédé, équipé, prix vert ou rouge) lorsque l'argent
@@ -320,13 +330,13 @@ local function refreshGear(money: number)
 		stroke.Color = if tier == owned then C.green else C.ink
 		stroke.Thickness = if tier == owned then 4 else 3
 		if tier < owned then
-			setAction(card, "OWNED", C.equipped)
+			setAction(card, "OWNED", C.equipped, false)
 		elseif tier == owned then
-			setAction(card, "EQUIPPED", C.equipped)
+			setAction(card, "EQUIPPED", C.equipped, false)
 		elseif tier == owned + 1 then
-			setAction(card, Format.money(gear.cost), if money >= gear.cost then C.green else C.red)
+			setAction(card, Format.money(gear.cost), if money >= gear.cost then C.green else C.red, true)
 		else
-			setAction(card, "🔒 " .. Format.money(gear.cost), C.locked)
+			setAction(card, "🔒 " .. Format.money(gear.cost), C.locked, false)
 		end
 	end
 end
@@ -341,9 +351,9 @@ local function refreshDummy(money: number)
 	dummyCard.rarity.TextColor3 = C.yellow
 	dummyCard.stat.Text = string.format("Value x%.2f", Economy.valueMultiplier(level))
 	if cost then
-		setAction(dummyCard, "UPGRADE " .. Format.money(cost), if money >= cost then C.green else C.red)
+		setAction(dummyCard, "UPGRADE " .. Format.money(cost), if money >= cost then C.green else C.red, true)
 	else
-		setAction(dummyCard, "MAXED", C.equipped)
+		setAction(dummyCard, "MAXED", C.equipped, false)
 	end
 end
 
@@ -560,17 +570,26 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 		lastPower = power
 		Hud.refresh()
 	end)
-	-- Les valeurs sauvegardées arrivent avant DataReady : pas de popup pour elles, seulement pour les gains en jeu
-	player:GetAttributeChangedSignal("DataReady"):Connect(function()
+	-- Popups seulement pour un palier au-delà de ceux connus au chargement : les valeurs sauvegardées (répliquées
+	-- avant, avec ou après DataReady) ne s'annoncent pas
+	local function seed()
 		lastPower = stat("ThrowPower", GameConfig.START_POWER)
 		levelStartPower = lastPower
-	end)
+		knownLevel = stat("TrainLevel", 1)
+		knownTier = stat("GearTier", 1)
+	end
+	if player:GetAttribute("DataReady") == true then
+		seed()
+	end
+	player:GetAttributeChangedSignal("DataReady"):Connect(seed)
 	player:GetAttributeChangedSignal("TrainLevel"):Connect(function()
 		local power = stat("ThrowPower", GameConfig.START_POWER)
-		if player:GetAttribute("DataReady") ~= true then
+		local level = stat("TrainLevel", 1)
+		if level <= knownLevel then
 			refreshTraining()
 			return
 		end
+		knownLevel = level
 		showPopup("LEVEL UP!", "Throw Power +" .. Format.short(power - levelStartPower), C.cyan)
 		levelStartPower = power
 		UIKit.playSound("LevelUp")
@@ -578,10 +597,12 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 	end)
 	player:GetAttributeChangedSignal("TrainReps"):Connect(refreshTraining)
 	player:GetAttributeChangedSignal("GearTier"):Connect(function()
-		if player:GetAttribute("DataReady") ~= true then
+		local tier = stat("GearTier", 1)
+		if tier <= knownTier then
 			return
 		end
-		local gear = Training.gear(stat("GearTier", 1))
+		knownTier = tier
+		local gear = Training.gear(tier)
 		showPopup("NEW EQUIPMENT!", gear.name .. "  +" .. Format.short(gear.gain) .. " Throw Power / rep")
 		UIKit.playSound("LevelUp", 1.2)
 	end)

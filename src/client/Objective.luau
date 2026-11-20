@@ -276,6 +276,9 @@ function Objective.init(localPlayer: Player, gui: ScreenGui)
 		refresh()
 	end)
 	player:GetAttributeChangedSignal("TrainLevel"):Connect(function()
+		if player:GetAttribute("Action") ~= "Training" then
+			return -- niveau sauvegardé chargé, pas un niveau gagné à l'entraînement
+		end
 		levelsThisSession += 1
 		refresh()
 	end)
