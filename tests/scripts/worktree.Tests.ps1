@@ -532,6 +532,8 @@ Describe 'fad-worktree.ps1 : auto-connexion Studio (plugin multi-projets)' {
   $sb = New-Sandbox
   # Port de base deplace : le Rojo du checkout principal reel (34900) ne doit pas repondre a la liberation.
   $env:FAD_BASE_PORT = '35800'
+  # try/finally : un echec de preparation ne laisse ni FAD_BASE_PORT ni serveur factice aux groupes suivants.
+  try {
   $w = 'tooling/20-auto'
   Invoke-Wt $sb @($w, '-Slot', '1') | Out-Null
   $p = Get-SbPaths $sb $w
@@ -633,6 +635,18 @@ Describe 'fad-worktree.ps1 : auto-connexion Studio (plugin multi-projets)' {
     } finally { $env:FAD_FAKE_STUDIO_PORTS = $null }
   }
 
+  It 'detenteur qui re-reserve alors que l''utilisateur s''est connecte a la main a 34900 : refuse, cible inchangee' {
+    (Invoke-Wt $sb @($w, '-AcquireStudio')).Code | Should Be 0
+    $rev = (Get-Target).rev
+    $env:FAD_FAKE_STUDIO_PORTS = '35800'
+    try {
+      (Invoke-Wt $sb @($w, '-AcquireStudio')).Code | Should Be 2
+      (Get-Target).rev | Should Be $rev
+      Get-Holder | Should Be $w
+    } finally { $env:FAD_FAKE_STUDIO_PORTS = $null }
+    Invoke-Wt $sb @($w, '-ReleaseStudio') | Out-Null
+  }
+
   It 'Studio sur le checkout principal apres une liberation (cible 35800) : reservation acceptee' {
     $env:FAD_FAKE_STUDIO_PORTS = '35800'
     try {
@@ -708,9 +722,12 @@ Describe 'fad-worktree.ps1 : auto-connexion Studio (plugin multi-projets)' {
     Invoke-Wt $sb @($w, '-ReleaseStudio') | Out-Null
   }
 
-  Stop-FakeControl $sb
-  $env:FAD_BASE_PORT = $null
-  Remove-Sandbox $sb
+  } finally {
+    Stop-FakeControl $sb
+    $env:FAD_BASE_PORT = $null
+    $env:FAD_FAKE_STUDIO_PORTS = $null
+    Remove-Sandbox $sb
+  }
 }
 
 Describe 'fad-worktree-cleanup.ps1 : decisions' {

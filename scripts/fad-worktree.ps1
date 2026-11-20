@@ -35,8 +35,8 @@
   Studio partage (une seule place Studio pour tous les worktrees, verrou worktrees\.run\studio.lock) :
   .\scripts\fad-worktree.ps1 feature/x -AcquireStudio                # reserve Studio, ou sort en code 2 avec le detenteur
   .\scripts\fad-worktree.ps1 feature/x -AcquireStudio -WaitStudio 20 # attend jusqu'a 20 min qu'il se libere
-  .\scripts\fad-worktree.ps1 feature/x -ReleaseStudio                # libere (aussi fait par -Stop et -Remove)
-  .\scripts\fad-worktree.ps1 -StudioStatus                           # detenteur actuel et port auquel Studio est connecte
+  .\scripts\fad-worktree.ps1 feature/x -ReleaseStudio                # libere, place renvoyee sur 34900 ou deconnectee (aussi par -Stop et -Remove)
+  .\scripts\fad-worktree.ps1 -StudioStatus                           # detenteur, port connecte, dernier etat signale par le plugin
   Un verrou est repris d'office si son detenteur n'a plus de worktree, plus de Rojo, ou plus de thread T3 actif.
 
   Auto-connexion (plugin Rojo « CSGO autoconnect » multi-projets, installe par CSGO_surf_combat\tools\rojo-plugin\install.ps1) :
@@ -536,6 +536,10 @@ function Start-RojoControl {
       $listener = Get-PortListener $controlPort
       if ($listener -and (Get-Process -Id $listener -ErrorAction SilentlyContinue).ProcessName -eq 'lune') { taskkill /PID $listener /T /F *> $null }
       Stop-ControlPid
+      # Port encore tenu par autre chose (ancien serveur lance autrement, autre service) : lune ne pourrait pas s'y lier.
+      for ($i = 0; $i -lt 10 -and (Get-PortListener $controlPort); $i++) { Start-Sleep -Milliseconds 200 }
+      $other = Get-PortListener $controlPort
+      if ($other) { Write-Warning "Port $controlPort tenu par un autre processus (pid $other) : serveur de commande non lance."; return $false }
       # Chemins entre apostrophes dans -Command : une apostrophe du chemin y est doublee.
       $q = { param($s) "'" + ($s -replace "'", "''") + "'" }
       $log = Join-Path $controlDir 'control.log'
@@ -584,7 +588,7 @@ function Release-StudioLock {
     catch { Write-Warning "Cible Studio non publiee ($($_.Exception.Message)) : la place reste sur son port, a deconnecter a la main." }
     return $target
   }
-  if ($null -ne $published) { [void](Start-RojoControl) }
+  # Pas de demarrage du serveur de commande ici (nettoyage planifie) : la reservation s'en est chargee.
   return $published
 }
 
@@ -649,15 +653,17 @@ if ($AcquireStudio) {
       }
       # Studio connecte a 34900 a la main (pas par une liberation) : l'utilisateur y teste sans doute, la publication
       # couperait son test. Traite comme occupe ; main peut reserver (meme port).
-      $own = $lock -and $lock.branch -eq $Branch
-      if ($Branch -ne $mainBranch -and -not $own -and (Test-ManualBaseConnection)) { return @{ ok = $false; manual = $true } }
+      # Vaut aussi pour le detenteur qui re-reserve : l'utilisateur a pu se connecter a la main entre-temps.
+      if ($Branch -ne $mainBranch -and (Test-ManualBaseConnection)) { return @{ ok = $false; manual = $true } }
       $since = if ($lock -and $lock.branch -eq $Branch) { $lock.since } else { Get-Date -Format 'yyyy-MM-dd HH:mm' }
       $content = [pscustomobject]@{ branch = $Branch; port = $currentPort; since = $since; session = $holderSession; thread = $holderThread }
       Write-Text $studioLock ($content | ConvertTo-Json)
       # Etat d'avant la publication : une connexion etrangere (CSGO) est signalee meme si la reconnexion reussit.
       $before = Get-StudioState
-      # Cible publiee sous le mutex : deux agents ne publient jamais dans le desordre de leurs reservations.
-      $rev = Set-StudioTarget "$currentPort"
+      # Cible publiee sous le mutex : deux agents ne publient jamais dans le desordre de leurs reservations. Echec (fichier
+      # occupe) : le verrou reste pris, connexion a la main.
+      $rev = try { Set-StudioTarget "$currentPort" }
+      catch { Write-Warning "Cible Studio non publiee ($($_.Exception.Message)) : pas d'auto-connexion."; $null }
       return @{ ok = $true; taken = $taken; rev = $rev; before = $before }
     }
     if ($result.ok) { break }
@@ -676,11 +682,11 @@ if ($AcquireStudio) {
   if ($result.taken) { Write-Host "Note : $($result.taken)." }
   Write-Host "Studio reserve pour '$Branch' (port $currentPort). Liberer des la verification finie : -ReleaseStudio."
   [void](Write-ForeignConnectionAlert $result.before)
-  $controlUp = Start-RojoControl
+  $controlUp = $result.rev -and (Start-RojoControl)
   if ($controlUp -and (Wait-StudioConnected $result.rev $currentPort)) {
     Write-Host "Studio connecte au port $currentPort (plugin Rojo autoconnect, place $($placeIds -join ', ')). Verifier le port affiche par le plugin avant de tester."
   } else {
-    if (-not $controlUp) { Write-Host "Pas d'auto-connexion : serveur de commande du plugin indisponible (avertissement ci-dessus)." }
+    if (-not $controlUp) { Write-Host "Pas d'auto-connexion : cible non publiee ou serveur de commande du plugin indisponible (avertissement ci-dessus)." }
     else { Write-Host "Studio ne s'est pas connecte seul en $connectWait s (Studio ferme ou en Play, place non ouverte, plugin officiel ? voir CSGO_surf_combat\tools\rojo-plugin\README.md)." }
     Write-ConnectHelp $currentPort
     $after = Get-StudioState
