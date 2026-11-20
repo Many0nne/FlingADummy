@@ -513,7 +513,7 @@ function UIKit.button(props: { [string]: any }, onClick: () -> ()): TextButton
 end
 
 -- Cette méthode permet d'afficher, mettre à jour ou masquer la pastille rouge au coin haut droit d'un bouton
--- lorsque une action y est possible ; `value` : nombre (« 3 », « 99+ »), texte (« ! ») ou nil pour la masquer.
+-- lorsqu'une action y est possible ; `value` : nombre (« 3 », « 99+ »), texte (« ! ») ou nil pour la masquer.
 function UIKit.setBadge(button: GuiObject, value: (number | string)?)
 	local text = UIMotion.badgeText(value)
 	local badge = button:FindFirstChild("Badge") :: Frame?
@@ -860,7 +860,7 @@ function UIKit.card(parent: Instance, order: number, onAction: () -> ()): Card
 end
 
 -- Cette méthode permet de créer une gerbe de rayons qui tourne derrière un titre puis s'efface (référence 09, tirage
--- « 1 en N ») lorsque un popup ou un résultat apparaît ; se détruit après `duration` s, immobile en mouvement réduit.
+-- « 1 en N ») lorsqu'un popup ou un résultat apparaît ; se détruit après `duration` s, immobile en mouvement réduit.
 function UIKit.rays(
 	parent: Instance,
 	props: {
@@ -962,7 +962,7 @@ local function sparkle(parent: Instance, position: UDim2, size: number, zIndex: 
 end
 
 -- Cette méthode permet de faire scintiller `count` étincelles au hasard dans une zone `area` (px, centrée dans
--- `parent`) lorsque un popup ou un record apparaît ; chacune grandit, tourne et disparaît (tweens qui se terminent).
+-- `parent`) lorsqu'un popup ou un record apparaît ; chacune grandit, tourne et disparaît (tweens qui se terminent).
 function UIKit.sparkles(parent: Instance, count: number, area: Vector2, zIndex: number?, delay: number?)
 	for i = 1, count do
 		local position =
@@ -1082,7 +1082,7 @@ local function effectsLayer(): ScreenGui
 	return fxLayer :: ScreenGui
 end
 
--- Cette méthode permet de donner le centre d'un élément en pixels d'écran lorsque un effet vole vers lui.
+-- Cette méthode permet de donner le centre d'un élément en pixels d'écran lorsqu'un effet vole vers lui.
 local function centerOf(gui: GuiObject): Vector2
 	return gui.AbsolutePosition + gui.AbsoluteSize / 2
 end
