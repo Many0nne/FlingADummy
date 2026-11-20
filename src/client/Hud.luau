@@ -13,22 +13,39 @@ local Format = require(Shared:WaitForChild("Format"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Training = require(Shared:WaitForChild("Training"))
+local UIMotion = require(Shared:WaitForChild("UIMotion"))
 
 local UIKit = require(script.Parent.UIKit)
 
 local C = UIKit.COLORS
 local BUTTON_SIZE = 92 -- côté des boutons à icône à 720 px de haut (≈ 0,13 h, comme les références)
 local INDEX_SLOTS = 8 -- cases de l'index en attendant la collection (#13)
+local FLY_GROUP = 0.35 -- s : un gain arrivé moins de FLY_GROUP s après le précédent rejoint son « +N » en vol
+local FLY_MAX = 3 -- « +N » en vol au plus par compteur
 
 local Hud = {}
 
 local player: Player
 local gui: ScreenGui
 local root: Frame -- tout le HUD permanent, masqué pendant le vol
+local hudScale: UIScale
 local powerLabel: TextLabel
 local moneyLabel: TextLabel
+-- Compteurs qui reçoivent des « +N » volants : le gain n'est ajouté au chiffre affiché qu'à l'arrivée du « +N »
+type Flight = { label: TextLabel?, total: number }
+type Counter = {
+	label: TextLabel,
+	icon: GuiObject,
+	iconName: string,
+	color: Color3,
+	flash: Color3,
+	format: (number) -> string,
+	batch: UIMotion.Batch,
+	pending: number,
+	flights: { [number]: Flight },
+}
+local counters: { [string]: Counter } = {}
 local anchors: { [string]: GuiObject } = {} -- éléments que l'objectif peut désigner
-local badges: { [string]: Frame } = {}
 local windows: { [string]: Frame } = {}
 local gearCards: { UIKit.Card } = {}
 local dummyCard: UIKit.Card
@@ -39,6 +56,8 @@ local trainLevel: TextLabel
 local trainFill: Frame
 local trainCount: TextLabel
 local lastPower = 0
+local lastMoney = 0
+local seeded = false -- valeurs sauvegardées chargées : les gains suivants volent vers les compteurs
 local levelGain = 0 -- Throw Power versée au dernier niveau d'entraînement, pas encore annoncée
 local levelUpPending = false -- niveau arrivé avant sa Throw Power (ordre de réplication non garanti)
 local LEVEL_GAIN_WAIT = 0.5 -- attente maximale de la Throw Power d'un niveau avant de l'annoncer quand même (s)
@@ -58,29 +77,39 @@ end
 -- son bouton ; aucune ne s'ouvre pendant la jauge (elle la couvrirait et capterait le clic de lancer).
 local function toggle(name: string)
 	local target = windows[name]
-	local open = not target.Visible and player:GetAttribute("Action") ~= "Holding"
+	local open = not UIKit.isWindowOpen(target) and player:GetAttribute("Action") ~= "Holding"
 	for _, window in windows do
-		window.Visible = false
+		if window ~= target or not open then
+			UIKit.closeWindow(window, window ~= target)
+		end
 	end
-	target.Visible = open
 	if open then
-		UIKit.pop(target, 0.7)
+		UIKit.openWindow(target)
 		Hud.refresh()
 	end
 end
 
--- Cette méthode permet de créer une ligne de compteur (icône dessinée + valeur à contour) en bas à gauche lorsque le
--- HUD est construit.
-local function counter(parent: Instance, order: number, icon: string, color: Color3): TextLabel
+-- Cette méthode permet de créer une ligne de compteur (icône dessinée + valeur à contour, ancrée à gauche pour
+-- gonfler vers la droite) en bas à gauche lorsque le HUD est construit ; `kind` est l'attribut du joueur compté.
+local function counter(
+	parent: Instance,
+	order: number,
+	kind: string,
+	icon: string,
+	color: Color3,
+	flash: Color3,
+	format: (number) -> string
+): TextLabel
 	local row = UIKit.create("Frame", {
 		LayoutOrder = order,
 		Size = UDim2.fromOffset(300, 40),
 		BackgroundTransparency = 1,
 		Parent = parent,
 	})
-	UIKit.icon(icon, { Size = UDim2.fromOffset(40, 40), Parent = row })
-	return UIKit.text({
-		Position = UDim2.fromOffset(46, 0),
+	local iconLabel = UIKit.icon(icon, { Size = UDim2.fromOffset(40, 40), Parent = row })
+	local label = UIKit.text({
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 46, 0.5, 0),
 		Size = UDim2.fromScale(0, 1),
 		AutomaticSize = Enum.AutomaticSize.X,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -88,12 +117,26 @@ local function counter(parent: Instance, order: number, icon: string, color: Col
 		TextColor3 = color,
 		Parent = row,
 	})
+	counters[kind] = {
+		label = label,
+		icon = iconLabel,
+		iconName = icon,
+		color = color,
+		flash = flash,
+		format = format,
+		-- Vol compté un peu plus court que l'animation : un gain tardif ouvre un nouveau « +N » plutôt que de
+		-- rejoindre une étiquette déjà arrivée
+		batch = UIMotion.newBatch(FLY_GROUP, UIKit.FLY_DURATION - 0.05, FLY_MAX),
+		pending = 0,
+		flights = {},
+	}
+	return label
 end
 
 -- Cette méthode permet de construire les deux compteurs (puissance, argent et revenu) en bas à gauche lorsque le HUD
 -- est construit.
 local function buildCounters()
-	local counters = UIKit.create("Frame", {
+	local row = UIKit.create("Frame", {
 		Name = "Counters",
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.new(0, 16, 1, -14),
@@ -105,43 +148,48 @@ local function buildCounters()
 		Padding = UDim.new(0, 4),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		VerticalAlignment = Enum.VerticalAlignment.Bottom,
-		Parent = counters,
+		Parent = row,
 	})
-	powerLabel = counter(counters, 1, "power", C.cyan)
-	moneyLabel = counter(counters, 2, "cash", C.white)
+	powerLabel = counter(row, 1, "ThrowPower", "power", C.cyan, C.white, Format.short)
+	moneyLabel = counter(row, 2, "Money", "cash", C.white, C.yellow, Format.money)
 end
 
 -- Cette méthode permet de construire les boutons à icône (Index et Shop à gauche, Dummies à droite, comme Index /
--- Boutique / Animaux des références) lorsque le HUD est construit.
+-- Boutique / Animaux des références) lorsque le HUD est construit ; Shop et Dummies portent le reflet des boutons
+-- importants. Placés sans UIListLayout : ancrés au centre, ils grossissent sur place au survol.
 local function buildButtons()
+	local gap = 22
 	local left = UIKit.create("Frame", {
 		Name = "Buttons",
 		AnchorPoint = Vector2.new(0, 0.5),
 		Position = UDim2.new(0, 14, 0.5, 0),
-		Size = UDim2.fromOffset(BUTTON_SIZE, BUTTON_SIZE * 2 + 22),
+		Size = UDim2.fromOffset(BUTTON_SIZE, BUTTON_SIZE * 2 + gap),
 		BackgroundTransparency = 1,
 		Parent = root,
 	})
-	UIKit.create("UIListLayout", {
-		Padding = UDim.new(0, 22),
-		SortOrder = Enum.SortOrder.LayoutOrder,
+	anchors.Index = UIKit.iconButton("index", "Index", BUTTON_SIZE, {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0, BUTTON_SIZE / 2),
 		Parent = left,
-	})
-	anchors.Index = UIKit.iconButton("index", "Index", BUTTON_SIZE, { LayoutOrder = 1, Parent = left }, function()
+	}, function()
 		toggle("Index")
 	end)
-	anchors.Shop = UIKit.iconButton("shop", "Shop", BUTTON_SIZE, { LayoutOrder = 2, Parent = left }, function()
+	anchors.Shop = UIKit.iconButton("shop", "Shop", BUTTON_SIZE, {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0, BUTTON_SIZE * 1.5 + gap),
+		Shine = true,
+		Parent = left,
+	}, function()
 		toggle("Shop")
 	end)
 	anchors.Dummies = UIKit.iconButton("dummies", "Dummies", BUTTON_SIZE, {
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -14, 0.5, 0),
+		Shine = true,
 		Parent = root,
 	}, function()
 		toggle("Dummies")
 	end)
-	badges.Shop = UIKit.badge(anchors.Shop)
-	badges.Dummies = UIKit.badge(anchors.Dummies)
 end
 
 -- Cette méthode permet de créer une rangée défilante de cartes dans le corps d'une fenêtre lorsque la fenêtre est
@@ -185,7 +233,7 @@ local function buildWindows()
 		colors = { Color3.fromRGB(150, 60, 230), Color3.fromRGB(255, 70, 170) },
 		size = size,
 	}, function()
-		windows.Shop.Visible = false
+		UIKit.closeWindow(windows.Shop)
 	end)
 	windows.Shop = shop.frame
 	local gearRow = cardRow(shop.body)
@@ -204,7 +252,7 @@ local function buildWindows()
 		colors = { Color3.fromRGB(255, 150, 20), Color3.fromRGB(255, 215, 50) },
 		size = size,
 	}, function()
-		windows.Dummies.Visible = false
+		UIKit.closeWindow(windows.Dummies)
 	end)
 	windows.Dummies = dummies.frame
 	local dummyRow = cardRow(dummies.body)
@@ -230,7 +278,7 @@ local function buildWindows()
 		colors = { Color3.fromRGB(40, 110, 255), Color3.fromRGB(60, 210, 255) },
 		size = size,
 	}, function()
-		windows.Index.Visible = false
+		UIKit.closeWindow(windows.Index)
 	end)
 	windows.Index = index.frame
 	UIKit.text({
@@ -367,16 +415,16 @@ function Hud.refresh()
 	local money = stat("Money", 0)
 	-- Revenu collé au montant, en plus petit et en vert (comme « $64 +$1 » de la référence 02), seulement s'il existe
 	local income = stat("Income", 0)
-	moneyLabel.Text = Format.money(money)
+	moneyLabel.Text = Format.money(money - counters.Money.pending)
 		.. if income > 0
 			then string.format(' <font size="22" color="#50D746">%s</font>', Format.perSecond(income))
 			else ""
-	powerLabel.Text = Format.short(stat("ThrowPower", GameConfig.START_POWER))
+	powerLabel.Text = Format.short(stat("ThrowPower", GameConfig.START_POWER) - counters.ThrowPower.pending)
 
 	local gearCost = Training.nextGearCost(stat("GearTier", 1))
 	local valueCost = Economy.valueCost(stat("ValueLevel", 1))
-	badges.Shop.Visible = gearCost ~= nil and money >= gearCost
-	badges.Dummies.Visible = valueCost ~= nil and money >= valueCost
+	UIKit.setBadge(anchors.Shop, if gearCost ~= nil and money >= gearCost then "!" else nil)
+	UIKit.setBadge(anchors.Dummies, if valueCost ~= nil and money >= valueCost then "!" else nil)
 	if windows.Shop.Visible or windows.Dummies.Visible then
 		buildModels()
 		refreshGear(money)
@@ -442,7 +490,7 @@ local function refreshState()
 	root.Visible = state ~= "Flying"
 	if state == "Flying" or action == "Holding" then
 		for _, window in windows do
-			window.Visible = false
+			UIKit.closeWindow(window, true)
 		end
 	end
 end
@@ -505,16 +553,61 @@ end
 
 -- Cette méthode permet d'afficher un popup de palier et de retenir sa fin (l'objectif se tait pendant ce temps)
 -- lorsque le joueur gagne un niveau ou un équipement.
-local function showPopup(title: string, subtitle: string, subtitleColor: Color3?)
-	local duration = UIKit.popup(gui, title, subtitle, subtitleColor)
+local function showPopup(options: UIKit.PopupOptions)
+	local duration = UIKit.popup(gui, options)
 	popupEndsAt = os.clock() + duration
+end
+
+-- Cette méthode permet de faire voler un gain (« +N » et icônes) depuis `from` (pixels d'écran) jusqu'au compteur
+-- `kind`, en le regroupant avec un gain rapproché, lorsque l'argent ou la puissance augmentent ; le chiffre affiché
+-- n'avance qu'à l'arrivée.
+local function flyGain(kind: string, amount: number, from: Vector2)
+	local c = counters[kind]
+	c.pending += amount
+	local action, id, total = UIMotion.push(c.batch, amount, os.clock())
+	local existing = c.flights[id]
+	if action == "merge" and existing and existing.label then
+		existing.total = total
+		existing.label.Text = "+" .. c.format(total)
+		return
+	end
+	local flight: Flight = { total = amount }
+	c.flights[id] = flight
+	flight.label = UIKit.flyGain({
+		from = from,
+		target = c.label,
+		iconTarget = c.icon,
+		text = "+" .. c.format(amount),
+		color = if kind == "Money" then C.green else c.color,
+		icon = c.iconName,
+		icons = UIMotion.burstSize(amount),
+		scale = hudScale.Scale,
+		onIcon = function()
+			UIKit.playKeys(c.label, UIMotion.COUNTER_BUMP)
+		end,
+		onArrive = function()
+			if c.flights[id] == flight then
+				c.flights[id] = nil
+			end
+			c.pending = math.max(0, c.pending - flight.total)
+			Hud.refresh()
+			UIKit.bump(c.label, c.flash)
+		end,
+	})
+end
+
+-- Cette méthode permet de donner le point de départ des « +N » d'argent (total de l'écran de résultat, au centre)
+-- lorsque l'argent augmente.
+local function moneyOrigin(): Vector2
+	local size = Workspace.CurrentCamera.ViewportSize
+	return Vector2.new(size.X * 0.5, size.Y * 0.45 + 67 * hudScale.Scale)
 end
 
 -- Cette méthode permet d'annoncer le niveau d'entraînement franchi (« LEVEL UP! », Throw Power versée) lorsque le
 -- niveau et sa Throw Power sont arrivés, dans un ordre ou dans l'autre.
 local function announceLevelUp()
 	levelUpPending = false
-	showPopup("LEVEL UP!", "Throw Power +" .. Format.short(levelGain), C.cyan)
+	showPopup({ title = "LEVEL UP!", subtitle = "Throw Power +" .. Format.short(levelGain), subtitleColor = C.cyan })
 	levelGain = 0
 	UIKit.playSound("LevelUp")
 end
@@ -560,7 +653,8 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 		Parent = player:WaitForChild("PlayerGui"),
 	})
-	bindScale(UIKit.create("UIScale", { Parent = gui }))
+	hudScale = UIKit.create("UIScale", { Parent = gui })
+	bindScale(hudScale)
 	root = UIKit.create("Frame", {
 		Name = "Main",
 		Size = UDim2.fromScale(1, 1),
@@ -573,14 +667,25 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 	buildTrainBar(onStop)
 
 	lastPower = stat("ThrowPower", GameConfig.START_POWER)
-	for _, attribute in { "Money", "GearTier", "ValueLevel", "Income" } do
+	lastMoney = stat("Money", 0)
+	for _, attribute in { "GearTier", "ValueLevel", "Income" } do
 		player:GetAttributeChangedSignal(attribute):Connect(Hud.refresh)
 	end
+	player:GetAttributeChangedSignal("Money"):Connect(function()
+		local money = stat("Money", 0)
+		if seeded and money > lastMoney then
+			flyGain("Money", money - lastMoney, moneyOrigin())
+		end
+		lastMoney = money
+		Hud.refresh()
+	end)
 	player:GetAttributeChangedSignal("ThrowPower"):Connect(function()
 		local power = stat("ThrowPower", GameConfig.START_POWER)
 		if power > lastPower and player:GetAttribute("Action") == "Training" then
 			levelGain = power - lastPower
-			UIKit.pop(powerLabel, 1.2)
+			if seeded then
+				flyGain("ThrowPower", levelGain, trainBar.AbsolutePosition + trainBar.AbsoluteSize / 2)
+			end
 			if levelUpPending then
 				announceLevelUp()
 			end
@@ -591,7 +696,9 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 	-- Popups seulement pour un palier au-delà de ceux connus au chargement : les valeurs sauvegardées (répliquées
 	-- avant, avec ou après DataReady) ne s'annoncent pas
 	local function seed()
+		seeded = true
 		lastPower = stat("ThrowPower", GameConfig.START_POWER)
+		lastMoney = stat("Money", 0)
 		knownLevel = stat("TrainLevel", 1)
 		knownTier = stat("GearTier", 1)
 	end
@@ -630,11 +737,12 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 		end
 		knownTier = tier
 		local gear = Training.gear(tier)
-		showPopup("NEW EQUIPMENT!", gear.name .. "  +" .. Format.short(gear.gain) .. " EXP / rep")
+		showPopup({
+			title = "NEW EQUIPMENT!",
+			tag = "NEW!",
+			subtitle = gear.name .. "  +" .. Format.short(gear.gain) .. " EXP / rep",
+		})
 		UIKit.playSound("LevelUp", 1.2)
-	end)
-	player:GetAttributeChangedSignal("Money"):Connect(function()
-		UIKit.pop(moneyLabel, 1.15)
 	end)
 	player:GetAttributeChangedSignal("Action"):Connect(refreshState)
 	player:GetAttributeChangedSignal("LaneState"):Connect(refreshState)

@@ -1,10 +1,12 @@
 -- Cérémonie de résultat : titre selon la violence du crash, lignes de gains qui tombent une à une, total qui grimpe,
--- phrase de blessure et cause, badge de record. Dure un peu moins que RESULT_TIME.
+-- phrase de blessure et cause, badge de record. Dure un peu moins que RESULT_TIME. Panneau qui s'ouvre en pop, titre en
+-- dégradé devant une gerbe de rayons tournants et des étincelles (référence 09).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Format = require(Shared:WaitForChild("Format"))
+local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Zones = require(Shared:WaitForChild("Zones"))
 
 local UIKit = require(script.Parent.UIKit)
@@ -30,6 +32,7 @@ local linesFrame: Frame
 local totalLabel: TextLabel
 local injuryLabel: TextLabel
 local recordBadge: TextLabel
+local rays: Frame? = nil
 local token = 0
 
 -- Cette méthode permet de choisir le titre du résultat lorsque l'on connaît le nombre d'os et d'objets.
@@ -95,6 +98,7 @@ local function build(gui: ScreenGui)
 		StrokeThickness = 5,
 		Parent = panel,
 	})
+	UIKit.gradientText(totalLabel, Color3.fromRGB(190, 255, 150), C.green)
 	injuryLabel = UIKit.text({
 		Position = UDim2.fromOffset(20, 320),
 		Size = UDim2.new(1, -40, 0, 84),
@@ -164,13 +168,29 @@ function ResultScreen.show(result: any)
 	end
 	local title = titleFor(result.bones or 0, result.smashed or 0)
 	titleLabel.Text = title.text
-	titleLabel.TextColor3 = title.color
+	UIKit.gradientText(titleLabel, title.color:Lerp(Color3.new(1, 1, 1), 0.6), title.color)
 	recordBadge.Visible = result.record == true
 	totalLabel.Text = ""
 	injuryLabel.Text = ""
-	panel.Visible = true
-	UIKit.pop(panel, 0.5)
+	UIKit.openWindow(panel, false)
 	UIKit.pop(titleLabel, 2)
+	-- Rayons derrière le panneau, centrés sur le titre (haut du panneau) : ils dépassent autour comme un soleil
+	if rays then
+		rays:Destroy()
+	end
+	rays = UIKit.rays(panel.Parent :: Instance, {
+		position = panel.Position + UDim2.fromOffset(0, -panel.Size.Y.Offset / 2),
+		size = 420,
+		duration = GameConfig.RESULT_TIME - 0.3,
+		color = title.color,
+		count = 12,
+		zIndex = 0,
+	})
+	UIKit.sparkles(titleLabel, 5, Vector2.new(460, 60), 2, 0.15)
+	if result.record == true then
+		UIKit.pop(recordBadge, 1.8)
+		UIKit.sparkles(recordBadge, 4, Vector2.new(200, 40), 2, 0.3)
+	end
 
 	local lines = {
 		{ Format.meters(result.distance or 0), Format.money(result.distanceMoney or 0), C.white },
@@ -209,7 +229,11 @@ end
 -- Cette méthode permet de masquer le panneau de résultat lorsque le couloir redevient prêt.
 function ResultScreen.hide()
 	token += 1
-	panel.Visible = false
+	UIKit.closeWindow(panel)
+	if rays then
+		rays:Destroy()
+		rays = nil
+	end
 end
 
 -- Cette méthode permet de construire le panneau de résultat dans le ScreenGui du jeu lorsque le client démarre.
