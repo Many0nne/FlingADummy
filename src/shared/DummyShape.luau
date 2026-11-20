@@ -10,6 +10,8 @@ DummyShape.YELLOW = Color3.fromRGB(255, 205, 40)
 DummyShape.DARK = Color3.fromRGB(45, 47, 55)
 DummyShape.ACCESSORY_COLOR = Color3.fromRGB(235, 60, 50)
 DummyShape.TEMPLATES = "DummyTemplates"
+-- SurfaceAppearance de l'atlas (Shared.DummySurface, synchronisée par Rojo) clonée dans chaque gabarit maillé
+DummyShape.SURFACE = "DummySurface"
 
 local ARM = Vector3.new(0.8, 1.2, 0.8)
 local LEG = Vector3.new(0.95, 1.3, 0.95)
@@ -127,6 +129,20 @@ function DummyShape.colorOf(piece: Piece, part: BasePart, variant: Variant?): Co
 	return if tint and piece.color == DummyShape.YELLOW then tint else piece.color
 end
 
+-- Cette méthode permet de donner le matériau d'une pièce lorsque l'on habille un mannequin ; un matériau de
+-- déclinaison retire l'atlas (une SurfaceAppearance masquerait le verre, le néon ou le champ de force).
+function DummyShape.applyMaterial(part: BasePart, variant: Variant?): Enum.Material
+	local material = variant and variant.material
+	if not material or material == Enum.Material.SmoothPlastic then
+		return Enum.Material.SmoothPlastic
+	end
+	local surface = part:FindFirstChild(DummyShape.SURFACE)
+	if surface then
+		surface:Destroy()
+	end
+	return material
+end
+
 -- Cette méthode permet de créer les pièces d'un mannequin debout à l'échelle `scale` (couleur, matériau, cibles des
 -- blocs) lorsque le serveur ou le client en construit un ; renvoie les pièces par nom.
 function DummyShape.buildPieces(model: Model, scale: number, variant: Variant?): { [string]: BasePart }
@@ -135,7 +151,7 @@ function DummyShape.buildPieces(model: Model, scale: number, variant: Variant?):
 		local p = DummyShape.makePart(piece.name, piece.size * scale) :: BasePart
 		p.CFrame = CFrame.new(piece.position * scale)
 		p.Color = DummyShape.colorOf(piece, p, variant)
-		p.Material = (variant and variant.material) or Enum.Material.SmoothPlastic
+		p.Material = DummyShape.applyMaterial(p, variant)
 		p.Parent = model
 		parts[piece.name] = p
 	end

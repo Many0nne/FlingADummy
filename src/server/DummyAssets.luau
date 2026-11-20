@@ -28,7 +28,12 @@ local function createPart(name: string): MeshPart?
 	end
 	local part = result :: MeshPart
 	part.Name = name
-	part.TextureID = Assets.uri(Assets.DUMMY_TEXTURE) or ""
+	-- L'atlas passe par une SurfaceAppearance en Overlay (zones transparentes = couleur de la pièce) : TextureID les
+	-- rend en noir, et ses propriétés ne s'écrivent pas par script, d'où le modèle Shared.DummySurface cloné.
+	local surface = ReplicatedStorage.Shared:FindFirstChild(DummyShape.SURFACE)
+	if surface then
+		surface:Clone().Parent = part
+	end
 	part.Anchored = false
 	return part
 end

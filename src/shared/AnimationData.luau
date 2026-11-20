@@ -163,17 +163,18 @@ AnimationData.THROW = {
 				LeftFoot = { 0, 0, 0 },
 			},
 		},
-		-- Élan : poids sur la jambe arrière (droite), genou avant levé, épaule droite reculée
+		-- Élan : poids sur la jambe arrière (droite), genou avant levé, épaule droite reculée, main au-dessus et derrière
+		-- la tête (les bras R15 sont courts : coude peu fléchi, sinon la main retombe dans le dos)
 		{
 			t = 0.42,
 			ease = "CubicV2",
 			dir = "InOut",
 			poses = {
-				LowerTorso = { 0, -28, 0, 0.15, -0.25, 0.35 },
-				UpperTorso = { 16, -32, 4 },
+				LowerTorso = { 0, -25, 0, 0.1, -0.15, 0.25 },
+				UpperTorso = { 6, -30, 4 },
 				Head = { -6, 40, 0 },
-				RightUpperArm = { 196, 0, 30 },
-				RightLowerArm = { 62, 0, 0 },
+				RightUpperArm = { 165, 0, 20 },
+				RightLowerArm = { 30, 0, 0 },
 				RightHand = { 10, 0, 0 },
 				LeftUpperArm = { 82, 18, -12 },
 				LeftLowerArm = { 12, 0, 0 },
@@ -192,11 +193,11 @@ AnimationData.THROW = {
 			ease = "CubicV2",
 			dir = "In",
 			poses = {
-				LowerTorso = { 0, -32, 0, 0.18, -0.3, 0.4 },
-				UpperTorso = { 22, -38, 6 },
+				LowerTorso = { 0, -28, 0, 0.12, -0.2, 0.3 },
+				UpperTorso = { 6, -34, 5 },
 				Head = { -10, 44, 0 },
-				RightUpperArm = { 206, 0, 34 },
-				RightLowerArm = { 78, 0, 0 },
+				RightUpperArm = { 170, 0, 22 },
+				RightLowerArm = { 32, 0, 0 },
 				RightHand = { 14, 0, 0 },
 				LeftUpperArm = { 88, 22, -10 },
 				LeftLowerArm = { 8, 0, 0 },
@@ -218,7 +219,7 @@ AnimationData.THROW = {
 				LowerTorso = { 0, 18, 0, -0.05, -0.45, -0.55 },
 				UpperTorso = { -20, 30, -4 },
 				Head = { -14, -26, 0 },
-				RightUpperArm = { 132, 0, 8 },
+				RightUpperArm = { 168, 0, 10 },
 				RightLowerArm = { 6, 0, 0 },
 				RightHand = { -12, 0, 0 },
 				LeftUpperArm = { -28, 0, -38 },

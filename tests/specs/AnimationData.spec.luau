@@ -1,8 +1,9 @@
 -- Animations de l'avatar : clips cohérents (temps, marqueurs, hiérarchie), geste lisible, séquence générée.
-return function(T, Loader)
+return function(T, Loader, Lib)
 	local loader = Loader.new()
 	local AnimationData = loader:require("src/shared/AnimationData")
 	local GameConfig = loader:require("src/shared/GameConfig")
+	local R15Rig = Lib.R15Rig
 
 	-- Direction du bras droit (pendant au repos) dans le repère du torse après la rotation d'épaule d'une pose
 	local function armDirection(pose)
@@ -67,13 +68,30 @@ return function(T, Loader)
 			local dir = armDirection(clip.keyframes[1].poses.RightUpperArm)
 			T.expect(dir.Y > 0.9, "bras vers le haut, obtenu " .. tostring(dir))
 		end)
-		T.it("arme le bras derrière la tête à l'élan", function()
-			local dir = armDirection(keyframeAt(clip, 0.5).poses.RightUpperArm)
-			T.expect(dir.Y > 0.5 and dir.Z > 0.2, "bras en haut et en arrière, obtenu " .. tostring(dir))
+		-- Positions mesurées par cinématique directe sur un avatar R15 type (tests/lib/R15Rig) : la direction du
+		-- haut du bras ne suffit pas, le buste tourné et le coude replié peuvent ramener la main dans le dos.
+		local function handAndHead(t)
+			local poses
+			local best = math.huge
+			for _, keyframe in AnimationData.filledKeyframes(clip) do
+				if math.abs(keyframe.t - t) < best then
+					best, poses = math.abs(keyframe.t - t), keyframe.poses
+				end
+			end
+			local head = R15Rig.partFrame("Head", poses, AnimationData.toCFrame).Position
+			return R15Rig.rightHand(poses, AnimationData.toCFrame), head
+		end
+		T.it("arme la main au-dessus et derrière la tête à l'élan", function()
+			for _, t in { 0.42, 0.56 } do
+				local hand, head = handAndHead(t)
+				T.expect(hand.Y > head.Y, "t = " .. t .. " : main au-dessus de la tête, obtenu " .. tostring(hand))
+				T.expect(hand.Z > head.Z + 0.5, "t = " .. t .. " : main derrière la tête, obtenu " .. tostring(hand))
+			end
 		end)
-		T.it("projette le bras vers l'avant et le haut au lâcher", function()
-			local dir = armDirection(keyframeAt(clip, clip.markers.Release).poses.RightUpperArm)
-			T.expect(dir.Y > 0.3 and dir.Z < -0.5, "bras devant et en haut, obtenu " .. tostring(dir))
+		T.it("projette la main devant, à hauteur de tête, au lâcher", function()
+			local hand, head = handAndHead(clip.markers.Release)
+			T.expect(hand.Z < head.Z - 0.8, "main devant, obtenu " .. tostring(hand))
+			T.expect(hand.Y > head.Y - 0.3, "main à hauteur de tête, obtenu " .. tostring(hand))
 		end)
 		T.it("tourne le buste : épaule droite en arrière à l'élan, en avant au lâcher", function()
 			local back = keyframeAt(clip, 0.5).poses

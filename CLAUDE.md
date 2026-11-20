@@ -47,8 +47,9 @@ rejetée pour un style inventé.
 - Outils Rokit (`rokit.toml`) : `rojo`, `stylua`, `selene`, `luau-lsp`, `lune`. Installer avec `rokit install`.
 - Après toute modification `.luau` : `bash tools/check.sh` (selene, stylua, luau-lsp, tests Lune). Lire la sortie
   complète, sans filtre. `--fix` applique le formatage.
-- Tests unitaires Lune dans `tests/specs/*.spec.luau` (chaque spec retourne `function(T, Loader)`, cf. `tests/lib/`). La
-  logique pure va dans `src/shared` pour être testable.
+- Tests unitaires Lune dans `tests/specs/*.spec.luau` (chaque spec retourne `function(T, Loader, Lib)`, cf.
+  `tests/lib/` ; `Lib.R15Rig` : cinématique directe d'un avatar R15 pour vérifier une pose). La logique pure va dans
+  `src/shared` pour être testable.
 - `GameConfig.luau` est exclu de StyLua (`-- stylua: ignore`) : garder l'alignement en colonnes à la main.
 - **Mesurer avant de promettre** : un effet de gameplay annoncé (distance, gains, temps) se mesure, et la valeur figure
   dans le compte rendu. Sans mesure, écrire « non mesuré ».

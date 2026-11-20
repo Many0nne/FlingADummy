@@ -5,29 +5,29 @@ local Assets = {}
 
 -- Maillages du mannequin (assets/dummy/export/dummy.fbx) : une MeshPart par pièce du gabarit et par accessoire
 Assets.DUMMY_MESHES = {
-	Torso = 0,
-	Head = 0,
-	LeftUpperArm = 0,
-	LeftLowerArm = 0,
-	RightUpperArm = 0,
-	RightLowerArm = 0,
-	LeftUpperLeg = 0,
-	LeftLowerLeg = 0,
-	RightUpperLeg = 0,
-	RightLowerLeg = 0,
-	Helmet = 0,
-	Glasses = 0,
-	Cape = 0,
+	Torso = 133613233785754,
+	Head = 86063091423662,
+	LeftUpperArm = 114304624461467,
+	LeftLowerArm = 106034197377217,
+	RightUpperArm = 135967918758689,
+	RightLowerArm = 90031260387163,
+	LeftUpperLeg = 137052938845723,
+	LeftLowerLeg = 119226912137255,
+	RightUpperLeg = 88314334717160,
+	RightLowerLeg = 80862197937671,
+	Helmet = 122532958398710,
+	Glasses = 74011413853472,
+	Cape = 104540158359045,
 } :: { [string]: number }
 
 -- Atlas (assets/dummy/export/dummy_atlas.png) : zones transparentes = couleur de la pièce, noir, cibles
-Assets.DUMMY_TEXTURE = 0
+Assets.DUMMY_TEXTURE = 84498910179411
 
 -- Animations de l'avatar (assets/anim/export/<Nom>.rbxm)
 Assets.ANIMATIONS = {
-	Hold = 0,
-	Train = 0,
-	Throw = 0,
+	Hold = 134156774546186,
+	Train = 72035491380919,
+	Throw = 98953473271707,
 } :: { [string]: number }
 
 -- Cette méthode permet de donner l'URI d'un asset publié lorsque l'on le charge ; nil s'il n'est pas publié.

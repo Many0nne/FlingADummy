@@ -18,6 +18,9 @@ return function(T, Loader)
 		for _, piece in DummyShape.PIECES do
 			local part = roblox.Instance.new("MeshPart")
 			part.Name = piece.name
+			local surface = roblox.Instance.new("SurfaceAppearance")
+			surface.Name = DummyShape.SURFACE
+			surface.Parent = part
 			part.Parent = folder
 		end
 		for name in DummyShape.ACCESSORIES do
@@ -88,6 +91,16 @@ return function(T, Loader)
 			T.expectEqual(model.LeftLowerArm.Color, blue)
 			T.expectEqual(DummyShape.buildVisual(1).LeftLowerArm.Color, DummyShape.YELLOW)
 		end)
+		T.it("garde l'atlas sans matériau de déclinaison", function()
+			local model = DummyShape.buildVisual(1, { color = Color3.new(0, 0, 1) })
+			T.expect(model.Torso:FindFirstChild(DummyShape.SURFACE) ~= nil, "atlas du torse")
+			T.expectEqual(model.Torso.Material, roblox.Enum.Material.SmoothPlastic)
+		end)
+		T.it("retire l'atlas pour un matériau de déclinaison", function()
+			local model = DummyShape.buildVisual(1, { material = roblox.Enum.Material.Neon })
+			T.expectEqual(model.Torso:FindFirstChild(DummyShape.SURFACE), nil)
+			T.expectEqual(model.Torso.Material, roblox.Enum.Material.Neon)
+		end)
 		T.it("pose les accessoires sur leur pièce, sans masse ni collision", function()
 			local model = DummyShape.buildVisual(1, { accessories = { "Helmet", "Cape" } })
 			local helmet = model:FindFirstChild("Helmet")
@@ -99,6 +112,18 @@ return function(T, Loader)
 			T.expectNear((helmet.CFrame.Position - expected).Magnitude, 0, 1e-5, "position du casque")
 			T.expect(model:FindFirstChild("Cape") ~= nil, "cape")
 			T.expectEqual(model:FindFirstChild("Glasses"), nil)
+		end)
+	end)
+
+	T.describe("Shared.DummySurface", function()
+		T.it("porte l'atlas publié (Shared.Assets.DUMMY_TEXTURE), en Overlay", function()
+			local fs = require("@lune/fs")
+			local serde = require("@lune/serde")
+			local Assets = Loader.new():require("src/shared/Assets")
+			local model = serde.decode("json", fs.readFile("src/shared/DummySurface.model.json"))
+			T.expectEqual(model.className, "SurfaceAppearance")
+			T.expectEqual(model.properties.AlphaMode, "Overlay")
+			T.expectEqual(model.properties.ColorMap, "rbxassetid://" .. Assets.DUMMY_TEXTURE)
 		end)
 	end)
 end

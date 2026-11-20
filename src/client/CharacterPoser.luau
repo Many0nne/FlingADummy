@@ -246,8 +246,10 @@ local function update(player: Player, state: State)
 	end
 	local action = player:GetAttribute("Action")
 	local releasedHere = player == localPlayer and throw ~= nil and throw.released
+	-- Le suffixe reconstruit le décoratif en maillé quand les gabarits arrivent après lui (blocs en attendant)
+	local shape = if DummyShape.isMeshed() then ":mesh" else ":block"
 	if action == "Holding" and not releasedHere then
-		setVisual(state, "Holding", function()
+		setVisual(state, "Holding" .. shape, function()
 			return DummyShape.buildVisual(HELD_SCALE)
 		end)
 		if state.visual then
@@ -256,7 +258,7 @@ local function update(player: Player, state: State)
 	elseif action == "Training" then
 		local tier = (player:GetAttribute("GearTier") :: number?) or 1
 		local gear = Training.gear(tier)
-		setVisual(state, "Training" .. tier, function()
+		setVisual(state, "Training" .. tier .. shape, function()
 			return DummyShape.buildVisual(gear.scale, { color = gear.color, material = gear.material })
 		end)
 		if state.visual then
