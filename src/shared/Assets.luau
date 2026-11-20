@@ -31,6 +31,17 @@ Assets.ANIMATIONS = {
 	Throw = 98953473271707,
 } :: { [string]: number }
 
+-- Icônes d'interface (assets/icons/export/<nom>.png, rendues par assets/icons/build_icons.py). 0 = pas encore
+-- publiée : l'interface se rabat sur un emoji (UIKit.icon)
+Assets.ICONS = {
+	shop = 101689173634398,
+	index = 116421262439716,
+	dummies = 133877981616877,
+	power = 131493315088212,
+	cash = 137592441201082,
+	arrow = 75483474828645,
+} :: { [string]: number }
+
 -- Cette méthode permet de donner l'URI d'un asset publié lorsque l'on le charge ; nil s'il n'est pas publié.
 function Assets.uri(id: number?): string?
 	if not id or id == 0 then

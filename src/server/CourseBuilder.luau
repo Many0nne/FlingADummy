@@ -2,12 +2,14 @@
 -- bases des joueurs, stands à auvents), zone de lancer commune à SLOT_COUNT places, piste unique au fond d'un canyon
 -- en gradins (parois à briques, herbe voxel qui déborde, arbres et rochers voxel) qui change de couleurs à chaque zone,
 -- obstacles partagés (Server.Obstacles). Repère : Shared.CourseLayout.
+local CollectionService = game:GetService("CollectionService")
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local CourseLayout = require(ReplicatedStorage.Shared.CourseLayout)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local Objectives = require(ReplicatedStorage.Shared.Objectives)
 local Zones = require(ReplicatedStorage.Shared.Zones)
 local Build = require(script.Parent.Build)
 local Obstacles = require(script.Parent.Obstacles)
@@ -51,6 +53,14 @@ export type Course = { slots: { Slot }, dummies: Folder }
 local CourseBuilder = {}
 
 local rng = Random.new(SEED)
+
+-- Cette méthode permet de désigner une pièce comme cible d'objectif du HUD (réservée au joueur de la place `slot`)
+-- lorsque l'on construit sa pastille ou son poste.
+local function markObjective(part: BasePart, objective: string, slot: number)
+	part:SetAttribute("Objective", objective)
+	part:SetAttribute("Slot", slot)
+	CollectionService:AddTag(part, Objectives.TAG)
+end
 
 -- Cette méthode permet de régler la lumière (plein jour saturé, nuages, comme les jeux de référence) lorsque le serveur
 -- démarre.
@@ -265,7 +275,7 @@ local function buildLaunchZone(parent: Instance, slots: { Slot })
 			Parent = parent,
 		})
 		-- Pastille jaune comme dans les références (et l'aide à l'écran « yellow pad ») ; la couronne dit à qui elle est
-		Build.decor({
+		local pad = Build.decor({
 			Name = "Pad",
 			Shape = Enum.PartType.Cylinder,
 			Size = Vector3.new(0.16, GameConfig.PAD_RADIUS * 2, GameConfig.PAD_RADIUS * 2),
@@ -273,6 +283,7 @@ local function buildLaunchZone(parent: Instance, slots: { Slot })
 			Color = COLORS.pad,
 			Parent = parent,
 		})
+		markObjective(pad, "Throw", slot.index)
 		slot.sign = Build.billboard(parent, slot.pad + Vector3.new(0, 13, 0), "FREE", Vector2.new(8, 2.4))
 	end
 end
@@ -308,6 +319,7 @@ local function buildStation(parent: Instance, slot: Slot)
 		Transparency = 1,
 		Parent = model,
 	})
+	markObjective(anchor, "Train", slot.index)
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Train"
 	prompt.ObjectText = "Pull-up bar"

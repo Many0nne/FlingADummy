@@ -23,7 +23,8 @@ multipliés par la zone atteinte.
 ## Boucle principale (≈ 10-15 s)
 1. **Prendre le mannequin** : monter sur sa place de la zone de lancer ; l'avatar tient un mannequin au-dessus de sa tête.
 2. **Jauge à 1 clic** : une jauge verticale apparaît, l'aiguille monte et descend seule (`+1` à `+20`) ; un clic, un toucher
-   ou Espace l'arrête. Zone PERFECT en haut (gains × 1,2).
+   ou Espace l'arrête. Pas de zone PERFECT ni de bonus : le haut de la jauge est le max (`+20`), comme dans les
+   jeux de référence.
 3. **Élan** : l'avatar se penche en arrière puis projette le mannequin (0,35 s).
 4. **Vol** : bandes noires, caméra qui suit, compteurs (distance, os, objets), bannière de la zone traversée, radio du
    mannequin ; chaque choc a son son, ses particules et son popup (« +1 BONE », « SMASH x6 », combos).
@@ -72,7 +73,7 @@ Chaque zone a son identité (couleur du sol, des parois, du dessus des gradins, 
 | Candy Land | 1,4 km | ×11 | rose / violet, dessus menthe | sucettes, sucres d'orge, boules de gomme |
 | Moon Base | 1,9 km | ×16 | lavande / violet nuit | cristaux, cratères, fusées |
 
-Gains = (distance + 10 × os + 5 × objets) × zone atteinte × valeur du mannequin (× 1,2 si PERFECT).
+Gains = (distance + 10 × os + 5 × objets) × zone atteinte × valeur du mannequin.
 
 ## Dégâts lisibles
 Chaque membre (10 pièces) suit les chocs : une variation brusque de vitesse au-delà d'un seuil casse un os (2 au-delà d'un
@@ -86,8 +87,30 @@ d'herbe voxel qui déborde, arbres et rochers voxel, barrières en blocs, stands
 de plein jour saturée. Matériaux : deux `MaterialVariant` synchronisés par Rojo dans `MaterialService` (`FadChecker`
 16 studs, `FadBrick` 2 studs), teintés par la couleur de chaque pièce ; textures produites par
 `assets/course/build_textures.py`. Le thème crash-test reste dans les objets (mannequin, voitures-cibles, panneaux en damier
-jaune et noir), pas dans le décor. Interface du genre simulateur : police ronde épaisse à contour noir, boutons carrés colorés, compteurs en bas à
-gauche, grands nombres abrégés (`1.2K`, `3.4M`), popups qui rebondissent.
+jaune et noir), pas dans le décor. Interface : section suivante.
+
+## Interface (grammaire des jeux de référence 01 / 09)
+- **Police** : Fredoka One partout, blanc à contour noir fin ; grands nombres abrégés (`1.2K`, `3.4M`).
+- **Boutons** : carrés arrondis à icône dessinée en couleur et libellé dessous ; Index et Shop au bord gauche, Dummies
+  au bord droit (place du bouton de collection des références) ; pastille rouge « ! » quand un achat est possible.
+- **Compteurs** (bas gauche) : biceps + Throw Power (cyan), liasse + argent (blanc), revenu « +$N/s » en vert à droite
+  de l'argent quand l'attribut joueur `Income` est positif (posé par la collection, #13).
+- **Objectif** (haut centre) : « Throw your dummy! » → « Train! » → « Throw your dummy! »… ; « Buy better gear! » /
+  « Buy a better dummy! » dès qu'un achat est possible (flèche au-dessus du bouton) ; « Press STOP to throw! » après un
+  niveau gagné à l'entraînement. Cible du décor : triangle jaune au-dessus, chevrons jaunes au sol qui défilent vers
+  elle. Logique dans `Shared.Objectives`.
+- **Cibles du décor** (point d'accroche pour la carte et la collection) : une `BasePart` avec le tag `ObjectiveTarget`
+  et l'attribut `Objective` (`"Throw"`, `"Train"`…), plus `Slot` (place du lobby) ou `OwnerUserId` (joueur) si elle
+  n'est pas partagée ; le joueur suit la plus proche de celles qui lui sont ouvertes. `CourseBuilder` marque la pastille
+  et le poste d'entraînement de chaque place.
+- **Fenêtres** : cadre sombre, bandeau dégradé (icône, titre), croix rouge ; cartes d'objets grises (nom, rareté
+  colorée de `Shared.Rarity`, rendu 3D en `ViewportFrame`, statistique, bouton : prix vert / rouge, « EQUIPPED »).
+  Shop = équipements d'entraînement ; Dummies = mannequin lancé (valeur) et mannequins à venir en silhouette (#14) ;
+  Index = cases vides en attendant la collection (#13).
+- **Jauge** : capsule verticale à contour noir, dégradé vert (haut) → rouge (bas), 4 traits, curseur blanc, `+N` à
+  droite, « Click to throw! » dessous.
+- **Popups** : « LEVEL UP! » / « NEW EQUIPMENT! » jaunes à contour en haut au centre, sous-titre dessous.
+- Icônes : rendues par `assets/icons/build_icons.py` (Blender), ids dans `Shared.Assets.ICONS` (emoji de repli à 0).
 
 ## Architecture
 - Tout est **simulé par le serveur** (propriétaire réseau `nil`) : le joueur ne pilote pas le mannequin en vol, la latence

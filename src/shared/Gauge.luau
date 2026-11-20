@@ -1,4 +1,4 @@
--- Jauge de charge : aiguille en onde triangle, facteur de vitesse et zone PERFECT.
+-- Jauge de charge : aiguille en onde triangle et facteur de vitesse (pas de zone PERFECT : le haut est le max).
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 
@@ -14,11 +14,6 @@ end
 function Gauge.launchFactor(v: number): number
 	local min = GameConfig.GAUGE_MIN_FACTOR
 	return min + (1 - min) * math.clamp(v, 0, 1)
-end
-
--- Cette méthode permet de savoir si le lancer est PERFECT lorsque la jauge est relâchée en haut.
-function Gauge.isPerfect(v: number): boolean
-	return v >= GameConfig.PERFECT_THRESHOLD
 end
 
 return Gauge

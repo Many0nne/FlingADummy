@@ -29,7 +29,6 @@ local GameConfig = {
 	GAUGE_PERIOD        = 1.2,    -- durée d'un aller-retour de l'aiguille (s)
 	GAUGE_MIN_FACTOR    = 0.6,    -- fraction de la vitesse quand l'aiguille est en bas
 	GAUGE_STEPS         = 20,     -- valeur affichée à côté de l'aiguille : +1 à +20
-	PERFECT_THRESHOLD   = 0.9,    -- jauge à partir de laquelle le lancer est PERFECT
 
 	-- Entraînement
 	START_POWER         = 10,     -- Throw Power de départ
@@ -45,7 +44,6 @@ local GameConfig = {
 	MONEY_PER_METER     = 1,
 	MONEY_PER_BONE      = 10,
 	MONEY_PER_SMASH     = 5,
-	PERFECT_BONUS       = 1.2,
 
 	-- Dégâts
 	BONE_IMPACT_DV      = 70,     -- variation de vitesse d'un membre en une frame qui casse un os (studs/s)

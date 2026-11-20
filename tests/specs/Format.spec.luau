@@ -1,4 +1,4 @@
--- Format : séparateurs de milliers, abréviations K / M, argent, mètres.
+-- Format : séparateurs de milliers, abréviations K / M, argent, revenu par seconde, mètres.
 return function(T, Loader)
 	local Format = Loader.new():require("src/shared/Format")
 
@@ -40,6 +40,11 @@ return function(T, Loader)
 			T.expectEqual(Format.money(0), "$0")
 			T.expectEqual(Format.money(12345), "$12.3K")
 			T.expectEqual(Format.money(-1500), "-$1.5K")
+		end)
+		T.it("écrit le revenu par seconde, jamais négatif", function()
+			T.expectEqual(Format.perSecond(0), "+$0/s")
+			T.expectEqual(Format.perSecond(1234), "+$1.23K/s")
+			T.expectEqual(Format.perSecond(-5), "+$0/s")
 		end)
 		T.it("arrondit au mètre inférieur, jamais négatif", function()
 			T.expectEqual(Format.meters(123.8), "123 m")

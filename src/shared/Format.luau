@@ -45,6 +45,11 @@ function Format.money(n: number): string
 	return "$" .. Format.short(n)
 end
 
+-- Cette méthode permet d'écrire un revenu par seconde (`+$1.2K/s`) lorsque le compteur d'argent affiche le revenu.
+function Format.perSecond(n: number): string
+	return "+" .. Format.money(math.max(0, n)) .. "/s"
+end
+
 -- Cette méthode permet d'écrire une distance arrondie au mètre (`1,234 m`) lorsque l'interface l'affiche.
 function Format.meters(n: number): string
 	return Format.thousands(math.max(0, n)) .. " m"

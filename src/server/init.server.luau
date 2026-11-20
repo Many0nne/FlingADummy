@@ -1,4 +1,4 @@
--- Amorçage du serveur : groupes de collision, gabarits maillés du mannequin, décor, remotes, données joueur, places du lobby, entraînement et lancers.
+-- Amorçage du serveur : groupes de collision, gabarits maillés du mannequin, décor (et cibles des objectifs), remotes, données joueur, places du lobby, entraînement et lancers.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
