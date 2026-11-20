@@ -110,8 +110,10 @@ function Test-PrCoversBranch([string]$Branch, $Pr) {
 
 # Cette methode permet de ramener un message d'erreur (gh, PowerShell) a une ligne courte lorsqu'il va au journal :
 # -Once compare des lignes entieres, un message sur plusieurs lignes serait repete a chaque passage.
+# Un jeton GitHub (ghp_..., github_pat_...) ou un en-tete d'authentification eventuellement affiche est masque.
 function Format-OneLine([string]$Text) {
   $t = ($Text -replace '\s+', ' ').Trim()
+  $t = $t -replace '\b(gh[pousr]_|github_pat_)[A-Za-z0-9_]+', '$1***' -replace '(?i)\b(token|bearer|basic)\s+\S+', '$1 ***'
   if ($t.Length -gt 200) { $t = $t.Substring(0, 200) + '...' }
   $t
 }
@@ -125,7 +127,7 @@ function Get-BranchPrs([string]$Branch) {
   try { $out = @(& $Gh pr list --repo $repo --head $Branch --state all --json number,state,headRefOid 2>&1) }
   catch { $script:ghError = "$Gh introuvable ou en erreur : $(Format-OneLine $_.Exception.Message)"; return $null }
   $code = $LASTEXITCODE
-  # Le message de gh ne contient pas de jeton : il va tel quel (sur une ligne) au journal.
+  # Sortie d'erreur de gh sur une ligne, jetons masques, pour le journal.
   $stderr = Format-OneLine (@($out | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] } | ForEach-Object { "$_" }) -join ' | ')
   $json = ($out | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] }) -join "`n"
   if ($code -ne 0 -or -not $json.Trim()) {

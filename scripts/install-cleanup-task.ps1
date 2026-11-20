@@ -32,8 +32,13 @@ if (-not (Get-Command $script).Parameters.ContainsKey('Gh')) { throw "$script ne
 $pwsh = (Get-Command pwsh).Source
 # La tache tourne sans profil (-NoProfile), donc sans ce qu'il ajoute au PATH (ex. ~\bin\gh.exe, shim qui choisit le compte
 # GitHub du depot) : le gh de cette session (ou -Gh) est fige dans la tache (#35). Le relancer apres avoir change de gh.
-$gh = if ($Gh) { (Resolve-Path $Gh).Path } else { (Get-Command gh -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1).Source }
-if (-not $gh) { throw "gh introuvable dans le PATH de cette session : l'installer, charger le profil qui l'ajoute, ou passer -Gh, puis relancer." }
+# -Gh accepte un chemin ou un nom de commande ; sans -Gh, premier executable gh du PATH.
+$name = if ($Gh) { $Gh } else { 'gh' }
+$gh = (Get-Command $name -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+if (-not $gh) { throw "gh introuvable ($name) : l'installer, charger le profil qui l'ajoute au PATH, ou passer -Gh <chemin>, puis relancer." }
+# Un alias ou une fonction gh du profil (ex. enveloppe du shim) passe avant l'executable dans la session, pas dans la tache.
+$first = Get-Command $name -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($first -and $first.CommandType -ne 'Application') { Write-Warning "gh est un(e) $($first.CommandType) dans cette session, mais la tache utilisera l'executable $gh : passer -Gh si ce n'est pas le bon." }
 # Plusieurs gh dans le PATH (shim + installation officielle) : rappeler lequel est fige, au cas ou le shim manquerait.
 $others = @(Get-Command gh -CommandType Application -All -ErrorAction SilentlyContinue | ForEach-Object Source | Where-Object { $_ -ne $gh })
 if ($others) { Write-Warning "gh fige : $gh (autres dans le PATH : $($others -join ', ')). Passer -Gh pour en choisir un autre." }
