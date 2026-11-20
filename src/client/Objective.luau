@@ -197,6 +197,9 @@ local function step()
 	if target then
 		arrowAnchor.CFrame = CFrame.new(target.Position + Vector3.new(0, ARROW_HEIGHT + bob, 0))
 	end
+	if hudArrow.Parent then
+		placeHudArrow(hudArrow.Parent :: GuiObject) -- suit les changements de taille d'écran (rotation du mobile)
+	end
 	hudArrow.Position = hudArrowBase + UDim2.fromOffset(hudArrowBob.X * bob * 8, hudArrowBob.Y * bob * 8)
 	if target and root and humanoid then
 		local feet = root.Position - Vector3.new(0, humanoid.HipHeight + root.Size.Y / 2 - 0.12, 0)
@@ -233,6 +236,7 @@ function Objective.init(localPlayer: Player, gui: ScreenGui)
 	worldArrow = UIKit.create("BillboardGui", {
 		Name = "ObjectiveArrow",
 		Adornee = arrowAnchor,
+		ResetOnSpawn = false, -- sinon détruite à la réapparition de l'avatar
 		LightInfluence = 0,
 		Size = UDim2.fromScale(3, 3),
 		Enabled = false,

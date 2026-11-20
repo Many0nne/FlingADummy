@@ -11,7 +11,7 @@ Rarity.LIST = {
 	{ name = "Epic", color = Color3.fromRGB(190, 90, 255) },
 	{ name = "Legendary", color = Color3.fromRGB(255, 190, 40) },
 	{ name = "Mythic", color = Color3.fromRGB(255, 70, 110) },
-	{ name = "Secret", color = Color3.fromRGB(40, 40, 48) },
+	{ name = "Secret", color = Color3.fromRGB(110, 255, 225) },
 } :: { Tier }
 
 -- Cette méthode permet de donner la rareté d'indice `index` (bornée) lorsqu'une carte affiche un objet.

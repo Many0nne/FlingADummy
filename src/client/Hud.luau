@@ -49,10 +49,10 @@ local function stat(name: string, default: number): number
 end
 
 -- Cette méthode permet d'ouvrir une fenêtre (et de fermer les autres) ou de la refermer lorsque le joueur clique sur
--- son bouton.
+-- son bouton ; aucune ne s'ouvre pendant la jauge (elle la couvrirait et capterait le clic de lancer).
 local function toggle(name: string)
 	local target = windows[name]
-	local open = not target.Visible
+	local open = not target.Visible and player:GetAttribute("Action") ~= "Holding"
 	for _, window in windows do
 		window.Visible = false
 	end
@@ -279,6 +279,26 @@ local function buildModels()
 	end
 end
 
+-- Cette méthode permet de reconstruire les rendus 3D d'une fenêtre ouverte lorsque les gabarits maillés du mannequin
+-- arrivent (dossier créé puis marqué Ready par Server.DummyAssets).
+local function watchTemplates()
+	local function watch(folder: Instance)
+		folder:GetAttributeChangedSignal("Ready"):Connect(Hud.refresh)
+	end
+	local folder = ReplicatedStorage:FindFirstChild(DummyShape.TEMPLATES)
+	if folder then
+		watch(folder)
+	else
+		local connection
+		connection = ReplicatedStorage.ChildAdded:Connect(function(child)
+			if child.Name == DummyShape.TEMPLATES then
+				connection:Disconnect()
+				watch(child)
+			end
+		end)
+	end
+end
+
 -- Cette méthode permet d'habiller le bouton d'action d'une carte (texte, couleur) lorsque la carte se rafraîchit.
 local function setAction(card: UIKit.Card, text: string, color: Color3)
 	card.action.Text = text
@@ -360,7 +380,10 @@ local function floatGain(amount: number)
 		BackgroundTransparency = 1,
 		Parent = gui,
 	})
-	UIKit.icon("power", { Size = UDim2.fromOffset(36, 36), Parent = holder })
+	local icon = UIKit.icon("power", { Size = UDim2.fromOffset(36, 36), Parent = holder })
+	TweenService:Create(icon, TweenInfo.new(0.9), {
+		[if icon:IsA("ImageLabel") then "ImageTransparency" else "TextTransparency"] = 1,
+	}):Play()
 	local label = UIKit.text({
 		Position = UDim2.fromOffset(40, 0),
 		Size = UDim2.new(1, -40, 1, 0),
@@ -537,8 +560,17 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 		lastPower = power
 		Hud.refresh()
 	end)
+	-- Les valeurs sauvegardées arrivent avant DataReady : pas de popup pour elles, seulement pour les gains en jeu
+	player:GetAttributeChangedSignal("DataReady"):Connect(function()
+		lastPower = stat("ThrowPower", GameConfig.START_POWER)
+		levelStartPower = lastPower
+	end)
 	player:GetAttributeChangedSignal("TrainLevel"):Connect(function()
 		local power = stat("ThrowPower", GameConfig.START_POWER)
+		if player:GetAttribute("DataReady") ~= true then
+			refreshTraining()
+			return
+		end
 		showPopup("LEVEL UP!", "Throw Power +" .. Format.short(power - levelStartPower), C.cyan)
 		levelStartPower = power
 		UIKit.playSound("LevelUp")
@@ -546,6 +578,9 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 	end)
 	player:GetAttributeChangedSignal("TrainReps"):Connect(refreshTraining)
 	player:GetAttributeChangedSignal("GearTier"):Connect(function()
+		if player:GetAttribute("DataReady") ~= true then
+			return
+		end
 		local gear = Training.gear(stat("GearTier", 1))
 		showPopup("NEW EQUIPMENT!", gear.name .. "  +" .. Format.short(gear.gain) .. " Throw Power / rep")
 		UIKit.playSound("LevelUp", 1.2)
@@ -555,6 +590,7 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 	end)
 	player:GetAttributeChangedSignal("Action"):Connect(refreshState)
 	player:GetAttributeChangedSignal("LaneState"):Connect(refreshState)
+	watchTemplates()
 	Hud.refresh()
 	refreshTraining()
 	refreshState()
