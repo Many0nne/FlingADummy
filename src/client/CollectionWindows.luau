@@ -826,11 +826,14 @@ local function buildIndex(gui: ScreenGui)
 end
 
 -- Cette méthode permet de brancher une invite de pad d'achat de présentoir (active seulement sur le pad de sa base
--- tant que le maximum n'est pas atteint, prix affiché, refus annoncé si l'argent manque) lorsqu'elle apparaît.
+-- tant que le maximum n'est pas atteint, prix affiché, achat envoyé au serveur, refus annoncé si l'argent manque)
+-- lorsqu'elle apparaît.
 local function bindPad(prompt: Instance)
 	if not prompt:IsA("ProximityPrompt") then
 		return
 	end
+	-- Cette méthode permet d'activer l'invite pour le propriétaire seulement et d'y afficher le prix lorsque le prix,
+	-- le maximum ou la place du joueur changent.
 	local function update()
 		local price = prompt:GetAttribute("Price")
 		prompt.Enabled = prompt:GetAttribute("Slot") == player:GetAttribute("Slot") and not prompt:GetAttribute("Maxed")
@@ -844,7 +847,12 @@ local function bindPad(prompt: Instance)
 	prompt.Triggered:Connect(function()
 		local price = prompt:GetAttribute("Price")
 		local money = (player:GetAttribute("Money") :: number?) or 0
-		if type(price) == "number" and money < price then
+		if prompt:GetAttribute("Slot") ~= player:GetAttribute("Slot") or type(price) ~= "number" then
+			return
+		end
+		if money >= price then
+			send("BuyDisplay")
+		else
 			hooks.popup({
 				title = "NOT ENOUGH MONEY!",
 				subtitle = "Next display: " .. Format.money(price),

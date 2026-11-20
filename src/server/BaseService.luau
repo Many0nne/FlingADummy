@@ -171,6 +171,12 @@ local function render(slot: Slot, player: Player?, force: boolean?)
 	slot.base.income.Text = Format.money(income) .. "/s"
 end
 
+-- Cette méthode permet de savoir si la première pose du tutoriel reste à faire (elle se fait à la main, sur un
+-- présentoir) lorsque le joueur demande AUTO, Place ou « Place best ».
+local function firstPlacePending(player: Player): boolean
+	return Tutorial.current((player:GetAttribute("Tutorial") :: number?) or 0) == "Place"
+end
+
 -- Cette méthode permet de rendre la base d'un joueur et de publier sa collection dans ses attributs (stock, base,
 -- présentoirs achetés, Index, dernier gagné) lorsque sa collection change.
 local function refresh(player: Player, force: boolean?)
@@ -179,10 +185,16 @@ local function refresh(player: Player, force: boolean?)
 		render(slot, player, force)
 	end
 	local data = PlayerData.collection(player)
-	if not data then
-		return
+	if not data or not player:GetAttribute("DataReady") then
+		return -- rien de publié avant le chargement : le client ne voit pas une collection vide puis la vraie
 	end
 	Inventory.checkLast(data)
+	-- Première pose du tutoriel (à la main) : il faut un mannequin proposé, sinon rien ne permet de poser (gagné puis
+	-- parti avant de le poser, ou vendu) ; le plus récent du stock
+	if not data.last and #data.stock > 0 and firstPlacePending(player) then
+		local newest = data.stock[#data.stock]
+		data.last = { id = newest.id, size = newest.size }
+	end
 	player:SetAttribute("Stock", Inventory.encodeList(data.stock))
 	player:SetAttribute("BaseDummies", Inventory.encodeBase(data.base))
 	player:SetAttribute("Displays", data.displays)
@@ -229,12 +241,6 @@ function BaseService.award(player: Player, luck: number): Prize?
 		odds = Collection.odds(entry),
 		isNew = isNew,
 	}
-end
-
--- Cette méthode permet de savoir si la première pose du tutoriel reste à faire (elle se fait à la main, sur un
--- présentoir) lorsque le joueur demande AUTO, Place ou « Place best ».
-local function firstPlacePending(player: Player): boolean
-	return Tutorial.current((player:GetAttribute("Tutorial") :: number?) or 0) == "Place"
 end
 
 -- Cette méthode permet de savoir si le joueur peut utiliser AUTO lorsqu'il le demande : première pose du tutoriel
@@ -285,7 +291,7 @@ end
 
 -- Cette méthode permet d'appliquer une action de la fenêtre d'inventaire ou du stand SELL lorsque le client la
 -- demande : "Place" (clé du stock, règle AUTO), "Remove" (présentoir), "Sell" (clé du stock), "SellRarity" (rareté),
--- "PlaceBest". Le serveur valide tout ; renvoie true si la collection a changé.
+-- "PlaceBest", "BuyDisplay" (pad de sa base). Le serveur valide tout ; renvoie true si la collection a changé.
 function BaseService.act(player: Player, action: any, arg: any): boolean
 	local data = PlayerData.collection(player)
 	if not data or not player:GetAttribute("DataReady") then
@@ -308,6 +314,8 @@ function BaseService.act(player: Player, action: any, arg: any): boolean
 		changed = Inventory.remove(data, arg)
 	elseif action == "PlaceBest" then
 		changed = not firstPlacePending(player) and Inventory.placeBest(data)
+	elseif action == "BuyDisplay" then
+		return BaseService.buyDisplay(player)
 	elseif action == "SellRarity" then
 		if typeof(arg) == "number" and Rarity.LIST[arg] then
 			local count, total = Inventory.sellRarity(data, arg)
@@ -413,7 +421,7 @@ end
 -- Cette méthode permet de brancher en Studio les attributs de test (MCP) lorsque le joueur arrive : DebugPlace = n
 -- pose le dernier gagné sur le présentoir n (comme l'invite), toute autre valeur avec AUTO sans condition ;
 -- DebugGive = « id:taille » ajoute ce mannequin comme s'il venait d'être gagné ; DebugInventory = « Action » ou
--- « Action|argument » (actions de BaseService.act, et BuyDisplay).
+-- « Action|argument » (actions de BaseService.act).
 local function bindDebug(player: Player)
 	player:GetAttributeChangedSignal("DebugPlace"):Connect(function()
 		local value = player:GetAttribute("DebugPlace")
@@ -437,16 +445,14 @@ local function bindDebug(player: Player)
 		end
 		player:SetAttribute("DebugInventory", nil)
 		local action, arg = string.match(value, "^(%w+)|?(.*)$")
-		local result = if action == "BuyDisplay"
-			then BaseService.buyDisplay(player)
-			else BaseService.act(player, action, tonumber(arg) or (if arg ~= "" then arg else nil))
+		local result = BaseService.act(player, action, tonumber(arg) or (if arg ~= "" then arg else nil))
 		print(string.format("[Debug] %s -> %s", value, tostring(result)))
 	end)
 end
 
--- Cette méthode permet de brancher la pose (remote PlaceDummy), les actions de collection (remote Inventory), les pads
--- d'achat de présentoir, le revenu et le suivi des joueurs lorsque le serveur démarre (après SlotService, qui attribue
--- les places).
+-- Cette méthode permet de brancher la pose (remote PlaceDummy), les actions de collection et l'achat de présentoir
+-- (remote Inventory), le revenu et le suivi des joueurs lorsque le serveur démarre (après SlotService, qui attribue les
+-- places).
 function BaseService.init(builtSlots: { Slot }, placeRemote: RemoteEvent, inventoryRemote: RemoteEvent)
 	slots = builtSlots
 	placeRemote.OnServerEvent:Connect(function(player, display)
@@ -457,11 +463,6 @@ function BaseService.init(builtSlots: { Slot }, placeRemote: RemoteEvent, invent
 	end)
 	for _, slot in slots do
 		render(slot, nil)
-		slot.base.pad.prompt.Triggered:Connect(function(player)
-			if slotOf[player] == slot then
-				BaseService.buyDisplay(player)
-			end
-		end)
 	end
 	Players.PlayerAdded:Connect(function(player)
 		-- SlotService pose l'attribut Slot dans son propre PlayerAdded : attendu s'il n'est pas encore là

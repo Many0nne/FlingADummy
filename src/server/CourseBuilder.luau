@@ -571,7 +571,8 @@ end
 
 -- Cette méthode permet de construire le pad d'achat de présentoir d'une place (dalle en briques vertes au sol,
 -- panneau en bois « 6 > 7 » avec le prix sur une plaque verte, comme le pad « 8 > 9 » de la référence 09) devant la
--- base, lorsque le hub est construit ; l'invite « Buy display » est activée par le client du propriétaire.
+-- base, lorsque le hub est construit ; l'invite « Buy display » est activée par le client du propriétaire, qui envoie
+-- l'achat au serveur (remote Inventory).
 local function buildPad(parent: Instance, slot: Slot): Pad
 	local spot, facing = CourseLayout.padPosition(slot.index)
 	local model = Instance.new("Model")

@@ -20,7 +20,7 @@ export type Remotes = {
 	BuyUpgrade: RemoteEvent, -- client → serveur : "Gear"
 	PlaceDummy: RemoteEvent, -- client → serveur : présentoir où poser le dernier mannequin gagné, ou nil (AUTO)
 	-- client → serveur : action sur la collection (Server.BaseService.act) : "Place" / "Sell" + clé « id:taille » du
-	-- stock, "Remove" + présentoir, "SellRarity" + rareté, "PlaceBest"
+	-- stock, "Remove" + présentoir, "SellRarity" + rareté, "PlaceBest", "BuyDisplay" (pad de sa base)
 	Inventory: RemoteEvent,
 	ResultDone: RemoteEvent, -- client → serveur : GO BACK, fin du résultat et du tirage
 	StopTraining: RemoteEvent, -- client → serveur : bouton STOP ou saut pendant l'entraînement

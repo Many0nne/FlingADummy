@@ -71,6 +71,19 @@ function Inventory.discover(data: Data, entry: Entry): boolean
 	return best == nil
 end
 
+-- Cette méthode permet de donner la position du mannequin le moins rentable du stock (le plus ancien à égalité)
+-- lorsque le stock déborde.
+local function worstInStock(stock: { Entry }): number?
+	local worst, worstIncome = nil, math.huge
+	for position, entry in stock do
+		local income = Collection.income(entry)
+		if income < worstIncome then
+			worst, worstIncome = position, income
+		end
+	end
+	return worst
+end
+
 -- Cette méthode permet de relire la collection sauvegardée (entrées inconnues ou abîmées ignorées) lorsque les données
 -- d'un joueur sont chargées. Migration de #13 : l'ancien mannequin en main (`pending`) passe au stock, la liste
 -- `discovered` devient l'Index (taille 1, relevée par ce qui est possédé).
@@ -103,7 +116,13 @@ function Inventory.read(saved: any): Data
 	local pending = copyEntry(saved.pending)
 	if pending then
 		table.insert(data.stock, pending)
+		data.last = { id = pending.id, size = pending.size } -- toujours à poser : le panneau le propose
 	end
+	-- Plafond du stock (migration comprise) : les moins rentables en trop sont écartés
+	while #data.stock > GameConfig.INVENTORY_MAX do
+		table.remove(data.stock, worstInStock(data.stock) :: number)
+	end
+	Inventory.checkLast(data)
 	if type(saved.index) == "table" then
 		for id, size in saved.index do
 			if type(id) == "string" and Collection.get(id) and type(size) == "number" and Collection.SIZES[size] then
@@ -165,19 +184,6 @@ end
 -- l'inventaire l'affichent ou la vendent.
 function Inventory.sellValue(entry: Entry): number
 	return Collection.income(entry) * GameConfig.SELL_MINUTES * 60
-end
-
--- Cette méthode permet de donner la position du mannequin le moins rentable du stock (le plus ancien à égalité)
--- lorsque le stock déborde.
-local function worstInStock(stock: { Entry }): number?
-	local worst, worstIncome = nil, math.huge
-	for position, entry in stock do
-		local income = Collection.income(entry)
-		if income < worstIncome then
-			worst, worstIncome = position, income
-		end
-	end
-	return worst
 end
 
 -- Cette méthode permet d'ajouter un mannequin au stock lorsque le joueur le gagne ou le retire d'un présentoir ;

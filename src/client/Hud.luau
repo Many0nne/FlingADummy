@@ -97,6 +97,7 @@ local function toggle(name: string)
 		UIKit.openWindow(target)
 	end
 	Hud.refresh()
+	CollectionWindows.refresh() -- les fenêtres de collection ne suivent que leurs attributs : rafraîchies à l'ouverture
 end
 
 -- Cette méthode permet de créer une ligne de compteur (icône dessinée + valeur à contour, ancrée à gauche pour
@@ -421,7 +422,10 @@ end
 local function watchTemplates()
 	-- Cette méthode permet de rafraîchir les fenêtres lorsque le dossier des gabarits passe à Ready.
 	local function watch(folder: Instance)
-		folder:GetAttributeChangedSignal("Ready"):Connect(Hud.refresh)
+		folder:GetAttributeChangedSignal("Ready"):Connect(function()
+			Hud.refresh()
+			CollectionWindows.refresh()
+		end)
 	end
 	local folder = ReplicatedStorage:FindFirstChild(DummyShape.TEMPLATES)
 	if folder then
@@ -515,7 +519,6 @@ function Hud.refresh()
 		buildModels()
 		refreshGear(money)
 	end
-	CollectionWindows.refresh()
 	refreshOffer(money, gearCost)
 end
 
@@ -791,17 +794,22 @@ local function flyExpected(gain: number)
 	local now = os.clock()
 	local left = gain
 	local kept = {}
-	for _, expected in expectedGains do
-		if now > expected.untilTime then
-			continue
-		elseif seeded and expected.amount <= left then
-			left -= expected.amount
-			flyGain("Money", expected.amount, expected.from)
-		else
-			table.insert(kept, expected)
+	-- Montant exact d'abord (une vente refusée ne prend pas la place d'une vraie), puis les plus anciennes qui tiennent
+	for pass = 1, 2 do
+		kept = {}
+		for _, expected in expectedGains do
+			local fits = if pass == 1 then expected.amount == left else expected.amount <= left
+			if now > expected.untilTime then
+				continue
+			elseif seeded and fits and left > 0 then
+				left -= expected.amount
+				flyGain("Money", expected.amount, expected.from)
+			else
+				table.insert(kept, expected)
+			end
 		end
+		expectedGains = kept
 	end
-	expectedGains = kept
 end
 
 -- Cette méthode permet de construire le HUD et de le brancher sur les attributs du joueur lorsque le client démarre ;
