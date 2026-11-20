@@ -32,7 +32,7 @@ elif sys.argv[1] == "status":
 $fakeGh = @'
 # Faux gh : seul `gh pr list --head <branche>` est simule, a partir du JSON pointe par FAD_FAKE_GH.
 $data = Get-Content $env:FAD_FAKE_GH -Raw | ConvertFrom-Json -AsHashtable
-if ($data.fail) { exit 1 }
+if ($data.fail) { Write-Error 'fake gh : panne simulee'; exit 1 }
 $branch = $args[[array]::IndexOf($args, '--head') + 1]
 $prs = $data.prs[$branch]
 if (-not $prs) { '[]' } else { ConvertTo-Json @($prs) -Compress }

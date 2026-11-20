@@ -18,11 +18,15 @@
   Lance toutes les 10 minutes par la tache planifiee "Fling a Dummy worktree cleanup" (install-cleanup-task.ps1) ;
   journal dans worktrees\.cleanup.log.
   Compte GitHub : GH_CONFIG_DIR est lu dans .claude\settings.local.json du checkout principal s'il y est declare.
+  -Gh : chemin de gh a utiliser (defaut : celui du PATH). La tache planifiee tourne sans profil PowerShell, donc sans
+  les ajouts au PATH qu'il fait (ex. un shim qui choisit le compte) : install-cleanup-task.ps1 y fige le gh de la session
+  qui l'installe. Quand gh echoue, son code de retour et sa sortie d'erreur sont journalises.
 
 .EXAMPLE
   .\scripts\fad-worktree-cleanup.ps1 -DryRun
+  .\scripts\fad-worktree-cleanup.ps1 -Gh "$HOME\bin\gh.exe"
 #>
-param([switch]$DryRun)
+param([switch]$DryRun, [string]$Gh = 'gh')
 
 $ErrorActionPreference = 'Stop'
 # Racine du checkout principal, meme si le script est lance depuis la copie d'un worktree.
@@ -104,13 +108,35 @@ function Test-PrCoversBranch([string]$Branch, $Pr) {
   return ($LASTEXITCODE -eq 0)
 }
 
+# Cette methode permet de ramener un message d'erreur (gh, PowerShell) a une ligne courte lorsqu'il va au journal :
+# -Once compare des lignes entieres, un message sur plusieurs lignes serait repete a chaque passage.
+# Un jeton GitHub (ghp_..., github_pat_...) ou un en-tete d'authentification eventuellement affiche est masque.
+function Format-OneLine([string]$Text) {
+  $t = ($Text -replace '\s+', ' ').Trim()
+  $t = $t -replace '\b(gh[pousr]_|github_pat_)[A-Za-z0-9_]+', '$1***' -replace '(?i)\b(token|bearer|basic)\s+\S+', '$1 ***'
+  if ($t.Length -gt 200) { $t = $t.Substring(0, 200) + '...' }
+  $t
+}
+
 # Cette methode permet de lister les PR d'une branche (etat, commit de tete) lorsqu'il faut savoir si son travail est merge ;
-# $null si gh ne repond pas (on ne supprime alors rien).
+# $null si gh ne repond pas (on ne supprime alors rien), la cause (code de retour, debut de la sortie d'erreur) dans $script:ghError.
 function Get-BranchPrs([string]$Branch) {
-  try { $json = gh pr list --repo $repo --head $Branch --state all --json number,state,headRefOid 2>$null } catch { return $null }
-  if ($LASTEXITCODE -ne 0 -or -not "$json".Trim()) { return $null }
+  $script:ghError = $null
+  $ErrorActionPreference = 'Continue'  # stderr de gh capture (2>&1) sans devenir une erreur bloquante
+  $global:LASTEXITCODE = 0  # un -Gh en .ps1 qui finit sans exit laisserait le code de la commande precedente
+  try { $out = @(& $Gh pr list --repo $repo --head $Branch --state all --json number,state,headRefOid 2>&1) }
+  catch { $script:ghError = "$Gh introuvable ou en erreur : $(Format-OneLine $_.Exception.Message)"; return $null }
+  $code = $LASTEXITCODE
+  # Sortie d'erreur de gh sur une ligne, jetons masques, pour le journal.
+  $stderr = Format-OneLine (@($out | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] } | ForEach-Object { "$_" }) -join ' | ')
+  $json = ($out | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] }) -join "`n"
+  if ($code -ne 0 -or -not $json.Trim()) {
+    $cause = if ($code -ne 0) { "code $code" } else { 'code 0 mais sortie vide' }
+    $script:ghError = "$cause$(if ($stderr) { " : $stderr" } else { ', sans sortie d''erreur' })"
+    return $null
+  }
   # La virgule garde un tableau vide (branche sans PR) : sans elle, l'appelant recevrait $null, comme une panne de gh.
-  try { return , @("$json" | ConvertFrom-Json) } catch { return $null }
+  try { return , @($json | ConvertFrom-Json) } catch { $script:ghError = "sortie JSON illisible : $(Format-OneLine $_.Exception.Message)"; return $null }
 }
 
 # Cette methode permet de dire pourquoi un worktree ou sa branche locale ne peuvent pas etre supprimes sans perte
@@ -198,7 +224,7 @@ try {
 
     # Palier 1 : threads termines mais travail non clos (PR ouverte ou absente, ou gh muet) -> arret de Rojo seulement.
     if (-not ($delivered -or $abandoned)) {
-      if ($null -eq $prs) { Write-Log "gh sans reponse pour $branch : suppression impossible, Rojo seulement" -Once }
+      if ($null -eq $prs) { Write-Log "gh sans reponse pour $branch : suppression impossible, Rojo seulement ($script:ghError)" -Once }
       if (-not (Test-Path (Join-Path $runDir "$slug.pid"))) { continue }
       if ($DryRun) { Write-Host "A ARRETER $branch"; continue }
       try {
