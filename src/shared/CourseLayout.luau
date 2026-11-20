@@ -14,8 +14,9 @@ CourseLayout.STATION_GAP = 10 -- de la clôture d'entrée de la base au centre d
 CourseLayout.STATION_SHIFT = 12 -- décalage de l'appareil sur le côté de l'entrée, vers la zone de lancer (+Z)
 CourseLayout.STATION_SIZE = 9 -- côté du podium de l'appareil
 
--- Bande de lancer : toute la largeur de la piste, de z = -BAND_DEPTH au départ (z = 0), dessus à BAND_TOP
-CourseLayout.BAND_TOP = 0.3
+-- Bande de lancer : toute la largeur de la piste, de z = -BAND_DEPTH au départ (z = 0), au ras du sol
+CourseLayout.BAND_TOP = 0
+CourseLayout.EDGE_RISE = 0.25 -- le liseré blanc dépasse un peu du sol
 CourseLayout.BAND_Z = -GameConfig.BAND_DEPTH / 2 -- ligne où se figent les joueurs
 CourseLayout.BAND_EDGE = 1.2 -- liseré blanc, côté piste (z de 0 à BAND_EDGE), compté comme bande
 CourseLayout.BAND_REACH = 8 -- hauteur au-dessus de la bande où l'avatar compte comme posé dessus (studs)

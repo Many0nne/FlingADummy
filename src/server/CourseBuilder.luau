@@ -322,8 +322,8 @@ local function buildLaunchZone(parent: Instance)
 	local half = GameConfig.TRACK_WIDTH / 2
 	local depth = GameConfig.BAND_DEPTH
 	local top = CourseLayout.BAND_TOP
-	ground(parent, -half, half, -GameConfig.LAUNCH_DEPTH, 0, Zones.LIST[1].ground, "LaunchZone")
-	-- Carreaux de BAND_TILE studs aux deux teintes alternées, comme la bande des références 01 / 09
+	ground(parent, -half, half, -GameConfig.LAUNCH_DEPTH, -depth, Zones.LIST[1].ground, "LaunchZone")
+	-- Carreaux de BAND_TILE studs aux deux teintes alternées (01 / 09), au ras de la pelouse
 	local model = Instance.new("Model")
 	model.Name = "LaunchBand"
 	local columns = math.floor(GameConfig.TRACK_WIDTH / BAND_TILE + 0.5)
@@ -341,11 +341,11 @@ local function buildLaunchZone(parent: Instance)
 			})
 		end
 	end
-	-- Liseré blanc en bordure, côté piste
+	-- Liseré blanc en bordure, côté piste, à peine surélevé
 	Build.part({
 		Name = "BandEdge",
 		Size = Vector3.new(GameConfig.TRACK_WIDTH, 1.2, CourseLayout.BAND_EDGE),
-		Position = Vector3.new(0, top + 0.1 - 0.6, CourseLayout.BAND_EDGE / 2),
+		Position = Vector3.new(0, top + CourseLayout.EDGE_RISE - 0.6, CourseLayout.BAND_EDGE / 2),
 		Color = COLORS.line,
 		Variant = Build.BRICK,
 		Parent = model,

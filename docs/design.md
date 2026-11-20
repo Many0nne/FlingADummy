@@ -25,7 +25,7 @@ multipliés par la zone atteinte.
    face à la piste (écarté de 5 studs au moins d'un voisin déjà figé), et il tient un mannequin au-dessus de sa tête.
    Plus de déplacement ni de saut jusqu'au lancer (pas de sortie, comme les références).
 2. **Jauge à 1 clic** : une jauge verticale apparaît, l'aiguille monte et descend seule (`+1` à `+20`) ; un clic, un toucher
-   ou Espace l'arrête, avec un « pop » et un petit rebond de la jauge, puis le whoosh au lâcher. Pas de zone PERFECT ni
+   ou Espace l'arrête, avec un clic net et un petit rebond de la jauge, puis le whoosh au lâcher. Pas de zone PERFECT ni
    de bonus : le haut de la jauge est le max (`+20`), comme dans les jeux de référence. **Valeur vérifiée par le
    serveur** (`Shared.Gauge.verify`) : il note l'ouverture de la jauge, estime l'instant du clic à la réception
    (lâcher de l'animation et latence mesurée déduits, latence `GetNetworkPing` (aller-retour) bornée à 1 s, tolérance 0,12 s, lâcher en retard de
@@ -62,8 +62,8 @@ multipliés par la zone atteinte.
   auvents rayés « SELL » et « SHOP » (branchés par la collection et la boutique), chevrons jaunes vers la zone de
   lancer. Plan dans `Shared.CourseLayout`.
 - **Zone de lancer commune** : pelouse du hub, puis la **bande de lancer** sur toute la largeur de la piste (8 studs de
-  profond, carreaux de 4 studs à tenons orange et jaune, reflet blanc qui glisse, animé par chaque client) et un liseré
-  blanc côté piste (compté comme bande), comme *Throw Food For Animals* et *Throw a Seed*. Pas de place attitrée : jusqu'à 15 joueurs figés
+  profond, au ras de la pelouse, carreaux de 4 studs à tenons orange et jaune, reflet blanc qui glisse, animé par chaque client) et un liseré
+  blanc à peine surélevé côté piste (compté comme bande), comme *Throw Food For Animals* et *Throw a Seed*. Pas de place attitrée : jusqu'à 15 joueurs figés
   y tiennent côte à côte (4 par serveur). Le joueur réapparaît dans le hub, 6 studs derrière la bande, et y revient
   après chaque lancer.
 - **Piste fermée aux avatars** : barrière invisible juste derrière le liseré (groupe `AvatarBarrier`, qui ne
