@@ -56,6 +56,8 @@ rejetée pour un style inventé.
   `tests/lib/` ; `Lib.R15Rig` : cinématique directe d'un avatar R15 pour vérifier une pose). La logique pure va dans
   `src/shared` pour être testable.
 - `GameConfig.luau` est exclu de StyLua (`-- stylua: ignore`) : garder l'alignement en colonnes à la main.
+- Animations : le jeu joue les clips publiés, pas ceux du dépôt ; modifier un clip impose de republier et de mettre à
+  jour `assets/anim/published.json` (procédure : `assets/anim/README.md`, un test de `check.sh` le contrôle).
 - **Mesurer avant de promettre** : un effet de gameplay annoncé (distance, gains, temps) se mesure, et la valeur figure
   dans le compte rendu. Sans mesure, écrire « non mesuré ».
 
