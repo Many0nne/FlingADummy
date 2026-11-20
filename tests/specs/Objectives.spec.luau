@@ -10,7 +10,7 @@ return function(T, Loader)
 			laneState = "Ready",
 			step = "Throw",
 			canBuyGear = false,
-			canBuyDummy = false,
+			hasPrize = false,
 		}
 		for key, value in patch or {} do
 			s[key] = value
@@ -26,21 +26,25 @@ return function(T, Loader)
 			T.expectEqual(Objectives.pick(state({ step = "Train" })).target, "Train")
 		end)
 		T.it("étape équipement : rien tant qu'il n'est pas abordable, puis Shop et sa carte", function()
-			T.expectEqual(Objectives.pick(state({ step = "BuyGear", canBuyDummy = true })), nil)
+			T.expectEqual(Objectives.pick(state({ step = "BuyGear", hasPrize = true })), nil)
 			local buy = Objectives.pick(state({ step = "BuyGear", canBuyGear = true }))
 			T.expectEqual(buy.id, "BuyGear")
 			T.expectEqual(buy.button, "Shop")
 			T.expectEqual(buy.buy, "Gear")
 		end)
-		T.it("étape mannequin : rien tant qu'il n'est pas abordable, puis Dummies et sa carte", function()
-			T.expectEqual(Objectives.pick(state({ step = "BuyDummy", canBuyGear = true })), nil)
-			local buy = Objectives.pick(state({ step = "BuyDummy", canBuyDummy = true }))
-			T.expectEqual(buy.id, "BuyDummy")
-			T.expectEqual(buy.button, "Dummies")
-			T.expectEqual(buy.buy, "Value")
-		end)
+		T.it(
+			"étape pose : un présentoir libre de sa base quand un mannequin gagné est en main, sinon relancer",
+			function()
+				local place = Objectives.pick(state({ step = "Place", hasPrize = true }))
+				T.expectEqual(place.id, "Place")
+				T.expectEqual(place.target, "Place")
+				T.expectEqual(place.button, nil)
+				T.expectEqual(place.buy, nil)
+				T.expectEqual(Objectives.pick(state({ step = "Place" })).id, "Throw")
+			end
+		)
 		T.it("plus aucun objectif une fois le tutoriel fini, même avec un achat possible", function()
-			local finished = state({ canBuyGear = true, canBuyDummy = true })
+			local finished = state({ canBuyGear = true, hasPrize = true })
 			finished.step = nil -- (un nil dans `patch` ne remplacerait rien)
 			T.expectEqual(Objectives.pick(finished), nil)
 		end)
@@ -57,7 +61,7 @@ return function(T, Loader)
 			T.expectEqual(Objectives.pick(state()).text, "Throw your dummy!")
 			T.expectEqual(Objectives.pick(state({ step = "Train" })).text, "Train!")
 			T.expectEqual(Objectives.pick(state({ step = "BuyGear", canBuyGear = true })).text, "Buy better gear!")
-			T.expectEqual(Objectives.pick(state({ step = "BuyDummy", canBuyDummy = true })).text, "Upgrade your dummy!")
+			T.expectEqual(Objectives.pick(state({ step = "Place", hasPrize = true })).text, "Place your dummy!")
 		end)
 	end)
 

@@ -1,4 +1,5 @@
 -- Amorçage du client : HUD, objectif, poses des avatars, lancer, caméra et écran de vol, effets des crashs, résultat,
+-- tirage du mannequin de collection et pose dans la base,
 -- branchés sur les remotes du serveur.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -11,6 +12,7 @@ local FlightCamera = require(script.FlightCamera)
 local FlightView = require(script.FlightView)
 local Hud = require(script.Hud)
 local Objective = require(script.Objective)
+local Prize = require(script.Prize)
 local ResultScreen = require(script.ResultScreen)
 local ThrowCinematic = require(script.ThrowCinematic)
 local ThrowController = require(script.ThrowController)
@@ -33,7 +35,7 @@ local gui = Hud.screen()
 Objective.init(player, gui)
 FlightView.init(gui)
 ResultScreen.init(gui)
-ResultScreen.onTotal = Hud.releaseMoney
+Prize.init(player, remotes, gui)
 CharacterPoser.init()
 ThrowController.init(player, remotes, gui)
 FlightCamera.init(player)
@@ -50,9 +52,17 @@ remotes.LaunchStarted.OnClientEvent:Connect(function(model: Model)
 	FlightCamera.follow(model)
 	Effects.setFlying(model)
 end)
+local lastResult: any = nil
+-- Résultat compté : place au tirage du mannequin gagné
+ResultScreen.onDone = function()
+	ResultScreen.hide()
+	FlightView.hide()
+	Prize.play(lastResult)
+end
 remotes.LaunchResult.OnClientEvent:Connect(function(result)
 	FlightView.settle()
 	Effects.setFlying(nil)
+	lastResult = result
 	ResultScreen.show(result)
 end)
 player:GetAttributeChangedSignal("LaneState"):Connect(function()

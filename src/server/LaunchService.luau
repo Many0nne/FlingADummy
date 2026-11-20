@@ -1,7 +1,8 @@
 -- Lancers : l'avatar projette le mannequin depuis ses mains, le serveur suit le vol (distance, zone, os cassés par
--- membre, vitres et objets détruits sur la piste partagée), annonce chaque choc aux clients (effets) et calcule les
--- gains. Toute la physique est simulée par le serveur (propriétaire réseau nil) ; plusieurs vols coexistent (un par
--- joueur, plus les mannequins de test lancés dans Studio).
+-- membre, vitres et objets détruits sur la piste partagée), annonce chaque choc aux clients (effets) et calcule la
+-- CHANCE qui pousse le tirage du mannequin de collection (pas d'argent). Toute la physique est simulée par le
+-- serveur (propriétaire réseau nil) ; plusieurs vols coexistent (un par joueur, plus les mannequins de test lancés
+-- dans Studio).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -16,6 +17,7 @@ local Zones = require(Shared.Zones)
 
 local ObstacleRules = require(Shared.ObstacleRules)
 
+local BaseService = require(script.Parent.BaseService)
 local CourseBuilder = require(script.Parent.CourseBuilder)
 local DummyFactory = require(script.Parent.DummyFactory)
 local Obstacles = require(script.Parent.Obstacles)
@@ -66,6 +68,7 @@ local LaunchService = {}
 local remotes: Remotes.Remotes
 local dummiesFolder: Folder
 local flights: { [any]: Flight } = {}
+local results: { [Player]: Flight } = {} -- vol dont le résultat et le tirage sont à l'écran
 local rng = Random.new()
 local botCount = 0
 
@@ -323,19 +326,36 @@ local function checkSmashed(list: { Flight })
 	end
 end
 
--- Cette méthode permet de clore un vol (gains, record, blessures et cause envoyées au client) lorsque le mannequin
--- s'est arrêté, puis de retirer le mannequin et de rendre la main au joueur après RESULT_TIME.
+-- Cette méthode permet de rendre la main au joueur (retour au hub derrière la bande) lorsque son résultat et son
+-- tirage sont finis (GO BACK du client, ou RESULT_MAX_TIME) ; sans effet si ce résultat est déjà clos.
+local function closeResult(player: Player, flight: Flight)
+	if results[player] ~= flight then
+		return
+	end
+	results[player] = nil
+	if
+		player.Parent
+		and SlotService.getSlot(player) == flight.slot
+		and player:GetAttribute("LaneState") == "Result"
+	then
+		player:SetAttribute("LaneState", "Ready")
+	end
+end
+
+-- Cette méthode permet de clore un vol lorsque le mannequin s'est arrêté : CHANCE du lancer, tirage du mannequin
+-- de collection (Server.BaseService), record, blessures et cause envoyés au client, qui joue le résultat puis le
+-- tirage. Le lancer ne rapporte pas d'argent. Le mannequin lancé quitte la piste après RESULT_CLEAR_TIME.
 local function finish(flight: Flight, elapsed: number)
 	flights[flight.key] = nil
 	local player = flight.owner
-	local zone = Zones.at(flight.distance)
-	local result: any = Economy.payout({
+	local result: any = Economy.chance({
 		distance = flight.distance,
 		bones = flight.totalBones,
 		smashed = flight.smashed,
-		zoneMultiplier = zone.multiplier,
-	}, if player then (player:GetAttribute("ValueLevel") :: number?) or 1 else 1)
-	result.zone = Zones.indexAt(flight.distance)
+	})
+	result.bones = flight.totalBones
+	result.smashed = flight.smashed
+	result.landing = flight.torso.Position
 	if player then
 		local best = (player:GetAttribute("BestDistance") :: number?) or 0
 		result.record = result.distance > best and best > 0
@@ -344,32 +364,32 @@ local function finish(flight: Flight, elapsed: number)
 		result.cause = if flight.worstImpact
 			then Damage.cause(flight.worstImpact.kind, flight.worstImpact.speed)
 			else nil
-		PlayerData.addMoney(player, result.total)
+		result.prize = BaseService.award(player, result.total)
 		PlayerData.recordDistance(player, result.distance)
 		player:SetAttribute("LaneState", "Result")
+		results[player] = flight
 		remotes.LaunchResult:FireClient(player, result)
+		task.delay(GameConfig.RESULT_MAX_TIME, closeResult, player, flight)
 	end
 	if RunService:IsStudio() then
 		print(
 			string.format(
-				"[Launch] %s distance=%d zone=%d bones=%d smashed=%d payout=%d gauge=%.2f time=%.1f | %s",
+				"[Launch] %s distance=%d zone=%d bones=%d smashed=%d chance=%.2f prize=%s gauge=%.2f time=%.1f | %s",
 				if player then player.Name else tostring(flight.key),
 				result.distance,
 				result.zone,
 				flight.totalBones,
 				flight.smashed,
 				result.total,
+				if result.prize then result.prize.name .. " (1 in " .. result.prize.odds .. ")" else "-",
 				flight.gauge,
 				elapsed,
 				tostring(result.cause)
 			)
 		)
 	end
-	task.delay(GameConfig.RESULT_TIME, function()
+	task.delay(GameConfig.RESULT_CLEAR_TIME, function()
 		flight.dummy:Destroy()
-		if player and player.Parent and SlotService.getSlot(player) == flight.slot then
-			player:SetAttribute("LaneState", "Ready")
-		end
 	end)
 end
 
@@ -382,6 +402,11 @@ local function publish(flight: Flight)
 		Bones = flight.totalBones,
 		Smashed = flight.smashed,
 		Zone = Zones.indexAt(flight.distance),
+		Chance = Economy.chance({
+			distance = flight.distance,
+			bones = flight.totalBones,
+			smashed = flight.smashed,
+		}).total,
 	}
 	for name, value in values do
 		if dummy:GetAttribute(name) ~= value then
@@ -473,6 +498,12 @@ function LaunchService.init(createdRemotes: Remotes.Remotes, dummies: Folder)
 	remotes.Launch.OnServerEvent:Connect(function(player, gauge)
 		LaunchService.launch(player, gauge)
 	end)
+	remotes.ResultDone.OnServerEvent:Connect(function(player)
+		local flight = results[player]
+		if flight then
+			closeResult(player, flight)
+		end
+	end)
 	RunService.Heartbeat:Connect(function(dt)
 		local list = {}
 		for _, flight in flights do
@@ -487,6 +518,7 @@ function LaunchService.init(createdRemotes: Remotes.Remotes, dummies: Folder)
 		end
 	end)
 	Players.PlayerRemoving:Connect(function(player)
+		results[player] = nil
 		local flight = flights[player]
 		if flight then
 			flights[player] = nil

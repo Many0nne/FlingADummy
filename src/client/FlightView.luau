@@ -1,5 +1,5 @@
--- Écran de vol : bandes noires de cinéma, compteurs en direct (distance, os, objets), bannière de la zone traversée
--- (nom et multiplicateur) et panneau radio du mannequin (membres colorés selon leur gravité).
+-- Écran de vol : bandes noires de cinéma, bannière CHANCE (« 1.36X », qui monte avec la distance et les crashs) et zone
+-- traversée, compteurs en direct (distance, os, objets) et panneau radio du mannequin (membres colorés selon leur gravité).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
@@ -23,6 +23,8 @@ local bars: { Frame } = {}
 local distanceLabel: TextLabel
 local bonesLabel: TextLabel
 local smashedLabel: TextLabel
+local chanceBox: Frame
+local chanceLabel: TextLabel
 local zoneBanner: Frame
 local zoneLabel: TextLabel
 local xray: Frame
@@ -100,53 +102,78 @@ local function build(gui: ScreenGui)
 			Parent = root,
 		})
 	end
-	distanceLabel = UIKit.text({
+	-- Bannière CHANCE des références (« 1.36X / CHANCE / Prairie ») : gros multiplicateur qui monte, zone dessous
+	chanceBox = UIKit.create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 70),
-		Size = UDim2.fromOffset(500, 80),
-		TextSize = 80,
-		StrokeThickness = 5,
+		Position = UDim2.new(0.5, 0, 0, 52),
+		Size = UDim2.fromOffset(240, 96),
+		BackgroundColor3 = Color3.fromRGB(255, 230, 120),
+		BackgroundTransparency = 0.15,
 		Parent = root,
+	})
+	UIKit.corner(chanceBox, 14)
+	UIKit.outline(chanceBox, 3)
+	UIKit.shade(chanceBox, Color3.fromRGB(255, 245, 190), Color3.fromRGB(240, 190, 60))
+	chanceLabel = UIKit.text({
+		Position = UDim2.fromOffset(0, 2),
+		Size = UDim2.new(1, 0, 0, 64),
+		TextSize = 62,
+		StrokeThickness = 4,
+		Parent = chanceBox,
+	})
+	UIKit.gradientText(chanceLabel, Color3.fromRGB(255, 255, 255), Color3.fromRGB(190, 255, 140))
+	UIKit.text({
+		Position = UDim2.fromOffset(0, 64),
+		Size = UDim2.new(1, 0, 0, 26),
+		Text = "CHANCE",
+		TextSize = 24,
+		Parent = chanceBox,
 	})
 	zoneBanner = UIKit.create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 156),
-		Size = UDim2.fromOffset(380, 46),
+		Size = UDim2.fromOffset(260, 42),
 		BackgroundColor3 = Zones.LIST[1].color,
 		Parent = root,
 	})
-	UIKit.corner(zoneBanner, 23)
+	UIKit.corner(zoneBanner, 21)
 	UIKit.outline(zoneBanner, 3)
 	zoneLabel = UIKit.text({ Size = UDim2.fromScale(1, 1), TextSize = 28, Parent = zoneBanner })
 	local stats = UIKit.create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 210),
-		Size = UDim2.fromOffset(500, 40),
+		Position = UDim2.new(0.5, 0, 0, 206),
+		Size = UDim2.fromOffset(640, 40),
 		BackgroundTransparency = 1,
 		Parent = root,
 	})
 	UIKit.create("UIListLayout", {
 		FillDirection = Enum.FillDirection.Horizontal,
 		HorizontalAlignment = Enum.HorizontalAlignment.Center,
-		Padding = UDim.new(0, 30),
+		Padding = UDim.new(0, 24),
 		Parent = stats,
 	})
-	bonesLabel = UIKit.text({ Size = UDim2.fromOffset(220, 40), TextSize = 32, TextColor3 = C.bone, Parent = stats })
-	smashedLabel = UIKit.text({ Size = UDim2.fromOffset(220, 40), TextSize = 32, TextColor3 = C.smash, Parent = stats })
+	distanceLabel = UIKit.text({ Size = UDim2.fromOffset(190, 40), TextSize = 32, Parent = stats })
+	bonesLabel = UIKit.text({ Size = UDim2.fromOffset(190, 40), TextSize = 32, TextColor3 = C.bone, Parent = stats })
+	smashedLabel = UIKit.text({ Size = UDim2.fromOffset(190, 40), TextSize = 32, TextColor3 = C.smash, Parent = stats })
 	buildXray(root)
 end
 
--- Cette méthode permet d'afficher la zone atteinte (nom, multiplicateur, couleur) lorsque le mannequin en franchit
--- une nouvelle.
+-- Cette méthode permet d'afficher la zone atteinte (nom, couleur) lorsque le mannequin en franchit une nouvelle.
 local function showZone(index: number)
 	local zone = Zones.LIST[index]
 	zoneBanner.BackgroundColor3 = zone.color
-	zoneLabel.Text = string.format("%s  x%s", string.upper(zone.name), zone.multiplier)
+	zoneLabel.Text = "🍀 " .. string.upper(zone.name)
 	if index > currentZone then
 		UIKit.pop(zoneBanner, 1.5)
+		UIKit.pop(chanceBox, 1.25)
 		UIKit.playSound("LevelUp", 1.4)
 	end
 	currentZone = index
+end
+
+-- Cette méthode permet d'afficher la CHANCE du lancer (« 1.36X ») lorsque le serveur la met à jour pendant le vol.
+local function showChance(chance: number)
+	chanceLabel.Text = string.format("%.2fX", chance)
 end
 
 -- Cette méthode permet de colorer un membre de la radio selon ses os cassés lorsque le serveur met à jour le membre.
@@ -179,6 +206,7 @@ function FlightView.show(model: Model)
 		bonesLabel.Text = "🦴 " .. bones .. " BONES"
 		smashedLabel.Text = "💥 " .. ((model:GetAttribute("Smashed") :: number?) or 0) .. " SMASHED"
 		xrayCount.Text = bones .. " BONES"
+		showChance((model:GetAttribute("Chance") :: number?) or 1)
 		local zone = (model:GetAttribute("Zone") :: number?) or 1
 		if zone ~= currentZone then
 			showZone(zone)
@@ -212,6 +240,7 @@ function FlightView.settle()
 		TweenService:Create(bar, TweenInfo.new(0.3), { Size = UDim2.fromScale(1, 0) }):Play()
 	end
 	distanceLabel.Visible = false
+	chanceBox.Visible = false
 	zoneBanner.Visible = false
 	bonesLabel.Visible = false
 	smashedLabel.Visible = false
@@ -221,6 +250,7 @@ end
 function FlightView.hide()
 	root.Visible = false
 	distanceLabel.Visible = true
+	chanceBox.Visible = true
 	zoneBanner.Visible = true
 	bonesLabel.Visible = true
 	smashedLabel.Visible = true

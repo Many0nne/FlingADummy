@@ -1,11 +1,11 @@
--- Tutoriel : étapes (lancer, entraînement, équipement, mannequin), reprise d'une ancienne sauvegarde, popup « NEW GEAR! ».
+-- Tutoriel : étapes (lancer, poser, entraînement, équipement), reprise d'une ancienne sauvegarde, popup « NEW GEAR! ».
 return function(T, Loader)
 	local Tutorial = Loader.new():require("src/shared/Tutorial")
 
 	T.describe("Tutorial.current / complete", function()
-		T.it("un nouveau joueur lance, s'entraîne, achète un équipement puis améliore son mannequin", function()
+		T.it("un nouveau joueur lance, pose son mannequin, s'entraîne puis achète un équipement", function()
 			local flags = 0
-			for _, step in { "Throw", "Train", "BuyGear", "BuyDummy" } do
+			for _, step in { "Throw", "Place", "Train", "BuyGear" } do
 				T.expectEqual(Tutorial.current(flags), step)
 				flags = Tutorial.complete(flags, step)
 			end
@@ -15,14 +15,14 @@ return function(T, Loader)
 		T.it("une étape faite dans le désordre compte quand même", function()
 			local flags = Tutorial.complete(0, "Train")
 			T.expectEqual(Tutorial.current(flags), "Throw")
-			T.expectEqual(Tutorial.current(Tutorial.complete(flags, "Throw")), "BuyGear")
+			T.expectEqual(Tutorial.current(Tutorial.complete(flags, "Throw")), "Place")
 		end)
-		T.it("un achat vaut lancer et entraînement, mais pas l'autre achat", function()
-			T.expectEqual(Tutorial.current(Tutorial.complete(0, "BuyGear")), "BuyDummy")
-			T.expectEqual(Tutorial.current(Tutorial.complete(0, "BuyDummy")), "BuyGear")
+		T.it("poser vaut lancer ; acheter un équipement vaut toutes les étapes d'avant", function()
+			T.expectEqual(Tutorial.current(Tutorial.complete(0, "Place")), "Train")
+			T.expectEqual(Tutorial.complete(0, "BuyGear"), Tutorial.DONE)
 		end)
 		T.it("rien ne revient une fois le tutoriel fini", function()
-			for _, event in { "Throw", "Train", "BuyGear", "BuyDummy", "Autre" } do
+			for _, event in { "Throw", "Place", "Train", "BuyGear", "Autre" } do
 				T.expectEqual(Tutorial.complete(Tutorial.DONE, event), Tutorial.DONE)
 			end
 			T.expectEqual(Tutorial.complete(0, "Autre"), 0)
@@ -32,14 +32,16 @@ return function(T, Loader)
 	T.describe("Tutorial.infer", function()
 		T.it("nouvelle sauvegarde : tutoriel complet à faire", function()
 			T.expectEqual(Tutorial.infer({}), 0)
-			T.expectEqual(Tutorial.infer({ GearTier = 1, ValueLevel = 1, TrainLevel = 1, BestDistance = 0 }), 0)
+			T.expectEqual(Tutorial.infer({ GearTier = 1, TrainLevel = 1, BestDistance = 0 }), 0)
 		end)
-		T.it("ancien joueur : les étapes déjà faites sont sautées", function()
-			T.expectEqual(Tutorial.current(Tutorial.infer({ BestDistance = 120 })), "Train")
+		T.it("ancien joueur : les étapes déjà faites sont sautées, « poser » reste à faire", function()
+			T.expectEqual(Tutorial.current(Tutorial.infer({ BestDistance = 120 })), "Place")
 			T.expectEqual(Tutorial.current(Tutorial.infer({ TrainLevel = 3 })), "Throw")
-			T.expectEqual(Tutorial.current(Tutorial.infer({ TrainLevel = 3, BestDistance = 120 })), "BuyGear")
-			T.expectEqual(Tutorial.current(Tutorial.infer({ GearTier = 2 })), "BuyDummy")
-			T.expectEqual(Tutorial.infer({ GearTier = 2, ValueLevel = 4 }), Tutorial.DONE)
+			T.expectEqual(Tutorial.current(Tutorial.infer({ GearTier = 2 })), "Place")
+			T.expectEqual(
+				Tutorial.current(Tutorial.infer({ GearTier = 2, BestDistance = 50, TrainLevel = 4 })),
+				"Place"
+			)
 		end)
 	end)
 

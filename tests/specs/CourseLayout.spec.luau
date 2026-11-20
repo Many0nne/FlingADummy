@@ -159,6 +159,29 @@ return function(T, Loader)
 		end)
 	end)
 
+	T.describe("CourseLayout.isNearBase", function()
+		T.it(
+			"vrai dans la base et jusqu'à BASE_REACH de sa clôture, faux au-delà et dans les autres bases",
+			function()
+				local center = CourseLayout.basePosition(1)
+				local half = CourseLayout.BASE_SIZE.X / 2
+				T.expect(CourseLayout.isNearBase(1, center), "centre")
+				T.expect(
+					CourseLayout.isNearBase(1, center + Vector3.new(half + CourseLayout.BASE_REACH - 1, 5, 0)),
+					"bord"
+				)
+				T.expect(
+					not CourseLayout.isNearBase(1, center + Vector3.new(half + CourseLayout.BASE_REACH + 1, 0, 0)),
+					"loin"
+				)
+				for index = 2, GameConfig.SLOT_COUNT do
+					T.expect(not CourseLayout.isNearBase(1, CourseLayout.basePosition(index)), "base " .. index)
+				end
+				T.expect(not CourseLayout.isNearBase(1, Vector3.new(0, 0, -8)), "bande de lancer")
+			end
+		)
+	end)
+
 	T.describe("CourseLayout.columnAt", function()
 		T.it("rend la colonne de chaque place et rien sur les bords du canyon", function()
 			for index = 1, count do

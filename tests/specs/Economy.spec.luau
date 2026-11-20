@@ -1,8 +1,9 @@
--- Économie : vitesse selon la Throw Power, valeur du mannequin, gains d'un lancer.
+-- Économie du lancer : vitesse selon la Throw Power, CHANCE gagnée en vol (zones, os, casse) ; le lancer ne paie rien.
 return function(T, Loader)
 	local loader = Loader.new()
 	local Economy = loader:require("src/shared/Economy")
 	local GameConfig = loader:require("src/shared/GameConfig")
+	local Zones = loader:require("src/shared/Zones")
 
 	T.describe("Economy.launchSpeed", function()
 		T.it("vaut la vitesse de base à la puissance de départ (et en dessous)", function()
@@ -20,31 +21,65 @@ return function(T, Loader)
 		end)
 	end)
 
-	T.describe("Economy.valueCost", function()
-		T.it("démarre au prix de base, croît, nil au maximum", function()
-			T.expectEqual(Economy.valueCost(1), GameConfig.VALUE_BASE_COST)
-			T.expect((Economy.valueCost(2) :: number) > GameConfig.VALUE_BASE_COST, "prix croissant")
-			T.expectEqual(Economy.valueCost(GameConfig.VALUE_MAX_LEVEL), nil)
+	T.describe("Economy.zoneChance", function()
+		T.it("vaut la chance de la zone à son entrée", function()
+			T.expectNear(Economy.zoneChance(0), 1)
+			for _, zone in Zones.LIST do
+				T.expectNear(Economy.zoneChance(zone.start), zone.chance, 1e-9)
+			end
+		end)
+		T.it("monte en continu vers la zone suivante (bannière qui grimpe en vol)", function()
+			local a, b = Zones.LIST[1], Zones.LIST[2]
+			T.expectNear(Economy.zoneChance((a.start + b.start) / 2), (a.chance + b.chance) / 2, 1e-9)
+			local previous = 0
+			for d = 0, GameConfig.COURSE_LENGTH, 25 do
+				local value = Economy.zoneChance(d)
+				T.expect(value >= previous, "croissante à " .. d .. " m")
+				previous = value
+			end
+		end)
+		T.it("atteint FINAL_CHANCE au bout de la piste et n'est jamais sous 1", function()
+			T.expectNear(Economy.zoneChance(GameConfig.COURSE_LENGTH), Zones.FINAL_CHANCE, 1e-9)
+			T.expectNear(Economy.zoneChance(1e9), Zones.FINAL_CHANCE, 1e-9)
+			T.expectNear(Economy.zoneChance(-50), 1)
 		end)
 	end)
 
-	T.describe("Economy.payout", function()
-		T.it("additionne distance, os et objets sans multiplicateur", function()
-			local p = Economy.payout({ distance = 123.7, bones = 4, smashed = 3, zoneMultiplier = 1 }, 1)
-			T.expectEqual(p.distance, 123)
-			T.expectEqual(p.bonesMoney, 40)
-			T.expectEqual(p.smashMoney, 15)
-			T.expectEqual(p.total, 178)
+	T.describe("Economy.chance", function()
+		T.it(
+			"premier lancer (≈ 145 m, rien de cassé) : ≈ 1.3X comme la référence 09 (1.22X à 1.36X)",
+			function()
+				local c = Economy.chance({ distance = 145, bones = 0, smashed = 0 })
+				T.expect(c.total > 1.15 and c.total < 1.45, "chance " .. c.total)
+				T.expectEqual(c.distance, 145)
+				T.expectEqual(c.zone, 2)
+			end
+		)
+		T.it("os et casse ajoutent un bonus proportionnel", function()
+			local base = Economy.chance({ distance = 0, bones = 0, smashed = 0 })
+			local crash = Economy.chance({ distance = 0, bones = 5, smashed = 10 })
+			T.expectNear(base.total, 1)
+			T.expectNear(crash.bonesBonus, 5 * GameConfig.CHANCE_PER_BONE)
+			T.expectNear(crash.smashBonus, 10 * GameConfig.CHANCE_PER_SMASH)
+			local expected = 1 + 5 * GameConfig.CHANCE_PER_BONE + 10 * GameConfig.CHANCE_PER_SMASH
+			T.expectNear(crash.total, math.floor(expected * 100 + 0.5) / 100)
 		end)
-		T.it("multiplie zone et valeur, arrondi", function()
-			local p = Economy.payout({ distance = 101, bones = 0, smashed = 1, zoneMultiplier = 2.2 }, 2)
-			-- (101 + 5) × 2,2 × 1,25 = 291,5 → 292
-			T.expectEqual(p.total, 292)
-			T.expectNear(p.valueMultiplier, 1.25)
+		T.it("le bonus multiplie la chance des zones", function()
+			local far = Economy.chance({ distance = Zones.LIST[3].start, bones = 10, smashed = 0 })
+			local expected = Zones.LIST[3].chance * (1 + 10 * GameConfig.CHANCE_PER_BONE)
+			T.expectNear(far.total, math.floor(expected * 100 + 0.5) / 100)
 		end)
-		T.it("ne compte pas de distance négative", function()
-			local p = Economy.payout({ distance = -5, bones = 0, smashed = 0, zoneMultiplier = 1 }, 1)
-			T.expectEqual(p.total, 0)
+		T.it("le lancer ne rapporte aucun argent (pas de montant dans le résultat)", function()
+			local c: any = Economy.chance({ distance = 900, bones = 12, smashed = 30 })
+			T.expectEqual(c.money, nil)
+			T.expectEqual(c.payout, nil)
+			T.expectEqual(Economy.payout, nil)
+		end)
+		T.it("le service des lancers ne touche jamais à Money (seule la base verse de l'argent)", function()
+			local fs = require("@lune/fs")
+			local source = fs.readFile("src/server/LaunchService.luau")
+			T.expect(not string.find(source, "addMoney", 1, true), "LaunchService appelle addMoney")
+			T.expect(not string.find(source, '"Money"', 1, true), "LaunchService écrit l'attribut Money")
 		end)
 	end)
 end
