@@ -21,3 +21,47 @@ jobs:
 
       - name: Build Rojo
         run: rojo build default.project.json -o FlingADummy.rbxlx
+
+  # Filtre de chemins par job (et non par workflow) : le job `check` ci-dessus tourne toujours, et un job sauté
+  # compte comme réussi pour une règle de protection de branche.
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      scripts: ${{ steps.filter.outputs.scripts }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            scripts:
+              - 'scripts/**'
+              - 'tests/scripts/**'
+              - '.github/workflows/ci.yml'
+
+  # Tests de limites des scripts de worktree (faux gh/T3/Rojo dans un bac à sable %TEMP%), Windows seulement.
+  pester:
+    needs: changes
+    if: needs.changes.outputs.scripts == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Installer Pester 3.4.0
+        shell: pwsh
+        run: Install-Module Pester -RequiredVersion 3.4.0 -Force -SkipPublisherCheck
+
+      - name: Tests Pester des scripts
+        shell: pwsh
+        run: |
+          Import-Module Pester -RequiredVersion 3.4.0
+          Invoke-Pester tests/scripts -EnableExit
