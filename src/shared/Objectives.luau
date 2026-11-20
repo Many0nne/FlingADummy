@@ -31,9 +31,8 @@ local TRAIN = { id = "Train", text = "Train!", target = "Train" }
 local BUY_GEAR = { id = "BuyGear", text = "Buy better gear!", button = "Shop" }
 local BUY_DUMMY = { id = "BuyDummy", text = "Buy a better dummy!", button = "Dummies" }
 
--- Cette méthode permet de choisir l'objectif à afficher lorsque l'état du joueur change ; nil quand l'écran est déjà
--- occupé (jauge, vol, résultat, séance d'entraînement : seul le bouton STOP reste, comme dans les références).
--- Ordre : achats possibles, puis alternance lancer / entraînement.
+-- Cette méthode permet de choisir l'objectif (achats, puis alternance lancer / entraînement) lorsque l'état du joueur
+-- change ; nil quand l'écran est occupé (jauge, vol, résultat, séance d'entraînement où seul STOP reste).
 function Objectives.pick(state: State): Objective?
 	if state.laneState == "Flying" or state.laneState == "Result" then
 		return nil

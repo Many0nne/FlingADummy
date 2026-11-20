@@ -132,6 +132,7 @@ return function(T, Loader, Lib)
 		-- Cette méthode permet de donner les positions des deux mains et de la tête (repère de HumanoidRootPart) à une
 		-- keyframe du clip lorsqu'un test vérifie la pose d'entraînement.
 		local function bodyAt(poses)
+			-- Cette méthode permet de donner la position d'une pièce pour les poses de la keyframe.
 			local function at(name)
 				return R15Rig.partFrame(name, poses, AnimationData.toCFrame).Position
 			end
