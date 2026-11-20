@@ -69,6 +69,10 @@ function FlightCamera.closeUp(root: BasePart, duration: number)
 	local base = root.CFrame
 	local start = os.clock()
 	RunService:BindToRenderStep(BIND_NAME, Enum.RenderPriority.Camera.Value + 1, function()
+		if not root.Parent then
+			FlightCamera.stop() -- personnage mort ou réapparu pendant le geste
+			return
+		end
 		local k = math.clamp((os.clock() - start) / duration, 0, 1)
 		local eased = 1 - (1 - k) ^ 3
 		local position = base:PointToWorldSpace(CLOSE_FROM:Lerp(CLOSE_TO, eased))

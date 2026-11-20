@@ -22,14 +22,17 @@ local THROW_FADE = 0.08
 local RELEASE_GRACE = 0.25 -- lâcher de secours après le marqueur (clip absent ou en retard, s)
 local THROW_TIMEOUT = 3 -- fin forcée d'un lancer local (s)
 local HANDOFF_TIME = 0.6 -- attente du mannequin du serveur, décoratif figé au point de lâcher (s)
+local ANSWER_TIME = 0.6 -- délai minimal entre le lâcher et la fin du geste, le temps que le serveur réponde (s)
 
 type State = { visual: Model?, key: string? }
 type Throw = {
 	start: number,
 	released: boolean,
+	releasedAt: number,
 	release: () -> (),
 	finished: () -> (),
 	track: AnimationTrack?,
+	marker: RBXScriptConnection?,
 }
 type Released = { model: Model, born: number }
 
@@ -198,6 +201,7 @@ local function release()
 		return
 	end
 	current.released = true
+	current.releasedAt = os.clock()
 	local state = states[localPlayer]
 	if state and state.visual then
 		if released then
@@ -226,8 +230,12 @@ local function updateLocal(action: any, now: number)
 	local current = throw
 	if current then
 		local playing = current.track ~= nil and current.track.IsPlaying
-		if now - current.start > THROW_TIMEOUT or (current.released and not playing) then
+		local answered = current.released and now - current.releasedAt > ANSWER_TIME
+		if now - current.start > THROW_TIMEOUT or (answered and not playing) then
 			throw = nil
+			if current.marker then
+				current.marker:Disconnect()
+			end
 			current.finished()
 			current = nil
 		end
@@ -272,13 +280,14 @@ end
 -- Cette méthode permet de lancer le geste du joueur local lorsque la jauge est arrêtée : clip de lancer, puis
 -- `onRelease` au marqueur Release et `onFinished` quand le geste est fini (lancer parti ou refusé).
 function CharacterPoser.playThrow(onRelease: () -> (), onFinished: () -> ())
-	local current: Throw = { start = os.clock(), released = false, release = onRelease, finished = onFinished }
+	local current: Throw =
+		{ start = os.clock(), released = false, releasedAt = 0, release = onRelease, finished = onFinished }
 	throw = current
 	setLooping("Hold", false)
 	local track = trackFor("Throw")
 	if track then
 		current.track = track
-		track:GetMarkerReachedSignal("Release"):Once(release)
+		current.marker = track:GetMarkerReachedSignal("Release"):Once(release)
 		track:Play(THROW_FADE)
 		-- Fondu de sortie avant la fin du clip : un clip qui s'arrête seul passe d'un coup à l'animation par défaut
 		task.delay(CLIPS.Throw.length - FADE, function()

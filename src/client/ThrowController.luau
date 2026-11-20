@@ -172,8 +172,11 @@ local function trigger(): boolean
 		remotes.Launch:FireServer(value)
 		ThrowCinematic.release()
 	end, function()
-		-- Geste fini : lancer parti (la jauge se cache au vol) ou refusé (on la réarme)
+		-- Geste fini : lancer parti (la jauge se cache au vol) ou refusé (caméra rendue, jauge réarmée)
 		setRooted(character, false)
+		if player:GetAttribute("LaneState") ~= "Flying" then
+			ThrowCinematic.abort()
+		end
 		locked = nil
 		refresh()
 	end)

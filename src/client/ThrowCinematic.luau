@@ -175,6 +175,19 @@ function ThrowCinematic.finish()
 	setBars(false)
 end
 
+-- Cette méthode permet d'arrêter la cinématique et de rendre la caméra lorsque le geste finit sans que le serveur
+-- ait lancé le mannequin (lancer refusé) ; sans effet si le vol a déjà pris le relais.
+function ThrowCinematic.abort()
+	if not active then
+		return
+	end
+	session += 1
+	setStreaks(false)
+	detachTrail()
+	ThrowCinematic.finish()
+	FlightCamera.stop()
+end
+
 -- Cette méthode permet de construire les bandes et les traînées (masquées) lorsque le client démarre.
 function ThrowCinematic.init(gui: ScreenGui)
 	layer = Instance.new("Frame")

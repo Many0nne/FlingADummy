@@ -120,10 +120,10 @@ function DummyShape.makePart(name: string, size: Vector3): BasePart?
 end
 
 -- Cette méthode permet de donner la couleur d'une pièce lorsque l'on habille un mannequin : tout le corps prend la
--- couleur de la déclinaison quand il est maillé (le noir est dans la texture), seules les zones jaunes en blocs.
+-- couleur de la déclinaison quand l'atlas est posé (le noir est dans la texture), seules les zones jaunes sinon.
 function DummyShape.colorOf(piece: Piece, part: BasePart, variant: Variant?): Color3
 	local tint = variant and variant.color
-	if part:IsA("MeshPart") then
+	if part:FindFirstChild(DummyShape.SURFACE) then
 		return tint or DummyShape.YELLOW
 	end
 	return if tint and piece.color == DummyShape.YELLOW then tint else piece.color
@@ -150,8 +150,8 @@ function DummyShape.buildPieces(model: Model, scale: number, variant: Variant?):
 	for _, piece in DummyShape.PIECES do
 		local p = DummyShape.makePart(piece.name, piece.size * scale) :: BasePart
 		p.CFrame = CFrame.new(piece.position * scale)
+		p.Material = DummyShape.applyMaterial(p, variant) -- avant la couleur : retire l'atlas si besoin
 		p.Color = DummyShape.colorOf(piece, p, variant)
-		p.Material = DummyShape.applyMaterial(p, variant)
 		p.Parent = model
 		parts[piece.name] = p
 	end
