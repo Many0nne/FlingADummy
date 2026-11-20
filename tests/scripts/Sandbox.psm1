@@ -207,19 +207,19 @@ function Start-FakeControl($Sb, [string]$Body = 'rojo-control 3') {
   $p.Id
 }
 
-# Cette methode permet d'arreter tout serveur qui ecoute sur le port de commande du bac a sable.
+# Cette methode permet d'arreter tout serveur qui ecoute sur le port de commande du bac a sable lorsqu'un test change de serveur.
 function Stop-FakeControl($Sb) {
   Get-NetTCPConnection -LocalPort $Sb.ControlPort -State Listen -ErrorAction SilentlyContinue |
     ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
   for ($i = 0; $i -lt 25 -and (Get-NetTCPConnection -LocalPort $Sb.ControlPort -State Listen -ErrorAction SilentlyContinue); $i++) { Start-Sleep -Milliseconds 200 }
 }
 
-# Cette methode permet de lire la reponse /health du port de commande du bac a sable ($null si rien ne repond).
+# Cette methode permet de lire la reponse /health du port de commande du bac a sable lorsqu'un test verifie le serveur lance.
 function Get-FakeHealth($Sb) {
   try { "$((Invoke-WebRequest "http://127.0.0.1:$($Sb.ControlPort)/health" -TimeoutSec 3 -UseBasicParsing).Content)".Trim() } catch { $null }
 }
 
-# Cette methode permet de lancer un faux plugin autoconnect qui suit la cible du bac a sable ; renvoie son pid.
+# Cette methode permet de lancer un faux plugin autoconnect qui suit la cible du bac a sable lorsqu'un test attend la connexion.
 function Start-FakePlugin($Sb) {
   $run = Join-Path $Sb.Repo 'worktrees\.run'
   $p = Start-Process pwsh -WindowStyle Hidden -PassThru -ArgumentList '-NoProfile', '-NonInteractive',

@@ -415,7 +415,7 @@ function Write-ConnectHelp([int]$Port) {
   Write-Host "Connexion a la main (Studio en mode Edit, place $($placeIds -join ', ')) : $($from)plugin Rojo > port $Port > Connect."
 }
 
-# Cette methode permet de lire la derniere cible publiee (port, rev) ; $null si elle manque ou est illisible.
+# Cette methode permet de lire la derniere cible publiee (port, rev) lorsqu'on juge une connexion a 34900 ; $null si absente.
 function Get-StudioTarget {
   $raw = Read-Text $studioTarget
   if (-not "$raw".Trim()) { return $null }
@@ -426,7 +426,10 @@ function Get-StudioTarget {
 # qui teste sur 34900) : la derniere cible publiee n'y renvoyait pas la place (une liberation y renvoie la place au repos).
 function Test-ManualBaseConnection {
   if (-not (@(Get-StudioConnectedPorts) -contains $basePort)) { return $false }
-  return "$((Get-StudioTarget).port)" -ne "$basePort"
+  $target = Get-StudioTarget
+  # Aucune cible encore publiee (avant la premiere reservation) : 34900 etait l'etat de repos de la connexion manuelle.
+  if (-not $target) { return $false }
+  return "$($target.port)" -ne "$basePort"
 }
 
 # Cette methode permet de lire le dernier etat signale par le plugin pour la place Fling a Dummy (studio.status :
@@ -487,7 +490,7 @@ function Get-ControlVersion([int]$TimeoutSec = 3) {
   return 0
 }
 
-# Cette methode permet de lire la version d'un fichier control-server.luau (ligne VERSION) ; 0 s'il manque ou n'en annonce pas.
+# Cette methode permet de lire la version d'un fichier control-server.luau (ligne VERSION) lorsqu'on decide de le lancer ; 0 sinon.
 function Get-ControlFileVersion([string]$Path) {
   if (-not (Test-Path -LiteralPath $Path)) { return 0 }
   $m = Select-String -LiteralPath $Path -Pattern '^local VERSION = "rojo-control (\d+)"' | Select-Object -First 1
@@ -495,8 +498,8 @@ function Get-ControlFileVersion([string]$Path) {
   return 0
 }
 
-# Cette methode permet d'arreter l'ancien serveur de commande note dans control.pid, seulement si ce pid est bien un
-# control-server.luau (pas un pid recycle par Windows apres un redemarrage).
+# Cette methode permet d'arreter l'ancien serveur de commande note dans control.pid lorsqu'il faut le remplacer, seulement
+# si ce pid est bien un control-server.luau (pas un pid recycle par Windows apres un redemarrage).
 function Stop-ControlPid {
   $old = Read-Int $controlPidFile
   if ($old -le 0) { return }
@@ -581,7 +584,7 @@ function Release-StudioLock {
     if (-not ($lock -and $lock.branch -eq $Branch)) { return $null }
     Remove-Item -Force $studioLock
     # Port libre : inutile d'attendre le refus de connexion (~2 s par adresse sous Windows).
-    $mainUp = (Get-PortListener $basePort) -and (Get-UrlCode "http://localhost:$basePort/api/rojo") -eq 200
+    $mainUp = (Get-PortListener $basePort) -and (Get-UrlCode "http://127.0.0.1:$basePort/api/rojo") -eq 200
     $target = if ($mainUp) { "$basePort" } else { '' }
     # Publication impossible (fichier occupe) : le verrou reste libere, -Stop / -Remove continuent.
     try { [void](Set-StudioTarget $target) }
@@ -592,7 +595,7 @@ function Release-StudioLock {
   return $published
 }
 
-# Cette methode permet de decrire en une ligne ou la liberation renvoie la place, avec le geste manuel si le plugin ne suit pas.
+# Cette methode permet de decrire ou la liberation renvoie la place lorsqu'on l'affiche, avec le geste manuel si le plugin ne suit pas.
 function Format-Released([string]$Target) {
   $where = if ($Target) { "cible publiee : checkout principal (port $Target)" } else { "cible publiee : deconnexion (Rojo du checkout principal arrete)" }
   $manual = if ($Target) { "plugin Rojo > Disconnect > port $Target > Connect" } else { 'plugin Rojo > Disconnect' }

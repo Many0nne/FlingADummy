@@ -623,6 +623,16 @@ Describe 'fad-worktree.ps1 : auto-connexion Studio (plugin multi-projets)' {
     }
   }
 
+  It 'premiere reservation (aucune cible encore publiee), Studio sur 34900 : acceptee (etat de repos d''avant #20)' {
+    $env:FAD_FAKE_STUDIO_PORTS = '35800'
+    try {
+      Remove-Item $p.Target -ErrorAction SilentlyContinue
+      (Invoke-Wt $sb @($w, '-AcquireStudio')).Code | Should Be 0
+      (Get-Target).port | Should Be '35801'
+    } finally { $env:FAD_FAKE_STUDIO_PORTS = $null }
+    Invoke-Wt $sb @($w, '-ReleaseStudio') | Out-Null
+  }
+
   It 'Studio connecte a la main au checkout principal (test de l''utilisateur) : reservation d''un worktree refusee (code 2)' {
     $env:FAD_FAKE_STUDIO_PORTS = '35800'
     try {
