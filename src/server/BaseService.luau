@@ -1,8 +1,10 @@
--- Base du joueur : mannequins de collection gagnés au lancer (tirage « 1 en N », Shared.Collection), posés sur les
--- présentoirs de sa base (invite « Place » ou bouton AUTO), qui versent leur revenu chaque seconde : seule source
--- d'argent du jeu. Le mannequin gagné reste « en main » (attribut `PendingDummy`, « id:taille ») jusqu'à sa pose ;
--- un nouveau lancer le pose d'office. Base pleine : il remplace le moins rentable s'il rapporte plus, sinon il est
--- revendu (Collection.sellValue). Les mannequins posés sont construits par le serveur, visibles de tous.
+-- Base du joueur : mannequins de collection gagnés au lancer (tirage « 1 en N », Shared.Collection), gardés en stock
+-- (Shared.Inventory) et posés sur les présentoirs de sa base, qui versent leur revenu chaque seconde : seule source
+-- d'argent du jeu. Le dernier gagné est proposé à la pose (attribut `PendingDummy`, invite « Place » ou bouton AUTO) ;
+-- un nouveau lancer l'ajoute simplement au stock, rien ne se perd. Fenêtres de collection (remote Inventory) : poser,
+-- retirer, vendre, « Place best ». Pad « 6 > 7 » devant la base : achat du présentoir suivant. Le serveur publie la
+-- collection dans des attributs du joueur (Stock, BaseDummies, Displays, DummyIndex) que le client affiche. Les
+-- mannequins posés sont construits par le serveur, visibles de tous.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -13,6 +15,7 @@ local CourseLayout = require(Shared.CourseLayout)
 local DummyShape = require(Shared.DummyShape)
 local Format = require(Shared.Format)
 local GameConfig = require(Shared.GameConfig)
+local Inventory = require(Shared.Inventory)
 local Rarity = require(Shared.Rarity)
 local Tutorial = require(Shared.Tutorial)
 
@@ -33,19 +36,18 @@ export type Prize = {
 }
 
 local FEET = 3.82 -- du centre du torse au bas des pieds, échelle 1 (Shared.DummyShape)
+local LOCKED_COLOR = Color3.fromRGB(120, 122, 132) -- présentoir pas encore acheté
+local LOCKED_TRANSPARENCY = 0.55
 
 local BaseService = {}
 
+-- Mannequin construit sur un présentoir, avec la clé de son entrée (reconstruit seulement si elle change)
+type Shown = { key: string, model: Model }
+
 local slots: { Slot } = {}
 local slotOf: { [Player]: Slot } = {}
-local shown: { [number]: { [number]: Model } } = {} -- mannequins posés, par place puis présentoir
+local shown: { [number]: { [number]: Shown } } = {} -- mannequins posés, par place puis présentoir
 local rng = Random.new()
-
--- Cette méthode permet d'écrire une entrée dans l'attribut `PendingDummy` (« id:taille ») lorsque le mannequin en
--- main change ; nil le retire.
-local function entryKey(entry: Collection.Entry?): string?
-	return if entry then entry.id .. ":" .. entry.size else nil
-end
 
 -- Cette méthode permet de construire le mannequin posé sur un présentoir (pièces ancrées sans collision, regard vers
 -- l'entrée de la base, nom coloré et revenu au-dessus) lorsque la base est rendue.
@@ -102,60 +104,124 @@ local function buildDisplayed(entry: Collection.Entry, top: BasePart, facing: nu
 	return model
 end
 
--- Cette méthode permet de reconstruire les mannequins posés d'une place (vide si personne ne l'occupe) et d'y
--- afficher le revenu de la base lorsque la base change, que son joueur arrive ou part, ou que les maillages arrivent.
-local function render(slot: Slot, player: Player?)
-	local previous: { [number]: Model } = shown[slot.index] or {}
-	for _, model in previous do
-		model:Destroy()
+-- Cette méthode permet d'habiller un présentoir selon qu'il est acheté (couleur de la place) ou non (grisé, sans
+-- invite ni objectif) lorsque la base est rendue.
+local function styleDisplay(slot: Slot, display: number, unlocked: boolean)
+	local top = slot.base.displays[display]
+	local pedestal = slot.base.pedestals[display]
+	top.Color = if unlocked then slot.color else LOCKED_COLOR
+	top.Transparency = if unlocked then 0 else LOCKED_TRANSPARENCY
+	pedestal.Transparency = if unlocked then 0 else LOCKED_TRANSPARENCY
+	top:SetAttribute("Locked", if unlocked then nil else true)
+end
+
+-- Cette méthode permet d'afficher sur le pad d'achat le présentoir suivant et son prix (« 6 > 7 », « $1K »), ou MAX,
+-- lorsque la base change ; le client n'active l'invite que pour le propriétaire tant que le maximum n'est pas atteint.
+local function stylePad(slot: Slot, displays: number?)
+	local pad = slot.base.pad
+	local price = if displays then Inventory.displayPrice(displays) else nil
+	local count = displays or GameConfig.DISPLAY_START
+	if displays and not price then
+		pad.title.Text = "MAX"
+		pad.price.Text = count .. " / " .. CourseLayout.DISPLAY_MAX
+	else
+		pad.title.Text = count .. " > " .. (count + 1)
+		pad.price.Text = Format.money(price or Inventory.displayPrice(count) or 0)
 	end
-	shown[slot.index] = {}
-	local collection = if player then PlayerData.collection(player) else nil
-	if not player or not collection or not player:GetAttribute("DataReady") then
-		slot.base.income.Text = ""
-		for _, top in slot.base.displays do
-			top:SetAttribute("Occupied", nil)
-			top:SetAttribute("Objective", nil)
+	pad.prompt:SetAttribute("Price", price)
+	pad.prompt:SetAttribute("Maxed", if displays and not price then true else nil)
+end
+
+-- Cette méthode permet de reconstruire les mannequins posés d'une place (vide si personne ne l'occupe), d'habiller ses
+-- présentoirs et son pad, et d'y afficher le revenu de la base lorsque la base change, que son joueur arrive ou part,
+-- ou que les maillages arrivent (`force` : tout reconstruire).
+local function render(slot: Slot, player: Player?, force: boolean?)
+	local current: { [number]: Shown } = shown[slot.index] or {}
+	shown[slot.index] = current
+	local data = if player then PlayerData.collection(player) else nil
+	local ready = player ~= nil and data ~= nil and player:GetAttribute("DataReady") == true
+	local displays = if ready and data then data.displays else GameConfig.DISPLAY_START
+	for display, top in slot.base.displays do
+		local unlocked = display <= displays
+		styleDisplay(slot, display, unlocked)
+		local entry = if ready and data and unlocked then data.base[display] else nil
+		local key = if entry then Inventory.key(entry) else nil
+		local existing = current[display]
+		if existing and (force or existing.key ~= key) then
+			existing.model:Destroy()
+			current[display] = nil
 		end
-		return
-	end
-	for index, top in slot.base.displays do
-		local entry = collection.base[index]
-		-- Lu par le client : invite « Place » seulement sur les présentoirs libres ; un présentoir libre est aussi la cible
-		-- de l'objectif « Place your dummy! » (flèche et chevrons du tutoriel)
-		top:SetAttribute("Occupied", if entry then true else nil)
-		top:SetAttribute("Objective", if entry then nil else "Place")
-		if entry then
+		if entry and not current[display] then
 			local model = buildDisplayed(entry, top, slot.base.facing)
 			model.Parent = slot.base.model
-			shown[slot.index][index] = model
+			current[display] = { key = key :: string, model = model }
 		end
+		-- Lu par le client : invite « Place » seulement sur les présentoirs achetés libres ; un présentoir libre est aussi
+		-- la cible de l'objectif « Place your dummy! » (flèche et chevrons du tutoriel)
+		top:SetAttribute("Occupied", if entry then true else nil)
+		top:SetAttribute("Objective", if ready and unlocked and not entry then "Place" else nil)
 	end
-	local income = Collection.baseIncome(collection.base, CourseLayout.DISPLAY_COUNT)
+	stylePad(slot, if ready and data then data.displays else nil)
+	if not ready or not data or not player then
+		slot.base.income.Text = ""
+		return
+	end
+	local income = Inventory.income(data)
 	player:SetAttribute("Income", income)
 	slot.base.income.Text = Format.money(income) .. "/s"
 end
 
--- Cette méthode permet de rendre la base d'un joueur lorsque sa collection change.
-local function refresh(player: Player)
+-- Cette méthode permet de savoir si la première pose du tutoriel reste à faire (elle se fait à la main, sur un
+-- présentoir) lorsque le joueur demande AUTO, Place ou « Place best ».
+local function firstPlacePending(player: Player): boolean
+	return Tutorial.current((player:GetAttribute("Tutorial") :: number?) or 0) == "Place"
+end
+
+-- Cette méthode permet de rendre la base d'un joueur et de publier sa collection dans ses attributs (stock, base,
+-- présentoirs achetés, Index, dernier gagné) lorsque sa collection change.
+local function refresh(player: Player, force: boolean?)
 	local slot = slotOf[player]
 	if slot then
-		render(slot, player)
+		render(slot, player, force)
 	end
-	local collection = PlayerData.collection(player)
-	player:SetAttribute("PendingDummy", entryKey(collection and collection.pending))
+	local data = PlayerData.collection(player)
+	if not data or not player:GetAttribute("DataReady") then
+		return -- rien de publié avant le chargement : le client ne voit pas une collection vide puis la vraie
+	end
+	Inventory.checkLast(data)
+	-- Première pose du tutoriel (à la main) : il faut un mannequin proposé, sinon rien ne permet de poser (gagné puis
+	-- parti avant de le poser, ou vendu) ; le plus récent du stock
+	if not data.last and #data.stock > 0 and firstPlacePending(player) then
+		local newest = data.stock[#data.stock]
+		data.last = { id = newest.id, size = newest.size }
+	end
+	player:SetAttribute("Stock", Inventory.encodeList(data.stock))
+	player:SetAttribute("BaseDummies", Inventory.encodeBase(data.base))
+	player:SetAttribute("Displays", data.displays)
+	player:SetAttribute("DummyIndex", Inventory.encodeIndex(data.index))
+	player:SetAttribute("PendingDummy", if data.last then Inventory.key(data.last) else nil)
+end
+
+-- Cette méthode permet d'ajouter au stock (et à l'Index) un mannequin gagné, proposé ensuite à la pose, lorsque le
+-- tirage le donne ; renvoie true s'il n'avait jamais été obtenu. Stock plein : le moins rentable est vendu d'office.
+local function receive(player: Player, data: Inventory.Data, entry: Collection.Entry): boolean
+	local isNew = Inventory.discover(data, entry)
+	local sold = Inventory.add(data, entry)
+	if sold > 0 then
+		PlayerData.addMoney(player, sold)
+	end
+	data.last = { id = entry.id, size = entry.size }
+	refresh(player)
+	return isNew
 end
 
 -- Cette méthode permet de tirer le mannequin gagné par un lancer (le premier est garanti : Collection.STARTER, taille
--- normale) à la CHANCE `luck`, de le mettre en main (un mannequin encore en main est d'abord posé d'office) et de
--- donner ce que l'écran de tirage révèle lorsque le mannequin lancé s'arrête ; nil si les données ne sont pas prêtes.
+-- normale) à la CHANCE `luck`, de l'ajouter au stock (le précédent, s'il n'a pas été posé, y reste) et de donner ce que
+-- l'écran de tirage révèle lorsque le mannequin lancé s'arrête ; nil si les données ne sont pas prêtes.
 function BaseService.award(player: Player, luck: number): Prize?
-	local collection = PlayerData.collection(player)
-	if not collection or not player:GetAttribute("DataReady") then
+	local data = PlayerData.collection(player)
+	if not data or not player:GetAttribute("DataReady") then
 		return nil
-	end
-	if collection.pending then
-		BaseService.place(player, nil, true) -- le précédent, jamais posé : rangé d'office plutôt que perdu
 	end
 	local draws = (player:GetAttribute("Draws") :: number?) or 0
 	local entry = if draws == 0
@@ -163,11 +229,8 @@ function BaseService.award(player: Player, luck: number): Prize?
 		else Collection.draw(luck, function()
 			return rng:NextNumber()
 		end)
-	local isNew = not collection.discovered[entry.id]
-	collection.discovered[entry.id] = true
-	collection.pending = entry
 	player:SetAttribute("Draws", draws + 1)
-	refresh(player)
+	local isNew = receive(player, data, entry)
 	local dummy = Collection.get(entry.id) :: Collection.Dummy
 	return {
 		id = entry.id,
@@ -183,7 +246,7 @@ end
 -- Cette méthode permet de savoir si le joueur peut utiliser AUTO lorsqu'il le demande : première pose du tutoriel
 -- déjà faite à la main, et avatar dans sa base ou tout près.
 local function canAuto(player: Player): boolean
-	if Tutorial.current((player:GetAttribute("Tutorial") :: number?) or 0) == "Place" then
+	if firstPlacePending(player) then
 		return false
 	end
 	local slot = slotOf[player]
@@ -195,43 +258,96 @@ local function canAuto(player: Player): boolean
 		and CourseLayout.isNearBase(slot.index, root.Position - (root.AssemblyLinearVelocity * 0.3))
 end
 
--- Cette méthode permet de poser le mannequin en main lorsque le joueur choisit un présentoir libre (`display`, ce qui
--- compte pour le tutoriel) ou clique sur AUTO près de sa base (`display` nil : Collection.autoSlot, revente si rien ne
--- lui va) ; `force` (serveur) pose d'office sans ces conditions. Renvoie true si la base a changé.
+-- Cette méthode permet de poser le dernier mannequin gagné lorsque le joueur choisit un présentoir libre (`display`,
+-- ce qui compte pour le tutoriel) ou clique sur AUTO près de sa base (`display` nil : Inventory.autoTarget ; base
+-- pleine et rien de moins rentable, il reste au stock et le panneau se ferme) ; `force` (serveur) passe outre ces
+-- conditions. Renvoie true si quelque chose a changé.
 function BaseService.place(player: Player, display: any, force: boolean?): boolean
-	local collection = PlayerData.collection(player)
-	local entry = collection and collection.pending
-	if not collection or not entry then
+	local data = PlayerData.collection(player)
+	local last = data and data.last
+	if not data or not last or not player:GetAttribute("DataReady") then
 		return false
 	end
-	local capacity = CourseLayout.DISPLAY_COUNT
-	local index: number?
+	local position = Inventory.findStock(data, Inventory.key(last))
+	if not position then
+		data.last = nil
+		refresh(player)
+		return false
+	end
 	if display == nil then
 		if not force and not canAuto(player) then
 			return false
 		end
-		index = Collection.autoSlot(collection.base, capacity, entry)
-	elseif typeof(display) == "number" and display == math.floor(display) and display >= 1 and display <= capacity then
-		if collection.base[display] then
-			return false -- présentoir occupé : la pose à la main ne remplace rien
-		end
-		index = display
+		Inventory.place(data, position, nil)
+	elseif not Inventory.place(data, position, display) then
+		return false -- présentoir occupé, pas acheté ou invalide : la pose à la main ne remplace rien
 	else
-		return false
-	end
-	collection.pending = nil
-	if index then
-		local replaced = collection.base[index]
-		if replaced then
-			PlayerData.addMoney(player, Collection.sellValue(replaced))
-		end
-		collection.base[index] = entry
-	else
-		PlayerData.addMoney(player, Collection.sellValue(entry))
-	end
-	if display ~= nil then
 		PlayerData.tutorialStep(player, "Place") -- seule une pose à la main compte (première pose du tutoriel)
 	end
+	data.last = nil
+	refresh(player)
+	return true
+end
+
+-- Cette méthode permet d'appliquer une action de la fenêtre d'inventaire ou du stand SELL lorsque le client la
+-- demande : "Place" (clé du stock, règle AUTO), "Remove" (présentoir), "Sell" (clé du stock), "SellRarity" (rareté),
+-- "PlaceBest", "BuyDisplay" (pad de sa base). Le serveur valide tout ; renvoie true si la collection a changé.
+function BaseService.act(player: Player, action: any, arg: any): boolean
+	local data = PlayerData.collection(player)
+	if not data or not player:GetAttribute("DataReady") then
+		return false
+	end
+	local changed = false
+	if action == "Place" or action == "Sell" then
+		local position = if type(arg) == "string" then Inventory.findStock(data, arg) else nil
+		if not position or (action == "Sell" and firstPlacePending(player)) then
+			return false -- première pose du tutoriel : le mannequin gagné se pose, il ne se vend pas
+		end
+		if action == "Place" then
+			changed = not firstPlacePending(player) and Inventory.place(data, position, nil) ~= nil
+		else
+			local money = Inventory.sell(data, position)
+			PlayerData.addMoney(player, money)
+			changed = true
+		end
+	elseif action == "Remove" then
+		changed = Inventory.remove(data, arg)
+	elseif action == "PlaceBest" then
+		changed = not firstPlacePending(player) and Inventory.placeBest(data)
+	elseif action == "BuyDisplay" then
+		-- Le pad est devant la base : l'achat se fait sur place
+		local slot = slotOf[player]
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		return slot ~= nil
+			and root ~= nil
+			and CourseLayout.isNearBase(slot.index, root.Position)
+			and BaseService.buyDisplay(player)
+	elseif action == "SellRarity" then
+		if typeof(arg) == "number" and Rarity.LIST[arg] and not firstPlacePending(player) then
+			local count, total = Inventory.sellRarity(data, arg)
+			PlayerData.addMoney(player, total)
+			changed = count > 0
+		end
+	end
+	if changed then
+		refresh(player)
+	end
+	return changed
+end
+
+-- Cette méthode permet d'acheter le présentoir suivant lorsque le joueur utilise le pad de sa base ; refusé sans
+-- l'argent ou au maximum. Renvoie true si l'achat a eu lieu.
+function BaseService.buyDisplay(player: Player): boolean
+	local data = PlayerData.collection(player)
+	if not data or not player:GetAttribute("DataReady") then
+		return false
+	end
+	local price = Inventory.buyDisplay(data, (player:GetAttribute("Money") :: number?) or 0)
+	if not price then
+		return false
+	end
+	PlayerData.addMoney(player, -price)
 	refresh(player)
 	return true
 end
@@ -286,7 +402,7 @@ end
 local function watchTemplates()
 	local function rerender()
 		for player in slotOf do
-			refresh(player)
+			refresh(player, true)
 		end
 	end
 	local function watch(folder: Instance)
@@ -309,13 +425,52 @@ local function watchTemplates()
 	end
 end
 
--- Cette méthode permet de brancher la pose (remote PlaceDummy), le revenu et le suivi des joueurs lorsque le serveur
--- démarre (après SlotService, qui attribue les places).
-function BaseService.init(builtSlots: { Slot }, placeRemote: RemoteEvent)
+-- Cette méthode permet de brancher en Studio les attributs de test (MCP) lorsque le joueur arrive : DebugPlace = n
+-- pose le dernier gagné sur le présentoir n (comme l'invite), toute autre valeur avec AUTO sans condition ;
+-- DebugGive = « id:taille » ajoute ce mannequin comme s'il venait d'être gagné ; DebugInventory = « Action » ou
+-- « Action|argument » (actions de BaseService.act).
+local function bindDebug(player: Player)
+	player:GetAttributeChangedSignal("DebugPlace"):Connect(function()
+		local value = player:GetAttribute("DebugPlace")
+		if value ~= nil then
+			player:SetAttribute("DebugPlace", nil)
+			BaseService.place(player, if typeof(value) == "number" then value else nil, typeof(value) ~= "number")
+		end
+	end)
+	player:GetAttributeChangedSignal("DebugGive"):Connect(function()
+		local entry = Inventory.parseKey(player:GetAttribute("DebugGive"))
+		local data = PlayerData.collection(player)
+		player:SetAttribute("DebugGive", nil)
+		if entry and data and player:GetAttribute("DataReady") then
+			receive(player, data, entry)
+		end
+	end)
+	player:GetAttributeChangedSignal("DebugInventory"):Connect(function()
+		local value = player:GetAttribute("DebugInventory")
+		if type(value) ~= "string" then
+			return
+		end
+		player:SetAttribute("DebugInventory", nil)
+		local action, arg = string.match(value, "^(%w+)|?(.*)$")
+		local result = BaseService.act(player, action, tonumber(arg) or (if arg ~= "" then arg else nil))
+		print(string.format("[Debug] %s -> %s", value, tostring(result)))
+	end)
+end
+
+-- Cette méthode permet de brancher la pose (remote PlaceDummy), les actions de collection et l'achat de présentoir
+-- (remote Inventory), le revenu et le suivi des joueurs lorsque le serveur démarre (après SlotService, qui attribue les
+-- places).
+function BaseService.init(builtSlots: { Slot }, placeRemote: RemoteEvent, inventoryRemote: RemoteEvent)
 	slots = builtSlots
 	placeRemote.OnServerEvent:Connect(function(player, display)
 		BaseService.place(player, display)
 	end)
+	inventoryRemote.OnServerEvent:Connect(function(player, action, arg)
+		BaseService.act(player, action, arg)
+	end)
+	for _, slot in slots do
+		render(slot, nil)
+	end
 	Players.PlayerAdded:Connect(function(player)
 		-- SlotService pose l'attribut Slot dans son propre PlayerAdded : attendu s'il n'est pas encore là
 		if player:GetAttribute("Slot") == nil then
@@ -341,21 +496,10 @@ function BaseService.init(builtSlots: { Slot }, placeRemote: RemoteEvent)
 		end
 	end)
 	if RunService:IsStudio() then
-		-- Studio : DebugPlace = n pose le mannequin en main sur le présentoir n (comme l'invite), toute autre valeur avec
-		-- AUTO sans condition
-		Players.PlayerAdded:Connect(function(player)
-			player:GetAttributeChangedSignal("DebugPlace"):Connect(function()
-				local value = player:GetAttribute("DebugPlace")
-				if value ~= nil then
-					player:SetAttribute("DebugPlace", nil)
-					BaseService.place(
-						player,
-						if typeof(value) == "number" then value else nil,
-						typeof(value) ~= "number"
-					)
-				end
-			end)
-		end)
+		Players.PlayerAdded:Connect(bindDebug)
+		for _, player in Players:GetPlayers() do
+			bindDebug(player)
+		end
 	end
 end
 

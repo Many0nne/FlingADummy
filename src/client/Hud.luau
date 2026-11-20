@@ -1,6 +1,7 @@
 -- HUD permanent au style des jeux de référence : boutons à icône (Index et Shop à gauche, Dummies à droite, pastille
 -- « ! »), compteurs icône + valeur en bas à gauche (Throw Power, argent et revenu « +$N/s »), fenêtres à bandeau et
--- cartes d'objets (équipements d'entraînement, mannequins, index), barre d'entraînement avec STOP, « +N EXP » qui
+-- cartes d'objets (équipements d'entraînement ; collection, vente et Index : Client.CollectionWindows), barre
+-- d'entraînement avec STOP, « +N EXP » qui
 -- s'envole à chaque répétition, popups LEVEL UP! (Throw Power gagnée au niveau) / NEW EQUIPMENT!, et popup « NEW GEAR! »
 -- qui propose l'équipement suivant dès qu'il est abordable (achat en un clic).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -12,15 +13,16 @@ local DummyShape = require(Shared:WaitForChild("DummyShape"))
 local Format = require(Shared:WaitForChild("Format"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
 local Training = require(Shared:WaitForChild("Training"))
 local Tutorial = require(Shared:WaitForChild("Tutorial"))
 local UIMotion = require(Shared:WaitForChild("UIMotion"))
 
+local CollectionWindows = require(script.Parent.CollectionWindows)
 local UIKit = require(script.Parent.UIKit)
 
 local C = UIKit.COLORS
 local BUTTON_SIZE = 92 -- côté des boutons à icône à 720 px de haut (≈ 0,13 h, comme les références)
-local INDEX_SLOTS = 8 -- cases de l'index en attendant son contenu (#52)
 local FLY_GROUP = 0.35 -- s : un gain arrivé moins de FLY_GROUP s après le précédent rejoint son « +N » en vol
 local FLY_MAX = 3 -- « +N » en vol au plus par compteur
 
@@ -49,8 +51,6 @@ local counters: { [string]: Counter } = {}
 local anchors: { [string]: GuiObject } = {} -- éléments que l'objectif peut désigner
 local windows: { [string]: Frame } = {}
 local gearCards: { UIKit.Card } = {}
-local dummyCard: UIKit.Card
-local lockedViewports: { ViewportFrame } = {} -- mannequins à venir (#14), en silhouette
 local modelsMeshed: boolean? = nil -- forme (maillée ou blocs) des rendus 3D des cartes déjà construits
 local trainBar: Frame
 local trainLevel: TextLabel
@@ -67,6 +67,10 @@ local lastRepFloat = 0
 local knownLevel = math.huge -- palier d'entraînement et équipement déjà annoncés (aucun avant le chargement)
 local knownTier = math.huge
 local popupEndsAt = 0
+-- Ventes envoyées au serveur : leur argent volera du bouton au compteur quand il arrivera
+type ExpectedGain = { amount: number, from: Vector2, untilTime: number }
+local expectedGains: { ExpectedGain } = {}
+local EXPECT_TIME = 3 -- s : une vente que le serveur n'a pas créditée dans ce délai ne vole plus
 -- Popup « NEW GEAR! » (référence 09, « Nouvel équipement ! ») : palier proposé, et paliers dont le joueur l'a fermé
 type Offer = { frame: Frame, button: TextButton, viewport: ViewportFrame, name: TextLabel, stat: TextLabel }
 local offer: Offer
@@ -93,6 +97,7 @@ local function toggle(name: string)
 		UIKit.openWindow(target)
 	end
 	Hud.refresh()
+	CollectionWindows.refresh() -- les fenêtres de collection ne suivent que leurs attributs : rafraîchies à l'ouverture
 end
 
 -- Cette méthode permet de créer une ligne de compteur (icône dessinée + valeur à contour, ancrée à gauche pour
@@ -364,8 +369,8 @@ local function cardRow(body: Frame): ScrollingFrame
 	return row
 end
 
--- Cette méthode permet de construire les fenêtres (équipements d'entraînement, mannequins, index) lorsque le HUD est
--- construit.
+-- Cette méthode permet de construire la fenêtre des équipements d'entraînement lorsque le HUD est construit (fenêtres de
+-- collection : Client.CollectionWindows).
 local function buildWindows()
 	local size = Vector2.new(680, 440) -- ≈ 0,6 h de haut à 720 px, 3 cartes visibles (référence 01)
 	local shop = UIKit.window(gui, {
@@ -387,74 +392,6 @@ local function buildWindows()
 			end
 		end)
 	end
-
-	local dummies = UIKit.window(gui, {
-		name = "Dummies",
-		title = "Dummies",
-		icon = "dummies",
-		colors = { Color3.fromRGB(255, 150, 20), Color3.fromRGB(255, 215, 50) },
-		size = size,
-	}, function()
-		UIKit.closeWindow(windows.Dummies)
-	end)
-	windows.Dummies = dummies.frame
-	local dummyRow = cardRow(dummies.body)
-	dummyCard = UIKit.card(dummyRow, 1, function() end)
-	for order = 2, 3 do
-		local locked = UIKit.card(dummyRow, order, function() end)
-		locked.title.Text = "???"
-		locked.rarity.Text = "Coming soon"
-		locked.stat.Text = "???"
-		locked.action.Text = "LOCKED"
-		locked.action.BackgroundColor3 = C.equipped
-		locked.action:SetAttribute("Disabled", true)
-		locked.viewport.ImageColor3 = Color3.new(0, 0, 0)
-		table.insert(lockedViewports, locked.viewport)
-	end
-
-	local index = UIKit.window(gui, {
-		name = "Index",
-		title = "Index",
-		icon = "index",
-		colors = { Color3.fromRGB(40, 110, 255), Color3.fromRGB(60, 210, 255) },
-		size = size,
-	}, function()
-		UIKit.closeWindow(windows.Index)
-	end)
-	windows.Index = index.frame
-	UIKit.text({
-		Size = UDim2.new(1, 0, 0, 26),
-		Text = "Throw your dummy to discover new ones!",
-		TextSize = 22,
-		ZIndex = 12,
-		Parent = index.body,
-	})
-	local grid = UIKit.create("Frame", {
-		Position = UDim2.fromOffset(0, 34),
-		Size = UDim2.new(1, 0, 1, -34),
-		BackgroundTransparency = 1,
-		ZIndex = 11,
-		Parent = index.body,
-	})
-	UIKit.create("UIGridLayout", {
-		CellSize = UDim2.fromOffset(128, 116),
-		CellPadding = UDim2.fromOffset(10, 10),
-		HorizontalAlignment = Enum.HorizontalAlignment.Center,
-		SortOrder = Enum.SortOrder.LayoutOrder,
-		Parent = grid,
-	})
-	for slot = 1, INDEX_SLOTS do
-		local cell = UIKit.create("Frame", {
-			LayoutOrder = slot,
-			BackgroundColor3 = Color3.new(1, 1, 1),
-			ZIndex = 12,
-			Parent = grid,
-		})
-		UIKit.corner(cell, 10)
-		UIKit.outline(cell, 3)
-		UIKit.shade(cell, Color3.fromRGB(236, 238, 244), Color3.fromRGB(176, 182, 194))
-		UIKit.text({ Size = UDim2.fromScale(1, 1), Text = "?", TextSize = 56, ZIndex = 13, Parent = cell })
-	end
 end
 
 -- Cette méthode permet de construire le rendu 3D d'un équipement (néon à la place du verre et du champ de force, qui
@@ -467,7 +404,7 @@ local function gearModel(tier: number): Model
 	return DummyShape.buildVisual(1, { color = gear.color, material = material })
 end
 
--- Cette méthode permet de (re)construire les rendus 3D des cartes (mannequins soulevés, mannequin lancé) lorsque une
+-- Cette méthode permet de (re)construire les rendus 3D des cartes (mannequins soulevés) lorsque une
 -- fenêtre s'ouvre pour la première fois ou que les maillages publiés viennent d'arriver.
 local function buildModels()
 	local meshed = DummyShape.isMeshed()
@@ -478,10 +415,6 @@ local function buildModels()
 	for tier, card in gearCards do
 		UIKit.showModel(card.viewport, gearModel(tier))
 	end
-	UIKit.showModel(dummyCard.viewport, DummyShape.buildVisual(1))
-	for _, viewport in lockedViewports do
-		UIKit.showModel(viewport, DummyShape.buildVisual(1))
-	end
 end
 
 -- Cette méthode permet de reconstruire les rendus 3D d'une fenêtre ouverte lorsque les gabarits maillés du mannequin
@@ -489,7 +422,10 @@ end
 local function watchTemplates()
 	-- Cette méthode permet de rafraîchir les fenêtres lorsque le dossier des gabarits passe à Ready.
 	local function watch(folder: Instance)
-		folder:GetAttributeChangedSignal("Ready"):Connect(Hud.refresh)
+		folder:GetAttributeChangedSignal("Ready"):Connect(function()
+			Hud.refresh()
+			CollectionWindows.refresh()
+		end)
 	end
 	local folder = ReplicatedStorage:FindFirstChild(DummyShape.TEMPLATES)
 	if folder then
@@ -539,16 +475,6 @@ local function refreshGear(money: number)
 	end
 end
 
--- Cette méthode permet d'habiller la carte du mannequin lancé (le seul en attendant la boutique de mannequins, #14)
--- lorsque sa fenêtre s'ouvre.
-local function refreshDummy()
-	dummyCard.title.Text = "Crash Dummy"
-	dummyCard.rarity.Text = "Starter"
-	dummyCard.rarity.TextColor3 = C.yellow
-	dummyCard.stat.Text = "x1 CHANCE"
-	setAction(dummyCard, "EQUIPPED", C.equipped, false)
-end
-
 -- Cette méthode permet d'afficher, de mettre à jour ou de masquer le popup « NEW GEAR! » lorsque l'argent affiché,
 -- l'équipement ou l'état du joueur changent : palier suivant abordable, pas fermé par le joueur, écran libre.
 local function refreshOffer(money: number, cost: number?)
@@ -589,10 +515,9 @@ function Hud.refresh()
 
 	local gearCost = Training.nextGearCost(stat("GearTier", 1))
 	UIKit.setBadge(anchors.Shop, if gearCost ~= nil and money >= gearCost then "!" else nil)
-	if windows.Shop.Visible or windows.Dummies.Visible then
+	if windows.Shop.Visible then
 		buildModels()
 		refreshGear(money)
-		refreshDummy()
 	end
 	refreshOffer(money, gearCost)
 end
@@ -841,6 +766,20 @@ function Hud.buyButton(kind: string): GuiObject?
 	return nil
 end
 
+-- Cette méthode permet d'annoncer une vente envoyée au serveur (argent attendu, position du bouton à l'écran) lorsque
+-- le joueur vend : à l'arrivée de l'argent, un « +$N » vole du bouton au compteur.
+function Hud.expectGain(amount: number, from: Vector2)
+	if amount > 0 then
+		table.insert(expectedGains, { amount = amount, from = from, untilTime = os.clock() + EXPECT_TIME })
+	end
+end
+
+-- Cette méthode permet d'afficher un popup de palier (« NEW DISPLAY! », refus d'achat) lorsque un autre module
+-- l'annonce.
+function Hud.popup(options: UIKit.PopupOptions)
+	showPopup(options)
+end
+
 -- Cette méthode permet de savoir si un popup de palier occupe le haut de l'écran lorsque l'objectif s'affiche.
 function Hud.isPopupShown(): boolean
 	return os.clock() < popupEndsAt
@@ -849,9 +788,34 @@ end
 -- Cette méthode permet de recevoir un achat demandé par l'interface ; remplacée par init.client (envoi au serveur).
 function Hud.onBuy(_kind: string) end
 
+-- Cette méthode permet de faire voler du bouton au compteur l'argent des ventes attendues lorsque l'argent augmente de
+-- `gain` ; les ventes trop anciennes (refusées par le serveur) sont oubliées.
+local function flyExpected(gain: number)
+	local now = os.clock()
+	local left = gain
+	local kept = {}
+	-- Montant exact, ou vente arrivée avec le revenu de la seconde : le revenu seul ne fait pas voler une vente
+	local income = stat("Income", 0)
+	for pass = 1, 2 do
+		kept = {}
+		for _, expected in expectedGains do
+			local fits = if pass == 1 then expected.amount == left else expected.amount + income == left
+			if now > expected.untilTime then
+				continue
+			elseif seeded and fits and left > 0 then
+				left -= expected.amount
+				flyGain("Money", expected.amount, expected.from)
+			else
+				table.insert(kept, expected)
+			end
+		end
+		expectedGains = kept
+	end
+end
+
 -- Cette méthode permet de construire le HUD et de le brancher sur les attributs du joueur lorsque le client démarre ;
--- `onStop` arrête l'entraînement.
-function Hud.init(localPlayer: Player, onStop: () -> ())
+-- `onStop` arrête l'entraînement, `remotes` sert aux fenêtres de collection.
+function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remotes)
 	player = localPlayer
 	gui = UIKit.create("ScreenGui", {
 		Name = "Hud",
@@ -872,6 +836,17 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 	buildButtons()
 	buildGearOffer()
 	buildWindows()
+	-- Fenêtres de collection : « My Dummies » à gauche du bouton Dummies (marge 14 + bouton + 16)
+	for name, frame in
+		CollectionWindows.init(player, remotes, gui, 30 + BUTTON_SIZE, {
+			toggle = toggle,
+			expectGain = Hud.expectGain,
+			popup = Hud.popup,
+			dummiesButton = anchors.Dummies,
+		})
+	do
+		windows[name] = frame
+	end
 	buildTrainBar(onStop)
 
 	lastPower = stat("ThrowPower", GameConfig.START_POWER)
@@ -885,6 +860,8 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 		if money < lastMoney then
 			clampPending("Money", money)
 			UIKit.pop(moneyLabel, 0.85) -- dépense : le compteur se tasse puis revient
+		elseif money > lastMoney and #expectedGains > 0 then
+			flyExpected(money - lastMoney)
 		end
 		lastMoney = money
 		Hud.refresh()

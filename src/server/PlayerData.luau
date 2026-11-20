@@ -1,15 +1,15 @@
 -- Données du joueur : argent, Throw Power, équipement, niveaux et record, portés par des attributs du Player (répliqués au
--- client), recopiés dans les leaderstats ; collection (présentoirs de la base, mannequin gagné pas encore posé,
--- mannequins déjà découverts) gardée côté serveur. Le tout est sauvegardé en DataStore.
+-- client), recopiés dans les leaderstats ; collection (stock, présentoirs de la base et présentoirs achetés, Index :
+-- Shared.Inventory) gardée côté serveur. Le tout est sauvegardé en DataStore (migration des sauvegardes de #13 par
+-- Inventory.read).
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local Collection = require(ReplicatedStorage.Shared.Collection)
-local CourseLayout = require(ReplicatedStorage.Shared.CourseLayout)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local Inventory = require(ReplicatedStorage.Shared.Inventory)
 local Training = require(ReplicatedStorage.Shared.Training)
 local Tutorial = require(ReplicatedStorage.Shared.Tutorial)
 
@@ -26,65 +26,14 @@ local DEFAULTS = {
 	Draws = 0, -- mannequins de collection gagnés (le premier est garanti : Collection.STARTER)
 }
 
--- Collection d'un joueur : présentoirs (false = vide), mannequin gagné à poser, identifiants déjà obtenus
-export type CollectionData = {
-	base: { [number]: Collection.Entry | false },
-	pending: Collection.Entry?,
-	discovered: { [string]: boolean },
-}
+-- Collection d'un joueur : stock, présentoirs, Index (Shared.Inventory)
+export type CollectionData = Inventory.Data
 
 local PlayerData = {}
 
 local store: DataStore? = nil
 local loaded: { [Player]: boolean } = {}
 local collections: { [Player]: CollectionData } = {}
-
--- Cette méthode permet de créer une collection vide (base de DISPLAY_COUNT présentoirs libres) lorsqu'un joueur arrive.
-local function emptyCollection(): CollectionData
-	local base = {}
-	for index = 1, CourseLayout.DISPLAY_COUNT do
-		base[index] = false
-	end
-	return { base = base, pending = nil, discovered = {} }
-end
-
--- Cette méthode permet de relire la collection sauvegardée (entrées inconnues ou abîmées ignorées) lorsque les
--- données d'un joueur sont chargées.
-local function readCollection(saved: any): CollectionData
-	local data = emptyCollection()
-	if type(saved) ~= "table" then
-		return data
-	end
-	if type(saved.base) == "table" then
-		for index = 1, CourseLayout.DISPLAY_COUNT do
-			local entry = saved.base[index]
-			if Collection.isEntry(entry) then
-				data.base[index] = { id = entry.id, size = entry.size }
-			end
-		end
-	end
-	if Collection.isEntry(saved.pending) then
-		data.pending = { id = saved.pending.id, size = saved.pending.size }
-	end
-	if type(saved.discovered) == "table" then
-		for _, id in saved.discovered do
-			if type(id) == "string" and Collection.get(id) then
-				data.discovered[id] = true
-			end
-		end
-	end
-	return data
-end
-
--- Cette méthode permet de mettre la collection au format sauvegardé (liste d'identifiants découverts) lorsque les
--- données d'un joueur sont écrites.
-local function writeCollection(data: CollectionData): { [string]: any }
-	local discovered = {}
-	for id in data.discovered do
-		table.insert(discovered, id)
-	end
-	return { base = data.base, pending = data.pending, discovered = discovered }
-end
 
 -- Cette méthode permet de construire la clé DataStore d'un joueur lorsque l'on lit ou écrit ses données.
 local function keyOf(player: Player): string
@@ -113,7 +62,7 @@ local function load(player: Player)
 	for key, value in DEFAULTS do
 		player:SetAttribute(key, value)
 	end
-	collections[player] = emptyCollection()
+	collections[player] = Inventory.new()
 	setupLeaderstats(player)
 	-- Studio : attribut FreshPlayer sur Workspace = nouveau joueur (données vierges, rien lu ni sauvegardé)
 	local fresh = RunService:IsStudio() and Workspace:GetAttribute("FreshPlayer") == true
@@ -137,7 +86,11 @@ local function load(player: Player)
 				if type(data.Tutorial) ~= "number" then
 					player:SetAttribute("Tutorial", Tutorial.infer(data))
 				end
-				collections[player] = readCollection(data.Collection)
+				local collection, sold = Inventory.read(data.Collection)
+				collections[player] = collection
+				if sold > 0 then
+					PlayerData.addMoney(player, sold) -- stock au-delà du plafond : vendu, pas perdu
+				end
 			end
 			loaded[player] = true
 		end
@@ -158,7 +111,7 @@ local function save(player: Player)
 	end
 	local collection = collections[player]
 	if collection then
-		data.Collection = writeCollection(collection)
+		data.Collection = Inventory.write(collection)
 	end
 	local ok, err = pcall(function()
 		(store :: DataStore):SetAsync(keyOf(player), data)
@@ -175,7 +128,7 @@ function PlayerData.addMoney(player: Player, amount: number)
 end
 
 -- Cette méthode permet de donner la collection d'un joueur (modifiable en place, sauvegardée avec ses données)
--- lorsque le serveur tire, pose ou revend un mannequin ; nil avant son arrivée ou après son départ.
+-- lorsque le serveur tire, pose, retire ou vend un mannequin ; nil avant son arrivée ou après son départ.
 function PlayerData.collection(player: Player): CollectionData?
 	return collections[player]
 end

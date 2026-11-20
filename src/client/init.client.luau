@@ -29,7 +29,7 @@ end
 Hud.onBuy = function(kind: string)
 	remotes.BuyUpgrade:FireServer(kind)
 end
-Hud.init(player, stopTraining)
+Hud.init(player, stopTraining, remotes)
 local gui = Hud.screen()
 Objective.init(player, gui)
 FlightView.init(gui)

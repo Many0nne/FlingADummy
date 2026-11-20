@@ -9,7 +9,10 @@ local CourseLayout = {}
 local BASE_X = 64 -- centre des bases, de part et d'autre du hub
 local BASE_Z = { -48, -100 } -- rangée avant, rangée arrière
 CourseLayout.BASE_SIZE = Vector3.new(34, 0, 40)
-CourseLayout.DISPLAY_COUNT = 6 -- présentoirs par base (2 rangées de 3)
+-- Présentoirs par base : GameConfig.DISPLAY_START au départ (2 rangées de 3), puis achetés au pad jusqu'à DISPLAY_MAX
+CourseLayout.DISPLAY_MAX = GameConfig.DISPLAY_START + #GameConfig.DISPLAY_PRICES
+CourseLayout.PAD_SHIFT = 12 -- pad d'achat de présentoir : de l'autre côté de l'entrée que l'appareil (vers -Z)
+CourseLayout.PAD_GAP = 6 -- de la clôture d'entrée au pad d'achat de présentoir (studs)
 CourseLayout.BASE_REACH = 12 -- bouton AUTO de pose : dans la base ou à moins de 12 studs de sa clôture
 CourseLayout.STATION_GAP = 10 -- de la clôture d'entrée de la base au centre de son appareil d'entraînement (studs)
 CourseLayout.STATION_SHIFT = 12 -- décalage de l'appareil sur le côté de l'entrée, vers la zone de lancer (+Z)
@@ -129,8 +132,13 @@ function CourseLayout.stationPosition(index: number): (Vector3, Vector3)
 	return Vector3.new(x, 0, base.Z + CourseLayout.STATION_SHIFT), Vector3.new(side, 0, 0)
 end
 
--- Cette méthode permet de donner les emplacements des présentoirs d'une base (2 rangées de 3, centrés sur la base)
--- lorsque l'on construit la base ; la tâche collection y pose les mannequins gagnés.
+-- Présentoirs achetables (7 à 10) : deux par bord avant et arrière de la base, entre les colonnes des 6 premiers
+local EXTRA_DISPLAYS =
+	{ Vector3.new(-4.5, 0, -15.5), Vector3.new(4.5, 0, -15.5), Vector3.new(-4.5, 0, 15.5), Vector3.new(4.5, 0, 15.5) }
+
+-- Cette méthode permet de donner les emplacements des DISPLAY_MAX présentoirs d'une base (2 rangées de 3 au centre,
+-- puis les 4 achetables le long des clôtures avant et arrière) lorsque l'on construit la base ; les achetables existent
+-- dès la construction (grisés tant qu'ils ne sont pas achetés), pour ne déplacer aucun autre présentoir.
 function CourseLayout.displayPositions(index: number): { Vector3 }
 	local center = CourseLayout.basePosition(index)
 	local positions = {}
@@ -139,7 +147,19 @@ function CourseLayout.displayPositions(index: number): { Vector3 }
 			table.insert(positions, center + Vector3.new(col * 9, 0, (row - 0.5) * 14))
 		end
 	end
+	for _, offset in EXTRA_DISPLAYS do
+		table.insert(positions, center + offset)
+	end
 	return positions
+end
+
+-- Cette méthode permet de donner le centre au sol du pad d'achat de présentoir de la place `index` (devant la base, de
+-- l'autre côté de l'entrée que l'appareil d'entraînement) et la direction où regarde son panneau (centre du hub).
+function CourseLayout.padPosition(index: number): (Vector3, Vector3)
+	local side = CourseLayout.entranceSide(index)
+	local base = CourseLayout.basePosition(index)
+	local x = base.X + side * (CourseLayout.BASE_SIZE.X / 2 + CourseLayout.PAD_GAP)
+	return Vector3.new(x, 0, base.Z - CourseLayout.PAD_SHIFT), Vector3.new(side, 0, 0)
 end
 
 -- Cette méthode permet de donner la colonne d'obstacles (une par place) qui couvre l'abscisse `x` ; nil hors des

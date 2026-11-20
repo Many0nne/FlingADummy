@@ -1,5 +1,6 @@
 -- Mannequins de collection : catalogue (rareté, revenu, cote, déclinaison du mannequin), tailles, tirage « 1 en N »
--- poussé par la CHANCE du lancer, probabilités affichables, et rangement dans la base (présentoirs).
+-- poussé par la CHANCE du lancer, probabilités affichables. Possession (stock, présentoirs, vente, Index) :
+-- Shared.Inventory.
 --
 -- Tirage : on essaie les mannequins du plus rare au plus courant ; chacun sort avec la probabilité min(1, chance / n)
 -- et le plus courant ramasse le reste. La chance multiplie donc les chances des raretés hautes, et les probabilités
@@ -92,6 +93,8 @@ Collection.SIZES = {
 
 Collection.STARTER = "crash" -- premier mannequin, garanti au premier lancer
 Collection.PROMPT_TAG = "DisplayPrompt" -- invites « Place » des présentoirs (attributs Slot, Display)
+Collection.SELL_TAG = "SellStand" -- invite du stand SELL du hub (ouvre la fenêtre de vente)
+Collection.PAD_TAG = "DisplayPad" -- invites des pads d'achat de présentoir (attributs Slot, Price, Maxed)
 
 local byId: { [string]: Dummy } = {}
 for _, dummy in Collection.DUMMIES do
@@ -208,12 +211,6 @@ function Collection.income(entry: Entry): number
 	return math.floor(dummy.income * size.income + 0.5)
 end
 
--- Cette méthode permet de donner le prix de revente d'une entrée (SELL_SECONDS de son revenu) lorsque la base est
--- pleine et qu'elle n'y entre pas, ou qu'elle cède sa place.
-function Collection.sellValue(entry: Entry): number
-	return Collection.income(entry) * GameConfig.SELL_SECONDS
-end
-
 -- Cette méthode permet de donner le nom affiché d'une entrée (« Huge Gold Dummy ») lorsque l'interface la nomme.
 function Collection.label(entry: Entry): string
 	local dummy = byId[entry.id]
@@ -232,27 +229,6 @@ function Collection.variant(entry: Entry): { [string]: any }
 		accessories = dummy.accessories,
 		accessoryColor = dummy.accessoryColor,
 	}
-end
-
--- Cette méthode permet de choisir où ranger une entrée gagnée (bouton AUTO) lorsque la base a `capacity`
--- présentoirs : le premier libre, sinon celui du mannequin le moins rentable s'il rapporte moins que l'entrée ; nil si
--- l'entrée doit être revendue.
-function Collection.autoSlot(slots: { [number]: Entry | false }, capacity: number, entry: Entry): number?
-	local worst, worstIncome = nil, math.huge
-	for index = 1, capacity do
-		local placed = slots[index]
-		if not placed then
-			return index
-		end
-		local income = Collection.income(placed)
-		if income < worstIncome then
-			worst, worstIncome = index, income
-		end
-	end
-	if worst and Collection.income(entry) > worstIncome then
-		return worst
-	end
-	return nil
 end
 
 -- Cette méthode permet de calculer le revenu total de la base lorsque ses présentoirs changent.

@@ -59,7 +59,9 @@ base, il rapporte des $/s, seule source d'argent.
 7. **Poser** : de retour au hub, panneau « Place your Crash Dummy! » en bas au centre (rendu 3D). **Première pose à la
    main** (étape du tutoriel) : flèche et chevrons vers un présentoir libre de sa base, présentoirs libres en
    surbrillance, invite « Place » (E). Ensuite le bouton **AUTO** apparaît seulement dans sa base ou à moins de
-   12 studs de sa clôture (vérifié aussi par le serveur). Mannequin jamais posé : rangé d'office au tirage suivant.
+   12 studs de sa clôture (vérifié aussi par le serveur). Le mannequin gagné va d'abord au **stock** (inventaire) : un
+   lancer suivant sans poser l'y laisse et y ajoute le nouveau, rien ne se perd (#54) ; le panneau montre le dernier
+   gagné.
 
 ## Mécanique secondaire : l'entraînement
 - Un appareil d'entraînement par joueur, devant sa base à côté de l'entrée (podium à tenons, râtelier de mannequins
@@ -78,7 +80,7 @@ base, il rapporte des $/s, seule source d'argent.
 Comme 01 et 09 : le lancer fait le lien entre les deux.
 - **Throw Power** (entraînement) → distance → zones plus lointaines → **CHANCE** → mannequins plus rares.
 - **Revenu** (mannequins posés dans la base) → argent → équipements (entraînement plus rapide) ; plus tard la boutique
-  de mannequins à lancer (#14, multiplicateur de chance) et les présentoirs achetables (#52).
+  de mannequins à lancer (#14, multiplicateur de chance) et les présentoirs achetables.
 
 ## CHANCE et tirage (`Shared.Economy`, `Shared.Collection`)
 - CHANCE = chance des zones × (1 + 2 % par os cassé + 1 % par objet détruit), arrondie au centième. La chance des zones
@@ -100,21 +102,49 @@ Comme 01 et 09 : le lancer fait le lien entre les deux.
   | Secret | Crash King, Void, Cosmic | 150 K à 300 K | 500 K à 2 M |
 - **Tailles** : Normal (×1 revenu), Big (×1,5, 1 en 8), Huge (×3, 1 en 60), Giant (×8, 1 en 500) ; modèle agrandi.
 
-## Base (`Server.BaseService`)
-- 6 présentoirs par base ; les mannequins posés sont construits par le serveur (visibles de tous), nom coloré par
-  rareté et $/s au-dessus ; revenu total de la base au-dessus du panneau « NOM'S BASE » (comparaison entre joueurs).
+## Base et collection (`Server.BaseService`, `Shared.Inventory`)
+- **Présentoirs** : 6 au départ (2 rangées de 3), jusqu'à 10. Les mannequins posés sont construits par le serveur
+  (visibles de tous), nom coloré par rareté et $/s au-dessus ; revenu total de la base au-dessus du panneau « NOM'S
+  BASE » (comparaison entre joueurs).
 - Revenu versé chaque seconde (attribut `Income`, compteur « +$N/s ») : **seule source d'argent**.
-- AUTO : premier présentoir libre ; base pleine, le nouveau remplace le moins rentable s'il rapporte plus (l'ancien est
-  revendu), sinon il est revendu ; revente = 2 min de revenu. Inventaire, vente au stand SELL, présentoirs achetables
-  et Index : #52.
-- Sauvegarde avec les données du joueur (`Collection` : présentoirs, mannequin en main, mannequins découverts, pour
-  « NEW! » ; `Draws` : nombre de tirages).
+- **Stock** (inventaire) : les mannequins possédés non posés, doublons compris, dans l'ordre d'arrivée ; tout mannequin
+  gagné y entre. Plafond technique 200 (`INVENTORY_MAX`) : au-delà, le moins rentable du stock est vendu d'office.
+- **AUTO** (panneau de pose) : premier présentoir libre ; base pleine, le nouveau remplace le moins rentable s'il
+  rapporte plus (l'ancien retourne au stock), sinon il reste au stock. Rien n'est jamais vendu sans clic.
+- **Fenêtre « My Dummies »** (bouton Dummies, panneau à droite comme « Mes plantes » de 09) : en haut « IN YOUR BASE
+  n/N · INVENTORY n », total $/s et bouton orange **PLACE BEST** (remplit les présentoirs avec les plus rentables, posés
+  et stock confondus ; un posé reste en place s'il en fait partie) ; puis une ligne par mannequin, posés d'abord, puis
+  $/s décroissant (doublons du stock regroupés, « x3 ») : rendu 3D, badge PLACED, nom, taille et rareté colorées, $/s,
+  boutons **PLACE** (règle AUTO, depuis n'importe où ; « BASE FULL » si rien ne lui va) ou **REMOVE** (posé → stock),
+  et **SELL $N** (stock seulement : un posé se retire d'abord). Pastille « ! » sur Dummies quand un mannequin du stock
+  peut être posé. Pendant la première pose du tutoriel, PLACE et PLACE BEST sont inactifs (pose à la main).
+- **Stand SELL** du hub (invite « Sell dummies ») : fenêtre rouge, boutons « Sell all » colorés par rareté (nombre en
+  stock ; deux clics : « SURE? » et le total, puis vente), puis le stock et ses prix. Prix de vente = **2 min de
+  revenu** (`SELL_MINUTES`). L'argent vendu vole du bouton au compteur.
+- **Pad « 6 > 7 »** devant la base (dalle en briques vertes, panneau en bois et prix sur plaque verte, comme le pad
+  « 8 > 9 » de 09 ; de l'autre côté de l'entrée que l'appareil) : invite « Buy display » (propriétaire seulement)
+  qui achète le présentoir suivant, popup « NEW DISPLAY! » ; refus « NOT ENOUGH MONEY! » si l'argent manque. Prix
+  (`DISPLAY_PRICES`) : 1 K, 5 K, 25 K, 100 K (7e à 10e, à recaler par #15) ; panneau « MAX » à 10. Les présentoirs 7 à
+  10 existent dès la construction (grisés, semi-transparents, sans invite tant qu'ils ne sont pas achetés), deux le
+  long de chaque clôture avant et arrière : les 6 premiers ne bougent pas.
+- **Index** (bouton Index, fenêtre bleue comme 09) : raretés en onglets à gauche (« Common 2/3 »), titre et barre de
+  progression de la rareté, cases des mannequins (cote « 1 IN N », rendu et nom, ✔ et meilleure taille obtenue ;
+  silhouette noire et « ??? » s'il n'a jamais été obtenu), total « Unlocked: x / 21 » en bas. L'Index garde les
+  mannequins obtenus même vendus.
+- **Réplication** : le serveur publie la collection dans des attributs du joueur (`Stock`, `BaseDummies`, `Displays`,
+  `DummyIndex`, `PendingDummy` = dernier gagné), en clés « id:taille ». Le client n'envoie que des intentions (remote
+  `Inventory` : Place / Sell + clé, Remove + présentoir, SellRarity + rareté, PlaceBest ; invite du pad), le serveur
+  valide tout. Deux doublons sont interchangeables : le client désigne un mannequin du stock par sa clé.
+- **Sauvegarde** avec les données du joueur (`Collection` : présentoirs, présentoirs achetés, stock, Index = meilleure
+  taille par mannequin ; `Draws` : nombre de tirages). Migration des sauvegardes de #13 : le mannequin en main passe au
+  stock, la liste des découverts devient l'Index.
 
 ## Carte (v0.3) : lobby de 4 joueurs, piste unique
-- **Hub** (pelouse à damier entourée de parois en gradins) : une **base par joueur** (terrain clôturé, 6 présentoirs
-  pour la collection, panneau « NOM'S BASE » et revenu au-dessus) avec son **appareil d'entraînement** à côté de l'entrée, qu'il
+- **Hub** (pelouse à damier entourée de parois en gradins) : une **base par joueur** (terrain clôturé, 6 à 10 présentoirs
+  pour la collection, panneau « NOM'S BASE » et revenu au-dessus, pad d'achat de présentoir) avec son **appareil
+  d'entraînement** à côté de l'entrée, qu'il
   laisse libre (podium à tenons, pastille jaune, râtelier, invite « Lift », briques fines `FadBrickFine`), stands à
-  auvents rayés « SELL » et « SHOP » (branchés par la collection et la boutique), chevrons jaunes vers la zone de
+  auvents rayés « SELL » (fenêtre de vente) et « SHOP » (branché par la boutique), chevrons jaunes vers la zone de
   lancer. Plan dans `Shared.CourseLayout`.
 - **Zone de lancer commune** : la **bande de lancer**, sur toute la largeur de la piste et toute la profondeur de la zone
   (16 studs, du hub au départ), au ras de la pelouse : carreaux de 4 studs à tenons orange et jaune, reflet blanc qui
@@ -189,8 +219,8 @@ Interface : section suivante.
   l'appareil d'entraînement de chaque place.
 - **Fenêtres** : cadre sombre, bandeau dégradé (icône, titre), croix rouge ; cartes d'objets grises (nom, rareté
   colorée de `Shared.Rarity`, rendu 3D en `ViewportFrame`, statistique, bouton : prix vert / rouge, « EQUIPPED »).
-  Shop = équipements d'entraînement ; Dummies = mannequin lancé (Crash Dummy, x1 CHANCE) et mannequins à venir en
-  silhouette (#14) ; Index = cases vides en attendant son contenu (#52).
+  Shop = équipements d'entraînement ; Dummies (« My Dummies »), vente et Index : section « Base et collection ». Les
+  listes de collection défilent verticalement (grille en `ScrollingFrame` Y, #45).
 - **Jauge** : capsule verticale à contour noir, dégradé vert (haut) → rouge (bas), 4 traits, curseur blanc, `+N` à
   droite, « Click to throw! » dessous.
 - **Popups** : « LEVEL UP! » / « NEW EQUIPMENT! » jaunes à contour en haut au centre, sous-titre dessous.

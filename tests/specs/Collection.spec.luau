@@ -113,13 +113,12 @@ return function(T, Loader)
 		end)
 	end)
 
-	T.describe("Collection.income / sellValue / label", function()
+	T.describe("Collection.income / label", function()
 		T.it("la taille multiplie le revenu et préfixe le nom", function()
 			local huge = { id = "gold", size = 3 }
 			T.expectEqual(Collection.income(huge), 2500 * Collection.SIZES[3].income)
 			T.expectEqual(Collection.label(huge), "Huge Gold Dummy")
 			T.expectEqual(Collection.label({ id = "gold", size = 1 }), "Gold Dummy")
-			T.expectEqual(Collection.sellValue(huge), Collection.income(huge) * GameConfig.SELL_SECONDS)
 		end)
 		T.it("isEntry refuse les entrées inconnues ou abîmées", function()
 			T.expect(Collection.isEntry({ id = "crash", size = 1 }), "valide")
@@ -130,22 +129,17 @@ return function(T, Loader)
 		end)
 	end)
 
-	T.describe("Collection.autoSlot / baseIncome", function()
+	T.describe("Collection.baseIncome", function()
 		local crash = { id = "crash", size = 1 } -- 4 $/s
 		local mint = { id = "mint", size = 1 } -- 15 $/s
-		local gold = { id = "gold", size = 1 }
-		T.it("premier présentoir libre", function()
-			T.expectEqual(Collection.autoSlot({ mint, false, false }, 3, crash), 2)
-		end)
-		T.it("base pleine : remplace le moins rentable s'il rapporte moins, sinon revente (nil)", function()
-			local base = { mint, crash, mint }
-			T.expectEqual(Collection.autoSlot(base, 3, gold), 2)
-			T.expectEqual(Collection.autoSlot(base, 3, crash), nil)
-			T.expectEqual(Collection.autoSlot({ mint, mint }, 2, crash), nil)
-		end)
 		T.it("revenu de la base = somme des présentoirs occupés", function()
 			T.expectEqual(Collection.baseIncome({ mint, false, crash }, 3), 19)
 			T.expectEqual(Collection.baseIncome({ false, false }, 2), 0)
+			T.expectEqual(
+				Collection.baseIncome({ mint, crash }, 1),
+				15,
+				"présentoirs au-delà de la capacité ignorés"
+			)
 		end)
 	end)
 
