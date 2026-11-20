@@ -18,6 +18,8 @@ local Collection = require(Shared:WaitForChild("Collection"))
 local CourseLayout = require(Shared:WaitForChild("CourseLayout"))
 local DummyShape = require(Shared:WaitForChild("DummyShape"))
 local Format = require(Shared:WaitForChild("Format"))
+local GameConfig = require(Shared:WaitForChild("GameConfig"))
+local Inventory = require(Shared:WaitForChild("Inventory"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Tutorial = require(Shared:WaitForChild("Tutorial"))
@@ -72,16 +74,10 @@ local placeKey: string? = nil
 local lastPromptRefresh = 0
 local glows: { [Instance]: Highlight } = {} -- présentoirs libres en surbrillance pendant qu'on tient un mannequin
 
--- Cette méthode permet de relire le mannequin en main (« id:taille ») lorsque l'attribut PendingDummy change ; nil
--- s'il n'y en a pas ou qu'il est illisible.
+-- Cette méthode permet de relire le dernier mannequin gagné encore à poser (« id:taille », il est dans le stock)
+-- lorsque l'attribut PendingDummy change ; nil s'il n'y en a pas ou qu'il est illisible.
 local function pendingEntry(): Collection.Entry?
-	local text = player:GetAttribute("PendingDummy")
-	if type(text) ~= "string" then
-		return nil
-	end
-	local id, size = string.match(text, "^([%w_]+):(%d+)$")
-	local entry = { id = id, size = tonumber(size) }
-	return if Collection.isEntry(entry) then entry :: Collection.Entry else nil
+	return Inventory.parseKey(player:GetAttribute("PendingDummy"))
 end
 
 -- Cette méthode permet de trouver le sol sous le point d'atterrissage (piste, gradins) lorsque le mannequin gagné
@@ -658,7 +654,8 @@ local function refreshPanel()
 		end
 		local free = 0
 		for _, prompt in myPrompts() do
-			if not (prompt.Parent :: Instance):GetAttribute("Occupied") then
+			local display = prompt.Parent :: Instance
+			if not display:GetAttribute("Occupied") and not display:GetAttribute("Locked") then
 				free += 1
 			end
 		end
@@ -676,7 +673,16 @@ local function refreshPanel()
 		elseif free > 0 then
 			placeHint.Text = "Press E on a display, or AUTO"
 		else
-			placeHint.Text = "Base full: AUTO swaps your worst dummy or sells it"
+			-- Base pleine : AUTO échange avec le moins rentable s'il rapporte moins, sinon le garde au stock
+			local data = {
+				base = Inventory.decodeBase(player:GetAttribute("BaseDummies")),
+				displays = (player:GetAttribute("Displays") :: number?) or GameConfig.DISPLAY_START,
+				stock = {},
+				index = {},
+			}
+			placeHint.Text = if Inventory.autoTarget(data, entry)
+				then "Base full: AUTO swaps your worst dummy"
+				else "Base full: AUTO keeps it in your inventory"
 		end
 	end
 	if visible and not placePanel.Visible then
@@ -686,8 +692,8 @@ local function refreshPanel()
 	end
 end
 
--- Cette méthode permet d'activer l'invite « Place » des présentoirs libres de sa base (et de nommer le mannequin à
--- poser) lorsque le joueur tient un mannequin gagné ; Heartbeat, tous les PROMPT_REFRESH s.
+-- Cette méthode permet d'activer l'invite « Place » des présentoirs achetés libres de sa base (et de nommer le
+-- mannequin à poser) lorsque le joueur a un mannequin gagné à poser ; Heartbeat, tous les PROMPT_REFRESH s.
 local function refreshPrompts()
 	if os.clock() - lastPromptRefresh < PROMPT_REFRESH then
 		return
@@ -698,7 +704,7 @@ local function refreshPrompts()
 	local name = if entry then Collection.label(entry) else ""
 	for _, prompt in myPrompts() do
 		local display = prompt.Parent :: Instance
-		local enabled = open and not display:GetAttribute("Occupied")
+		local enabled = open and not display:GetAttribute("Occupied") and not display:GetAttribute("Locked")
 		if prompt.Enabled ~= enabled then
 			prompt.Enabled = enabled
 		end
