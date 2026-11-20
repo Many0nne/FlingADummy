@@ -52,8 +52,8 @@ multipliés par la zone atteinte.
 ## Carte (v0.3) : lobby de 4 joueurs, piste unique
 - **Hub** (pelouse à damier entourée de parois en gradins) : une **base par joueur** (terrain clôturé, 6 présentoirs vides
   prêts pour la collection, panneau « NOM'S BASE ») avec son **appareil d'entraînement** devant l'entrée, au milieu
-  (podium à tenons, pastille jaune, râtelier, invite « Lift »), passage libre entre les deux, stands à auvents rayés « SELL » et « SHOP » (branchés par la collection et la
-  boutique), chevrons jaunes vers la zone de lancer. Plan dans `Shared.CourseLayout`.
+  (podium à tenons, pastille jaune, râtelier, invite « Lift »), passage libre entre les deux, stands à auvents rayés
+  « SELL » et « SHOP » (branchés par la collection et la boutique), chevrons jaunes vers la zone de lancer. Plan dans `Shared.CourseLayout`.
 - **Zone de lancer commune** : bande orange à damier, ligne de départ blanche, **4 places côte à côte** (pastille à la
   couleur du joueur, nom et record au-dessus). Le joueur réapparaît à côté de sa place.
 - **Piste partagée** (80 studs de large, 2,4 km) au fond d'un canyon en 3 gradins : parois en briques, herbe (ou neige,

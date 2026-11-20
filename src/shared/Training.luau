@@ -99,8 +99,8 @@ function Training.levelPower(tier: number, level: number): number
 	return Training.gear(tier).gain * Training.repsForLevel(level)
 end
 
--- Cette méthode permet de compter une répétition faite avec l'équipement du palier `tier` lorsque REP_TIME s'est écoulé ;
--- renvoie la progression (gain mis de côté) et la Throw Power versée : tout le niveau quand il est franchi, 0 sinon.
+-- Cette méthode permet de compter une répétition faite avec l'équipement du palier `tier` lorsque REP_TIME s'est écoulé
+-- ; renvoie la progression (gain mis de côté) et la Throw Power versée : tout le niveau quand il est franchi, 0 sinon.
 function Training.completeRep(progress: Progress, tier: number): (Progress, number)
 	local nextProgress, leveled = Training.addRep(progress)
 	local bank = (progress.bank or 0) + Training.gear(tier).gain

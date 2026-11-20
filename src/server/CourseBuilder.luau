@@ -1,7 +1,7 @@
--- Construction du décor au style des jeux de référence (01 / 09) : hub en pelouse à damier (bases des joueurs avec
--- leur appareil d'entraînement devant l'entrée, stands à auvents), zone de lancer commune à SLOT_COUNT places, piste unique au fond d'un canyon
--- en gradins (parois à briques, herbe voxel qui déborde, arbres et rochers voxel) qui change de couleurs à chaque zone,
--- obstacles partagés (Server.Obstacles). Repère : Shared.CourseLayout.
+-- Construction du décor au style des jeux de référence (01 / 09) : hub en pelouse à damier (bases des joueurs avec leur
+-- appareil d'entraînement devant l'entrée, stands à auvents), zone de lancer commune à SLOT_COUNT places, piste unique
+-- au fond d'un canyon en gradins (parois à briques, herbe voxel qui déborde, arbres et rochers voxel) qui change de
+-- couleurs à chaque zone, obstacles partagés (Server.Obstacles). Repère : Shared.CourseLayout.
 local CollectionService = game:GetService("CollectionService")
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -59,6 +59,7 @@ export type Course = { slots: { Slot }, dummies: Folder }
 local CourseBuilder = {}
 
 local rng = Random.new(SEED)
+local rackPlacers: { () -> () } = {} -- reposent les mannequins des râteliers quand les gabarits maillés arrivent
 
 -- Cette méthode permet de désigner une pièce comme cible d'objectif du HUD (réservée au joueur de la place `slot`)
 -- lorsque l'on construit sa pastille ou son appareil d'entraînement.
@@ -323,6 +324,12 @@ local function rackDummy(parent: Instance, gear: Training.Gear, feet: CFrame)
 	for _, part in parts do
 		lowest = math.min(lowest, part.Position.Y - part.Size.Y / 2)
 	end
+	-- Pas de cibles de crash-test (mannequin en blocs) : ce mannequin-là ne se lance pas
+	for _, gui in parts.Torso:GetChildren() do
+		if gui:IsA("SurfaceGui") then
+			gui:Destroy()
+		end
+	end
 	for _, part in parts do
 		part.Anchored = true
 		part.CanCollide = false
@@ -395,15 +402,7 @@ local function buildStation(parent: Instance, slot: Slot)
 		end
 	end
 	placeRack()
-	if not DummyShape.isMeshed() then
-		local connection
-		connection = ReplicatedStorage.ChildAdded:Connect(function(child)
-			if child.Name == DummyShape.TEMPLATES and DummyShape.isMeshed() then
-				connection:Disconnect()
-				placeRack()
-			end
-		end)
-	end
+	table.insert(rackPlacers, placeRack)
 	local anchor = Build.decor({
 		Name = "TrainSpot",
 		Size = Vector3.new(2, 2, 2),
@@ -481,8 +480,8 @@ local function buildBase(parent: Instance, slot: Slot)
 	slot.base = { model = model, sign = sign, displays = displays }
 end
 
--- Cette méthode permet de construire le hub (pelouse à damier, parois en gradins, bases et leurs appareils, stands à auvents,
--- chevrons vers la zone de lancer, point d'apparition) lorsque le serveur démarre.
+-- Cette méthode permet de construire le hub (pelouse à damier, parois en gradins, bases et leurs appareils, stands à
+-- auvents, chevrons vers la zone de lancer, point d'apparition) lorsque le serveur démarre.
 local function buildHub(parent: Instance, slots: { Slot })
 	local zone = Zones.LIST[1]
 	local halfW = GameConfig.HUB_WIDTH / 2
@@ -693,6 +692,17 @@ function CourseBuilder.build(): Course
 	dummies.Parent = course
 	course.Parent = Workspace
 	Obstacles.build(course)
+	if not DummyShape.isMeshed() then
+		local connection
+		connection = ReplicatedStorage.ChildAdded:Connect(function(child)
+			if child.Name == DummyShape.TEMPLATES and DummyShape.isMeshed() then
+				connection:Disconnect()
+				for _, place in rackPlacers do
+					place()
+				end
+			end
+		end)
+	end
 	return { slots = slots, dummies = dummies }
 end
 

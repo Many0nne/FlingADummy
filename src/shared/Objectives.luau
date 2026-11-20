@@ -2,9 +2,9 @@
 -- jeux de référence) et cible désignée : une pièce du décor (flèche au-dessus, chevrons au sol) ou un bouton du HUD.
 --
 -- Point d'accroche des cibles du décor : toute BasePart portant le tag `ObjectiveTarget` (CollectionService) et
--- l'attribut `Objective` (« Throw » zone de lancer, « Train » appareil d'entraînement ; d'autres valeurs pour #13 / #14).
--- Facultatifs : `Slot` (place du lobby : la cible ne vaut que pour le joueur de cette place) et `OwnerUserId` (cible
--- d'un seul joueur). Sans l'un ni l'autre, la cible est partagée et le joueur suit la plus proche.
+-- l'attribut `Objective` (« Throw » zone de lancer, « Train » appareil d'entraînement ; d'autres valeurs pour #13 /
+-- #14). Facultatifs : `Slot` (place du lobby : la cible ne vaut que pour le joueur de cette place) et `OwnerUserId`
+-- (cible d'un seul joueur). Sans l'un ni l'autre, la cible est partagée et le joueur suit la plus proche.
 local Objectives = {}
 
 Objectives.TAG = "ObjectiveTarget"

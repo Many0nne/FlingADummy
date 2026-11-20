@@ -1,4 +1,5 @@
--- Plan de la carte : places de la zone de lancer, appareils d'entraînement, bases, colonnes d'obstacles, gradins ; zones et leur décor.
+-- Plan de la carte : places de la zone de lancer, appareils d'entraînement, bases, colonnes d'obstacles, gradins ;
+-- zones et leur décor.
 local fs = require("@lune/fs")
 
 return function(T, Loader)
