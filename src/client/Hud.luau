@@ -27,7 +27,6 @@ local gui: ScreenGui
 local root: Frame -- tout le HUD permanent, masqué pendant le vol
 local powerLabel: TextLabel
 local moneyLabel: TextLabel
-local incomeLabel: TextLabel
 local anchors: { [string]: GuiObject } = {} -- éléments que l'objectif peut désigner
 local badges: { [string]: Frame } = {}
 local windows: { [string]: Frame } = {}
@@ -104,16 +103,6 @@ local function buildCounters()
 	})
 	powerLabel = counter(counters, 1, "power", C.cyan)
 	moneyLabel = counter(counters, 2, "cash", C.white)
-	incomeLabel = UIKit.text({
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(1, 8, 0.5, 2),
-		Size = UDim2.fromOffset(140, 26),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextSize = 22,
-		TextColor3 = C.green,
-		Visible = false,
-		Parent = moneyLabel,
-	})
 end
 
 -- Cette méthode permet de construire les boutons à icône (Index et Shop à gauche, Dummies à droite, comme Index /
@@ -182,7 +171,7 @@ end
 -- Cette méthode permet de construire les fenêtres (équipements d'entraînement, mannequins, index) lorsque le HUD est
 -- construit.
 local function buildWindows()
-	local size = Vector2.new(600, 370)
+	local size = Vector2.new(680, 440) -- ≈ 0,6 h de haut à 720 px, 3 cartes visibles (référence 01)
 	local shop = UIKit.window(gui, {
 		name = "Shop",
 		title = "Training Gear",
@@ -342,11 +331,13 @@ end
 -- l'équipement, la valeur ou le revenu changent.
 function Hud.refresh()
 	local money = stat("Money", 0)
-	moneyLabel.Text = Format.money(money)
-	powerLabel.Text = Format.short(stat("ThrowPower", GameConfig.START_POWER))
+	-- Revenu collé au montant, en plus petit et en vert (comme « $64 +$1 » de la référence 02), seulement s'il existe
 	local income = stat("Income", 0)
-	incomeLabel.Visible = income > 0
-	incomeLabel.Text = Format.perSecond(income)
+	moneyLabel.Text = Format.money(money)
+		.. if income > 0
+			then string.format(' <font size="22" color="#50D746">%s</font>', Format.perSecond(income))
+			else ""
+	powerLabel.Text = Format.short(stat("ThrowPower", GameConfig.START_POWER))
 
 	local gearCost = Training.nextGearCost(stat("GearTier", 1))
 	local valueCost = Economy.valueCost(stat("ValueLevel", 1))

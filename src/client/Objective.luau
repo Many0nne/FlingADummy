@@ -19,7 +19,8 @@ local CHEVRON_COUNT = 12
 local CHEVRON_SPACING = 3.5 -- studs entre deux chevrons
 local CHEVRON_GAP = 2.5 -- studs laissés libres près du joueur et de la cible
 local CHEVRON_SPEED = 6 -- studs/s de défilement vers la cible
-local CHEVRON_ARM = 1.6 -- longueur d'une branche du chevron
+local CHEVRON_ARM = 2.2 -- longueur d'une branche du chevron
+local CHEVRON_WIDTH = 0.7 -- largeur d'une branche (chevrons francs, comme les références)
 local CHEVRON_ANGLE = math.rad(42)
 local ARROW_HEIGHT = 7 -- studs au-dessus de la cible
 local TARGET_REFRESH = 0.2 -- s entre deux choix de cible
@@ -29,7 +30,10 @@ local Objective = {}
 local player: Player
 local label: TextLabel
 local worldArrow: BillboardGui
+local arrowAnchor: BasePart -- point invisible au-dessus de la cible : la flèche ne dépend pas de l'orientation de la cible
 local hudArrow: GuiObject
+local hudArrowBase = UDim2.new() -- position de repos de la flèche d'interface, sans le balancement
+local hudArrowBob = Vector2.yAxis -- sens du balancement (vers le bouton)
 local chevrons: { { BasePart } } = {}
 local current: Objectives.Objective? = nil
 local targetPart: BasePart? = nil
@@ -95,7 +99,7 @@ local function makeChevron(folder: Folder): { BasePart }
 				CastShadow = false,
 				Material = Enum.Material.Neon,
 				Color = UIKit.COLORS.yellow,
-				Size = Vector3.new(0.4, 0.08, CHEVRON_ARM),
+				Size = Vector3.new(CHEVRON_WIDTH, 0.08, CHEVRON_ARM),
 				Parent = folder,
 			})
 		)
@@ -132,6 +136,32 @@ local function updateChevrons(from: Vector3?, to: Vector3?)
 	Workspace:BulkMoveTo(parts, frames, Enum.BulkMoveMode.FireCFrameChanged)
 end
 
+-- Cette méthode permet de placer la flèche d'interface à côté du bouton désigné, pointe vers lui : sur le côté pour
+-- les boutons des bords (elle masquerait le bouton voisin), au-dessus sinon (STOP), lorsque l'objectif change.
+local function placeHudArrow(anchor: GuiObject?)
+	if not anchor then
+		return
+	end
+	local screen = Workspace.CurrentCamera.ViewportSize.X
+	local x = anchor.AbsolutePosition.X + anchor.AbsoluteSize.X / 2
+	if x < screen / 3 then
+		hudArrow.AnchorPoint = Vector2.new(0, 0.5)
+		hudArrow.Rotation = 90 -- pointe à gauche
+		hudArrowBase = UDim2.new(1, 6, 0.5, 0)
+		hudArrowBob = Vector2.xAxis
+	elseif x > screen * 2 / 3 then
+		hudArrow.AnchorPoint = Vector2.new(1, 0.5)
+		hudArrow.Rotation = -90 -- pointe à droite
+		hudArrowBase = UDim2.new(0, -6, 0.5, 0)
+		hudArrowBob = -Vector2.xAxis
+	else
+		hudArrow.AnchorPoint = Vector2.new(0.5, 1)
+		hudArrow.Rotation = 0
+		hudArrowBase = UDim2.new(0.5, 0, 0, -6)
+		hudArrowBob = Vector2.yAxis
+	end
+end
+
 -- Cette méthode permet de recalculer l'objectif (texte, cible) et de l'afficher lorsque l'état du joueur change.
 local function refresh()
 	local picked = Objectives.pick(state())
@@ -147,6 +177,7 @@ local function refresh()
 	local anchor = if current and current.button then Hud.anchor(current.button) else nil
 	hudArrow.Parent = anchor
 	hudArrow.Visible = anchor ~= nil
+	placeHudArrow(anchor)
 end
 
 -- Cette méthode permet d'animer le texte, la flèche et les chevrons à chaque image lorsque l'objectif est affiché.
@@ -162,10 +193,11 @@ local function step()
 	end
 	local target = if kind then targetPart else nil
 	local bob = math.sin(os.clock() * 4) * 0.5
-	worldArrow.Adornee = target
 	worldArrow.Enabled = target ~= nil
-	worldArrow.StudsOffsetWorldSpace = Vector3.new(0, ARROW_HEIGHT + bob, 0)
-	hudArrow.Position = UDim2.new(0.5, 0, 0, -6 + bob * 8)
+	if target then
+		arrowAnchor.CFrame = CFrame.new(target.Position + Vector3.new(0, ARROW_HEIGHT + bob, 0))
+	end
+	hudArrow.Position = hudArrowBase + UDim2.fromOffset(hudArrowBob.X * bob * 8, hudArrowBob.Y * bob * 8)
 	if target and root and humanoid then
 		local feet = root.Position - Vector3.new(0, humanoid.HipHeight + root.Size.Y / 2 - 0.12, 0)
 		updateChevrons(feet, Vector3.new(target.Position.X, feet.Y, target.Position.Z))
@@ -187,9 +219,20 @@ function Objective.init(localPlayer: Player, gui: ScreenGui)
 		Visible = false,
 		Parent = gui,
 	})
+	local folder = UIKit.create("Folder", { Name = "ObjectiveMarkers", Parent = Workspace })
+	arrowAnchor = UIKit.create("Part", {
+		Name = "ArrowAnchor",
+		Anchored = true,
+		CanCollide = false,
+		CanQuery = false,
+		CanTouch = false,
+		Transparency = 1,
+		Size = Vector3.one,
+		Parent = folder,
+	})
 	worldArrow = UIKit.create("BillboardGui", {
 		Name = "ObjectiveArrow",
-		AlwaysOnTop = true,
+		Adornee = arrowAnchor,
 		LightInfluence = 0,
 		Size = UDim2.fromScale(3, 3),
 		Enabled = false,
@@ -203,7 +246,6 @@ function Objective.init(localPlayer: Player, gui: ScreenGui)
 		ZIndex = 6,
 		Visible = false,
 	})
-	local folder = UIKit.create("Folder", { Name = "ObjectiveChevrons", Parent = Workspace })
 	for i = 1, CHEVRON_COUNT do
 		chevrons[i] = makeChevron(folder)
 	end

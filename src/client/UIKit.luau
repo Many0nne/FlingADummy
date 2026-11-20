@@ -241,6 +241,7 @@ function UIKit.iconButton(
 	onClick: () -> ()
 ): TextButton
 	local button = UIKit.create("TextButton", {
+		Name = label,
 		AutoButtonColor = false,
 		BackgroundColor3 = UIKit.COLORS.slate,
 		Size = UDim2.fromOffset(size, size),
@@ -378,7 +379,7 @@ function UIKit.showModel(viewport: ViewportFrame, model: Model?)
 	end
 	local cf, size = model:GetBoundingBox()
 	local camera = UIKit.create("Camera", { FieldOfView = 30, Parent = viewport })
-	local distance = size.Magnitude * 0.5 / math.tan(math.rad(15)) * 1.05
+	local distance = size.Magnitude * 0.5 / math.tan(math.rad(15))
 	local center = cf.Position
 	local eye = center + Vector3.new(0.45, 0.3, -1).Unit * distance
 	camera.CFrame = CFrame.lookAt(eye, center)
@@ -392,7 +393,7 @@ function UIKit.card(parent: Instance, order: number, onAction: () -> ()): Card
 	local frame = UIKit.create("Frame", {
 		Name = "Card" .. order,
 		LayoutOrder = order,
-		Size = UDim2.fromOffset(176, 262),
+		Size = UDim2.fromOffset(196, 300),
 		BackgroundColor3 = Color3.new(1, 1, 1),
 		ZIndex = 11,
 		Parent = parent,
@@ -410,15 +411,15 @@ function UIKit.card(parent: Instance, order: number, onAction: () -> ()): Card
 		Parent = frame,
 	})
 	local rarity = UIKit.text({
-		Position = UDim2.fromOffset(4, 32),
+		Position = UDim2.fromOffset(4, 34),
 		Size = UDim2.new(1, -8, 0, 18),
-		TextSize = 16,
+		TextSize = 19,
 		ZIndex = 12,
 		Parent = frame,
 	})
 	local viewport = UIKit.create("ViewportFrame", {
-		Position = UDim2.fromOffset(8, 52),
-		Size = UDim2.new(1, -16, 0, 116),
+		Position = UDim2.fromOffset(8, 56),
+		Size = UDim2.new(1, -16, 0, 150),
 		BackgroundTransparency = 1,
 		Ambient = Color3.fromRGB(170, 170, 170),
 		LightColor = Color3.new(1, 1, 1),
@@ -428,7 +429,7 @@ function UIKit.card(parent: Instance, order: number, onAction: () -> ()): Card
 	})
 	local statPill = UIKit.create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 174),
+		Position = UDim2.new(0.5, 0, 0, 212),
 		Size = UDim2.new(1, -16, 0, 30),
 		BackgroundColor3 = Color3.fromRGB(88, 94, 106),
 		ZIndex = 12,
@@ -436,11 +437,11 @@ function UIKit.card(parent: Instance, order: number, onAction: () -> ()): Card
 	})
 	UIKit.corner(statPill, 6)
 	UIKit.outline(statPill, 2)
-	local stat = UIKit.text({ Size = UDim2.fromScale(1, 1), TextSize = 20, ZIndex = 13, Parent = statPill })
+	local stat = UIKit.text({ Size = UDim2.fromScale(1, 1), TextSize = 22, ZIndex = 13, Parent = statPill })
 	local action = UIKit.button({
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 212),
-		Size = UDim2.new(1, -16, 0, 40),
+		Position = UDim2.new(0.5, 0, 0, 250),
+		Size = UDim2.new(1, -16, 0, 42),
 		ZIndex = 12,
 		Parent = frame,
 	}, onAction)
