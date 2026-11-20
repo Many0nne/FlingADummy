@@ -45,7 +45,8 @@ LIGHT = (-1 / math.sqrt(2), -1 / math.sqrt(2))  # lumière venant d'en haut à g
 
 
 def stud_sdf(x, y):
-    """Renvoie la distance signée au bord du tenon (négative dedans) et la direction sortante, x et y centrés."""
+    """Cette méthode permet de donner la distance signée au bord du tenon (négative dedans) et la direction sortante
+    lorsque l'on ombre un point (x, y) centré sur la cellule."""
     half = STUD_HALF - STUD_RADIUS
     qx, qy = abs(x) - half, abs(y) - half
     ox, oy = max(qx, 0.0), max(qy, 0.0)
@@ -62,7 +63,8 @@ def stud_sdf(x, y):
 
 
 def sample(u, v):
-    """Renvoie (luminosité relative, normale x image, normale y image) au point (u, v) d'une cellule, dans [0, 1[."""
+    """Cette méthode permet de donner (luminosité relative, normale x, normale y en repère image) lorsque l'on échantillonne
+    le point (u, v) d'une cellule, u et v dans [0, 1[."""
     x, y = u - 0.5, v - 0.5
     dist, gx, gy = stud_sdf(x, y)
     if dist <= -BEVEL:
@@ -78,7 +80,8 @@ def sample(u, v):
 
 
 def cell(px):
-    """Calcule le motif d'une cellule de `px` pixels : liste de lignes de (luminosité, couleur normale RGB)."""
+    """Cette méthode permet de calculer le motif lissé d'une cellule de `px` pixels (lignes de (luminosité, normale RGB))
+    lorsque l'on construit une tuile."""
     rows = []
     n = SUPERSAMPLE
     for py in range(px):
@@ -100,8 +103,8 @@ def cell(px):
 
 
 def build(cells, cell_px, checker):
-    """Construit (couleur, normales) d'une tuile de `cells` × `cells` cellules, damier 2 × 2 assombri de `checker`
-    (None : sans damier)."""
+    """Cette méthode permet de construire (couleur, normales) d'une tuile de `cells` × `cells` cellules lorsque l'on
+    exporte une carte ; damier 2 × 2 assombri de `checker` (None : sans damier)."""
     size = cells * cell_px
     color = Image.new("RGB", (size, size))
     normal = Image.new("RGB", (size, size))

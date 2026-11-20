@@ -21,7 +21,7 @@ local SEED = 20261120 -- décor identique d'un serveur à l'autre
 local SEGMENT_LENGTH = 400 -- longueur maximale d'une pièce de sol ou de paroi (limite : 2 048 studs)
 local CAP_THICKNESS = 1.2
 local CAP_OVERHANG = 1 -- l'herbe déborde du bord de chaque marche
-local DRIP_GRID = 4 -- largeur des blocs d'herbe qui débordent : par demi-carreau du damier (8 studs)
+local DRIP_GRID = 4 -- blocs d'herbe qui débordent : par demi-carreau du damier (carreaux de 8 studs, grille du monde)
 local END_Z = GameConfig.COURSE_LENGTH + 40 -- fond du canyon, derrière la paroi de bout de piste
 
 local rgb = Color3.fromRGB
@@ -162,13 +162,16 @@ local function drips(parent: Instance, edge: Vector3, facing: Vector3, length: n
 			Parent = parent,
 		})
 	end
-	local t = DRIP_GRID * rng:NextInteger(0, 1)
-	while t < length - DRIP_GRID do
-		local width = math.min(DRIP_GRID * rng:NextInteger(1, 3), length - t)
+	-- Départ calé sur la grille du monde (le damier est projeté en coordonnées monde), puis largeurs et écarts multiples
+	-- de DRIP_GRID : chaque bloc tombe sur les demi-carreaux de la paroi
+	local t = (-edge:Dot(along)) % DRIP_GRID + DRIP_GRID * rng:NextInteger(0, 1)
+	while t <= length - DRIP_GRID do
+		local room = math.floor((length - t) / DRIP_GRID) * DRIP_GRID
+		local width = math.min(DRIP_GRID * rng:NextInteger(1, 3), room)
 		local height = 2 * rng:NextInteger(1, 3)
 		block(t, width, 0, height)
 		-- Marche du dessous, plus étroite d'un demi-carreau, calée sur un bord du bloc
-		if width > DRIP_GRID and rng:NextNumber() < 0.6 then
+		if width >= 2 * DRIP_GRID and rng:NextNumber() < 0.6 then
 			local offset = if rng:NextNumber() < 0.5 then 0 else DRIP_GRID
 			block(t + offset, width - DRIP_GRID, height, 2 * rng:NextInteger(1, 2))
 		end
