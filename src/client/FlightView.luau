@@ -25,7 +25,7 @@ local LAUNCH_GRACE = 0.5 -- s après le lancer pendant lesquels on ne cherche pa
 local REST_CONFIRM = 0.15 -- s sous REST_SPEED avant d'afficher la CHANCE finale (évite le sommet d'un rebond)
 local RESUME_CONFIRM = 0.4 -- s au-dessus de REST_SPEED avant de reprendre le vol (pas de clignotement sur une glissade)
 local TAG_MIN = 0.9 -- s minimum de « X1.36 » à l'écran avant le tirage
-local REPORT_TIME = 3 -- s de radio et bilan après le comptage (partis avant la révélation du tirage)
+local REPORT_TIME = 3 -- s de radio et bilan après le comptage (dans leur coin pendant le suspense du tirage)
 local TAG_OFFSET = 4.5 -- studs au-dessus du torse
 
 -- Titre selon le score de crash (os + objets / 2), du plus faible au plus fort
@@ -505,7 +505,11 @@ function FlightView.settle(result: any): number
 		injury = injury .. (if injury ~= "" then "\n" else "") .. "<i>" .. result.cause .. "</i>"
 	end
 	if result.record == true then
-		injury = '<font color="#FFD23C">NEW RECORD!</font>' .. (if injury ~= "" then "\n" else "") .. injury
+		injury = '<font color="#'
+			.. C.gold:ToHex()
+			.. '">NEW RECORD!</font>'
+			.. (if injury ~= "" then "\n" else "")
+			.. injury
 	end
 	reportInjury.Text = injury
 	local current = token
