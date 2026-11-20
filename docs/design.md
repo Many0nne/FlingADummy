@@ -6,9 +6,10 @@ et le rythme : fiches `04 - Jeux disséqués/` du vault (01 *Throw Food For Anim
 Ragdoll*, 06 *BloxNG*, 12 *Net a Fish!*).
 
 ## Le jeu en une phrase
-Dans un centre d'essais de crash-test, on s'entraîne à soulever des mannequins pour devenir plus fort, puis on lance un
-mannequin à bout de bras sur une piste semée de vitres, de caisses et de murs. On gagne selon la distance, les os cassés et
-les objets détruits, multipliés par la zone atteinte.
+Dans un lobby de 4 joueurs, on s'entraîne à la barre de traction pour devenir plus fort, puis on lance un mannequin de
+crash-test à bout de bras dans un canyon de briques à tenons, sur une piste partagée semée de vitres, de tours de caisses,
+de murs, de voitures-cibles et de panneaux-cibles. On gagne selon la distance, les os cassés et les objets détruits,
+multipliés par la zone atteinte.
 
 ## Cibles (mesurées sur les jeux qui percent)
 | Moment | Cible |
@@ -20,7 +21,7 @@ les objets détruits, multipliés par la zone atteinte.
 | Première renaissance | < 3 min (v1) |
 
 ## Boucle principale (≈ 10-15 s)
-1. **Prendre le mannequin** : monter sur la zone de lancer jaune ; l'avatar tient un mannequin au-dessus de sa tête.
+1. **Prendre le mannequin** : monter sur sa place de la zone de lancer ; l'avatar tient un mannequin au-dessus de sa tête.
 2. **Jauge à 1 clic** : une jauge verticale apparaît, l'aiguille monte et descend seule (`+1` à `+20`) ; un clic, un toucher
    ou Espace l'arrête. Pas de zone PERFECT ni de bonus : le haut de la jauge est le max (`+20`), comme dans les
    jeux de référence.
@@ -31,7 +32,7 @@ les objets détruits, multipliés par la zone atteinte.
    phrase de blessure (« Shattered skull, broken left arm ») et cause (« Hit a brick wall at 140 km/h »).
 
 ## Mécanique secondaire : l'entraînement
-- Poste d'entraînement à côté de chaque zone de lancer (invite « Train ») : l'avatar soulève un mannequin en boucle.
+- Un poste d'entraînement par joueur dans le hub (barre de traction, invite « Train ») : l'avatar soulève un mannequin en boucle.
 - Chaque répétition (0,8 s) ajoute la **Throw Power** de l'équipement ; les répétitions remplissent des niveaux
   (« LEVEL UP! Throw Power +N »), 3 répétitions au premier niveau puis × 1,2 par niveau.
 - **Équipements** (achetés avec l'argent) : mannequin en bois +1, pierre +3, fer +10, or +40, diamant +160, néon +700,
@@ -44,10 +45,35 @@ les objets détruits, multipliés par la zone atteinte.
 - **Argent** (lancers) → équipements (entraînement plus rapide) et **valeur du mannequin** (multiplicateur + 0,25 par
   niveau, de 250 $ × 1,7 par niveau).
 
+## Carte (v0.3) : lobby de 4 joueurs, piste unique
+- **Hub** (pelouse à damier entourée de parois en gradins) : un **poste d'entraînement par joueur** (barre de traction en
+  bois voxel, pastille jaune, invite « Train »), une **base par joueur** (terrain clôturé, 6 présentoirs vides prêts pour la
+  collection, panneau « NOM'S BASE »), stands à auvents rayés « SELL » et « SHOP » (branchés par la collection et la
+  boutique), chevrons jaunes vers la zone de lancer. Plan dans `Shared.CourseLayout`.
+- **Zone de lancer commune** : bande orange à damier, ligne de départ blanche, **4 places côte à côte** (pastille à la
+  couleur du joueur, nom et record au-dessus). Le joueur réapparaît à côté de sa place.
+- **Piste partagée** (80 studs de large, 2,4 km) au fond d'un canyon en 3 gradins : parois en briques, herbe (ou neige,
+  sable…) voxel qui déborde de chaque marche, décor voxel sur les terre-pleins et au pied des parois (traversable).
+- **Obstacles partagés** (`Server.Obstacles`) : rangées de 4 vitres (une par colonne), tours de caisses (2 × 2 × 4) par
+  colonne, murs de briques sur toute la largeur des colonnes, voitures-cibles et panneaux-cibles en damier jaune et noir.
+  Une pièce déplacée réapparaît à sa place **5 s après le dernier choc** subi par son obstacle, une par une de bas en haut
+  (0,05 s d'écart), en grossissant depuis son centre ; jamais sur un mannequin posé dedans. Un objet projeté est compté
+  pour le mannequin le plus proche (règles dans `Shared.ObstacleRules`).
+
 ## Zones de la piste (2,4 km)
-Test Track ×1 · Parking Lot ×1,5 (100 m) · Warehouse ×2,2 (250 m) · Highway ×3,3 (450 m) · Construction Site ×5 (700 m) ·
-Junkyard ×7,5 (1 km) · Airfield ×11 (1,4 km) · Rocket Range ×16 (1,9 km). Gains = (distance + 10 × os + 5 × objets) ×
-zone atteinte × valeur du mannequin.
+Chaque zone a son identité (couleur du sol, des parois, du dessus des gradins, décor), comme les zones de *Throw a Seed* :
+| Zone | Début | Gains | Sol / parois | Décor |
+|---|---|---|---|---|
+| Meadow | 0 m | ×1 | vert citron / brun | arbres, buissons, fleurs, rochers |
+| Forest | 100 m | ×1,5 | vert foncé / brun | sapins, champignons géants |
+| Desert | 250 m | ×2,2 | sable / ocre | palmiers, cactus, buissons secs |
+| Construction | 450 m | ×3,3 | jaune / brique | plots, barrières rayées, poutrelles |
+| Snowfield | 700 m | ×5 | blanc bleuté / bleu glace | sapins enneigés, bonshommes de neige |
+| Volcano | 1 km | ×7,5 | rouge / basalte, dessus lave | roches à veines de lave, arbres morts |
+| Candy Land | 1,4 km | ×11 | rose / violet, dessus menthe | sucettes, sucres d'orge, boules de gomme |
+| Moon Base | 1,9 km | ×16 | lavande / violet nuit | cristaux, cratères, fusées |
+
+Gains = (distance + 10 × os + 5 × objets) × zone atteinte × valeur du mannequin.
 
 ## Dégâts lisibles
 Chaque membre (10 pièces) suit les chocs : une variation brusque de vitesse au-delà d'un seuil casse un os (2 au-delà d'un
@@ -55,9 +81,13 @@ second seuil), au plus 3 par membre. Gravité par membre : contusion, cassé, br
 sombre, sur le mannequin et sur le panneau radio.
 
 ## Direction artistique
-Centre d'essais de crash-test : hub de labo (béton clair, bandes de danger jaunes et noires, enseigne « CRASH TEST LAB »),
-piste en bitume avec barrières et arches colorées par zone, mannequin jaune à cibles de crash-test. Lumière de plein jour
-saturée. Interface : section suivante.
+Calée sur les jeux de référence (01 *Throw Food For Animals*, 09 *Throw a Seed*, 02 *Break and Steal an Egg*) : tout en
+**briques à tenons** (carrés en creux) aux couleurs saturées, sol en damier de carreaux de 8 studs, canyon en gradins coiffés
+d'herbe voxel qui déborde, arbres et rochers voxel, barrières en blocs, stands à auvents rayés, ciel bleu à nuages, lumière
+de plein jour saturée. Matériaux : deux `MaterialVariant` synchronisés par Rojo dans `MaterialService` (`FadChecker`
+16 studs, `FadBrick` 2 studs), teintés par la couleur de chaque pièce ; textures produites par
+`assets/course/build_textures.py`. Le thème crash-test reste dans les objets (mannequin, voitures-cibles, panneaux en damier
+jaune et noir), pas dans le décor. Interface : section suivante.
 
 ## Interface (grammaire des jeux de référence 01 / 09)
 - **Police** : Fredoka One partout, blanc à contour noir fin ; grands nombres abrégés (`1.2K`, `3.4M`).
@@ -70,9 +100,9 @@ saturée. Interface : section suivante.
   niveau gagné à l'entraînement. Cible du décor : triangle jaune au-dessus, chevrons jaunes au sol qui défilent vers
   elle. Logique dans `Shared.Objectives`.
 - **Cibles du décor** (point d'accroche pour la carte et la collection) : une `BasePart` avec le tag `ObjectiveTarget`
-  et l'attribut `Objective` (`"Throw"`, `"Train"`…), plus `Lane` (couloir) ou `OwnerUserId` (joueur) si elle n'est pas
-  partagée ; le joueur suit la plus proche de celles qui lui sont ouvertes. En attendant que le décor les pose,
-  `Server.ObjectiveTargets` marque la zone de lancer et le poste d'entraînement de chaque couloir.
+  et l'attribut `Objective` (`"Throw"`, `"Train"`…), plus `Slot` (place du lobby) ou `OwnerUserId` (joueur) si elle
+  n'est pas partagée ; le joueur suit la plus proche de celles qui lui sont ouvertes. `CourseBuilder` marque la pastille
+  et le poste d'entraînement de chaque place.
 - **Fenêtres** : cadre sombre, bandeau dégradé (icône, titre), croix rouge ; cartes d'objets grises (nom, rareté
   colorée de `Shared.Rarity`, rendu 3D en `ViewportFrame`, statistique, bouton : prix vert / rouge, « EQUIPPED »).
   Shop = équipements d'entraînement ; Dummies = mannequin lancé (valeur) et mannequins à venir en silhouette (#14) ;
@@ -88,13 +118,18 @@ saturée. Interface : section suivante.
 - Les chocs sont annoncés à tous les clients (`Impact`), qui jouent sons, particules et popups.
 - Les poses de l'avatar (mannequin tenu, entraînement, élan) sont calculées par chaque client d'après les attributs du
   joueur (`Action`), en écrasant `Transform` des articulations (Motor6D ou AnimationConstraint).
-- 6 couloirs côte à côte (6 joueurs par serveur), un par joueur, reconstruits après chaque lancer.
+- Lobby de 4 joueurs (`SLOT_COUNT`, `MaxPlayers` du projet Rojo) sur **une piste partagée** : chaque joueur a une place
+  (`Server.SlotService`) ; les vols coexistent, les obstacles réapparaissent d'eux-mêmes au lieu d'être reconstruits.
+- Studio : `DebugLaunch` (0-1) sur le joueur lance son mannequin, `DebugLaunchBots` (n) lance n mannequins de test depuis
+  les places libres (mesure de 4 vols simultanés).
 - Le décor est généré par le code (`CourseBuilder`) : rien à exporter depuis Studio.
 
 ## Feuille de route
 - **v0** : boucle complète au canon (fait, remplacé).
 - **v0.2** : boucle des jeux de référence (entraînement, lancer par l'avatar, game feel, dégâts lisibles, zones,
-  grands nombres). ← en cours (issues #1 à #6)
+  grands nombres) (fait, rejeté pour son style).
+- **v0.3** : boucle et style calés sur les références (epic #9) : carte (#10), mannequin et cinématique (#11), interface
+  (#12), collection (#13), boutique (#14), économie (#15). ← en cours
 - **v1** : variantes « 1 en N » révélées en cinématique, renaissance avec nouveau parcours et nouveau lanceur (lance-pierre
   géant, catapulte, canon), tutoriel en chaîne d'objectifs, récompense quotidienne, index (issue #7).
 - **v2** : produits Robux (passer, x2, lancer auto), événement avec compte à rebours, vignette et page du jeu.

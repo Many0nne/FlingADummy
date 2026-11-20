@@ -52,8 +52,8 @@ return function(T, Loader)
 	end)
 
 	T.describe("Objectives.chooseTarget", function()
-		local mine = { position = Vector3.new(100, 0, 0), lane = 2 }
-		local other = { position = Vector3.new(1, 0, 0), lane = 3 }
+		local mine = { position = Vector3.new(100, 0, 0), slot = 2 }
+		local other = { position = Vector3.new(1, 0, 0), slot = 3 }
 		local private = { position = Vector3.new(2, 0, 0), owner = 99 }
 		local sharedNear = { position = Vector3.new(10, 0, 0) }
 		local sharedFar = { position = Vector3.new(50, 0, 0) }

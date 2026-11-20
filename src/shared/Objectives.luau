@@ -3,7 +3,7 @@
 --
 -- Point d'accroche des cibles du décor : toute BasePart portant le tag `ObjectiveTarget` (CollectionService) et
 -- l'attribut `Objective` (« Throw » zone de lancer, « Train » poste d'entraînement ; d'autres valeurs pour #13 / #14).
--- Facultatifs : `Lane` (numéro de couloir : la cible ne vaut que pour le joueur de ce couloir) et `OwnerUserId` (cible
+-- Facultatifs : `Slot` (place du lobby : la cible ne vaut que pour le joueur de cette place) et `OwnerUserId` (cible
 -- d'un seul joueur). Sans l'un ni l'autre, la cible est partagée et le joueur suit la plus proche.
 local Objectives = {}
 
@@ -28,7 +28,7 @@ export type Objective = {
 	button: string?, -- bouton du HUD désigné : "Stop", "Shop", "Dummies"
 }
 
-export type Candidate = { position: Vector3, lane: number?, owner: number? }
+export type Candidate = { position: Vector3, slot: number?, owner: number? }
 
 local THROW = { id = "Throw", text = "Throw your dummy!", target = "Throw" }
 local TRAIN = { id = "Train", text = "Train!", target = "Train" }
@@ -56,10 +56,10 @@ end
 
 -- Cette méthode permet de choisir, parmi les cibles d'un type, celle que suit le joueur (la sienne, ou la plus
 -- proche des cibles partagées) lorsque la flèche et les chevrons se placent ; nil si aucune ne lui est ouverte.
-function Objectives.chooseTarget(candidates: { Candidate }, lane: number?, userId: number, from: Vector3): Candidate?
+function Objectives.chooseTarget(candidates: { Candidate }, slot: number?, userId: number, from: Vector3): Candidate?
 	local best, bestDistance = nil, math.huge
 	for _, candidate in candidates do
-		if candidate.lane ~= nil and candidate.lane ~= lane then
+		if candidate.slot ~= nil and candidate.slot ~= slot then
 			continue
 		end
 		if candidate.owner ~= nil and candidate.owner ~= userId then

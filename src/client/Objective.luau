@@ -73,14 +73,14 @@ local function findTarget(kind: string, from: Vector3): BasePart?
 		if instance:IsA("BasePart") and instance:GetAttribute("Objective") == kind then
 			local candidate = {
 				position = instance.Position,
-				lane = instance:GetAttribute("Lane") :: number?,
+				slot = instance:GetAttribute("Slot") :: number?,
 				owner = instance:GetAttribute("OwnerUserId") :: number?,
 			}
 			table.insert(candidates, candidate)
 			partOf[candidate] = instance
 		end
 	end
-	local chosen = Objectives.chooseTarget(candidates, player:GetAttribute("Lane") :: number?, player.UserId, from)
+	local chosen = Objectives.chooseTarget(candidates, player:GetAttribute("Slot") :: number?, player.UserId, from)
 	return if chosen then partOf[chosen] else nil
 end
 
