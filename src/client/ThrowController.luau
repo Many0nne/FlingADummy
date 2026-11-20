@@ -139,11 +139,20 @@ local function animateShine(gradient: Instance)
 		return
 	end
 	gradient.Offset = Vector2.new(-1, 0)
-	TweenService:Create(
+	local tween = TweenService:Create(
 		gradient,
 		TweenInfo.new(SHINE_SWEEP, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, false, SHINE_PAUSE),
 		{ Offset = Vector2.new(1, 0) }
-	):Play()
+	)
+	tween:Play()
+	-- Bande sortie du monde (streaming) : l'animation s'arrête, une nouvelle repartira à son retour
+	local connection
+	connection = gradient.AncestryChanged:Connect(function()
+		if not gradient:IsDescendantOf(game) then
+			tween:Cancel()
+			connection:Disconnect()
+		end
+	end)
 end
 
 local refresh: () -> ()

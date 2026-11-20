@@ -44,6 +44,10 @@ local function unfreeze(player: Player, toHub: boolean)
 	humanoid.JumpPower = state.jumpPower
 	humanoid.JumpHeight = state.jumpHeight
 	state.root.Anchored = false
+	-- L'ancrage avait repris le personnage au joueur : on le lui rend pour qu'il marche sans à-coups
+	if state.root.Parent then
+		pcall(state.root.SetNetworkOwner, state.root, player)
+	end
 	local slot = slotOf[player]
 	if toHub and slot and state.root.Parent and player.Character then
 		player.Character:PivotTo(slot.spawn)

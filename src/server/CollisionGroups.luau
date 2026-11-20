@@ -22,7 +22,8 @@ function CollisionGroups.setup()
 	PhysicsService:CollisionGroupSetCollidable("Characters", "Obstacles", false)
 	PhysicsService:CollisionGroupSetCollidable("Cannon", "Dummy", false)
 	PhysicsService:CollisionGroupSetCollidable("Debris", "Dummy", false)
-	-- La barrière ne touche que les avatars (Default compris : rien d'autre ne s'y accroche)
+	-- La barrière ne touche que les avatars (Default compris : rien d'autre ne s'y accroche). Après tous les
+	-- enregistrements : un groupe ajouté plus tard doit l'être dans la liste ci-dessus
 	for _, group in PhysicsService:GetRegisteredCollisionGroups() do
 		local collides = group.name == "Characters"
 		PhysicsService:CollisionGroupSetCollidable("AvatarBarrier", group.name, collides)
