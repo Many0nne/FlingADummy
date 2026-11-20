@@ -28,9 +28,12 @@ base, il rapporte des $/s, seule source d'argent.
 2. **Jauge à 1 clic** : une jauge verticale apparaît, l'aiguille monte et descend seule (`+1` à `+20`) ; un clic, un toucher
    ou Espace l'arrête, avec un clic net et un petit rebond de la jauge, puis le whoosh au lâcher. Pas de zone PERFECT ni
    de bonus : le haut de la jauge est le max (`+20`), comme dans les jeux de référence. **Valeur vérifiée par le
-   serveur** (`Shared.Gauge.verify`) : il note l'ouverture de la jauge, estime l'instant du clic à la réception
-   (lâcher de l'animation et latence mesurée déduits, latence `GetNetworkPing` (aller-retour) bornée à 1 s, tolérance 0,12 s, lâcher en retard de
-   0,25 s au plus) et garde la valeur du client si elle est atteignable dans cette fenêtre, sinon la sienne.
+   serveur** (`Shared.Gauge.verify`) : il note l'ouverture de la jauge, et le client envoie `GaugeStop` (sans charge) au
+   clic : le serveur note son arrivée (une fois par lancer, jauge ouverte seulement) et en déduit l'instant du clic
+   (demi-latence `GetNetworkPing` bornée à 1 s déduite, tolérance 0,12 s). Il garde la valeur du client à la réception
+   de `Launch` si elle est atteignable dans cette fenêtre, sinon la sienne. Sans `GaugeStop` (client ancien, perte), repli :
+   clic estimé depuis l'arrivée de `Launch` (lâcher de l'animation et latence déduits, lâcher en retard de
+   `GAUGE_RELEASE_SLACK` = 0,25 s au plus, constante partagée avec le lâcher de secours du client).
 3. **Élan** : l'avatar se penche en arrière puis projette le mannequin (0,35 s).
 4. **Vol** : bandes noires, caméra qui suit, bannière **CHANCE** (« 1.36X / CHANCE / 🍀 MEADOW ») qui monte pendant le
    vol, compteurs (distance, os, objets), radio du mannequin ; chaque choc a son son, ses particules et son popup

@@ -32,7 +32,7 @@ local GameConfig = {
 	-- déduits) et garde la valeur du client si elle est atteignable dans cette fenêtre, sinon la sienne
 	GAUGE_MAX_LAG       = 1.0,    -- latence aller-retour (GetNetworkPing) prise en compte au plus (s)
 	GAUGE_LAG_TOLERANCE = 0.12,   -- marge autour de la latence mesurée (gigue, cadence réseau, s)
-	GAUGE_RELEASE_SLACK = 0.25,   -- retard possible du lâcher après THROW_RELEASE_TIME (= RELEASE_GRACE du client, s)
+	GAUGE_RELEASE_SLACK = 0.25,   -- retard possible du lâcher après THROW_RELEASE_TIME (lâcher de secours du client, repli sans GaugeStop, s)
 
 	-- Entraînement
 	START_POWER         = 10,     -- Throw Power de départ

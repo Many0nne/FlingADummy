@@ -37,13 +37,22 @@ end
 
 -- Cette méthode permet de retenir la valeur `claimed` d'un lancer reçu `elapsed` s après l'ouverture de la jauge (latence
 -- `lag`) : celle du client si un clic dans la fenêtre l'atteint, sinon celle du serveur ; renvoie aussi l'acceptation.
-function Gauge.verify(claimed: number, elapsed: number, lag: number): (number, boolean)
+-- `stopAt` (arrivée du GaugeStop, s après l'ouverture) réduit la fenêtre à la latence seule ; absent, hors de
+-- [0, elapsed] ou en trop, le lâcher en retard est couvert (repli).
+function Gauge.verify(claimed: number, elapsed: number, lag: number, stopAt: number?): (number, boolean)
 	local measured = math.clamp(lag, 0, GameConfig.GAUGE_MAX_LAG)
-	-- Instant du clic estimé par le serveur, depuis l'apparition de la jauge chez le client
-	local click = elapsed - GameConfig.THROW_RELEASE_TIME - measured
 	local tolerance = GameConfig.GAUGE_LAG_TOLERANCE
-	local from = math.max(0, click - GameConfig.GAUGE_RELEASE_SLACK - tolerance)
-	local to = math.max(0, click + tolerance)
+	local click, from, to
+	if stopAt and stopAt >= 0 and stopAt <= elapsed then
+		-- Clic estimé : arrivée du GaugeStop moins le trajet aller (demi aller-retour)
+		click = stopAt - measured / 2
+		from = math.max(0, click - tolerance)
+	else
+		-- Instant du clic estimé par le serveur, depuis l'apparition de la jauge chez le client
+		click = elapsed - GameConfig.THROW_RELEASE_TIME - measured
+		from = math.max(0, click - GameConfig.GAUGE_RELEASE_SLACK - tolerance)
+	end
+	to = math.max(0, click + tolerance)
 	local low, high = Gauge.range(from, to)
 	local value = math.clamp(claimed, 0, 1)
 	if value >= low - 1e-3 and value <= high + 1e-3 then

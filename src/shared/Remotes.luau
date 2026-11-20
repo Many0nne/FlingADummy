@@ -1,10 +1,20 @@
 -- RemoteEvents du jeu : créés par le serveur dans ReplicatedStorage.Remotes, attendus par le client.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local NAMES =
-	{ "Launch", "BuyUpgrade", "StopTraining", "PlaceDummy", "ResultDone", "LaunchStarted", "LaunchResult", "Impact" }
+local NAMES = {
+	"Launch",
+	"GaugeStop",
+	"BuyUpgrade",
+	"StopTraining",
+	"PlaceDummy",
+	"ResultDone",
+	"LaunchStarted",
+	"LaunchResult",
+	"Impact",
+}
 
 export type Remotes = {
+	GaugeStop: RemoteEvent, -- client → serveur : sans charge, au clic qui arrête l'aiguille (le serveur note l'arrivée)
 	Launch: RemoteEvent, -- client → serveur : valeur de jauge 0-1, à la fin de l'élan
 	BuyUpgrade: RemoteEvent, -- client → serveur : "Gear"
 	PlaceDummy: RemoteEvent, -- client → serveur : présentoir (1-6) où poser le mannequin gagné, ou nil (AUTO)

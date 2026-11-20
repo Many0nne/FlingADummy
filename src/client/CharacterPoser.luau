@@ -21,7 +21,6 @@ local PALM_GAP = AnimationData.PALM_GAP
 local LIFT_OFFSET = AnimationData.LIFT_OFFSET
 local FADE = 0.2 -- fondu d'entrée et de sortie des clips (s)
 local THROW_FADE = 0.08
-local RELEASE_GRACE = 0.25 -- lâcher de secours après le marqueur (clip absent ou en retard, s)
 local THROW_TIMEOUT = 3 -- fin forcée d'un lancer local (s)
 local HANDOFF_TIME = 2 -- attente maximale du mannequin du serveur, décoratif figé au point de lâcher (s)
 local RETRY_TIME = 1 -- nouvel essai après un LoadAnimation raté (s)
@@ -307,7 +306,7 @@ function CharacterPoser.playThrow(onRelease: () -> (), onFinished: () -> ())
 			end
 		end)
 	end
-	task.delay(GameConfig.THROW_RELEASE_TIME + RELEASE_GRACE, function()
+	task.delay(GameConfig.THROW_RELEASE_TIME + GameConfig.GAUGE_RELEASE_SLACK, function()
 		if throw == current then
 			release()
 		end
