@@ -1,4 +1,4 @@
--- Mise en forme des nombres affichés (argent, puissance, distances).
+-- Mise en forme des nombres affichés (argent, puissance, distances, CHANCE).
 local Format = {}
 
 local SUFFIXES = { "K", "M", "B", "T", "Qa", "Qi", "Sx" }
@@ -53,6 +53,12 @@ end
 -- Cette méthode permet d'écrire une distance arrondie au mètre (`1,234 m`) lorsque l'interface l'affiche.
 function Format.meters(n: number): string
 	return Format.thousands(math.max(0, n)) .. " m"
+end
+
+-- Cette méthode permet d'écrire la CHANCE finale d'un lancer (`X1.36`, deux décimales, au moins X1.00) lorsque le
+-- mannequin arrêté l'affiche au-dessus de lui.
+function Format.multiplier(chance: number): string
+	return string.format("X%.2f", math.max(1, chance))
 end
 
 return Format
