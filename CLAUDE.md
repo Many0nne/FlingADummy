@@ -33,8 +33,13 @@ rejetée pour un style inventé.
   `src/client` → `StarterPlayer/StarterPlayerScripts/Client`. Garder `default.project.json` synchronisé avec `src/`.
 - `rojo serve` du checkout principal écoute sur le port **34900** (`servePort` du projet), les worktrees sur `34900+N`
   (section « Worktrees »), hors de la plage de `CSGO_surf_combat` (34872+).
-- Connexion : Studio en mode Edit, plugin Rojo, port, Connect. Le plugin installé est le « CSGO autoconnect » : si
-  une tâche CSGO réserve Studio, il peut reconnecter Studio à CSGO. Vérifier le port connecté avant un test.
+- Connexion automatique : le plugin installé est le « CSGO autoconnect » multi-projets (`Many0nne/CSGO_surf_combat`,
+  `tools/rojo-plugin/README.md`). Chaque fenêtre Studio ne suit que la cible de sa place : `-AcquireStudio` connecte la
+  place Fling a Dummy au port du worktree sans toucher la fenêtre CSGO (section « Studio et Blender partagés »).
+  Prérequis poste : `CSGO_surf_combat\tools\rojo-plugin\install.ps1` lancé une fois, puis Studio redémarré (à refaire
+  après `rojo plugin install` ou une mise à jour du plugin par Studio, qui remettent l'officiel).
+- Connexion à la main (secours) : Studio en mode Edit, plugin Rojo, Disconnect, port, Connect. Vérifier le port connecté
+  avant un test.
 - Le décor est généré par le code (`CourseBuilder`) : rien à sauvegarder depuis Studio.
 
 ## Roblox Studio MCP
@@ -102,7 +107,8 @@ Script idempotent, à relancer au début de chaque tâche (PowerShell, depuis la
   10 min, à réinstaller sur un nouveau poste) : `scripts/install-cleanup-task.ps1`. À chaque passage, elle avance aussi le
   checkout principal sur `origin/main` (fast-forward, seulement s'il est sur `main` sans modification). Journal :
   `worktrees/.cleanup.log`.
-- Tests de limites des scripts (bac à sable jetable dans `%TEMP%`, faux `gh`/T3/Rojo, ~10 min sur le poste chargé, Windows seulement) :
+- Tests de limites des scripts (bac à sable jetable dans `%TEMP%`, faux `gh`/T3/Rojo/serveur de commande/plugin
+  autoconnect, registre commun jetable par `ROJO_AUTOCONNECT_DIR`, ~10 min sur le poste chargé, Windows seulement) :
   `Import-Module Pester -RequiredVersion 3.4.0; Invoke-Pester tests/scripts`. À lancer après toute modification de
   `scripts/fad-worktree*.ps1` ; un cas limite découvert devient un test dans `tests/scripts/worktree.Tests.ps1`.
   Ils tournent aussi en CI (job `pester`, `windows-latest`, ~5 min), seulement quand `scripts/**`, `tests/scripts/**` ou
@@ -115,10 +121,10 @@ Studio (code, `check.sh`, tests Lune, `rojo build`, Blender sans interface), pui
 vérification :
 
 ```powershell
-.\scripts\fad-worktree.ps1 <branche> -AcquireStudio                # réserve, ou code 2 avec le détenteur
+.\scripts\fad-worktree.ps1 <branche> -AcquireStudio                # réserve et connecte la place, ou code 2 avec le détenteur
 .\scripts\fad-worktree.ps1 <branche> -AcquireStudio -WaitStudio 20 # attend jusqu'à 20 min
-.\scripts\fad-worktree.ps1 <branche> -ReleaseStudio                # libère (aussi fait par -Stop et -Remove)
-.\scripts\fad-worktree.ps1 -StudioStatus                           # détenteur et port auquel Studio est connecté
+.\scripts\fad-worktree.ps1 <branche> -ReleaseStudio                # libère, place renvoyée sur 34900 (aussi fait par -Stop et -Remove)
+.\scripts\fad-worktree.ps1 -StudioStatus                           # détenteur, port connecté, dernier état signalé par le plugin
 ```
 
 - Réserver avant toute action Studio (MCP, connexion du plugin, demande de test à l'utilisateur), libérer juste après.
@@ -127,10 +133,16 @@ vérification :
 - Depuis le checkout principal (`rojo serve` lancé à la main sur 34900) : réserver avec la branche `main`
   (`.\scripts\fad-worktree.ps1 main -AcquireStudio`, puis `main -ReleaseStudio`). Si la réservation signale Studio
   connecté à 34900 hors verrou, c'est sans doute l'utilisateur qui teste : vérifier avant Disconnect.
-- Connexion à la main pour l'instant : la réservation affiche le port du worktree et celui auquel Studio est connecté ;
-  plugin Rojo (mode Edit) > Disconnect > port du worktree > Connect. Après la libération, revenir sur `34900` si le
-  checkout principal sert. L'auto-connexion par le plugin multi-projets (`Many0nne/CSGO_surf_combat#589`) se branchera
-  plus tard (#20).
+- Connexion automatique (#20) : après la prise du verrou, la réservation publie le port dans `worktrees/.run/studio.target`
+  (checkout principal), inscrit le projet au registre commun (`%LOCALAPPDATA%\RojoAutoconnect\projects\fad.json`, place
+  88580736516669), s'assure que le serveur de commande partagé répond (`http://127.0.0.1:34870/health` =
+  `rojo-control 3`, lancé au besoin depuis le checkout principal, jamais arrêté : il sert aussi la fenêtre CSGO), puis
+  attend 15 s que le plugin signale la connexion (`studio.status`). La libération renvoie la place sur `34900` si le Rojo
+  du checkout principal répond, sinon la déconnecte.
+- Pas connecté en 15 s (Studio fermé ou en Play, place non ouverte, plugin officiel) : la réservation affiche la
+  procédure manuelle (plugin Rojo, mode Edit > Disconnect > port du worktree > Connect) ; le verrou reste pris.
+- Garde-fou : `-StudioStatus` et `-AcquireStudio` affichent `ALERTE` quand le plugin signale la place connectée à un port
+  qui n'est d'aucun Rojo de ce dépôt (code CSGO synchronisé dans la place) : ne pas sauvegarder ni publier la place.
 - Un verrou est repris d'office si son détenteur n'a plus de worktree, plus de Rojo ou plus de thread T3 actif (threads
   settled, archivés ou supprimés ; un thread inconnu de T3 ne compte pas comme fini) : un agent qui s'arrête sans
   libérer ne bloque pas les autres.

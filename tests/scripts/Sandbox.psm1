@@ -3,7 +3,9 @@
   propre origin (depot nu), une copie des scripts du depot, et des faux pour tout ce qui sort du depot :
   - t3_threads.py remplace par un faux qui lit un JSON (sessions -> threads, etats des threads, panne simulee) ;
   - gh remplace par un gh.ps1 en tete du PATH, qui lit un JSON (branche -> PR) ;
-  - rojo remplace par un rojo.ps1 qui repond 200 a toute requete HTTP sur le port demande.
+  - rojo remplace par un rojo.ps1 qui repond 200 a toute requete HTTP sur le port demande ;
+  - auto-connexion Studio : registre commun jetable (ROJO_AUTOCONNECT_DIR), serveur de commande sur le port 35870
+    (FAD_CONTROL_PORT, faux /health de http.ps1), faux lune.ps1 qui en demarre un, faux plugin.ps1 qui suit la cible.
   Les scripts calculent leur racine depuis leur propre emplacement : la copie ne touche ni worktrees\.owners.json, ni
   worktrees\.run, ni la tache planifiee du vrai checkout, et leurs mutex sont propres a chaque racine.
   Limite connue : le port de base 34900 est fige dans le script ; les tests qui demarrent un faux Rojo passent -Slot >= 600.
@@ -53,6 +55,44 @@ while ($true) {
 }
 '@
 
+$fakeHttp = @'
+# Faux serveur HTTP : `http.ps1 <port> <corps> [marqueur]` repond 200 text/plain <corps> a toute requete (faux serveur de
+# commande du plugin : /health). Le marqueur (ex. control-server.luau) ne sert qu'a la ligne de commande du processus.
+$port = [int]$args[0]
+$body = [string]$args[1]
+$listener = [System.Net.Sockets.TcpListener]::Create($port)
+$listener.Start()
+while ($true) {
+  $client = $listener.AcceptTcpClient()
+  $stream = $client.GetStream()
+  $buffer = New-Object byte[] 4096
+  [void]$stream.Read($buffer, 0, $buffer.Length)
+  $bytes = [Text.Encoding]::ASCII.GetBytes("HTTP/1.1 200 OK`r`nContent-Type: text/plain`r`nContent-Length: $($body.Length)`r`nConnection: close`r`n`r`n$body")
+  $stream.Write($bytes, 0, $bytes.Length)
+  $client.Close()
+}
+'@
+
+$fakeLune = @'
+# Faux lune : `lune run <control-server.luau> <dossier>` demarre un faux serveur de commande v3 sur FAD_CONTROL_PORT.
+& (Join-Path $PSScriptRoot 'http.ps1') $env:FAD_CONTROL_PORT 'rojo-control 3' 'control-server.luau'
+'@
+
+$fakePlugin = @'
+# Faux plugin autoconnect : `plugin.ps1 <target> <status>` suit la cible comme le plugin (au changement de rev) et
+# signale aussitot l'etat obtenu dans le fichier status.
+$target = $args[0]; $status = $args[1]; $last = $null
+while ($true) {
+  try { $t = [IO.File]::ReadAllText($target) | ConvertFrom-Json } catch { $t = $null }
+  if ($t -and "$($t.rev)" -ne $last) {
+    $last = "$($t.rev)"
+    $state = if ("$($t.port)") { 'connected' } else { 'disconnected' }
+    [IO.File]::WriteAllText($status, (@{ rev = $last; state = $state; port = "$($t.port)" } | ConvertTo-Json -Compress))
+  }
+  Start-Sleep -Milliseconds 200
+}
+'@
+
 # Cette methode permet de lancer git dans le bac a sable en echouant au premier code de sortie non nul.
 # Fonction simple (sans param) : les options git comme --quiet passent telles quelles dans $args.
 function Invoke-Git {
@@ -75,6 +115,9 @@ function New-Sandbox {
     Bin = Join-Path $rootDir 'bin'
     T3File = Join-Path $rootDir 't3.json'
     GhFile = Join-Path $rootDir 'gh.json'
+    # Registre commun et serveur de commande du plugin : jamais ceux du poste (%LOCALAPPDATA%\RojoAutoconnect, 34870).
+    ControlDir = Join-Path $rootDir 'autoconnect'
+    ControlPort = 35870
     Dummies = [System.Collections.Generic.List[int]]::new()
   }
   New-Item -ItemType Directory -Force $sb.Root, $sb.Bin, $sb.Repo | Out-Null
@@ -94,6 +137,9 @@ function New-Sandbox {
   Invoke-Git $sb.Repo push --quiet -u origin main | Out-Null
   Set-Content (Join-Path $sb.Bin 'gh.ps1') $fakeGh
   Set-Content (Join-Path $sb.Bin 'rojo.ps1') $fakeRojo
+  Set-Content (Join-Path $sb.Bin 'http.ps1') $fakeHttp
+  Set-Content (Join-Path $sb.Bin 'lune.ps1') $fakeLune
+  Set-Content (Join-Path $sb.Bin 'plugin.ps1') $fakePlugin
   Set-FakeT3 $sb
   Set-FakeGh $sb
   $sb
@@ -115,6 +161,7 @@ function Use-SandboxEnv($Sb, [string]$Session, [scriptblock]$Action) {
   $vars = @{
     PATH = "$($Sb.Bin);$env:PATH"; FAD_FAKE_T3 = $Sb.T3File; FAD_FAKE_GH = $Sb.GhFile
     CLAUDE_CODE_SESSION_ID = $(if ($Session) { $Session } else { $null }); GH_CONFIG_DIR = $null
+    ROJO_AUTOCONNECT_DIR = $Sb.ControlDir; FAD_CONTROL_PORT = "$($Sb.ControlPort)"; FAD_CONNECT_WAIT = '2'
   }
   $saved = @{}
   foreach ($k in $vars.Keys) { $saved[$k] = [Environment]::GetEnvironmentVariable($k); [Environment]::SetEnvironmentVariable($k, $vars[$k]) }
@@ -135,6 +182,46 @@ function Invoke-SandboxScript($Sb, [string]$Name, [string[]]$ArgList = @(), [str
 # Cette methode permet de lancer fad-worktree.ps1 du bac a sable.
 function Invoke-Wt($Sb, [string[]]$ArgList, [string]$Session, [string]$Shell = 'pwsh') {
   Invoke-SandboxScript $Sb 'fad-worktree.ps1' $ArgList $Session $Shell
+}
+
+# Cette methode permet de lancer la copie de fad-worktree.ps1 d'un worktree du bac a sable (et non celle du checkout
+# principal), comme le fait l'agent d'une tache depuis son worktree.
+function Invoke-WtFrom($Sb, [string]$Dir, [string[]]$ArgList) {
+  Use-SandboxEnv $Sb $null {
+    $out = & pwsh -NoProfile -NonInteractive -File (Join-Path $Dir 'scripts\fad-worktree.ps1') @ArgList 2>&1 | Out-String
+    [pscustomobject]@{ Code = $LASTEXITCODE; Output = $out }
+  }
+}
+
+# Cette methode permet de lancer un faux serveur de commande du plugin (reponse <Body> a /health) sur le port du bac a
+# sable, avec `control-server.luau` dans sa ligne de commande comme le vrai ; renvoie son pid une fois le port ecoute.
+function Start-FakeControl($Sb, [string]$Body = 'rojo-control 3') {
+  $p = Start-Process pwsh -WindowStyle Hidden -PassThru -ArgumentList '-NoProfile', '-NonInteractive',
+    '-File', (Join-Path $Sb.Bin 'http.ps1'), "$($Sb.ControlPort)", "`"$Body`"", 'control-server.luau'
+  $Sb.Dummies.Add($p.Id)
+  for ($i = 0; $i -lt 50 -and -not (Get-NetTCPConnection -LocalPort $Sb.ControlPort -State Listen -ErrorAction SilentlyContinue); $i++) { Start-Sleep -Milliseconds 200 }
+  $p.Id
+}
+
+# Cette methode permet d'arreter tout serveur qui ecoute sur le port de commande du bac a sable.
+function Stop-FakeControl($Sb) {
+  Get-NetTCPConnection -LocalPort $Sb.ControlPort -State Listen -ErrorAction SilentlyContinue |
+    ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
+  for ($i = 0; $i -lt 25 -and (Get-NetTCPConnection -LocalPort $Sb.ControlPort -State Listen -ErrorAction SilentlyContinue); $i++) { Start-Sleep -Milliseconds 200 }
+}
+
+# Cette methode permet de lire la reponse /health du port de commande du bac a sable ($null si rien ne repond).
+function Get-FakeHealth($Sb) {
+  try { "$((Invoke-WebRequest "http://127.0.0.1:$($Sb.ControlPort)/health" -TimeoutSec 3 -UseBasicParsing).Content)".Trim() } catch { $null }
+}
+
+# Cette methode permet de lancer un faux plugin autoconnect qui suit la cible du bac a sable ; renvoie son pid.
+function Start-FakePlugin($Sb) {
+  $run = Join-Path $Sb.Repo 'worktrees\.run'
+  $p = Start-Process pwsh -WindowStyle Hidden -PassThru -ArgumentList '-NoProfile', '-NonInteractive',
+    '-File', (Join-Path $Sb.Bin 'plugin.ps1'), (Join-Path $run 'studio.target'), (Join-Path $run 'studio.status')
+  $Sb.Dummies.Add($p.Id)
+  $p.Id
 }
 
 # Cette methode permet de lancer le nettoyage du bac a sable (son mutex est propre au bac a sable).
@@ -191,6 +278,8 @@ function Get-SbPaths($Sb, [string]$Branch) {
     Dir = Join-Path $Sb.Repo "worktrees\fad-$slug"; Port = Join-Path $run "$slug.port"; Pid = Join-Path $run "$slug.pid"
     Run = $run; Owners = Join-Path $Sb.Repo 'worktrees\.owners.json'; Lock = Join-Path $run 'studio.lock'
     Log = Join-Path $Sb.Repo 'worktrees\.cleanup.log'
+    Target = Join-Path $run 'studio.target'; Status = Join-Path $run 'studio.status'
+    Registry = Join-Path $Sb.ControlDir 'projects\fad.json'
   }
 }
 
