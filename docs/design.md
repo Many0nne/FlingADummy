@@ -39,11 +39,12 @@ base, il rapporte des $/s, seule source d'argent.
    `x1.36`, os `+10%`, casse `+3%`), CHANCE totale qui grimpe, phrase de blessure (« Shattered skull, broken left arm »)
    et cause (« Hit a brick wall at 140 km/h »).
 6. **Tirage « 1 en N »** (`Client.Prize`, suspense calé sur 09 et 01) : silhouette noire debout au point
-   d'atterrissage, caméra de face qui se rapproche ; la silhouette se change en candidats de plus en plus rares
-   (`Collection.teaseSequence` : 0 à 3 mannequins plus courants, chacun à sa cote, puis le gagné), comme la pousse →
-   buisson → arbre de 09. Chaque palier (0,85 s) : éclair blanc, étincelles, anneau, secousse, contour à la couleur de
-   la rareté, exclamation en haut (« Lucky! » → « Super lucky! » → « Incredible luck! », comme « Super chanceux ! » de
-   01) et cote « 1 IN N ». Puis roulement (1,1 s, la silhouette tremble de plus en plus) et révélation : éclair plein
+   d'atterrissage, caméra de face qui se rapproche. La cote défile en continu depuis « 1 IN 1 » (un tic par chiffre, de
+   plus en plus aigu, vite puis de plus en plus lentement : `Collection.climbOdds`, 0,7 à 1,5 s par palier selon
+   l'écart) ; à chaque palier atteint, la silhouette se change en candidat plus rare (`Collection.teaseSequence` : 0 à 3
+   mannequins plus courants, chacun à sa cote, puis le gagné), comme la pousse → buisson → arbre de 09 : éclair blanc,
+   étincelles, anneau, secousse, contour à la couleur de la rareté, exclamation en haut (« Lucky! » → « Super lucky! »
+   → « Incredible luck! », comme « Super chanceux ! » de 01), arrêt de 0,45 s, puis la cote repart. Puis roulement (1,1 s, la silhouette tremble de plus en plus) et révélation : éclair plein
    écran, mannequin en couleurs qui grossit, rayons ; en haut au centre, **une seule fois** : taille et rareté
    (« BIG · RARE »), nom, « NEW! », $/s, cote ; bouton GO BACK (automatique après 5 s ; le serveur rend la main au plus
    tard 20 s après l'atterrissage).

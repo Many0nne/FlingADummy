@@ -285,6 +285,26 @@ function Collection.teaseSteps(odds: number): { number }
 	return steps
 end
 
+-- Cette méthode permet de donner la cote affichée pendant qu'elle grimpe de `from` à `to` (avancement `t` de 0 à 1),
+-- comme un compteur qui défile vite puis ralentit à l'approche du palier, lorsque le suspense du tirage s'anime :
+-- progression géométrique (1 → 10 → 100 au même rythme), entière, `to` exactement à la fin.
+function Collection.climbOdds(from: number, to: number, t: number): number
+	local k = math.clamp(t, 0, 1)
+	if k >= 1 or to <= from then
+		return to
+	end
+	local eased = 1 - (1 - k) ^ 3
+	local low = math.max(from, 1)
+	return math.clamp(math.floor(low * (to / low) ^ eased), from, to)
+end
+
+-- Cette méthode permet de donner la durée (s) de la montée de la cote de `from` à `to` lorsque le suspense passe au
+-- palier suivant : plus l'écart est grand, plus le compteur défile longtemps (0,7 à 1,5 s).
+function Collection.climbTime(from: number, to: number): number
+	local decades = math.log10(math.max(to, 1) / math.max(from, 1))
+	return math.clamp(0.7 + 0.25 * decades, 0.7, 1.5)
+end
+
 export type TeaseStep = { id: string, size: number, odds: number, rarity: number }
 
 -- Cette méthode permet de donner les étapes du suspense avant la révélation, comme la silhouette de la référence 09

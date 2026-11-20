@@ -167,6 +167,38 @@ return function(T, Loader)
 		end)
 	end)
 
+	T.describe("Collection.climbOdds / climbTime", function()
+		T.it(
+			"part de `from`, finit exactement sur `to`, ne redescend jamais et passe par les petites valeurs",
+			function()
+				T.expectEqual(Collection.climbOdds(1, 16, 0), 1)
+				T.expectEqual(Collection.climbOdds(1, 16, 1), 16)
+				T.expectEqual(Collection.climbOdds(1, 16, 2), 16)
+				local previous, seen = 0, {}
+				for i = 0, 200 do
+					local value = Collection.climbOdds(4, 16, i / 200)
+					T.expect(value >= previous and value >= 4 and value <= 16, "valeur " .. value)
+					previous = value
+					seen[value] = true
+				end
+				-- Le compteur défile : on voit passer chaque chiffre entre 4 et 16
+				for n = 4, 16 do
+					T.expect(seen[n] == true, "chiffre " .. n .. " affiché")
+				end
+			end
+		)
+		T.it("ralentit à l'approche du palier (plus de chemin parcouru au début qu'à la fin)", function()
+			local early = Collection.climbOdds(1, 1000, 0.2)
+			local late = Collection.climbOdds(1, 1000, 0.8)
+			T.expect(math.log10(early) > math.log10(1000) - math.log10(late), "début rapide, fin lente")
+		end)
+		T.it("défile plus longtemps sur un grand écart, dans [0,7 ; 1,5] s", function()
+			T.expectNear(Collection.climbTime(1, 1), 0.7)
+			T.expect(Collection.climbTime(10, 1000) > Collection.climbTime(10, 20), "plus long")
+			T.expectNear(Collection.climbTime(1, 1e9), 1.5)
+		end)
+	end)
+
 	T.describe("Collection.teaseSequence", function()
 		T.it(
 			"finit par le mannequin gagné, à sa cote ; candidats d'avant plus courants, cotes croissantes",

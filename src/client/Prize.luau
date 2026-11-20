@@ -1,5 +1,6 @@
 -- Tirage « 1 en N » et pose du mannequin gagné, calés sur les références. Suspense (09 et 01) : silhouette noire
--- debout au point d'atterrissage qui se change en candidats de plus en plus rares (Collection.teaseSequence), chaque
+-- debout au point d'atterrissage et cote qui défile en continu (« 1 IN 1 » → 2 → 3 … de plus en plus lentement,
+-- Collection.climbOdds) ; à chaque palier atteint la silhouette se change en candidat plus rare (teaseSequence), chaque
 -- palier marqué d'un éclair blanc, d'étincelles, d'un anneau, d'une secousse et d'une exclamation colorée en haut
 -- (« Lucky! 1 IN 10 » → « Super lucky! 1 IN 150 »), puis roulement (la silhouette tremble) et révélation : éclair
 -- plein écran, mannequin en couleurs qui grossit, rayons ; rareté, nom, « NEW! », $/s et cote une seule fois, en haut
@@ -28,7 +29,8 @@ local C = UIKit.COLORS
 local FEET = 3.82 -- du centre du torse au bas des pieds, échelle 1 (Shared.DummyShape)
 local HEIGHT = 6.7 -- hauteur du mannequin debout, échelle 1 (studs)
 local TEASE_FIRST = 0.45 -- silhouette seule avant le premier palier (s)
-local TEASE_STEP = 0.85 -- durée de chaque palier du suspense (s)
+local TEASE_PAUSE = 0.45 -- arrêt sur chaque palier atteint (éclair, exclamation) avant que la cote reparte (s)
+local TICK_GAP = 0.045 -- écart minimal entre deux tics du compteur de cote (s)
 local DRUMROLL = 1.1 -- roulement avant la révélation : la silhouette tremble de plus en plus (s)
 local AUTO_CLOSE = 5 -- GO BACK automatique après la révélation (s)
 local PROMPT_REFRESH = 0.25 -- s entre deux mises à jour des invites « Place »
@@ -265,6 +267,36 @@ local function drumroll(model: Model, scale: number, duration: number, current: 
 	end)
 end
 
+-- Cette méthode permet de faire défiler la cote affichée de `from` à `to` (vite puis de plus en plus lentement, un
+-- tic à chaque chiffre, de plus en plus aigu) lorsque le suspense monte vers le palier `index` ; cède jusqu'à la fin
+-- et renvoie false si le tirage a été interrompu.
+local function climb(from: number, to: number, index: number, current: number): boolean
+	local duration = Collection.climbTime(from, to)
+	local start = os.clock()
+	local last = from
+	local lastTick = 0
+	while true do
+		if current ~= token then
+			return false
+		end
+		local t = (os.clock() - start) / duration
+		local value = Collection.climbOdds(from, to, t)
+		if value ~= last then
+			last = value
+			teaseOdds.Text = "1 IN " .. Format.short(value)
+			local now = os.clock()
+			if now - lastTick >= TICK_GAP then
+				lastTick = now
+				UIKit.playSound("Click", 0.7 + 0.25 * index + 0.4 * math.min(t, 1))
+			end
+		end
+		if t >= 1 then
+			return true
+		end
+		task.wait()
+	end
+end
+
 -- Cette méthode permet de retirer le mannequin du tirage, le suspense, l'écran de révélation et les rayons lorsque le
 -- tirage se termine (GO BACK, fin forcée par le serveur, nouveau lancer).
 local function cleanup()
@@ -374,10 +406,17 @@ function Prize.play(result: any)
 	showSilhouette(sequence[1], ground)
 	task.spawn(function()
 		task.wait(TEASE_FIRST)
+		-- La cote défile en continu depuis 1 ; chaque palier atteint change la silhouette en son candidat et éclate
+		exclaimLabel.Text = ""
+		teaseOdds.Text = "1 IN 1"
+		teaseOdds.TextColor3 = Color3.new(1, 1, 1)
+		UIKit.openWindow(tease, false)
+		local shown = 1
 		for index, step in sequence do
-			if current ~= token then
+			if not climb(shown, step.odds, index, current) then
 				return
 			end
+			shown = step.odds
 			local scale = Collection.SIZES[step.size].scale
 			if index > 1 then
 				showSilhouette(step, ground)
@@ -388,15 +427,11 @@ function Prize.play(result: any)
 			FlightCamera.shake(0.25 + 0.2 * index)
 			exclaimLabel.Text = EXCLAIM[math.clamp(step.rarity, 1, #EXCLAIM)]
 			exclaimLabel.TextColor3 = tier.color
-			teaseOdds.Text = "1 IN " .. Format.short(step.odds)
-			if index == 1 then
-				UIKit.openWindow(tease, false)
-			end
+			teaseOdds.TextColor3 = tier.color:Lerp(Color3.new(1, 1, 1), 0.5)
 			UIKit.pop(exclaimLabel, 1.6)
 			UIKit.pop(teaseOdds, 1.4)
-			UIKit.playSound("Click", 0.8 + index * 0.2)
 			UIKit.playSound("Whoosh", 1.2 + index * 0.15)
-			task.wait(TEASE_STEP)
+			task.wait(TEASE_PAUSE)
 		end
 		if current ~= token or not worldModel then
 			return
