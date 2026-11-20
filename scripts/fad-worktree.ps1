@@ -77,7 +77,7 @@ $rootKey = -join ($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($root.ToLowerI
     ForEach-Object { $_.ToString('x2') })
 
 # Cette methode permet de calculer le slug d'une branche (nom des dossiers et fichiers d'etat) : `/` et accents -> `-`.
-function Get-Slug([string]$Name) { $Name -replace '[^A-Za-z0-9._-]', '-' }
+function Get-Slug([string]$Name) { $Name -replace '[^A-Za-z0-9._-]', '_' }
 
 # Cette methode permet de lire un fichier texte en UTF-8 (y compris sous Windows PowerShell 5.1) ; $null s'il manque.
 function Read-Text([string]$Path) { if (Test-Path -LiteralPath $Path) { [IO.File]::ReadAllText($Path) } else { $null } }
