@@ -210,6 +210,28 @@ return function(T, Loader, Lib)
 		)
 	end)
 
+	T.describe("assets/anim/published.json (clips republiés)", function()
+		T.it("liste chaque clip avec l'id de Shared.Assets et l'empreinte du .rbxm exporté", function()
+			local fs = require("@lune/fs")
+			local serde = require("@lune/serde")
+			local Assets = loader:require("src/shared/Assets")
+			local hint = " : exporter (lune run tools/build-anims.luau), publier puis lune run tools/build-anims.luau --published"
+				.. " (procédure : assets/anim/README.md)"
+			local published = serde.decode("json", fs.readFile("assets/anim/published.json"))
+			for _, clip in AnimationData.CLIPS do
+				local entry = published[clip.name]
+				T.expect(entry ~= nil, clip.name .. " absent de published.json" .. hint)
+				T.expectEqual(
+					entry.id,
+					string.format("%d", Assets.ANIMATIONS[clip.name]),
+					clip.name .. " : id différent de Assets.ANIMATIONS" .. hint
+				)
+				local sha = serde.hash("sha256", fs.readFile("assets/anim/export/" .. clip.name .. ".rbxm"))
+				T.expectEqual(sha, entry.sha256, clip.name .. " : .rbxm exporté différent du .rbxm publié" .. hint)
+			end
+		end)
+	end)
+
 	T.describe("AnimationData.buildSequence", function()
 		T.it("produit une KeyframeSequence complète, parents non animés à poids nul", function()
 			local clip = AnimationData.THROW

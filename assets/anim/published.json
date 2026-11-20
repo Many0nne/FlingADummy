@@ -1,0 +1,14 @@
+{
+  "Hold": {
+    "id": "134156774546186",
+    "sha256": "c023116c026170b5d9fbad4e16974b6ceafcfa0c64cc181f9ef92a915df6b472"
+  },
+  "Throw": {
+    "id": "98953473271707",
+    "sha256": "27dfd93428290589d1b38ed33bedce5d2de5bc8d4a6ca0d7b90d8580e31a93fe"
+  },
+  "Train": {
+    "id": "72035491380919",
+    "sha256": "722b69f4d78366b369fe654b55532fc97d16cef655aaec0d1aed229c788275cb"
+  }
+}
