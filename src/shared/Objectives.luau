@@ -1,5 +1,5 @@
--- Objectif du moment (texte en haut au centre, comme « Lancer à nouveau » / « Acheter une barre de traction » dans les
--- jeux de référence) et cible désignée : une pièce du décor (flèche au-dessus, chevrons au sol) ou un bouton du HUD.
+-- Objectif du tutoriel (texte en haut au centre, comme « Lancer à nouveau » / « Acheter une barre de traction » dans
+-- les jeux de référence ; étapes : Shared.Tutorial) et cible désignée : une pièce du décor (flèche au-dessus, chevrons au sol) ou un bouton du HUD.
 --
 -- Point d'accroche des cibles du décor : toute BasePart portant le tag `ObjectiveTarget` (CollectionService) et
 -- l'attribut `Objective` (« Throw » zone de lancer, « Train » appareil d'entraînement ; d'autres valeurs pour #13 /
@@ -14,7 +14,7 @@ Objectives.TAG = "ObjectiveTarget"
 export type State = {
 	action: string?, -- attribut Action du joueur : nil, "Holding", "Training"
 	laneState: string?, -- attribut LaneState : "Ready", "Flying", "Result"
-	thrown: boolean, -- a lancé depuis son dernier gain de Throw Power
+	step: string?, -- étape du tutoriel à faire (Shared.Tutorial.current) : nil une fois le tutoriel fini
 	canBuyGear: boolean,
 	canBuyDummy: boolean,
 }
@@ -24,17 +24,19 @@ export type Objective = {
 	text: string,
 	target: string?, -- valeur de l'attribut Objective de la cible du décor
 	button: string?, -- bouton du HUD désigné : "Shop", "Dummies"
+	buy: string?, -- achat visé dans la fenêtre du bouton (« Gear », « Value ») : la flèche passe sur son bouton
 }
 
 export type Candidate = { position: Vector3, slot: number?, owner: number? }
 
 local THROW = { id = "Throw", text = "Throw your dummy!", target = "Throw" }
 local TRAIN = { id = "Train", text = "Train!", target = "Train" }
-local BUY_GEAR = { id = "BuyGear", text = "Buy better gear!", button = "Shop" }
-local BUY_DUMMY = { id = "BuyDummy", text = "Buy a better dummy!", button = "Dummies" }
+local BUY_GEAR = { id = "BuyGear", text = "Buy better gear!", button = "Shop", buy = "Gear" }
+local BUY_DUMMY = { id = "BuyDummy", text = "Upgrade your dummy!", button = "Dummies", buy = "Value" }
 
--- Cette méthode permet de choisir l'objectif (achats, puis alternance lancer / entraînement) lorsque l'état du joueur
--- change ; nil quand l'écran est occupé (jauge, vol, résultat, séance d'entraînement où seul STOP reste).
+-- Cette méthode permet de choisir l'objectif du tutoriel (lancer, entraînement, puis achats de l'équipement et du
+-- mannequin dès qu'ils sont abordables) lorsque l'état du joueur change ; nil une fois le tutoriel fini ou quand
+-- l'écran est occupé.
 function Objectives.pick(state: State): Objective?
 	if state.laneState == "Flying" or state.laneState == "Result" then
 		return nil
@@ -42,13 +44,16 @@ function Objectives.pick(state: State): Objective?
 	if state.action == "Holding" or state.action == "Training" then
 		return nil
 	end
-	if state.canBuyGear then
+	if state.step == "Throw" then
+		return THROW
+	elseif state.step == "Train" then
+		return TRAIN
+	elseif state.step == "BuyGear" and state.canBuyGear then
 		return BUY_GEAR
-	end
-	if state.canBuyDummy then
+	elseif state.step == "BuyDummy" and state.canBuyDummy then
 		return BUY_DUMMY
 	end
-	return if state.thrown then TRAIN else THROW
+	return nil
 end
 
 -- Cette méthode permet de choisir, parmi les cibles d'un type, celle que suit le joueur (la sienne, ou la plus

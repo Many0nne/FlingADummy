@@ -43,8 +43,7 @@ multipliés par la zone atteinte.
 - Chaque répétition (0,8 s) donne l'**EXP de l'équipement** (« +N EXP », comme « +4 EXP / répétition » de 09) qui
   remplit la barre de niveau : 3 EXP au premier niveau puis × 1,2 par niveau, l'EXP en trop passe au niveau suivant
   (plusieurs niveaux d'un coup avec un bon équipement). Le passage de niveau (« LEVEL UP! Throw Power +N ») donne autant
-  de **Throw Power** que l'EXP qu'il demandait : puissance gagnée = EXP gagnée = gain × répétitions. Après un lancer,
-  l'objectif reste « Train! » tant qu'aucun niveau n'a été franchi (pas de Throw Power gagnée).
+  de **Throw Power** que l'EXP qu'il demandait : puissance gagnée = EXP gagnée = gain × répétitions.
 - **Équipements** (achetés avec l'argent) : mannequin en bois +1, pierre +3, fer +10, or +40, diamant +160, néon +700,
   cosmique +3 000 EXP par répétition ; prix 100 $, 1,5 K, 25 K, 150 K, 2 M, 25 M.
 - Vitesse de lancer = 110 + 30 × ln(puissance / 10) studs/s : la puissance explose (10 → 1 M), la distance monte
@@ -115,10 +114,18 @@ Interface : section suivante.
   au bord droit (place du bouton de collection des références) ; pastille rouge « ! » quand un achat est possible.
 - **Compteurs** (bas gauche) : biceps + Throw Power (cyan), liasse + argent (blanc), revenu « +$N/s » en vert à droite
   de l'argent quand l'attribut joueur `Income` est positif (posé par la collection, #13).
-- **Objectif** (haut centre) : « Throw your dummy! » → « Train! » → « Throw your dummy! »… ; « Buy better gear! » /
-  « Buy a better dummy! » dès qu'un achat est possible (flèche au-dessus du bouton) ; rien pendant la séance
-  d'entraînement (le bouton STOP suffit). Cible du décor : triangle jaune au-dessus, chevrons jaunes au sol qui défilent vers
-  elle. Logique dans `Shared.Objectives`.
+- **Tutoriel** (objectif en haut au centre) : toute la boucle une fois, puis plus jamais de texte, de flèche ni de
+  chevrons : « Throw your dummy! » (premier lancer) → « Train! » (jusqu'au premier niveau) → « Buy better gear! » dès que
+  le premier équipement est abordable → « Upgrade your dummy! » dès que l'amélioration du mannequin l'est. Pour un achat,
+  la flèche désigne où cliquer : bouton UPGRADE du popup « NEW GEAR! », sinon bouton d'achat de la carte quand la
+  fenêtre est ouverte (comme la flèche rouge de la boutique de 09), sinon le bouton du HUD qui ouvre la fenêtre. Étapes
+  sauvegardées avec le joueur (attribut `Tutorial`, drapeaux) ; une sauvegarde antérieure en déduit les étapes déjà faites.
+  Rien pendant la jauge, le vol, le résultat et la séance d'entraînement. Cible du décor : triangle jaune au-dessus,
+  chevrons jaunes au sol qui défilent vers elle. Logique dans `Shared.Tutorial` et `Shared.Objectives`.
+- **Popup « NEW GEAR! »** (comme « Nouvel équipement ! » de 09) : en haut au centre dès que l'équipement suivant est
+  abordable, écran libre (pas pendant la jauge, le vol, le résultat, ni boutique ouverte) : rendu 3D, nom, prix et gain,
+  bouton vert UPGRADE qui achète en un clic, croix. Fermé, il ne revient pas pour ce palier, mais revient pour le
+  suivant. Tout au long du jeu, pas seulement au tutoriel.
 - **Cibles du décor** (point d'accroche pour la carte et la collection) : une `BasePart` avec le tag `ObjectiveTarget`
   et l'attribut `Objective` (`"Throw"`, `"Train"`…), plus `Slot` (place du lobby) ou `OwnerUserId` (joueur) si elle
   n'est pas partagée ; le joueur suit la plus proche de celles qui lui sont ouvertes. `Span` : cible allongée sur X,

@@ -1,4 +1,4 @@
--- Objectif du moment au style des jeux de référence : texte blanc à contour en haut au centre, triangle jaune qui
+-- Objectif du tutoriel (3 étapes, Shared.Tutorial ; plus rien ensuite) au style des jeux de référence : texte blanc à contour en haut au centre, triangle jaune qui
 -- flotte et pulse au-dessus de la cible (pièce du décor marquée, cf. Shared.Objectives) ou du bouton du HUD désigné, et file
 -- de chevrons jaunes au sol qui défilent du joueur vers la cible.
 local CollectionService = game:GetService("CollectionService")
@@ -8,9 +8,9 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Economy = require(Shared:WaitForChild("Economy"))
-local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Objectives = require(Shared:WaitForChild("Objectives"))
 local Training = require(Shared:WaitForChild("Training"))
+local Tutorial = require(Shared:WaitForChild("Tutorial"))
 local UIMotion = require(Shared:WaitForChild("UIMotion"))
 
 local Hud = require(script.Parent.Hud)
@@ -40,10 +40,10 @@ local hudArrowScale: UIScale
 local hudArrowBase = UDim2.new() -- position de repos de la flèche d'interface, sans le balancement
 local hudArrowBob = Vector2.yAxis -- sens du balancement (vers le bouton)
 local chevrons: { { BasePart } } = {}
+local arrowOnEdge = false -- flèche d'interface sur un bouton du HUD (au bord de l'écran : placée sur le côté)
+local arrowOnOffer = false -- flèche d'interface sur le popup « NEW GEAR! » (qui remplace alors le texte)
 local current: Objectives.Objective? = nil
 local targetPart: BasePart? = nil
-local thrown = false
-local lastPower = 0
 local lastTargetPick = 0
 
 -- Cette méthode permet de lire un attribut numérique du joueur (valeur par défaut si absent) lorsque l'état de
@@ -52,16 +52,18 @@ local function stat(name: string, default: number): number
 	return (player:GetAttribute(name) :: number?) or default
 end
 
--- Cette méthode permet de construire l'état du joueur (action, achats possibles, alternance lancer / entraînement)
--- lorsque l'objectif est recalculé.
+-- Cette méthode permet de construire l'état du joueur (action, étape du tutoriel, achats possibles) lorsque
+-- l'objectif est recalculé.
 local function state(): Objectives.State
 	local money = stat("Money", 0)
 	local gearCost = Training.nextGearCost(stat("GearTier", 1))
 	local valueCost = Economy.valueCost(stat("ValueLevel", 1))
+	-- Rien avant le chargement : un ancien joueur ne doit pas voir passer la première étape
+	local step = if player:GetAttribute("DataReady") == true then Tutorial.current(stat("Tutorial", 0)) else nil
 	return {
 		action = player:GetAttribute("Action") :: string?,
 		laneState = player:GetAttribute("LaneState") :: string?,
-		thrown = thrown,
+		step = step,
 		canBuyGear = gearCost ~= nil and money >= gearCost,
 		canBuyDummy = valueCost ~= nil and money >= valueCost,
 	}
@@ -140,19 +142,20 @@ local function updateChevrons(from: Vector3?, to: Vector3?)
 end
 
 -- Cette méthode permet de placer la flèche d'interface à côté du bouton désigné, pointe vers lui : sur le côté pour
--- les boutons des bords (elle masquerait le bouton voisin), au-dessus sinon, lorsque l'objectif change.
+-- les boutons du HUD au bord de l'écran (elle masquerait le bouton voisin), au-dessus sinon (popup, carte d'une
+-- fenêtre), lorsque l'objectif change.
 local function placeHudArrow(anchor: GuiObject?)
 	if not anchor then
 		return
 	end
 	local screen = Workspace.CurrentCamera.ViewportSize.X
 	local x = anchor.AbsolutePosition.X + anchor.AbsoluteSize.X / 2
-	if x < screen / 3 then
+	if arrowOnEdge and x < screen / 3 then
 		hudArrow.AnchorPoint = Vector2.new(0, 0.5)
 		hudArrow.Rotation = 90 -- pointe à gauche
 		hudArrowBase = UDim2.new(1, 6, 0.5, 0)
 		hudArrowBob = Vector2.xAxis
-	elseif x > screen * 2 / 3 then
+	elseif arrowOnEdge and x > screen * 2 / 3 then
 		hudArrow.AnchorPoint = Vector2.new(1, 0.5)
 		hudArrow.Rotation = -90 -- pointe à droite
 		hudArrowBase = UDim2.new(0, -6, 0.5, 0)
@@ -177,7 +180,31 @@ local function refresh()
 			UIKit.pop(label, 1.3)
 		end
 	end
-	local anchor = if current and current.button then Hud.anchor(current.button) else nil
+end
+
+-- Cette méthode permet de poser la flèche d'interface sur le bouton à cliquer (UPGRADE du popup « NEW GEAR! », sinon
+-- bouton d'achat de la carte quand sa fenêtre est ouverte, sinon bouton du HUD qui l'ouvre) lorsque l'objectif, le
+-- popup ou les fenêtres changent.
+local function updateHudAnchor()
+	local anchor: GuiObject? = nil
+	local edge, onOffer = false, false
+	if current and current.button then
+		local buy = current.buy
+		local offerButton = if buy == "Gear" then Hud.offerButton() else nil
+		local cardButton = if buy then Hud.buyButton(buy) else nil
+		if offerButton then
+			anchor, onOffer = offerButton, true
+		elseif cardButton then
+			anchor = cardButton
+		else
+			anchor, edge = Hud.anchor(current.button), true
+		end
+	end
+	arrowOnOffer = onOffer
+	if anchor == hudArrow.Parent then
+		return
+	end
+	arrowOnEdge = edge
 	hudArrow.Parent = anchor
 	hudArrow.Visible = anchor ~= nil
 	placeHudArrow(anchor)
@@ -186,7 +213,9 @@ end
 
 -- Cette méthode permet d'animer le texte, la flèche et les chevrons à chaque image lorsque l'objectif est affiché.
 local function step()
-	label.Visible = current ~= nil and not Hud.isPopupShown()
+	updateHudAnchor()
+	-- Le popup « NEW GEAR! » dit déjà quoi faire : le texte se tait, la flèche désigne son bouton
+	label.Visible = current ~= nil and not Hud.isPopupShown() and not arrowOnOffer
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -274,22 +303,7 @@ function Objective.init(localPlayer: Player, gui: ScreenGui)
 		chevrons[i] = makeChevron(folder)
 	end
 
-	lastPower = stat("ThrowPower", GameConfig.START_POWER)
-	player:GetAttributeChangedSignal("ThrowPower"):Connect(function()
-		local power = stat("ThrowPower", GameConfig.START_POWER)
-		if power > lastPower then
-			thrown = false
-		end
-		lastPower = power
-		refresh()
-	end)
-	player:GetAttributeChangedSignal("LaneState"):Connect(function()
-		if player:GetAttribute("LaneState") == "Flying" then
-			thrown = true
-		end
-		refresh()
-	end)
-	for _, attribute in { "Action", "Money", "GearTier", "ValueLevel" } do
+	for _, attribute in { "Action", "LaneState", "Money", "GearTier", "ValueLevel", "Tutorial", "DataReady" } do
 		player:GetAttributeChangedSignal(attribute):Connect(refresh)
 	end
 	RunService.RenderStepped:Connect(step)
