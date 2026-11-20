@@ -158,22 +158,21 @@ end
 
 -- Cette méthode permet de retenir la valeur de jauge d'un lancer lorsque le serveur le reçoit : celle du client si
 -- elle est compatible avec l'instant où la jauge s'est ouverte (Shared.Gauge.verify), sinon celle du serveur.
-local function verifiedGauge(player: Player, claimed: number, openedAt: number): number
-	local now = os.clock()
-	local elapsed = now - openedAt
+local function verifiedGauge(player: Player, claimed: number, openedAt: number, stopArrival: number?): number
+	local elapsed = os.clock() - openedAt
 	local lag = networkLag(player)
-	-- GaugeStop reçu pour cette jauge (un arrivé avant l'ouverture est ignoré par Gauge.verify) ; consommé ici
-	local stopArrival = gaugeStops[player]
-	gaugeStops[player] = nil
-	local value, accepted = Gauge.verify(claimed, elapsed, lag, if stopArrival then stopArrival - openedAt else nil)
+	-- Un GaugeStop arrivé avant l'ouverture est ignoré par Gauge.verify (repli)
+	local stopAt = if stopArrival then stopArrival - openedAt else nil
+	local value, accepted = Gauge.verify(claimed, elapsed, lag, stopAt)
 	if RunService:IsStudio() then
 		print(
 			string.format(
-				"[Launch] jauge %s : client=%.2f serveur=%.2f (%.2f s après ouverture, latence %.3f s)",
+				"[Launch] jauge %s : client=%.2f serveur=%.2f (%.2f s après ouverture, GaugeStop %s, latence %.3f s)",
 				if accepted then "acceptée" else "refusée",
 				claimed,
 				value,
 				elapsed,
+				if stopAt then string.format("à %.2f s", stopAt) else "absent",
 				lag
 			)
 		)
@@ -203,6 +202,9 @@ function LaunchService.launch(player: Player, gauge: any, force: boolean?)
 		return
 	end
 	gauge = math.clamp(gauge, 0, 1)
+	-- Tout Launch consomme le GaugeStop noté, même refusé plus bas : le clic suivant en notera un nouveau
+	local stopArrival = gaugeStops[player]
+	gaugeStops[player] = nil
 	if player:GetAttribute("LaneState") ~= "Ready" or not player:GetAttribute("DataReady") then
 		return
 	end
@@ -215,7 +217,7 @@ function LaunchService.launch(player: Player, gauge: any, force: boolean?)
 		if player:GetAttribute("Action") ~= "Holding" or not openedAt then
 			return
 		end
-		gauge = verifiedGauge(player, gauge, openedAt)
+		gauge = verifiedGauge(player, gauge, openedAt, stopArrival)
 	end
 	player:SetAttribute("LaneState", "Flying")
 	player:SetAttribute("Action", nil)

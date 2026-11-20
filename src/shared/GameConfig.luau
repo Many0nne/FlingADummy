@@ -28,8 +28,9 @@ local GameConfig = {
 	GAUGE_PERIOD        = 1.2,    -- durée d'un aller-retour de l'aiguille (s)
 	GAUGE_MIN_FACTOR    = 0.6,    -- fraction de la vitesse quand l'aiguille est en bas
 	GAUGE_STEPS         = 20,     -- valeur affichée à côté de l'aiguille : +1 à +20
-	-- Vérification par le serveur : il recalcule l'instant du clic depuis l'ouverture de la jauge (lâcher et latence
-	-- déduits) et garde la valeur du client si elle est atteignable dans cette fenêtre, sinon la sienne
+	-- Vérification par le serveur : il recalcule l'instant du clic depuis l'ouverture de la jauge (arrivée du GaugeStop
+	-- moins la latence ; sans GaugeStop, arrivée du Launch moins lâcher et latence) et garde la valeur du client si elle
+	-- est atteignable dans cette fenêtre, sinon la sienne
 	GAUGE_MAX_LAG       = 1.0,    -- latence aller-retour (GetNetworkPing) prise en compte au plus (s)
 	GAUGE_LAG_TOLERANCE = 0.12,   -- marge autour de la latence mesurée (gigue, cadence réseau, s)
 	GAUGE_RELEASE_SLACK = 0.25,   -- retard possible du lâcher après THROW_RELEASE_TIME (lâcher de secours du client, repli sans GaugeStop, s)

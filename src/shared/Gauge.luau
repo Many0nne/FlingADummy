@@ -44,8 +44,9 @@ function Gauge.verify(claimed: number, elapsed: number, lag: number, stopAt: num
 	local tolerance = GameConfig.GAUGE_LAG_TOLERANCE
 	local click, from, to
 	if stopAt and stopAt >= 0 and stopAt <= elapsed then
-		-- Clic estimé : arrivée du GaugeStop moins le trajet aller (demi aller-retour)
-		click = stopAt - measured / 2
+		-- Clic estimé depuis l'apparition de la jauge chez le client : celle-ci a eu un trajet aller de retard sur
+		-- l'ouverture serveur, le clic un trajet de plus pour revenir, d'où l'aller-retour entier à déduire
+		click = stopAt - measured
 		from = math.max(0, click - tolerance)
 	else
 		-- Instant du clic estimé par le serveur, depuis l'apparition de la jauge chez le client

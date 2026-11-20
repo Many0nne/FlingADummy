@@ -103,7 +103,8 @@ return function(T, Loader)
 		-- Cette méthode permet de donner l'arrivée du GaugeStop et du Launch d'un client honnête qui clique `click` s après
 		-- l'ouverture, avec une latence aller-retour `rtt` et un lâcher en retard de `late`, lorsqu'un test les simule.
 		local function arrivals(click: number, rtt: number, late: number): (number, number)
-			return click + rtt / 2, click + release + late + rtt / 2
+			-- La jauge du client apparaît rtt/2 après l'ouverture serveur : les deux arrivées sont décalées de rtt entiers
+			return click + rtt, click + release + late + rtt
 		end
 
 		T.it("accepte la valeur juste, avec latence et gigue de la mesure", function()
