@@ -234,6 +234,8 @@ end
 -- Cette méthode permet de masquer le panneau de résultat lorsque le couloir redevient prêt.
 function ResultScreen.hide()
 	token += 1
+	-- Cérémonie coupée avant la fin du total : le gain vole quand même, depuis le total
+	ResultScreen.onTotal(totalLabel.AbsolutePosition + totalLabel.AbsoluteSize / 2)
 	UIKit.closeWindow(panel)
 	if rays then
 		rays:Destroy()

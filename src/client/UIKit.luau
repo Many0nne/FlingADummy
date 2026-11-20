@@ -370,18 +370,24 @@ local function bindPress(button: GuiButton, onClick: () -> ())
 	end)
 	button.InputBegan:Connect(function(input)
 		local kind = input.UserInputType
-		if (kind == Enum.UserInputType.MouseButton1 or kind == Enum.UserInputType.Touch) and not disabled() then
-			pressed = true
-			UIKit.scaleTo(button, UIMotion.PRESS_SCALE, UIMotion.PRESS_TIME)
+		if (kind ~= Enum.UserInputType.MouseButton1 and kind ~= Enum.UserInputType.Touch) or disabled() then
+			return
 		end
-	end)
-	button.InputEnded:Connect(function(input)
-		local kind = input.UserInputType
-		if pressed and (kind == Enum.UserInputType.MouseButton1 or kind == Enum.UserInputType.Touch) then
-			pressed = false
-			local rest = if hovered and not disabled() then UIMotion.HOVER_SCALE else 1
-			UIKit.scaleTo(button, rest, UIMotion.RELEASE_TIME, Enum.EasingStyle.Back)
-		end
+		pressed = true
+		UIKit.scaleTo(button, UIMotion.PRESS_SCALE, UIMotion.PRESS_TIME)
+		-- Relâché écouté partout : un doigt glissé hors du bouton avant d'être levé le fait aussi revenir
+		local connection
+		connection = UserInputService.InputEnded:Connect(function(ended)
+			if ended.UserInputType ~= kind then
+				return
+			end
+			connection:Disconnect()
+			if pressed then
+				pressed = false
+				local rest = if hovered and not disabled() then UIMotion.HOVER_SCALE else 1
+				UIKit.scaleTo(button, rest, UIMotion.RELEASE_TIME, Enum.EasingStyle.Back)
+			end
+		end)
 	end)
 	button.Activated:Connect(function()
 		if disabled() then

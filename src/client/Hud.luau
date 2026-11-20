@@ -413,10 +413,11 @@ end
 -- Cette méthode permet de rafraîchir compteurs, cartes et pastilles « ! » lorsque l'argent, la puissance,
 -- l'équipement, la valeur ou le revenu changent.
 function Hud.refresh()
-	local money = stat("Money", 0)
+	-- Argent affiché (gains en vol pas encore arrivés) : pastilles et prix suivent le compteur, pas l'attribut
+	local money = math.max(0, stat("Money", 0) - counters.Money.pending)
 	-- Revenu collé au montant, en plus petit et en vert (comme « $64 +$1 » de la référence 02), seulement s'il existe
 	local income = stat("Income", 0)
-	moneyLabel.Text = Format.money(math.max(0, money - counters.Money.pending))
+	moneyLabel.Text = Format.money(money)
 		.. if income > 0
 			then string.format(' <font size="22" color="#50D746">%s</font>', Format.perSecond(income))
 			else ""
@@ -565,11 +566,12 @@ end
 local function flyGain(kind: string, amount: number, from: Vector2)
 	local c = counters[kind]
 	c.pending += amount
-	local action, id, total = UIMotion.push(c.batch, amount, os.clock())
+	local action, id = UIMotion.push(c.batch, amount, os.clock())
 	local existing = c.flights[id]
 	if action == "merge" and existing and existing.label then
-		existing.total = total
-		existing.label.Text = "+" .. c.format(total)
+		-- Total tenu par l'étiquette (un achat a pu l'entamer), pas par le regroupeur
+		existing.total += amount
+		existing.label.Text = "+" .. c.format(existing.total)
 		return
 	end
 	local flight: Flight = { total = amount }
@@ -595,6 +597,40 @@ local function flyGain(kind: string, amount: number, from: Vector2)
 			UIKit.bump(c.label, c.flash)
 		end,
 	})
+end
+
+-- Cette méthode permet de retirer des gains en attente ce qui a été dépensé lorsque le compteur `kind` baisse sous eux
+-- (achat, remise à zéro) ; le gain retenu puis les étiquettes les plus récentes sont réduits d'abord.
+local function clampPending(kind: string, value: number)
+	local c = counters[kind]
+	local excess = c.pending - math.max(0, value)
+	if excess <= 0 then
+		return
+	end
+	c.pending -= excess
+	if kind == "Money" then
+		local cut = math.min(heldMoney, excess)
+		heldMoney -= cut
+		excess -= cut
+	end
+	local ids = {}
+	for id in c.flights do
+		table.insert(ids, id)
+	end
+	table.sort(ids, function(a, b)
+		return a > b
+	end)
+	for _, id in ids do
+		local flight = c.flights[id]
+		local cut = math.min(flight.total, excess)
+		if cut > 0 then
+			flight.total -= cut
+			excess -= cut
+			if flight.label then
+				flight.label.Text = "+" .. c.format(flight.total)
+			end
+		end
+	end
 end
 
 -- Cette méthode permet de donner le point de départ par défaut des « +N » d'argent (total de l'écran de résultat, au
@@ -706,9 +742,8 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 		if seeded and money > lastMoney and (lane == "Flying" or lane == "Result") then
 			holdMoney(money - lastMoney)
 		elseif money < lastMoney then
-			local c = counters.Money
-			c.pending = math.min(c.pending, money)
-			heldMoney = math.min(heldMoney, c.pending)
+			clampPending("Money", money)
+			UIKit.pop(moneyLabel, 0.85) -- dépense : le compteur se tasse puis revient
 		end
 		lastMoney = money
 		Hud.refresh()
@@ -723,6 +758,8 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 			if levelUpPending then
 				announceLevelUp()
 			end
+		elseif power < lastPower then
+			clampPending("ThrowPower", power)
 		end
 		lastPower = power
 		Hud.refresh()
