@@ -22,7 +22,7 @@ local SETTLE_SPEED = 2 -- une pièce déplacée qui bouge encore repousse la ré
 local POP_TIME = 0.25
 local OCCUPIED_SCALE = 0.9 -- emplacement vérifié avant réapparition (pièces voisines qui se touchent tolérées)
 local OCCUPIED_RETRY = 0.2 -- une pièce dont l'emplacement est occupé attend (s)…
-local OCCUPIED_TRIES = 40 -- … au plus 8 s (un mannequin posé disparaît RESULT_TIME après la fin de son vol)
+local OCCUPIED_TRIES = 40 -- … au plus 8 s (un mannequin posé disparaît RESULT_CLEAR_TIME après la fin de son vol)
 
 -- Obstacles très légers : le mannequin les traverse et les projette au lieu de s'y arrêter
 local CRATE_DENSITY = 0.05

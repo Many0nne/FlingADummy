@@ -1,4 +1,4 @@
--- Objectif du tutoriel (3 étapes, Shared.Tutorial ; plus rien ensuite) au style des jeux de référence : texte blanc à contour en haut au centre, triangle jaune qui
+-- Objectif du tutoriel (4 étapes, Shared.Tutorial ; plus rien ensuite) au style des jeux de référence : texte blanc à contour en haut au centre, triangle jaune qui
 -- flotte et pulse au-dessus de la cible (pièce du décor marquée, cf. Shared.Objectives) ou du bouton du HUD désigné, et file
 -- de chevrons jaunes au sol qui défilent du joueur vers la cible.
 local CollectionService = game:GetService("CollectionService")
@@ -7,7 +7,6 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local Economy = require(Shared:WaitForChild("Economy"))
 local Objectives = require(Shared:WaitForChild("Objectives"))
 local Training = require(Shared:WaitForChild("Training"))
 local Tutorial = require(Shared:WaitForChild("Tutorial"))
@@ -57,7 +56,6 @@ end
 local function state(): Objectives.State
 	local money = stat("Money", 0)
 	local gearCost = Training.nextGearCost(stat("GearTier", 1))
-	local valueCost = Economy.valueCost(stat("ValueLevel", 1))
 	-- Rien avant le chargement : un ancien joueur ne doit pas voir passer la première étape
 	local step = if player:GetAttribute("DataReady") == true then Tutorial.current(stat("Tutorial", 0)) else nil
 	return {
@@ -65,7 +63,7 @@ local function state(): Objectives.State
 		laneState = player:GetAttribute("LaneState") :: string?,
 		step = step,
 		canBuyGear = gearCost ~= nil and money >= gearCost,
-		canBuyDummy = valueCost ~= nil and money >= valueCost,
+		hasPrize = player:GetAttribute("PendingDummy") ~= nil,
 	}
 end
 
@@ -303,7 +301,7 @@ function Objective.init(localPlayer: Player, gui: ScreenGui)
 		chevrons[i] = makeChevron(folder)
 	end
 
-	for _, attribute in { "Action", "LaneState", "Money", "GearTier", "ValueLevel", "Tutorial", "DataReady" } do
+	for _, attribute in { "Action", "LaneState", "Money", "GearTier", "PendingDummy", "Tutorial", "DataReady" } do
 		player:GetAttributeChangedSignal(attribute):Connect(refresh)
 	end
 	RunService.RenderStepped:Connect(step)

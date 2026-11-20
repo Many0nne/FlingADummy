@@ -81,11 +81,11 @@ return function(T, Loader)
 	end)
 
 	T.describe("Zones", function()
-		T.it("première zone à 0 m, multiplicateurs croissants", function()
+		T.it("première zone à 0 m, chances croissantes", function()
 			T.expectEqual(Zones.LIST[1].start, 0)
 			for i = 2, #Zones.LIST do
 				T.expect(Zones.LIST[i].start > Zones.LIST[i - 1].start, "début croissant")
-				T.expect(Zones.LIST[i].multiplier > Zones.LIST[i - 1].multiplier, "multiplicateur croissant")
+				T.expect(Zones.LIST[i].chance > Zones.LIST[i - 1].chance, "chance croissante")
 			end
 		end)
 		T.it("indexAt trouve la zone atteinte, bornes incluses", function()

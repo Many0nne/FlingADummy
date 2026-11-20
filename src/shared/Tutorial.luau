@@ -1,23 +1,27 @@
--- Tutoriel court, toute la boucle une fois : Lancer → S'entraîner (un niveau) → Acheter le premier équipement →
--- Améliorer le mannequin, puis plus aucun objectif affiché. L'état est un masque de drapeaux (attribut `Tutorial` du
--- joueur, sauvegardé) : une étape faite dans le désordre compte quand même, et l'étape affichée est la première qui
--- reste à faire. Aussi : choix du palier proposé par le popup « NEW GEAR! ».
+-- Tutoriel court, toute la boucle une fois, dans l'ordre des références : Lancer → Poser le mannequin gagné (bouton
+-- AUTO) → S'entraîner (un niveau) → Acheter le premier équipement, puis plus aucun objectif affiché. L'état est un
+-- masque de drapeaux (attribut `Tutorial` du joueur, sauvegardé) : une étape faite dans le désordre compte quand même,
+-- et l'étape affichée est la première qui reste à faire. Aussi : choix du palier proposé par le popup « NEW GEAR! ».
 local Tutorial = {}
 
-Tutorial.STEPS = { "Throw", "Train", "BuyGear", "BuyDummy" }
+Tutorial.STEPS = { "Throw", "Place", "Train", "BuyGear" }
 
-local FLAG = { Throw = 1, Train = 2, BuyGear = 4, BuyDummy = 8 }
+-- Le bit 8 servait à l'ancienne étape « améliorer le mannequin » (retirée) : un joueur qui l'avait faite a forcément
+-- fini les autres, son tutoriel reste fini.
+local FLAG = { Throw = 1, Train = 2, BuyGear = 4, Place = 8 }
 Tutorial.DONE = 15 -- tous les drapeaux
 
--- Cette méthode permet d'enregistrer une étape faite (`event` : « Throw », « Train », « BuyGear », « BuyDummy »)
--- lorsque le serveur la constate ; un achat vaut aussi lancer et entraînement (la boucle de base est comprise).
+-- Cette méthode permet d'enregistrer une étape faite (`event` : « Throw », « Place », « Train », « BuyGear »)
+-- lorsque le serveur la constate ; un achat d'équipement vaut aussi les étapes d'avant (la boucle est comprise).
 function Tutorial.complete(flags: number, event: string): number
 	local flag = FLAG[event]
 	if not flag then
 		return flags
 	end
-	if event == "BuyGear" or event == "BuyDummy" then
-		flag = bit32.bor(flag, FLAG.Throw, FLAG.Train)
+	if event == "BuyGear" then
+		flag = bit32.bor(flag, FLAG.Throw, FLAG.Place, FLAG.Train)
+	elseif event == "Place" then
+		flag = bit32.bor(flag, FLAG.Throw) -- on ne pose qu'un mannequin gagné en lançant
 	end
 	return bit32.bor(flags, flag)
 end
@@ -34,7 +38,8 @@ function Tutorial.current(flags: number): string?
 end
 
 -- Cette méthode permet de déduire le tutoriel déjà fait d'une sauvegarde antérieure au tutoriel lorsqu'un ancien
--- joueur arrive : un ancien joueur ne revoit pas les étapes qu'il a déjà faites.
+-- joueur arrive : un ancien joueur ne revoit pas les étapes qu'il a déjà faites (« poser » reste à faire : les
+-- anciennes sauvegardes n'ont pas de base).
 function Tutorial.infer(data: { [string]: any }): number
 	local flags = 0
 	if type(data.BestDistance) == "number" and data.BestDistance > 0 then
@@ -44,10 +49,7 @@ function Tutorial.infer(data: { [string]: any }): number
 		flags = Tutorial.complete(flags, "Train")
 	end
 	if type(data.GearTier) == "number" and data.GearTier > 1 then
-		flags = Tutorial.complete(flags, "BuyGear")
-	end
-	if type(data.ValueLevel) == "number" and data.ValueLevel > 1 then
-		flags = Tutorial.complete(flags, "BuyDummy")
+		flags = bit32.bor(flags, FLAG.BuyGear, FLAG.Throw, FLAG.Train)
 	end
 	return flags
 end

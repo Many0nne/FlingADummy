@@ -9,7 +9,6 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local DummyShape = require(Shared:WaitForChild("DummyShape"))
-local Economy = require(Shared:WaitForChild("Economy"))
 local Format = require(Shared:WaitForChild("Format"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
@@ -21,7 +20,7 @@ local UIKit = require(script.Parent.UIKit)
 
 local C = UIKit.COLORS
 local BUTTON_SIZE = 92 -- côté des boutons à icône à 720 px de haut (≈ 0,13 h, comme les références)
-local INDEX_SLOTS = 8 -- cases de l'index en attendant la collection (#13)
+local INDEX_SLOTS = 8 -- cases de l'index en attendant son contenu (#52)
 local FLY_GROUP = 0.35 -- s : un gain arrivé moins de FLY_GROUP s après le précédent rejoint son « +N » en vol
 local FLY_MAX = 3 -- « +N » en vol au plus par compteur
 
@@ -60,8 +59,6 @@ local trainCount: TextLabel
 local lastPower = 0
 local lastMoney = 0
 local seeded = false -- valeurs sauvegardées chargées : les gains suivants volent vers les compteurs
-local heldMoney = 0 -- gain du lancer (déjà compté dans pending) qui attend la fin du total de l'écran de résultat
-local heldToken = 0
 local levelGain = 0 -- Throw Power versée au dernier niveau d'entraînement, pas encore annoncée
 local levelUpPending = false -- niveau arrivé avant sa Throw Power (ordre de réplication non garanti)
 local LEVEL_GAIN_WAIT = 0.5 -- attente maximale de la Throw Power d'un niveau avant de l'annoncer quand même (s)
@@ -402,9 +399,7 @@ local function buildWindows()
 	end)
 	windows.Dummies = dummies.frame
 	local dummyRow = cardRow(dummies.body)
-	dummyCard = UIKit.card(dummyRow, 1, function()
-		Hud.onBuy("Value")
-	end)
+	dummyCard = UIKit.card(dummyRow, 1, function() end)
 	for order = 2, 3 do
 		local locked = UIKit.card(dummyRow, order, function() end)
 		locked.title.Text = "???"
@@ -544,20 +539,14 @@ local function refreshGear(money: number)
 	end
 end
 
--- Cette méthode permet de rafraîchir la carte du mannequin lancé (valeur, prix de l'amélioration) lorsque l'argent
--- ou la valeur changent.
-local function refreshDummy(money: number)
-	local level = stat("ValueLevel", 1)
-	local cost = Economy.valueCost(level)
+-- Cette méthode permet d'habiller la carte du mannequin lancé (le seul en attendant la boutique de mannequins, #14)
+-- lorsque sa fenêtre s'ouvre.
+local function refreshDummy()
 	dummyCard.title.Text = "Crash Dummy"
-	dummyCard.rarity.Text = "Lv " .. level
+	dummyCard.rarity.Text = "Starter"
 	dummyCard.rarity.TextColor3 = C.yellow
-	dummyCard.stat.Text = string.format("Value x%.2f", Economy.valueMultiplier(level))
-	if cost then
-		setAction(dummyCard, "UPGRADE " .. Format.money(cost), if money >= cost then C.green else C.red, true)
-	else
-		setAction(dummyCard, "MAXED", C.equipped, false)
-	end
+	dummyCard.stat.Text = "x1 CHANCE"
+	setAction(dummyCard, "EQUIPPED", C.equipped, false)
 end
 
 -- Cette méthode permet d'afficher, de mettre à jour ou de masquer le popup « NEW GEAR! » lorsque l'argent affiché,
@@ -599,13 +588,11 @@ function Hud.refresh()
 		Format.short(math.max(0, stat("ThrowPower", GameConfig.START_POWER) - counters.ThrowPower.pending))
 
 	local gearCost = Training.nextGearCost(stat("GearTier", 1))
-	local valueCost = Economy.valueCost(stat("ValueLevel", 1))
 	UIKit.setBadge(anchors.Shop, if gearCost ~= nil and money >= gearCost then "!" else nil)
-	UIKit.setBadge(anchors.Dummies, if valueCost ~= nil and money >= valueCost then "!" else nil)
 	if windows.Shop.Visible or windows.Dummies.Visible then
 		buildModels()
 		refreshGear(money)
-		refreshDummy(money)
+		refreshDummy()
 	end
 	refreshOffer(money, gearCost)
 end
@@ -778,7 +765,7 @@ local function flyGain(kind: string, amount: number, from: Vector2)
 end
 
 -- Cette méthode permet de retirer des gains en attente ce qui a été dépensé lorsque le compteur `kind` baisse sous eux
--- (achat, remise à zéro) ; le gain retenu puis les étiquettes les plus récentes sont réduits d'abord.
+-- (achat, remise à zéro) ; les étiquettes les plus récentes sont réduites d'abord.
 local function clampPending(kind: string, value: number)
 	local c = counters[kind]
 	local excess = c.pending - math.max(0, value)
@@ -786,11 +773,6 @@ local function clampPending(kind: string, value: number)
 		return
 	end
 	c.pending -= excess
-	if kind == "Money" then
-		local cut = math.min(heldMoney, excess)
-		heldMoney -= cut
-		excess -= cut
-	end
 	local ids = {}
 	for id in c.flights do
 		table.insert(ids, id)
@@ -810,40 +792,6 @@ local function clampPending(kind: string, value: number)
 			end
 		end
 	end
-end
-
--- Cette méthode permet de donner le point de départ par défaut des « +N » d'argent (total de l'écran de résultat, au
--- centre) lorsque l'écran de résultat n'a pas donné le sien.
-local function moneyOrigin(): Vector2
-	local size = Workspace.CurrentCamera.ViewportSize
-	return Vector2.new(size.X * 0.5, size.Y * 0.45 + 67 * hudScale.Scale)
-end
-
--- Cette méthode permet de faire voler vers le compteur le gain du lancer mis en attente, depuis le total de l'écran de
--- résultat (`from`), lorsque ce total a fini de compter ; sans effet s'il n'y a rien en attente.
-function Hud.releaseMoney(from: Vector2?)
-	if heldMoney <= 0 then
-		return
-	end
-	local amount = heldMoney
-	heldMoney = 0
-	heldToken += 1
-	counters.Money.pending = math.max(0, counters.Money.pending - amount)
-	flyGain("Money", amount, from or moneyOrigin())
-end
-
--- Cette méthode permet de mettre en attente le gain d'un lancer (le compteur ne l'affiche pas encore) lorsque l'argent
--- arrive avec l'écran de résultat ; il vole quand le total a compté, ou au plus tard après RESULT_TIME.
-local function holdMoney(amount: number)
-	heldMoney += amount
-	counters.Money.pending += amount
-	heldToken += 1
-	local token = heldToken
-	task.delay(GameConfig.RESULT_TIME + 0.5, function()
-		if heldToken == token then
-			Hud.releaseMoney()
-		end
-	end)
 end
 
 -- Cette méthode permet d'annoncer le niveau d'entraînement franchi (« LEVEL UP! », Throw Power versée) lorsque le
@@ -883,14 +831,18 @@ function Hud.offerButton(): GuiObject?
 	return if offerTier ~= nil then offer.button else nil
 end
 
--- Cette méthode permet de donner le bouton d'achat de la carte visée (« Gear » : équipement suivant, « Value » :
--- amélioration du mannequin) lorsque la flèche du tutoriel cherche où pointer ; nil si sa fenêtre n'est pas ouverte.
+-- Cette méthode permet d'inscrire un élément d'interface d'un autre module (bouton AUTO du panneau de pose) parmi
+-- ceux que l'objectif peut désigner lorsque ce module le construit.
+function Hud.setAnchor(name: string, element: GuiObject)
+	anchors[name] = element
+end
+
+-- Cette méthode permet de donner le bouton d'achat de la carte visée (« Gear » : équipement suivant) lorsque la
+-- flèche du tutoriel cherche où pointer ; nil si sa fenêtre n'est pas ouverte.
 function Hud.buyButton(kind: string): GuiObject?
 	if kind == "Gear" and UIKit.isWindowOpen(windows.Shop) then
 		local card = gearCards[stat("GearTier", 1) + 1]
 		return if card then card.action else nil
-	elseif kind == "Value" and UIKit.isWindowOpen(windows.Dummies) then
-		return dummyCard.action
 	end
 	return nil
 end
@@ -930,16 +882,13 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 
 	lastPower = stat("ThrowPower", GameConfig.START_POWER)
 	lastMoney = stat("Money", 0)
-	for _, attribute in { "GearTier", "ValueLevel", "Income" } do
+	for _, attribute in { "GearTier", "Income" } do
 		player:GetAttributeChangedSignal(attribute):Connect(Hud.refresh)
 	end
 	player:GetAttributeChangedSignal("Money"):Connect(function()
 		local money = stat("Money", 0)
-		local lane = player:GetAttribute("LaneState")
-		-- Seul le gain d'un lancer vole (le chargement des valeurs sauvegardées non) ; un achat entame les gains en vol
-		if seeded and money > lastMoney and (lane == "Flying" or lane == "Result") then
-			holdMoney(money - lastMoney)
-		elseif money < lastMoney then
+		-- Le revenu de la base tombe tout seul chaque seconde (pas de « +N » volant) ; un achat entame les gains en vol
+		if money < lastMoney then
 			clampPending("Money", money)
 			UIKit.pop(moneyLabel, 0.85) -- dépense : le compteur se tasse puis revient
 		end

@@ -1,12 +1,14 @@
 -- Données du joueur : argent, Throw Power, équipement, niveaux et record, portés par des attributs du Player (répliqués au
--- client), recopiés dans les leaderstats et sauvegardés en DataStore.
+-- client), recopiés dans les leaderstats ; collection (présentoirs de la base, mannequin gagné pas encore posé,
+-- mannequins déjà découverts) gardée côté serveur. Le tout est sauvegardé en DataStore.
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local Economy = require(ReplicatedStorage.Shared.Economy)
+local Collection = require(ReplicatedStorage.Shared.Collection)
+local CourseLayout = require(ReplicatedStorage.Shared.CourseLayout)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local Training = require(ReplicatedStorage.Shared.Training)
 local Tutorial = require(ReplicatedStorage.Shared.Tutorial)
@@ -17,17 +19,72 @@ local DEFAULTS = {
 	Money = 0,
 	ThrowPower = GameConfig.START_POWER,
 	GearTier = 1,
-	ValueLevel = 1,
 	TrainLevel = 1,
 	TrainExp = 0, -- EXP du niveau d'entraînement en cours (Shared.Training)
 	BestDistance = 0,
 	Tutorial = 0, -- étapes du tutoriel faites (drapeaux, Shared.Tutorial)
+	Draws = 0, -- mannequins de collection gagnés (le premier est garanti : Collection.STARTER)
+}
+
+-- Collection d'un joueur : présentoirs (false = vide), mannequin gagné à poser, identifiants déjà obtenus
+export type CollectionData = {
+	base: { [number]: Collection.Entry | false },
+	pending: Collection.Entry?,
+	discovered: { [string]: boolean },
 }
 
 local PlayerData = {}
 
 local store: DataStore? = nil
 local loaded: { [Player]: boolean } = {}
+local collections: { [Player]: CollectionData } = {}
+
+-- Cette méthode permet de créer une collection vide (base de DISPLAY_COUNT présentoirs libres) lorsqu'un joueur arrive.
+local function emptyCollection(): CollectionData
+	local base = {}
+	for index = 1, CourseLayout.DISPLAY_COUNT do
+		base[index] = false
+	end
+	return { base = base, pending = nil, discovered = {} }
+end
+
+-- Cette méthode permet de relire la collection sauvegardée (entrées inconnues ou abîmées ignorées) lorsque les
+-- données d'un joueur sont chargées.
+local function readCollection(saved: any): CollectionData
+	local data = emptyCollection()
+	if type(saved) ~= "table" then
+		return data
+	end
+	if type(saved.base) == "table" then
+		for index = 1, CourseLayout.DISPLAY_COUNT do
+			local entry = saved.base[index]
+			if Collection.isEntry(entry) then
+				data.base[index] = { id = entry.id, size = entry.size }
+			end
+		end
+	end
+	if Collection.isEntry(saved.pending) then
+		data.pending = { id = saved.pending.id, size = saved.pending.size }
+	end
+	if type(saved.discovered) == "table" then
+		for _, id in saved.discovered do
+			if type(id) == "string" and Collection.get(id) then
+				data.discovered[id] = true
+			end
+		end
+	end
+	return data
+end
+
+-- Cette méthode permet de mettre la collection au format sauvegardé (liste d'identifiants découverts) lorsque les
+-- données d'un joueur sont écrites.
+local function writeCollection(data: CollectionData): { [string]: any }
+	local discovered = {}
+	for id in data.discovered do
+		table.insert(discovered, id)
+	end
+	return { base = data.base, pending = data.pending, discovered = discovered }
+end
 
 -- Cette méthode permet de construire la clé DataStore d'un joueur lorsque l'on lit ou écrit ses données.
 local function keyOf(player: Player): string
@@ -56,6 +113,7 @@ local function load(player: Player)
 	for key, value in DEFAULTS do
 		player:SetAttribute(key, value)
 	end
+	collections[player] = emptyCollection()
 	setupLeaderstats(player)
 	-- Studio : attribut FreshPlayer sur Workspace = nouveau joueur (données vierges, rien lu ni sauvegardé)
 	local fresh = RunService:IsStudio() and Workspace:GetAttribute("FreshPlayer") == true
@@ -79,6 +137,7 @@ local function load(player: Player)
 				if type(data.Tutorial) ~= "number" then
 					player:SetAttribute("Tutorial", Tutorial.infer(data))
 				end
+				collections[player] = readCollection(data.Collection)
 			end
 			loaded[player] = true
 		end
@@ -97,6 +156,10 @@ local function save(player: Player)
 	for key in DEFAULTS do
 		data[key] = player:GetAttribute(key)
 	end
+	local collection = collections[player]
+	if collection then
+		data.Collection = writeCollection(collection)
+	end
 	local ok, err = pcall(function()
 		(store :: DataStore):SetAsync(keyOf(player), data)
 	end)
@@ -105,9 +168,16 @@ local function save(player: Player)
 	end
 end
 
--- Cette méthode permet de créditer (ou débiter) de l'argent lorsqu'un lancer se termine ou qu'un achat est validé.
+-- Cette méthode permet de créditer (ou débiter) de l'argent lorsque la base verse son revenu, qu'un mannequin est
+-- revendu ou qu'un achat est validé.
 function PlayerData.addMoney(player: Player, amount: number)
 	player:SetAttribute("Money", ((player:GetAttribute("Money") :: number?) or 0) + amount)
+end
+
+-- Cette méthode permet de donner la collection d'un joueur (modifiable en place, sauvegardée avec ses données)
+-- lorsque le serveur tire, pose ou revend un mannequin ; nil avant son arrivée ou après son départ.
+function PlayerData.collection(player: Player): CollectionData?
+	return collections[player]
 end
 
 -- Cette méthode permet de mettre à jour le record du joueur lorsque la distance d'un lancer le dépasse.
@@ -117,30 +187,25 @@ function PlayerData.recordDistance(player: Player, distance: number)
 	end
 end
 
--- Cette méthode permet d'acheter le niveau suivant d'une amélioration lorsque le client le demande ; le serveur
--- valide le type, le niveau maximal et le solde. Renvoie true si l'achat a eu lieu.
+-- Cette méthode permet d'acheter l'équipement d'entraînement suivant lorsque le client le demande (`kind` = "Gear") ;
+-- le serveur valide le type, le palier maximal et le solde. Renvoie true si l'achat a eu lieu.
 function PlayerData.buyUpgrade(player: Player, kind: any): boolean
-	local attribute, cost
-	if kind == "Gear" then
-		attribute = "GearTier"
-		cost = Training.nextGearCost((player:GetAttribute(attribute) :: number?) or 1)
-	elseif kind == "Value" then
-		attribute = "ValueLevel"
-		cost = Economy.valueCost((player:GetAttribute(attribute) :: number?) or 1)
-	else
+	if kind ~= "Gear" then
 		return false
 	end
+	local tier = (player:GetAttribute("GearTier") :: number?) or 1
+	local cost = Training.nextGearCost(tier)
 	local money = (player:GetAttribute("Money") :: number?) or 0
 	if cost == nil or money < cost then
 		return false
 	end
 	player:SetAttribute("Money", money - cost)
-	player:SetAttribute(attribute, ((player:GetAttribute(attribute) :: number?) or 1) + 1)
-	PlayerData.tutorialStep(player, if kind == "Gear" then "BuyGear" else "BuyDummy")
+	player:SetAttribute("GearTier", tier + 1)
+	PlayerData.tutorialStep(player, "BuyGear")
 	return true
 end
 
--- Cette méthode permet de noter une étape du tutoriel faite (« Throw », « Train », « BuyGear », « BuyDummy ») lorsque
+-- Cette méthode permet de noter une étape du tutoriel faite (« Throw », « Place », « Train », « BuyGear ») lorsque
 -- le serveur la constate ; sans effet une fois le tutoriel fini.
 function PlayerData.tutorialStep(player: Player, event: string)
 	local flags = (player:GetAttribute("Tutorial") :: number?) or 0
@@ -173,6 +238,7 @@ function PlayerData.init()
 	Players.PlayerRemoving:Connect(function(player)
 		save(player)
 		loaded[player] = nil
+		collections[player] = nil
 	end)
 	game:BindToClose(function()
 		for _, player in Players:GetPlayers() do

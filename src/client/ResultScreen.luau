@@ -1,19 +1,21 @@
--- Cérémonie de résultat : titre selon la violence du crash, lignes de gains qui tombent une à une, total qui grimpe,
--- phrase de blessure et cause, badge de record. Dure un peu moins que RESULT_TIME. Panneau qui s'ouvre en pop, titre en
--- dégradé devant une gerbe de rayons tournants et des étincelles (référence 09).
+-- Cérémonie de résultat : titre selon la violence du crash, lignes de CHANCE qui tombent une à une (zone atteinte, os
+-- cassés, casse), CHANCE totale qui grimpe, phrase de blessure et cause, badge de record ; puis le tirage du mannequin
+-- de collection prend le relais (Client.Prize). Panneau qui s'ouvre en pop, titre en dégradé devant une gerbe de
+-- rayons tournants et des étincelles (référence 09).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Format = require(Shared:WaitForChild("Format"))
-local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Zones = require(Shared:WaitForChild("Zones"))
 
 local UIKit = require(script.Parent.UIKit)
 
 local C = UIKit.COLORS
-local LINE_DELAY = 0.4
-local COUNT_TIME = 0.8
+local LINE_DELAY = 0.3
+local COUNT_TIME = 0.6
+local HOLD_TIME = 0.8 -- CHANCE finale lisible avant le tirage (s)
+local RAYS_TIME = 3 -- durée des rayons derrière le titre (s)
 
 -- Titre selon le score de crash (os + objets / 2), du plus faible au plus fort
 local TITLES = {
@@ -93,7 +95,7 @@ local function build(gui: ScreenGui)
 	totalLabel = UIKit.text({
 		Position = UDim2.fromOffset(0, 240),
 		Size = UDim2.new(1, 0, 0, 74),
-		TextSize = 72,
+		TextSize = 60,
 		TextColor3 = C.green,
 		StrokeThickness = 5,
 		Parent = panel,
@@ -139,7 +141,8 @@ local function addLine(order: number, left: string, right: string, color: Color3
 	UIKit.playSound("Click", 1 + order * 0.08)
 end
 
--- Cette méthode permet de faire grimper le total affiché jusqu'au gain lorsque toutes les lignes sont tombées.
+-- Cette méthode permet de faire grimper la CHANCE affichée de 1 jusqu'à celle du lancer lorsque toutes les lignes
+-- sont tombées, puis de passer au tirage après HOLD_TIME.
 local function countUp(total: number, current: number)
 	local start = os.clock()
 	local connection
@@ -149,18 +152,21 @@ local function countUp(total: number, current: number)
 			return
 		end
 		local k = math.clamp((os.clock() - start) / COUNT_TIME, 0, 1)
-		totalLabel.Text = "+" .. Format.money(total * (1 - (1 - k) ^ 3))
+		totalLabel.Text = string.format("x%.2f CHANCE", 1 + (total - 1) * (1 - (1 - k) ^ 3))
 		if k >= 1 then
 			connection:Disconnect()
 			UIKit.pop(totalLabel, 1.4)
-			ResultScreen.onTotal(totalLabel.AbsolutePosition + totalLabel.AbsoluteSize / 2)
+			task.delay(HOLD_TIME, function()
+				if current == token then
+					ResultScreen.onDone()
+				end
+			end)
 		end
 	end)
 end
 
--- Cette méthode permet de signaler que le total a fini de compter (centre du total en pixels d'écran) lorsque la
--- cérémonie se termine ; remplacée par init.client (le gain vole alors vers le compteur d'argent).
-function ResultScreen.onTotal(_from: Vector2) end
+-- Cette méthode permet d'enchaîner sur le tirage lorsque la CHANCE a fini de compter ; remplacée par init.client.
+function ResultScreen.onDone() end
 
 -- Cette méthode permet de jouer la cérémonie de résultat lorsque le serveur envoie les gains du lancer.
 function ResultScreen.show(result: any)
@@ -186,7 +192,7 @@ function ResultScreen.show(result: any)
 	rays = UIKit.rays(panel.Parent :: Instance, {
 		position = panel.Position + UDim2.fromOffset(0, -panel.Size.Y.Offset / 2),
 		size = 420,
-		duration = GameConfig.RESULT_TIME - 0.3,
+		duration = RAYS_TIME,
 		color = title.color,
 		count = 12,
 		zIndex = 0,
@@ -197,18 +203,25 @@ function ResultScreen.show(result: any)
 		UIKit.sparkles(recordBadge, 4, Vector2.new(200, 40), 2, 0.3)
 	end
 
+	-- Lignes en ×CHANCE (le lancer ne paie rien) : distance et zone, puis bonus des os et de la casse
+	local zone = Zones.LIST[result.zone or 1] or Zones.LIST[1]
 	local lines = {
-		{ Format.meters(result.distance or 0), Format.money(result.distanceMoney or 0), C.white },
-		{ "🦴 " .. (result.bones or 0) .. " bones", Format.money(result.bonesMoney or 0), C.bone },
-		{ "💥 " .. (result.smashed or 0) .. " smashed", Format.money(result.smashMoney or 0), C.smash },
+		{
+			Format.meters(result.distance or 0) .. "  " .. string.upper(zone.name),
+			string.format("x%.2f", result.zoneChance or 1),
+			zone.color,
+		},
+		{
+			"🦴 " .. (result.bones or 0) .. " bones",
+			"+" .. math.floor((result.bonesBonus or 0) * 100 + 0.5) .. "%",
+			C.bone,
+		},
+		{
+			"💥 " .. (result.smashed or 0) .. " smashed",
+			"+" .. math.floor((result.smashBonus or 0) * 100 + 0.5) .. "%",
+			C.smash,
+		},
 	}
-	local zone = Zones.LIST[result.zone or 1]
-	if zone and zone.multiplier ~= 1 then
-		table.insert(lines, { string.upper(zone.name), "x" .. zone.multiplier, zone.color })
-	end
-	if result.valueMultiplier and result.valueMultiplier ~= 1 then
-		table.insert(lines, { "Dummy value", string.format("x%.2f", result.valueMultiplier), C.green })
-	end
 	task.spawn(function()
 		for order, line in lines do
 			task.wait(LINE_DELAY)
@@ -221,8 +234,8 @@ function ResultScreen.show(result: any)
 		if current ~= token then
 			return
 		end
-		UIKit.playSound("Cash")
-		countUp(result.total or 0, current)
+		UIKit.playSound("LevelUp", 1.3)
+		countUp(result.total or 1, current)
 		local injury = result.injuries or ""
 		if result.cause then
 			injury = injury .. "\n<i>" .. result.cause .. "</i>"
@@ -231,11 +244,9 @@ function ResultScreen.show(result: any)
 	end)
 end
 
--- Cette méthode permet de masquer le panneau de résultat lorsque le couloir redevient prêt.
+-- Cette méthode permet de masquer le panneau de résultat lorsque le tirage commence ou que le couloir redevient prêt.
 function ResultScreen.hide()
 	token += 1
-	-- Cérémonie coupée avant la fin du total : le gain vole quand même, depuis le total
-	ResultScreen.onTotal(totalLabel.AbsolutePosition + totalLabel.AbsoluteSize / 2)
 	UIKit.closeWindow(panel)
 	if rays then
 		rays:Destroy()

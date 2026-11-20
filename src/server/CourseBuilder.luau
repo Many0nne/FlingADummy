@@ -7,6 +7,7 @@ local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local Collection = require(ReplicatedStorage.Shared.Collection)
 local CourseLayout = require(ReplicatedStorage.Shared.CourseLayout)
 local Drips = require(ReplicatedStorage.Shared.Drips)
 local DummyShape = require(ReplicatedStorage.Shared.DummyShape)
@@ -50,7 +51,13 @@ local COLORS = {
 	metal = rgb(70, 72, 80),
 }
 
-export type Base = { model: Model, sign: TextLabel, displays: { BasePart } }
+export type Base = {
+	model: Model,
+	sign: TextLabel,
+	income: TextLabel, -- revenu de la base, au-dessus du panneau
+	displays: { BasePart }, -- dessus des présentoirs (invite « Place » dedans)
+	facing: number, -- côté de l'entrée (±1 sur X) : les mannequins posés regardent par là
+}
 
 export type Slot = {
 	index: number,
@@ -58,7 +65,7 @@ export type Slot = {
 	launchPoint: Vector3, -- point de la bande, au sol, d'où partent les mannequins de test de la place (Studio)
 	station: CFrame, -- position de l'avatar qui s'entraîne (sur le podium, face au centre du hub)
 	prompt: ProximityPrompt, -- « Lift » sur l'appareil d'entraînement, devant la base
-	base: Base, -- présentoirs vides, remplis par la tâche collection
+	base: Base, -- présentoirs, remplis par Server.BaseService
 	direction: Vector3,
 	spawn: CFrame, -- réapparition et retour après un lancer : dans le hub, juste derrière la bande, face à la piste
 }
@@ -594,12 +601,27 @@ local function buildBase(parent: Instance, slot: Slot)
 		end
 	end
 	local displays: { BasePart } = {}
-	for _, position in CourseLayout.displayPositions(slot.index) do
+	for index, position in CourseLayout.displayPositions(slot.index) do
 		Build.block(model, Vector3.new(5, 1.6, 5), CFrame.new(position + Vector3.new(0, 0.8, 0)), COLORS.stone)
-		table.insert(
-			displays,
+		local top =
 			Build.block(model, Vector3.new(4, 0.4, 4), CFrame.new(position + Vector3.new(0, 1.8, 0)), slot.color)
-		)
+		top.Name = "Display" .. index
+		-- Invite « Place » : désactivée ici, chaque client l'active sur les présentoirs libres de sa base quand il tient
+		-- un mannequin gagné (le serveur valide la pose)
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.Name = "Place"
+		prompt.ActionText = "Place"
+		prompt.ObjectText = "Display"
+		prompt.KeyboardKeyCode = Enum.KeyCode.E
+		prompt.HoldDuration = 0
+		prompt.MaxActivationDistance = 9
+		prompt.RequiresLineOfSight = false
+		prompt.Enabled = false
+		prompt:SetAttribute("Slot", slot.index)
+		prompt:SetAttribute("Display", index)
+		CollectionService:AddTag(prompt, Collection.PROMPT_TAG)
+		prompt.Parent = top
+		table.insert(displays, top)
 	end
 	-- Panneau à l'entrée, tourné vers le centre du hub
 	local front = center + Vector3.new(inward * (hx + 3), 0, 0)
@@ -609,8 +631,11 @@ local function buildBase(parent: Instance, slot: Slot)
 	end
 	local board = Build.block(model, Vector3.new(14, 3.6, 0.8), facing * CFrame.new(0, 6.5, 0), slot.color)
 	local sign = Build.surfaceText(board, Enum.NormalId.Front, "EMPTY BASE")
+	-- Revenu de la base au-dessus du panneau (« $223/s », comparaison entre joueurs comme les références)
+	local income = Build.billboard(model, (facing * CFrame.new(0, 10, 0)).Position, "", Vector2.new(10, 2.4), 200)
+	income.TextColor3 = Color3.fromRGB(90, 235, 80)
 	model.Parent = parent
-	slot.base = { model = model, sign = sign, displays = displays }
+	slot.base = { model = model, sign = sign, income = income, displays = displays, facing = inward }
 end
 
 -- Cette méthode permet de construire le hub (pelouse à damier, parois en gradins, bases et leurs appareils, stands à
@@ -720,7 +745,7 @@ local function buildTrack(parent: Instance)
 				Parent = folder,
 			})
 			-- Panneaux d'entrée de zone (pas au départ : la zone de lancer reste dégagée, comme dans les références)
-			local label = string.format("%s  x%s", string.upper(zone.name), zone.multiplier)
+			local label = string.format("%s  x%s CHANCE", string.upper(zone.name), zone.chance)
 			for _, side in { -1, 1 } do
 				Props.signpost(folder, CFrame.new(side * (half - 9), 0, zoneStart + 4), label, zone.color)
 			end

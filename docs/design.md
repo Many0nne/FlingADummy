@@ -8,8 +8,9 @@ Ragdoll*, 06 *BloxNG*, 12 *Net a Fish!*).
 ## Le jeu en une phrase
 Dans un lobby de 4 joueurs, on s'entraîne en soulevant un mannequin pour devenir plus fort, puis on lance un mannequin de
 crash-test à bout de bras dans un canyon de briques à tenons, sur une piste partagée semée de vitres, de tours de caisses,
-de murs, de voitures-cibles et de panneaux-cibles. On gagne selon la distance, les os cassés et les objets détruits,
-multipliés par la zone atteinte.
+de murs, de voitures-cibles et de panneaux-cibles. Le lancer ne rapporte pas d'argent : sa **CHANCE** (zones traversées,
+os cassés, objets détruits) pousse un tirage « 1 en N » qui fait gagner un **mannequin de collection** ; posé dans sa
+base, il rapporte des $/s, seule source d'argent.
 
 ## Cibles (mesurées sur les jeux qui percent)
 | Moment | Cible |
@@ -31,10 +32,19 @@ multipliés par la zone atteinte.
    (lâcher de l'animation et latence mesurée déduits, latence `GetNetworkPing` (aller-retour) bornée à 1 s, tolérance 0,12 s, lâcher en retard de
    0,25 s au plus) et garde la valeur du client si elle est atteignable dans cette fenêtre, sinon la sienne.
 3. **Élan** : l'avatar se penche en arrière puis projette le mannequin (0,35 s).
-4. **Vol** : bandes noires, caméra qui suit, compteurs (distance, os, objets), bannière de la zone traversée, radio du
-   mannequin ; chaque choc a son son, ses particules et son popup (« +1 BONE », « SMASH x6 », combos).
-5. **Résultat** (4,5 s) : titre selon la violence du crash, lignes de gains qui tombent une à une, total qui grimpe,
-   phrase de blessure (« Shattered skull, broken left arm ») et cause (« Hit a brick wall at 140 km/h »).
+4. **Vol** : bandes noires, caméra qui suit, bannière **CHANCE** (« 1.36X / CHANCE / 🍀 MEADOW ») qui monte pendant le
+   vol, compteurs (distance, os, objets), radio du mannequin ; chaque choc a son son, ses particules et son popup
+   (« +1 BONE », « SMASH x6 », combos).
+5. **Résultat** (≈ 2,7 s) : titre selon la violence du crash, lignes en ×CHANCE qui tombent une à une (distance et zone
+   `x1.36`, os `+10%`, casse `+3%`), CHANCE totale qui grimpe, phrase de blessure (« Shattered skull, broken left arm »)
+   et cause (« Hit a brick wall at 140 km/h »).
+6. **Tirage « 1 en N »** (référence 09, `Client.Prize`) : le mannequin gagné se dresse en silhouette noire au point
+   d'atterrissage, caméra de face qui se rapproche ; la cote grimpe en 1 à 3 paliers (« 1 IN 3 » → « 1 IN 40 » →
+   « 1 IN 1.37K », `Collection.teaseSteps`, 0,75 s chacun), puis révélation : mannequin en couleurs qui grossit, anneau
+   blanc au sol, rayons, et en haut au centre rareté, nom (taille comprise), « NEW! », $/s, cote ; bouton GO BACK
+   (automatique après 5 s ; le serveur rend la main au plus tard 20 s après l'atterrissage).
+7. **Poser** : de retour au hub, panneau « Place your Crash Dummy! » en bas au centre (rendu 3D, bouton **AUTO**) et
+   invite « Place » sur les présentoirs libres de sa base. Un nouveau lancer pose d'office le mannequin encore en main.
 
 ## Mécanique secondaire : l'entraînement
 - Un appareil d'entraînement par joueur, devant sa base à côté de l'entrée (podium à tenons, râtelier de mannequins
@@ -50,13 +60,44 @@ multipliés par la zone atteinte.
   régulièrement (≈ 145 m → 2,2 km).
 
 ## Deux courbes
-- **Throw Power** (entraînement) → distance → zones plus lointaines.
-- **Argent** (lancers) → équipements (entraînement plus rapide) et **valeur du mannequin** (multiplicateur + 0,25 par
-  niveau, de 250 $ × 1,7 par niveau).
+Comme 01 et 09 : le lancer fait le lien entre les deux.
+- **Throw Power** (entraînement) → distance → zones plus lointaines → **CHANCE** → mannequins plus rares.
+- **Revenu** (mannequins posés dans la base) → argent → équipements (entraînement plus rapide) ; plus tard la boutique
+  de mannequins à lancer (#14, multiplicateur de chance) et les présentoirs achetables (#52).
+
+## CHANCE et tirage (`Shared.Economy`, `Shared.Collection`)
+- CHANCE = chance des zones × (1 + 2 % par os cassé + 1 % par objet détruit), arrondie au centième. La chance des zones
+  vaut celle de la zone à son entrée et monte en continu jusqu'à celle de la suivante (18 au bout de la piste) : un
+  premier lancer (≈ 145 m) donne ≈ 1.4X, comme le 1.36X de 09.
+- Tirage : les mannequins sont essayés du plus rare au plus courant, chacun sort avec la probabilité min(1, CHANCE / n)
+  (le plus courant ramasse le reste) ; la taille se tire de même à CHANCE^0,5. Probabilités exactes affichables
+  (`Collection.probabilities`, `sizeProbabilities`), cote affichée = 1 / probabilité à CHANCE 1, × celle de la taille.
+- **Premier lancer** : Crash Dummy (Common, 4 $/s) garanti.
+- **21 mannequins** (déclinaisons du modèle : couleur, matériau, casque, lunettes, cape) de Common à Secret :
+  | Rareté | Mannequins | Revenu ($/s) | n |
+  |---|---|---|---|
+  | Common | Crash, Rookie, Traffic | 4 à 6 | 2 à 5 |
+  | Uncommon | Mint, Biker, Nerd | 15 à 30 | 10 à 25 |
+  | Rare | Ocean, Hero, Pilot | 70 à 150 | 60 à 150 |
+  | Epic | Ice, Toxic, Royal | 400 à 700 | 500 à 1 200 |
+  | Legendary | Gold, Lava, Diamond | 2 500 à 5 000 | 4 K à 10 K |
+  | Mythic | Galaxy, Ghost, Neon | 20 K à 40 K | 40 K à 100 K |
+  | Secret | Crash King, Void, Cosmic | 150 K à 300 K | 500 K à 2 M |
+- **Tailles** : Normal (×1 revenu), Big (×1,5, 1 en 8), Huge (×3, 1 en 60), Giant (×8, 1 en 500) ; modèle agrandi.
+
+## Base (`Server.BaseService`)
+- 6 présentoirs par base ; les mannequins posés sont construits par le serveur (visibles de tous), nom coloré par
+  rareté et $/s au-dessus ; revenu total de la base au-dessus du panneau « NOM'S BASE » (comparaison entre joueurs).
+- Revenu versé chaque seconde (attribut `Income`, compteur « +$N/s ») : **seule source d'argent**.
+- AUTO : premier présentoir libre ; base pleine, le nouveau remplace le moins rentable s'il rapporte plus (l'ancien est
+  revendu), sinon il est revendu ; revente = 2 min de revenu. Inventaire, vente au stand SELL, présentoirs achetables
+  et Index : #52.
+- Sauvegarde avec les données du joueur (`Collection` : présentoirs, mannequin en main, mannequins découverts, pour
+  « NEW! » ; `Draws` : nombre de tirages).
 
 ## Carte (v0.3) : lobby de 4 joueurs, piste unique
-- **Hub** (pelouse à damier entourée de parois en gradins) : une **base par joueur** (terrain clôturé, 6 présentoirs vides
-  prêts pour la collection, panneau « NOM'S BASE ») avec son **appareil d'entraînement** à côté de l'entrée, qu'il
+- **Hub** (pelouse à damier entourée de parois en gradins) : une **base par joueur** (terrain clôturé, 6 présentoirs
+  pour la collection, panneau « NOM'S BASE » et revenu au-dessus) avec son **appareil d'entraînement** à côté de l'entrée, qu'il
   laisse libre (podium à tenons, pastille jaune, râtelier, invite « Lift », briques fines `FadBrickFine`), stands à
   auvents rayés « SELL » et « SHOP » (branchés par la collection et la boutique), chevrons jaunes vers la zone de
   lancer. Plan dans `Shared.CourseLayout`.
@@ -78,18 +119,18 @@ multipliés par la zone atteinte.
 
 ## Zones de la piste (2,4 km)
 Chaque zone a son identité (couleur du sol, des parois, du dessus des gradins, décor), comme les zones de *Throw a Seed* :
-| Zone | Début | Gains | Sol / parois | Décor |
+| Zone | Début | CHANCE à l'entrée | Sol / parois | Décor |
 |---|---|---|---|---|
 | Meadow | 0 m | ×1 | vert citron / brun | arbres, buissons, fleurs, rochers |
-| Forest | 100 m | ×1,5 | vert foncé / brun | sapins, champignons géants |
-| Desert | 250 m | ×2,2 | sable / ocre | palmiers, cactus, buissons secs |
-| Construction | 450 m | ×3,3 | jaune / brique | plots, barrières rayées, poutrelles |
-| Snowfield | 700 m | ×5 | blanc bleuté / bleu glace | sapins enneigés, bonshommes de neige |
-| Volcano | 1 km | ×7,5 | rouge / basalte, dessus lave | roches à veines de lave, arbres morts |
-| Candy Land | 1,4 km | ×11 | rose / violet, dessus menthe | sucettes, sucres d'orge, boules de gomme |
-| Moon Base | 1,9 km | ×16 | lavande / violet nuit | cristaux, cratères, fusées |
+| Forest | 100 m | ×1,25 | vert foncé / brun | sapins, champignons géants |
+| Desert | 250 m | ×1,6 | sable / ocre | palmiers, cactus, buissons secs |
+| Construction | 450 m | ×2,2 | jaune / brique | plots, barrières rayées, poutrelles |
+| Snowfield | 700 m | ×3,2 | blanc bleuté / bleu glace | sapins enneigés, bonshommes de neige |
+| Volcano | 1 km | ×5 | rouge / basalte, dessus lave | roches à veines de lave, arbres morts |
+| Candy Land | 1,4 km | ×8 | rose / violet, dessus menthe | sucettes, sucres d'orge, boules de gomme |
+| Moon Base | 1,9 km | ×12 | lavande / violet nuit | cristaux, cratères, fusées |
 
-Gains = (distance + 10 × os + 5 × objets) × zone atteinte × valeur du mannequin.
+Panneaux d'entrée de zone : « FOREST x1.25 CHANCE ».
 
 ## Dégâts lisibles
 Chaque membre (10 pièces) suit les chocs : une variation brusque de vitesse au-delà d'un seuil casse un os (2 au-delà d'un
@@ -113,10 +154,10 @@ Interface : section suivante.
 - **Boutons** : carrés arrondis à icône dessinée en couleur et libellé dessous ; Index et Shop au bord gauche, Dummies
   au bord droit (place du bouton de collection des références) ; pastille rouge « ! » quand un achat est possible.
 - **Compteurs** (bas gauche) : biceps + Throw Power (cyan), liasse + argent (blanc), revenu « +$N/s » en vert à droite
-  de l'argent quand l'attribut joueur `Income` est positif (posé par la collection, #13).
-- **Tutoriel** (objectif en haut au centre) : toute la boucle une fois, puis plus jamais de texte, de flèche ni de
-  chevrons : « Throw your dummy! » (premier lancer) → « Train! » (jusqu'au premier niveau) → « Buy better gear! » dès que
-  le premier équipement est abordable → « Upgrade your dummy! » dès que l'amélioration du mannequin l'est. Pour un achat,
+  de l'argent quand l'attribut joueur `Income` (revenu de la base) est positif ; l'argent du revenu tombe tout seul.
+- **Tutoriel** (objectif en haut au centre) : toute la boucle une fois, dans l'ordre des références, puis plus jamais de
+  texte, de flèche ni de chevrons : « Throw your dummy! » (premier lancer) → « Place your dummy! » (flèche sur le bouton
+  AUTO) → « Train! » (jusqu'au premier niveau) → « Buy better gear! » dès que le premier équipement est abordable. Pour un achat,
   la flèche désigne où cliquer : bouton UPGRADE du popup « NEW GEAR! », sinon bouton d'achat de la carte quand la
   fenêtre est ouverte (comme la flèche rouge de la boutique de 09), sinon le bouton du HUD qui ouvre la fenêtre. Étapes
   sauvegardées avec le joueur (attribut `Tutorial`, drapeaux) ; une sauvegarde antérieure en déduit les étapes déjà faites.
@@ -133,8 +174,8 @@ Interface : section suivante.
   l'appareil d'entraînement de chaque place.
 - **Fenêtres** : cadre sombre, bandeau dégradé (icône, titre), croix rouge ; cartes d'objets grises (nom, rareté
   colorée de `Shared.Rarity`, rendu 3D en `ViewportFrame`, statistique, bouton : prix vert / rouge, « EQUIPPED »).
-  Shop = équipements d'entraînement ; Dummies = mannequin lancé (valeur) et mannequins à venir en silhouette (#14) ;
-  Index = cases vides en attendant la collection (#13).
+  Shop = équipements d'entraînement ; Dummies = mannequin lancé (Crash Dummy, x1 CHANCE) et mannequins à venir en
+  silhouette (#14) ; Index = cases vides en attendant son contenu (#52).
 - **Jauge** : capsule verticale à contour noir, dégradé vert (haut) → rouge (bas), 4 traits, curseur blanc, `+N` à
   droite, « Click to throw! » dessous.
 - **Popups** : « LEVEL UP! » / « NEW EQUIPMENT! » jaunes à contour en haut au centre, sous-titre dessous.
@@ -149,7 +190,8 @@ Interface : section suivante.
 - Lobby de 4 joueurs (`SLOT_COUNT`, `MaxPlayers` du projet Rojo) sur **une piste partagée** : chaque joueur a une place
   (`Server.SlotService`) ; les vols coexistent, les obstacles réapparaissent d'eux-mêmes au lieu d'être reconstruits.
 - Studio : `DebugLaunch` (0-1) sur le joueur lance son mannequin, `DebugLaunchBots` (n) lance n mannequins de test depuis
-  les places libres (mesure de 4 vols simultanés).
+  les places libres (mesure de 4 vols simultanés), `DebugPlace` pose le mannequin en main (AUTO) ; `FreshPlayer` sur
+  Workspace : nouveau joueur sans sauvegarde.
 - Le décor est généré par le code (`CourseBuilder`) : rien à exporter depuis Studio.
 
 ## Feuille de route

@@ -40,14 +40,14 @@ local GameConfig = {
 	LEVEL_BASE_EXP      = 3,      -- EXP du premier niveau d'entraînement (3 répétitions avec l'équipement de départ)
 	LEVEL_EXP_GROWTH    = 1.2,    -- EXP demandée × 1,2 par niveau
 
-	-- Économie
-	VALUE_STEP          = 0.25,   -- multiplicateur de gains + 0,25 par niveau de valeur du mannequin
-	VALUE_MAX_LEVEL     = 50,
-	VALUE_BASE_COST     = 250,
-	VALUE_COST_GROWTH   = 1.7,
-	MONEY_PER_METER     = 1,
-	MONEY_PER_BONE      = 10,
-	MONEY_PER_SMASH     = 5,
+	-- CHANCE du lancer (le lancer ne rapporte pas d'argent : il fait gagner un mannequin de collection)
+	CHANCE_PER_BONE     = 0.02,   -- + 2 % de chance par os cassé
+	CHANCE_PER_SMASH    = 0.01,   -- + 1 % de chance par objet détruit
+	SIZE_LUCK_POWER     = 0.5,    -- la taille (Big, Huge…) se tire à chance ^ 0,5 : moins poussée que la rareté
+
+	-- Base : mannequins de collection posés sur des présentoirs, seule source d'argent
+	INCOME_TICK         = 1,      -- versement du revenu de la base (s)
+	SELL_SECONDS        = 120,    -- revente d'un mannequin (base pleine) : 2 min de son revenu
 
 	-- Dégâts
 	BONE_IMPACT_DV      = 70,     -- variation de vitesse d'un membre en une frame qui casse un os (studs/s)
@@ -64,7 +64,8 @@ local GameConfig = {
 	REST_TIME           = 1.0,    -- durée d'arrêt avant de compter le résultat (s)
 	MAX_FLIGHT_TIME     = 16,
 	KILL_Y              = -40,    -- mannequin tombé du parcours
-	RESULT_TIME         = 4.5,    -- durée de la cérémonie de résultat avant le lancer suivant (s)
+	RESULT_MAX_TIME     = 20,     -- résultat et tirage : fin forcée si le client ne signale pas GO BACK (s)
+	RESULT_CLEAR_TIME   = 4.5,    -- mannequin d'un joueur parti pendant son résultat retiré après ce délai (s)
 	SMASH_SPEED         = 7,      -- une caisse ou une brique qui dépasse cette vitesse compte comme détruite
 }
 
