@@ -64,7 +64,7 @@ return function(T, Loader)
 						T.expectEqual(progress.bank, 0, "réserve vidée")
 						T.expectEqual(
 							total,
-							Training.levelPower(tier, level),
+							Training.GEARS[tier].gain * needed,
 							"palier " .. tier .. ", niveau " .. level
 						)
 					end

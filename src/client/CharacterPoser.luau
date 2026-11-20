@@ -17,7 +17,8 @@ local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Training = require(Shared:WaitForChild("Training"))
 
 local HELD_SCALE = 0.6
-local PALM_GAP = 0.3 -- demi-épaisseur de la main sous le mannequin couché (studs)
+local PALM_GAP = AnimationData.PALM_GAP
+local LIFT_OFFSET = AnimationData.LIFT_OFFSET
 local FADE = 0.2 -- fondu d'entrée et de sortie des clips (s)
 local THROW_FADE = 0.08
 local RELEASE_GRACE = 0.25 -- lâcher de secours après le marqueur (clip absent ou en retard, s)
@@ -161,7 +162,7 @@ local function palmFrame(character: Model, root: BasePart, scale: number): CFram
 	end
 	head = head.Unit
 	local back = -up
-	local center = hand.Position + up * (PALM_GAP + 0.55 * scale) + head * (0.5 * scale)
+	local center = hand.Position + up * (PALM_GAP + LIFT_OFFSET * scale) + head * (0.5 * scale)
 	return CFrame.fromMatrix(center, head:Cross(back), head, back)
 end
 
@@ -177,7 +178,7 @@ local function liftFrame(character: Model, root: BasePart, scale: number): CFram
 	local across = right.Position - left.Position
 	across -= up * across:Dot(up)
 	across = if across.Magnitude > 0.05 then across.Unit else root.CFrame.RightVector
-	local center = (left.Position + right.Position) / 2 + up * (PALM_GAP + 0.55 * scale)
+	local center = (left.Position + right.Position) / 2 + up * (PALM_GAP + LIFT_OFFSET * scale)
 	local back = -up
 	return CFrame.fromMatrix(center, across:Cross(back), across, back)
 end

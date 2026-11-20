@@ -39,7 +39,9 @@ local trainLevel: TextLabel
 local trainFill: Frame
 local trainCount: TextLabel
 local lastPower = 0
-local levelGain = 0 -- dernière Throw Power gagnée à l'entraînement (versée juste avant le passage de niveau)
+local levelGain = 0 -- Throw Power versée au dernier niveau d'entraînement, pas encore annoncée
+local levelUpPending = false -- niveau arrivé avant sa Throw Power (ordre de réplication non garanti)
+local LEVEL_GAIN_WAIT = 0.5 -- attente maximale de la Throw Power d'un niveau avant de l'annoncer quand même (s)
 local knownLevel = math.huge -- palier d'entraînement et équipement déjà annoncés (aucun avant le chargement)
 local knownTier = math.huge
 local popupEndsAt = 0
@@ -497,6 +499,15 @@ local function showPopup(title: string, subtitle: string, subtitleColor: Color3?
 	popupEndsAt = os.clock() + duration
 end
 
+-- Cette méthode permet d'annoncer le niveau d'entraînement franchi (« LEVEL UP! », Throw Power versée) lorsque le
+-- niveau et sa Throw Power sont arrivés, dans un ordre ou dans l'autre.
+local function announceLevelUp()
+	levelUpPending = false
+	showPopup("LEVEL UP!", "Throw Power +" .. Format.short(levelGain), C.cyan)
+	levelGain = 0
+	UIKit.playSound("LevelUp")
+end
+
 -- Cette méthode permet d'adapter l'échelle du HUD à la taille de l'écran lorsque la fenêtre change (mobile compris).
 local function bindScale(scale: UIScale)
 	local camera = Workspace.CurrentCamera
@@ -513,7 +524,7 @@ function Hud.screen(): ScreenGui
 	return gui
 end
 
--- Cette méthode permet de donner l'élément du HUD que l'objectif désigne (« Stop », « Shop », « Dummies ») lorsque la
+-- Cette méthode permet de donner l'élément du HUD que l'objectif désigne (« Shop », « Dummies ») lorsque la
 -- flèche d'interface se place ; nil s'il n'existe pas.
 function Hud.anchor(name: string): GuiObject?
 	return anchors[name]
@@ -559,6 +570,9 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 		if power > lastPower and player:GetAttribute("Action") == "Training" then
 			levelGain = power - lastPower
 			UIKit.pop(powerLabel, 1.2)
+			if levelUpPending then
+				announceLevelUp()
+			end
 		end
 		lastPower = power
 		Hud.refresh()
@@ -581,10 +595,16 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 			return
 		end
 		knownLevel = level
-		-- Le serveur verse la puissance du niveau juste avant de changer TrainLevel (même ordre à la réplication)
-		showPopup("LEVEL UP!", "Throw Power +" .. Format.short(levelGain), C.cyan)
-		levelGain = 0
-		UIKit.playSound("LevelUp")
+		if levelGain > 0 then
+			announceLevelUp()
+		else
+			levelUpPending = true -- la Throw Power du niveau arrive juste après
+			task.delay(LEVEL_GAIN_WAIT, function()
+				if levelUpPending then
+					announceLevelUp()
+				end
+			end)
+		end
 		refreshTraining()
 	end)
 	player:GetAttributeChangedSignal("TrainReps"):Connect(function()

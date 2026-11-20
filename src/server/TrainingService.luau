@@ -49,7 +49,8 @@ function TrainingService.start(player: Player)
 	if not slot or not root or player:GetAttribute("Action") == "Training" then
 		return
 	end
-	if player:GetAttribute("LaneState") ~= "Ready" then
+	-- Pas avant le chargement des données : il écraserait les répétitions faites entre-temps
+	if player:GetAttribute("LaneState") ~= "Ready" or player:GetAttribute("DataReady") ~= true then
 		return
 	end
 	-- Debout sur le podium, dos au râtelier ; ancré pour que la boucle d'animation ne le fasse pas dériver

@@ -93,12 +93,6 @@ function Training.addRep(progress: Progress): (Progress, boolean)
 	return { level = progress.level, reps = reps }, false
 end
 
--- Cette méthode permet de donner la Throw Power d'un niveau `level` entièrement fait avec l'équipement du palier `tier`
--- (gain par répétition × répétitions du niveau) lorsque l'on estime le rythme de l'entraînement.
-function Training.levelPower(tier: number, level: number): number
-	return Training.gear(tier).gain * Training.repsForLevel(level)
-end
-
 -- Cette méthode permet de compter une répétition faite avec l'équipement du palier `tier` lorsque REP_TIME s'est écoulé
 -- ; renvoie la progression (gain mis de côté) et la Throw Power versée : tout le niveau quand il est franchi, 0 sinon.
 function Training.completeRep(progress: Progress, tier: number): (Progress, number)

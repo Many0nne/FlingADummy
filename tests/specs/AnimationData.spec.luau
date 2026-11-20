@@ -121,8 +121,8 @@ return function(T, Loader, Lib)
 		local Training = loader:require("src/shared/Training")
 		local DummyShape = loader:require("src/shared/DummyShape")
 		-- Pose du mannequin soulevé, comme Client.CharacterPoser (liftFrame) : couché sur le dos au-dessus du milieu des
-		-- mains, à PALM_GAP + 0,55 × échelle ; sa demi-épaisseur (dos-ventre, verticale) vaut 0,75 × échelle
-		local PALM_GAP = 0.3
+		-- mains, à PALM_GAP + LIFT_OFFSET × échelle ; sa demi-épaisseur (dos-ventre, verticale) vient du gabarit
+		local PALM_GAP, LIFT_OFFSET = AnimationData.PALM_GAP, AnimationData.LIFT_OFFSET
 		local depth = 0
 		for _, piece in DummyShape.PIECES do
 			depth = math.max(depth, math.abs(piece.position.Z) + piece.size.Z / 2)
@@ -162,7 +162,7 @@ return function(T, Loader, Lib)
 				local right, left, head = bodyAt(keyframe.poses)
 				local hands = (right.Y + left.Y) / 2
 				for _, gear in Training.GEARS do
-					local bottom = hands + PALM_GAP + 0.55 * gear.scale - depth * gear.scale
+					local bottom = hands + PALM_GAP + LIFT_OFFSET * gear.scale - depth * gear.scale
 					T.expect(
 						bottom > head.Y + HEAD_HALF - 0.05,
 						string.format(

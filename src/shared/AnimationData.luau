@@ -24,6 +24,11 @@ export type Clip = {
 
 local AnimationData = {}
 
+-- Mannequin posé sur les mains (Client.CharacterPoser) : demi-épaisseur de la main sous le mannequin couché, et hauteur
+-- du centre du mannequin au-dessus de la paume par unité d'échelle (studs)
+AnimationData.PALM_GAP = 0.3
+AnimationData.LIFT_OFFSET = 0.55
+
 -- Parent de chaque pièce dans la hiérarchie des poses R15
 AnimationData.PARENT = {
 	LowerTorso = "HumanoidRootPart",
