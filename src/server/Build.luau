@@ -2,13 +2,14 @@
 -- (MaterialVariant synchronisés par Rojo dans MaterialService), textes sur panneaux et étiquettes flottantes.
 local Build = {}
 
--- Matériaux des jeux de référence (01 / 09) : carrés en creux teintés par la couleur de la pièce
+-- Matériaux des jeux de référence (01 / 09) : tenons en relief teintés par la couleur de la pièce
 -- (assets/course/build_textures.py ; MaterialVariant dans default.project.json, cartes publiées sur le compte)
-Build.CHECKER = "FadChecker" -- damier de carreaux de 8 studs couverts de briques : sol, parois
-Build.BRICK = "FadBrick" -- briques de 2 studs : accessoires, obstacles, végétation voxel
+Build.CHECKER = "FadChecker" -- damier marqué de carreaux de 8 studs à 4 × 4 tenons : sol
+Build.WALL = "FadWall" -- même damier, plus doux : parois en gradins, herbe qui les coiffe et en déborde
+Build.BRICK = "FadBrick" -- un tenon tous les 2 studs : accessoires, obstacles, végétation voxel
 
 -- Cette méthode permet de créer une pièce ancrée avec ses propriétés lorsque le décor est construit ; `Variant`
--- (Build.CHECKER, Build.BRICK) pose le matériau à tenons.
+-- (Build.CHECKER, Build.WALL, Build.BRICK) pose le matériau à tenons.
 function Build.part(props: { [string]: any }): Part
 	local p = Instance.new("Part")
 	p.Anchored = true
