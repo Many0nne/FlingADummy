@@ -1,4 +1,4 @@
--- Format : séparateurs de milliers, abréviations K / M, argent, revenu par seconde, mètres.
+-- Format : séparateurs de milliers, abréviations K / M, argent, revenu par seconde, mètres, CHANCE en X.
 return function(T, Loader)
 	local Format = Loader.new():require("src/shared/Format")
 
@@ -50,6 +50,17 @@ return function(T, Loader)
 			T.expectEqual(Format.meters(123.8), "123 m")
 			T.expectEqual(Format.meters(1500), "1,500 m")
 			T.expectEqual(Format.meters(-3), "0 m")
+		end)
+	end)
+
+	T.describe("Format.multiplier", function()
+		T.it("écrit la CHANCE finale en X à deux décimales", function()
+			T.expectEqual(Format.multiplier(1.36), "X1.36")
+			T.expectEqual(Format.multiplier(2), "X2.00")
+			T.expectEqual(Format.multiplier(12.346), "X12.35")
+		end)
+		T.it("ne descend jamais sous X1.00", function()
+			T.expectEqual(Format.multiplier(0.5), "X1.00")
 		end)
 	end)
 end

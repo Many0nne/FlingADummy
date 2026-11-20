@@ -38,9 +38,12 @@ base, il rapporte des $/s, seule source d'argent.
 4. **Vol** : bandes noires, caméra qui suit, bannière **CHANCE** (« 1.36X / CHANCE / 🍀 MEADOW ») qui monte pendant le
    vol, compteurs (distance, os, objets), radio du mannequin ; chaque choc a son son, ses particules et son popup
    (« +1 BONE », « SMASH x6 », combos).
-5. **Résultat** (≈ 2,7 s) : titre selon la violence du crash, lignes en ×CHANCE qui tombent une à une (distance et zone
-   `x1.36`, os `+10%`, casse `+3%`), CHANCE totale qui grimpe, phrase de blessure (« Shattered skull, broken left arm »)
-   et cause (« Hit a brick wall at 140 km/h »).
+5. **Atterrissage** (≈ 1 s, #53) : dès que le mannequin s'arrête (détecté par le client), trèfle et CHANCE finale
+   « 🍀 X1.36 » au-dessus de lui (même police et même vert que la bannière du vol, apparition en rebond) et titre du
+   crash dessous (« BRUTAL! »), comme le « X1.22 » de 09 ; pas d'écran de détail, comme 01. Le tirage part dès que le
+   serveur a compté le lancer (1 s d'arrêt), « X » au moins 0,9 s à l'écran : **arrêt → silhouette ≈ 1,1 s** (cible
+   < 1,5 s). Le détail reste sur la radio X-RAY, dans son coin pendant 4 s : bilan à sa gauche (os, objets détruits,
+   blessures « Shattered skull, broken left arm », cause « Hit a brick wall at 140 km/h »).
 6. **Tirage « 1 en N »** (`Client.Prize`, suspense calé sur 09 et 01) : silhouette noire debout au point
    d'atterrissage, caméra de face qui se rapproche. La cote défile en continu depuis « 1 IN 1 » (un tic par chiffre, de
    plus en plus aigu, vite puis de plus en plus lentement : `Collection.climbOdds`, 0,7 à 1,5 s par palier selon
