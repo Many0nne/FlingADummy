@@ -1,6 +1,6 @@
--- Entraînement : l'avatar soulève un mannequin d'entraînement au-dessus de la tête ; chaque répétition donne 1 EXP qui
--- remplit la barre de niveau et met de côté la Throw Power de l'équipement, versée d'un coup au niveau franchi (popup
--- « LEVEL UP! », comme les jeux de référence 01 / 09).
+-- Entraînement : l'avatar soulève un mannequin d'entraînement au-dessus de la tête ; chaque répétition donne l'EXP de
+-- l'équipement (« +4 EXP / répétition » de la référence 09) qui remplit la barre de niveau, et chaque niveau franchi
+-- (popup « LEVEL UP! ») donne autant de Throw Power que l'EXP qu'il demandait : puissance gagnée = EXP gagnée.
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 
@@ -8,7 +8,7 @@ local Training = {}
 
 export type Gear = {
 	name: string,
-	gain: number, -- Throw Power par répétition, versée au passage de niveau
+	gain: number, -- EXP par répétition (devient de la Throw Power au passage de niveau)
 	cost: number, -- prix d'achat (le premier est offert)
 	color: Color3,
 	material: Enum.Material,
@@ -75,35 +75,25 @@ Training.GEARS = {
 	},
 } :: { Gear }
 
--- `bank` : Throw Power mise de côté depuis le début du niveau (gain de l'équipement tenu à chaque répétition)
-export type Progress = { level: number, reps: number, bank: number? }
+-- `exp` : EXP accumulée dans le niveau en cours (barre « x / y »)
+export type Progress = { level: number, exp: number }
 
--- Cette méthode permet de donner le nombre de répétitions qui remplit le niveau `level` lorsque la barre est affichée.
-function Training.repsForLevel(level: number): number
-	return math.ceil(GameConfig.LEVEL_BASE_REPS * GameConfig.LEVEL_REPS_GROWTH ^ (level - 1))
+-- Cette méthode permet de donner l'EXP qui remplit le niveau `level` lorsque la barre est affichée ou le niveau franchi.
+function Training.expForLevel(level: number): number
+	return math.ceil(GameConfig.LEVEL_BASE_EXP * GameConfig.LEVEL_EXP_GROWTH ^ (level - 1))
 end
 
--- Cette méthode permet d'ajouter une répétition à la progression lorsque l'avatar en termine une ; renvoie la nouvelle
--- progression et true si un niveau vient d'être franchi.
-function Training.addRep(progress: Progress): (Progress, boolean)
-	local reps = progress.reps + 1
-	if reps >= Training.repsForLevel(progress.level) then
-		return { level = progress.level + 1, reps = 0 }, true
-	end
-	return { level = progress.level, reps = reps }, false
-end
-
--- Cette méthode permet de compter une répétition faite avec l'équipement du palier `tier` lorsque REP_TIME s'est écoulé
--- ; renvoie la progression (gain mis de côté) et la Throw Power versée : tout le niveau quand il est franchi, 0 sinon.
+-- Cette méthode permet de compter une répétition faite avec l'équipement du palier `tier` lorsque REP_TIME s'est écoulé ;
+-- renvoie la progression (EXP en trop reportée, plusieurs niveaux possibles) et la Throw Power des niveaux franchis.
 function Training.completeRep(progress: Progress, tier: number): (Progress, number)
-	local nextProgress, leveled = Training.addRep(progress)
-	local bank = (progress.bank or 0) + Training.gear(tier).gain
-	if leveled then
-		nextProgress.bank = 0
-		return nextProgress, bank
+	local level, exp, power = progress.level, progress.exp + Training.gear(tier).gain, 0
+	while exp >= Training.expForLevel(level) do
+		local needed = Training.expForLevel(level)
+		exp -= needed
+		power += needed
+		level += 1
 	end
-	nextProgress.bank = bank
-	return nextProgress, 0
+	return { level = level, exp = exp }, power
 end
 
 -- Cette méthode permet de donner le prix du palier suivant lorsque le joueur possède le palier `tier` ; nil au dernier.

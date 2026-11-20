@@ -31,8 +31,8 @@ local GameConfig = {
 	-- Entraînement
 	START_POWER         = 10,     -- Throw Power de départ
 	REP_TIME            = 0.8,    -- durée d'une répétition (s)
-	LEVEL_BASE_REPS     = 3,      -- répétitions du premier niveau d'entraînement
-	LEVEL_REPS_GROWTH   = 1.2,    -- répétitions × 1,2 par niveau
+	LEVEL_BASE_EXP      = 3,      -- EXP du premier niveau d'entraînement (3 répétitions avec l'équipement de départ)
+	LEVEL_EXP_GROWTH    = 1.2,    -- EXP demandée × 1,2 par niveau
 
 	-- Économie
 	VALUE_STEP          = 0.25,   -- multiplicateur de gains + 0,25 par niveau de valeur du mannequin

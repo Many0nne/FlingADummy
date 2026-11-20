@@ -16,8 +16,7 @@ local DEFAULTS = {
 	GearTier = 1,
 	ValueLevel = 1,
 	TrainLevel = 1,
-	TrainReps = 0,
-	TrainBank = 0, -- Throw Power mise de côté pendant le niveau d'entraînement en cours (Shared.Training)
+	TrainExp = 0, -- EXP du niveau d'entraînement en cours (Shared.Training)
 	BestDistance = 0,
 }
 

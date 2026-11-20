@@ -355,12 +355,15 @@ function CharacterPoser.init()
 	end)
 	-- Le serveur compte la répétition au sommet : on y recale le clip à chaque répétition (le premier lancement
 	-- d'un clip publié encore en chargement ignore TimePosition)
-	localPlayer:GetAttributeChangedSignal("TrainReps"):Connect(function()
+	-- Cette méthode permet de recaler le clip au sommet lorsqu'une répétition change l'EXP ou le niveau.
+	local function resyncTrain()
 		local train = tracks.byName.Train
 		if train and train.IsPlaying and localPlayer:GetAttribute("Action") == "Training" then
 			train.TimePosition = CLIPS.Train.markers.Top
 		end
-	end)
+	end
+	localPlayer:GetAttributeChangedSignal("TrainExp"):Connect(resyncTrain)
+	localPlayer:GetAttributeChangedSignal("TrainLevel"):Connect(resyncTrain)
 end
 
 return CharacterPoser

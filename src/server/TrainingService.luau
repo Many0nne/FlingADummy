@@ -1,6 +1,6 @@
 -- Entraînement : l'invite « Lift » de l'appareil (devant la base du joueur) place l'avatar sur le podium ; il soulève
--- un mannequin en boucle, chaque répétition donne 1 EXP (attributs TrainLevel / TrainReps) et chaque niveau franchi
--- donne la Throw Power de l'équipement (Shared.Training). L'invite est masquée pendant la séance.
+-- un mannequin en boucle, chaque répétition donne l'EXP de l'équipement (attributs TrainLevel / TrainExp) et chaque
+-- niveau franchi donne sa Throw Power (Shared.Training). L'invite est masquée pendant la séance.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -66,15 +66,13 @@ end
 local function completeRep(player: Player)
 	local progress, power = Training.completeRep({
 		level = (player:GetAttribute("TrainLevel") :: number?) or 1,
-		reps = (player:GetAttribute("TrainReps") :: number?) or 0,
-		bank = (player:GetAttribute("TrainBank") :: number?) or 0,
+		exp = (player:GetAttribute("TrainExp") :: number?) or 0,
 	}, (player:GetAttribute("GearTier") :: number?) or 1)
 	-- Puissance d'abord : le client la lit déjà à jour quand il annonce le niveau
 	if power > 0 then
 		PlayerData.addPower(player, power)
 	end
-	player:SetAttribute("TrainBank", progress.bank)
-	player:SetAttribute("TrainReps", progress.reps)
+	player:SetAttribute("TrainExp", progress.exp)
 	player:SetAttribute("TrainLevel", progress.level)
 end
 

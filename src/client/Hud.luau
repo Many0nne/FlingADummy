@@ -1,6 +1,6 @@
 -- HUD permanent au style des jeux de référence : boutons à icône (Index et Shop à gauche, Dummies à droite, pastille
 -- « ! »), compteurs icône + valeur en bas à gauche (Throw Power, argent et revenu « +$N/s »), fenêtres à bandeau et
--- cartes d'objets (équipements d'entraînement, mannequins, index), barre d'entraînement avec STOP, « +1 EXP » qui
+-- cartes d'objets (équipements d'entraînement, mannequins, index), barre d'entraînement avec STOP, « +N EXP » qui
 -- s'envole à chaque répétition, popups LEVEL UP! (Throw Power gagnée au niveau) / NEW EQUIPMENT!.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -42,6 +42,8 @@ local lastPower = 0
 local levelGain = 0 -- Throw Power versée au dernier niveau d'entraînement, pas encore annoncée
 local levelUpPending = false -- niveau arrivé avant sa Throw Power (ordre de réplication non garanti)
 local LEVEL_GAIN_WAIT = 0.5 -- attente maximale de la Throw Power d'un niveau avant de l'annoncer quand même (s)
+local REP_DEBOUNCE = 0.3 -- une répétition peut changer TrainExp et TrainLevel : un seul « +N EXP » (s, < REP_TIME)
+local lastRepFloat = 0
 local knownLevel = math.huge -- palier d'entraînement et équipement déjà annoncés (aucun avant le chargement)
 local knownTier = math.huge
 local popupEndsAt = 0
@@ -327,10 +329,7 @@ local function refreshGear(money: number)
 		card.title.Text = (string.gsub(gear.name, " Dummy$", ""))
 		card.rarity.Text = rarity.name
 		card.rarity.TextColor3 = rarity.color
-		-- Throw Power mise de côté à chaque répétition (versée au niveau), pas de l'EXP : cyan comme le compteur de puissance
-		card.stat.Text = "+" .. Format.short(gear.gain) .. " Power / rep"
-		card.stat.TextColor3 = C.cyan
-		card.stat.TextSize = 20
+		card.stat.Text = "+" .. Format.short(gear.gain) .. " EXP / rep"
 		local stroke = card.frame:FindFirstChildOfClass("UIStroke") :: UIStroke
 		stroke.Color = if tier == owned then C.green else C.ink
 		stroke.Thickness = if tier == owned then 4 else 3
@@ -385,9 +384,9 @@ function Hud.refresh()
 	end
 end
 
--- Cette méthode permet de faire s'envoler « +1 EXP » au-dessus de la barre d'entraînement lorsque l'avatar termine une
--- répétition (la barre de niveau prend +1 en même temps, comme « +1 d'EXP » de la référence 01).
-local function floatExp()
+-- Cette méthode permet de faire s'envoler « +N EXP » (EXP de l'équipement) au-dessus de la barre d'entraînement lorsque
+-- l'avatar termine une répétition, comme « +1 d'EXP » de la référence 01.
+local function floatExp(amount: number)
 	local holder = UIKit.create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, math.random(-90, 90), 1, -130),
@@ -397,7 +396,7 @@ local function floatExp()
 	})
 	local label = UIKit.text({
 		Size = UDim2.fromScale(1, 1),
-		Text = "+1 EXP",
+		Text = "+" .. Format.short(amount) .. " EXP",
 		TextSize = 32,
 		TextColor3 = C.cyan,
 		Parent = holder,
@@ -415,14 +414,23 @@ local function floatExp()
 	end)
 end
 
--- Cette méthode permet de rafraîchir la barre d'entraînement (niveau, répétitions) lorsque la progression change.
+-- Cette méthode permet de rafraîchir la barre d'entraînement (niveau, EXP du niveau) lorsque la progression change.
 local function refreshTraining()
 	local level = stat("TrainLevel", 1)
-	local reps = stat("TrainReps", 0)
-	local needed = Training.repsForLevel(level)
+	local exp = stat("TrainExp", 0)
+	local needed = Training.expForLevel(level)
 	trainLevel.Text = "Level " .. level
-	trainCount.Text = reps .. "/" .. needed
-	TweenService:Create(trainFill, TweenInfo.new(0.2), { Size = UDim2.fromScale(reps / needed, 1) }):Play()
+	trainCount.Text = Format.short(exp) .. "/" .. Format.short(needed)
+	TweenService:Create(trainFill, TweenInfo.new(0.2), { Size = UDim2.fromScale(math.min(exp / needed, 1), 1) }):Play()
+end
+
+-- Cette méthode permet d'annoncer une répétition terminée (« +N EXP ») lorsque l'EXP ou le niveau d'entraînement
+-- change pendant la séance ; une seule annonce si les deux changent ensemble.
+local function onRepProgress()
+	if player:GetAttribute("Action") == "Training" and os.clock() - lastRepFloat > REP_DEBOUNCE then
+		lastRepFloat = os.clock()
+		floatExp(Training.gear(stat("GearTier", 1)).gain)
+	end
 end
 
 -- Cette méthode permet d'afficher la barre d'entraînement et de masquer le HUD en vol lorsque l'action du joueur ou
@@ -597,6 +605,7 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 			refreshTraining()
 			return
 		end
+		onRepProgress()
 		knownLevel = level
 		if levelGain > 0 then
 			announceLevelUp()
@@ -610,11 +619,8 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 		end
 		refreshTraining()
 	end)
-	player:GetAttributeChangedSignal("TrainReps"):Connect(function()
-		-- Une répétition terminée change toujours TrainReps (+1, ou retour à 0 au passage de niveau)
-		if player:GetAttribute("Action") == "Training" then
-			floatExp()
-		end
+	player:GetAttributeChangedSignal("TrainExp"):Connect(function()
+		onRepProgress()
 		refreshTraining()
 	end)
 	player:GetAttributeChangedSignal("GearTier"):Connect(function()
@@ -624,7 +630,7 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 		end
 		knownTier = tier
 		local gear = Training.gear(tier)
-		showPopup("NEW EQUIPMENT!", gear.name .. "  +" .. Format.short(gear.gain) .. " Throw Power / rep")
+		showPopup("NEW EQUIPMENT!", gear.name .. "  +" .. Format.short(gear.gain) .. " EXP / rep")
 		UIKit.playSound("LevelUp", 1.2)
 	end)
 	player:GetAttributeChangedSignal("Money"):Connect(function()
