@@ -528,6 +528,218 @@ Describe 'fad-worktree.ps1 : verrou Studio tenu par le checkout principal' {
   Remove-Sandbox $sb
 }
 
+Describe 'fad-worktree.ps1 : auto-connexion Studio (plugin multi-projets)' {
+  $sb = New-Sandbox
+  # Port de base deplace : le Rojo du checkout principal reel (34900) ne doit pas repondre a la liberation.
+  $env:FAD_BASE_PORT = '35800'
+  # try/finally : un echec de preparation ne laisse ni FAD_BASE_PORT ni serveur factice aux groupes suivants.
+  try {
+  $w = 'tooling/20-auto'
+  Invoke-Wt $sb @($w, '-Slot', '1') | Out-Null
+  $p = Get-SbPaths $sb $w
+  # Cette methode permet de lire la cible publiee (port, rev).
+  function Get-Target { [IO.File]::ReadAllText($p.Target) | ConvertFrom-Json }
+  # Cette methode permet de lire le detenteur du verrou ($null s'il est libre).
+  function Get-Holder { if (Test-Path $p.Lock) { (Get-Content $p.Lock -Raw | ConvertFrom-Json).branch } }
+
+  It 'reservation sans serveur de commande : cible publiee, inscription ecrite, procedure manuelle affichee' {
+    $r = Invoke-Wt $sb @($w, '-AcquireStudio')
+    $r.Code | Should Be 0
+    (Get-Target).port | Should Be '35801'
+    (Get-Target).rev | Should Not BeNullOrEmpty
+    $reg = [IO.File]::ReadAllText($p.Registry) | ConvertFrom-Json
+    $reg.name | Should Be 'fad'
+    @($reg.placeIds) -join ',' | Should Be '88580736516669'
+    $reg.placeIds[0] -is [string] | Should Be $true
+    $reg.mainPort | Should Be 35800
+    $reg.target | Should Be $p.Target
+    $reg.status | Should Be $p.Status
+    $bytes = [IO.File]::ReadAllBytes($p.Registry)
+    ($bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB) | Should Be $false
+    @(Get-ChildItem (Split-Path $p.Registry) -Filter '*.tmp').Count | Should Be 0
+    $r.Output | Should Match 'install\.ps1'
+    $r.Output | Should Match 'a la main'
+    Get-Holder | Should Be $w
+  }
+
+  It 'liberation sans Rojo du checkout principal : cible vide (deconnexion), nouvelle rev' {
+    $rev = (Get-Target).rev
+    $r = Invoke-Wt $sb @($w, '-ReleaseStudio')
+    $r.Output | Should Match 'deconnexion'
+    (Get-Target).port | Should Be ''
+    (Get-Target).rev | Should Not Be $rev
+  }
+
+  It 'liberation avec Rojo du checkout principal : cible 35800 ; -Stop publie aussi' {
+    $main = Start-ManualRojo $sb $sb.Repo 35800
+    (Invoke-Wt $sb @($w, '-AcquireStudio')).Code | Should Be 0
+    (Invoke-Wt $sb @($w, '-ReleaseStudio')).Output | Should Match 'port 35800'
+    (Get-Target).port | Should Be '35800'
+    (Invoke-Wt $sb @($w, '-AcquireStudio')).Code | Should Be 0
+    $rev = (Get-Target).rev
+    (Invoke-Wt $sb @($w, '-Stop')).Output | Should Match 'libere'
+    (Get-Target).port | Should Be '35800'
+    (Get-Target).rev | Should Not Be $rev
+    Stop-Process -Id $main -Force; Start-Sleep -Milliseconds 300
+    Invoke-Wt $sb @($w) | Out-Null
+  }
+
+  It 'inscription reecrite a chaque publication (fichier abime ou perime)' {
+    Set-Content $p.Registry '{"name":"fad","target":"C:\\ailleurs"'
+    (Invoke-Wt $sb @($w, '-AcquireStudio')).Code | Should Be 0
+    ([IO.File]::ReadAllText($p.Registry) | ConvertFrom-Json).target | Should Be $p.Target
+    Set-Content $p.Registry 'abime'
+    Invoke-Wt $sb @($w, '-ReleaseStudio') | Out-Null
+    ([IO.File]::ReadAllText($p.Registry) | ConvertFrom-Json).status | Should Be $p.Status
+  }
+
+  It 'lance depuis la copie d''un worktree : cible et etat du checkout principal' {
+    Remove-Item $p.Registry, $p.Target
+    (Invoke-WtFrom $sb $p.Dir @($w, '-AcquireStudio')).Code | Should Be 0
+    ([IO.File]::ReadAllText($p.Registry) | ConvertFrom-Json).target | Should Be $p.Target
+    (Get-Target).port | Should Be '35801'
+    (Join-Path $p.Dir 'worktrees') | Should Not Exist
+    Invoke-Wt $sb @($w, '-ReleaseStudio') | Out-Null
+  }
+
+  It 'garde-fou : -StudioStatus alerte quand la place est connectee a un port hors du depot' {
+    [IO.File]::WriteAllText($p.Status, '{"rev":"x","state":"connected","port":"34880"}')
+    $r = Invoke-Wt $sb @('-StudioStatus')
+    $r.Output | Should Match 'ALERTE'
+    $r.Output | Should Match '34880'
+  }
+
+  It 'garde-fou : -AcquireStudio alerte aussi sur l''etat d''avant la reservation' {
+    $r = Invoke-Wt $sb @($w, '-AcquireStudio')
+    $r.Code | Should Be 0
+    $r.Output | Should Match 'ALERTE'
+    Invoke-Wt $sb @($w, '-ReleaseStudio') | Out-Null
+  }
+
+  It 'garde-fou : pas d''alerte pour un port du depot (worktree, checkout principal, worktree deja supprime)' {
+    foreach ($port in '35801', '35800', '35807') {
+      [IO.File]::WriteAllText($p.Status, "{`"rev`":`"x`",`"state`":`"connected`",`"port`":`"$port`"}")
+      (Invoke-Wt $sb @('-StudioStatus')).Output | Should Not Match 'ALERTE'
+    }
+  }
+
+  It 'premiere reservation (aucune cible encore publiee), Studio sur 34900 : acceptee (etat de repos d''avant #20)' {
+    $env:FAD_FAKE_STUDIO_PORTS = '35800'
+    try {
+      Remove-Item $p.Target -ErrorAction SilentlyContinue
+      (Invoke-Wt $sb @($w, '-AcquireStudio')).Code | Should Be 0
+      (Get-Target).port | Should Be '35801'
+    } finally { $env:FAD_FAKE_STUDIO_PORTS = $null }
+    Invoke-Wt $sb @($w, '-ReleaseStudio') | Out-Null
+  }
+
+  It 'Studio connecte a la main au checkout principal (test de l''utilisateur) : reservation d''un worktree refusee (code 2)' {
+    $env:FAD_FAKE_STUDIO_PORTS = '35800'
+    try {
+      [IO.File]::WriteAllText($p.Target, '{"port":"35801","rev":"1"}')
+      $r = Invoke-Wt $sb @($w, '-AcquireStudio')
+      $r.Code | Should Be 2
+      $r.Output | Should Match 'a la main au checkout principal'
+      Get-Holder | Should BeNullOrEmpty
+      (Get-Target).port | Should Be '35801'
+    } finally { $env:FAD_FAKE_STUDIO_PORTS = $null }
+  }
+
+  It 'detenteur qui re-reserve alors que l''utilisateur s''est connecte a la main a 34900 : refuse, cible inchangee' {
+    (Invoke-Wt $sb @($w, '-AcquireStudio')).Code | Should Be 0
+    $rev = (Get-Target).rev
+    $env:FAD_FAKE_STUDIO_PORTS = '35800'
+    try {
+      (Invoke-Wt $sb @($w, '-AcquireStudio')).Code | Should Be 2
+      (Get-Target).rev | Should Be $rev
+      Get-Holder | Should Be $w
+    } finally { $env:FAD_FAKE_STUDIO_PORTS = $null }
+    Invoke-Wt $sb @($w, '-ReleaseStudio') | Out-Null
+  }
+
+  It 'Studio sur le checkout principal apres une liberation (cible 35800) : reservation acceptee' {
+    $env:FAD_FAKE_STUDIO_PORTS = '35800'
+    try {
+      [IO.File]::WriteAllText($p.Target, '{"port":"35800","rev":"2"}')
+      (Invoke-Wt $sb @($w, '-AcquireStudio')).Code | Should Be 0
+      (Get-Target).port | Should Be '35801'
+      Invoke-Wt $sb @($w, '-ReleaseStudio') | Out-Null
+    } finally { $env:FAD_FAKE_STUDIO_PORTS = $null }
+  }
+
+  It 'nettoyage : main avance quand Studio est sur 34900 par une liberation, pas quand il y a ete connecte a la main' {
+    $clone = Join-Path $sb.Root 'clone'
+    Invoke-Git $sb.Root clone --quiet $sb.Origin $clone | Out-Null
+    Add-Content (Join-Path $clone 'nouveau.txt') 'x'
+    Invoke-Git $clone add -A | Out-Null
+    Invoke-Git $clone -c user.name=Sandbox -c user.email=sandbox@example.invalid commit --quiet -m 'merge simule' | Out-Null
+    Invoke-Git $clone push --quiet origin main | Out-Null
+    $head = (Invoke-Git $clone rev-parse HEAD | Select-Object -First 1).Trim()
+    $env:FAD_FAKE_STUDIO_PORTS = '35800'
+    try {
+      [IO.File]::WriteAllText($p.Target, '{"port":"35801","rev":"3"}')
+      Invoke-Cleanup $sb | Out-Null
+      (Invoke-Git $sb.Repo rev-parse HEAD | Select-Object -First 1).Trim() | Should Not Be $head
+      [IO.File]::WriteAllText($p.Target, '{"port":"35800","rev":"4"}')
+      Invoke-Cleanup $sb | Out-Null
+      (Invoke-Git $sb.Repo rev-parse HEAD | Select-Object -First 1).Trim() | Should Be $head
+    } finally { $env:FAD_FAKE_STUDIO_PORTS = $null }
+  }
+
+  It 'serveur v3 en place : garde tel quel (ni arrete, ni pid remplace), attente puis procedure manuelle, verrou garde' {
+    $v3 = Start-FakeControl $sb 'rojo-control 3'
+    New-Item -ItemType Directory -Force $sb.ControlDir | Out-Null
+    Set-Content (Join-Path $sb.ControlDir 'control.pid') $v3
+    $r = Invoke-Wt $sb @($w, '-AcquireStudio')
+    $r.Code | Should Be 0
+    $r.Output | Should Match "pas connecte seul en 2 s"
+    Test-Alive $v3 | Should Be $true
+    (Get-Content (Join-Path $sb.ControlDir 'control.pid')).Trim() | Should Be "$v3"
+    Get-Holder | Should Be $w
+  }
+
+  It 'plugin qui suit la cible : connexion signalee pour la rev publiee, deconnexion a la liberation' {
+    $plugin = Start-FakePlugin $sb
+    $r = Invoke-Wt $sb @($w, '-AcquireStudio')
+    $r.Output | Should Match 'Studio connecte au port 35801'
+    ([IO.File]::ReadAllText($p.Status) | ConvertFrom-Json).rev | Should Be (Get-Target).rev
+    Invoke-Wt $sb @($w, '-ReleaseStudio') | Out-Null
+    Start-Sleep -Milliseconds 800
+    ([IO.File]::ReadAllText($p.Status) | ConvertFrom-Json).state | Should Be 'disconnected'
+    Stop-Process -Id $plugin -Force
+  }
+
+  It 'serveur d''une version plus ancienne : arrete et remplace par la copie commune' {
+    Stop-FakeControl $sb
+    $old = Start-FakeControl $sb 'csgo-control 2'
+    Set-Content (Join-Path $sb.ControlDir 'control.pid') $old
+    Set-Content (Join-Path $sb.ControlDir 'control-server.luau') 'local VERSION = "rojo-control 3"'
+    (Invoke-Wt $sb @($w, '-AcquireStudio')).Code | Should Be 0
+    Start-Sleep -Milliseconds 300
+    Test-Alive $old | Should Be $false
+    Get-FakeHealth $sb | Should Be 'rojo-control 3'
+    (Get-Content (Join-Path $sb.ControlDir 'control.pid')).Trim() | Should Not Be "$old"
+    Invoke-Wt $sb @($w, '-ReleaseStudio') | Out-Null
+  }
+
+  It 'pid de control.pid recycle par un autre processus : jamais arrete' {
+    Stop-FakeControl $sb
+    $dummy = Start-Dummy $sb
+    Set-Content (Join-Path $sb.ControlDir 'control.pid') $dummy
+    (Invoke-Wt $sb @($w, '-AcquireStudio')).Code | Should Be 0
+    Test-Alive $dummy | Should Be $true
+    Get-FakeHealth $sb | Should Be 'rojo-control 3'
+    Invoke-Wt $sb @($w, '-ReleaseStudio') | Out-Null
+  }
+
+  } finally {
+    Stop-FakeControl $sb
+    $env:FAD_BASE_PORT = $null
+    $env:FAD_FAKE_STUDIO_PORTS = $null
+    Remove-Sandbox $sb
+  }
+}
+
 Describe 'fad-worktree-cleanup.ps1 : decisions' {
   $sb = New-Sandbox
   $threads = @{ 'T-act' = 'active'; 'T-fin' = 'settled'; 'T-mrg' = 'settled'; 'T-unp' = 'archived'; 'T-clo' = 'settled'; 'T-off' = 'active' }

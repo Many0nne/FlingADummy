@@ -71,13 +71,19 @@ function Invoke-Helper {
   return "$out".Trim()
 }
 
-# Cette methode permet de savoir si Studio est connecte au Rojo du checkout principal (port 34900) lorsqu'on veut
-# avancer main : un test y est sans doute en cours.
+# Cette methode permet de savoir si Studio a ete connecte a la main au Rojo du checkout principal (port 34900) lorsqu'on
+# veut avancer main : un test y est sans doute en cours. Une connexion due a une liberation (cible publiee 34900) n'en est pas un.
 function Test-StudioOnBase {
-  # Meme port de base que fad-worktree.ps1 (FAD_BASE_PORT ne sert qu'aux tests).
+  # Meme port de base que fad-worktree.ps1 (FAD_BASE_PORT et FAD_FAKE_STUDIO_PORTS ne servent qu'aux tests).
   $basePort = if ($env:FAD_BASE_PORT) { [int]$env:FAD_BASE_PORT } else { 34900 }
-  [bool](Get-NetTCPConnection -State Established -RemotePort $basePort -ErrorAction SilentlyContinue |
-    Where-Object { (Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue).ProcessName -like 'RobloxStudio*' })
+  $onBase = if ($env:FAD_FAKE_STUDIO_PORTS) { "$basePort" -in ($env:FAD_FAKE_STUDIO_PORTS -split ',') }
+  else {
+    [bool](Get-NetTCPConnection -State Established -RemotePort $basePort -ErrorAction SilentlyContinue |
+      Where-Object { (Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue).ProcessName -like 'RobloxStudio*' })
+  }
+  if (-not $onBase) { return $false }
+  try { $target = [IO.File]::ReadAllText((Join-Path $runDir 'studio.target')) | ConvertFrom-Json } catch { $target = $null }
+  return "$($target.port)" -ne "$basePort"
 }
 
 # Cette methode permet de lire la branche qui detient le verrou Studio ($null s'il est libre ou illisible).

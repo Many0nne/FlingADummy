@@ -44,7 +44,8 @@ Ajouter au brief, section regles :
 
 - Tout faire sans Studio d'abord (code, `bash tools/check.sh` lu en entier, tests Lune, `rojo build`).
 - **Une seule reservation Studio, en fin de tache** : `.\scripts\fad-worktree.ps1 <branche> -AcquireStudio -WaitStudio 20`,
-  connecter le plugin Rojo au port affiche (mode Edit), puis toutes les verifications en jeu d'un coup (playtest,
+  qui connecte la place au port du worktree (plugin autoconnect ; sinon suivre la procedure manuelle affichee), puis
+  toutes les verifications en jeu d'un coup (playtest,
   captures, mesures avant/apres), puis `-ReleaseStudio` immediatement. Pas de reservation « pour voir » en cours de tache.
 - Verification qui echoue : liberer Studio, corriger hors Studio, puis une nouvelle reservation (2 au plus ; au-dela,
   statut `BLOQUE` avec ce qui echoue).
