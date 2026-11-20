@@ -10,6 +10,7 @@ local BASE_X = 64 -- centre des bases, de part et d'autre du hub
 local BASE_Z = { -48, -100 } -- rangée avant, rangée arrière
 CourseLayout.BASE_SIZE = Vector3.new(34, 0, 40)
 CourseLayout.DISPLAY_COUNT = 6 -- présentoirs par base (2 rangées de 3)
+CourseLayout.BASE_REACH = 12 -- bouton AUTO de pose : dans la base ou à moins de 12 studs de sa clôture
 CourseLayout.STATION_GAP = 10 -- de la clôture d'entrée de la base au centre de son appareil d'entraînement (studs)
 CourseLayout.STATION_SHIFT = 12 -- décalage de l'appareil sur le côté de l'entrée, vers la zone de lancer (+Z)
 CourseLayout.STATION_SIZE = 9 -- côté du podium de l'appareil
@@ -102,6 +103,15 @@ function CourseLayout.basePosition(index: number): Vector3
 	-- Rang depuis le centre : 1 pour la place la plus proche de l'axe, puis 2…
 	local rank = if side > 0 then index - math.floor(half) else math.ceil(half) - index + 1
 	return Vector3.new(side * BASE_X, 0, BASE_Z[math.clamp(rank, 1, #BASE_Z)])
+end
+
+-- Cette méthode permet de savoir si un point est dans la base `index` ou à moins de BASE_REACH studs de sa clôture
+-- (au sol, hauteur ignorée) lorsque le bouton AUTO de pose s'affiche ou que le serveur le valide.
+function CourseLayout.isNearBase(index: number, position: Vector3): boolean
+	local center = CourseLayout.basePosition(index)
+	local reach = CourseLayout.BASE_REACH
+	return math.abs(position.X - center.X) <= CourseLayout.BASE_SIZE.X / 2 + reach
+		and math.abs(position.Z - center.Z) <= CourseLayout.BASE_SIZE.Z / 2 + reach
 end
 
 -- Cette méthode permet de donner le côté de l'entrée de la base `index` (+1 ou -1 sur X : vers le centre du hub)

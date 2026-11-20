@@ -831,12 +831,6 @@ function Hud.offerButton(): GuiObject?
 	return if offerTier ~= nil then offer.button else nil
 end
 
--- Cette méthode permet d'inscrire un élément d'interface d'un autre module (bouton AUTO du panneau de pose) parmi
--- ceux que l'objectif peut désigner lorsque ce module le construit.
-function Hud.setAnchor(name: string, element: GuiObject)
-	anchors[name] = element
-end
-
 -- Cette méthode permet de donner le bouton d'achat de la carte visée (« Gear » : équipement suivant) lorsque la
 -- flèche du tutoriel cherche où pointer ; nil si sa fenêtre n'est pas ouverte.
 function Hud.buyButton(kind: string): GuiObject?

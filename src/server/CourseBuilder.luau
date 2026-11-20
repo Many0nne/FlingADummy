@@ -606,6 +606,9 @@ local function buildBase(parent: Instance, slot: Slot)
 		local top =
 			Build.block(model, Vector3.new(4, 0.4, 4), CFrame.new(position + Vector3.new(0, 1.8, 0)), slot.color)
 		top.Name = "Display" .. index
+		-- Cible d'objectif de cette place ; l'attribut Objective (« Place » si libre) est posé par Server.BaseService
+		top:SetAttribute("Slot", slot.index)
+		CollectionService:AddTag(top, Objectives.TAG)
 		-- Invite « Place » : désactivée ici, chaque client l'active sur les présentoirs libres de sa base quand il tient
 		-- un mannequin gagné (le serveur valide la pose)
 		local prompt = Instance.new("ProximityPrompt")

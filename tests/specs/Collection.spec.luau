@@ -166,4 +166,34 @@ return function(T, Loader)
 			T.expectEqual(#Collection.teaseSteps(2), 0)
 		end)
 	end)
+
+	T.describe("Collection.teaseSequence", function()
+		T.it(
+			"finit par le mannequin gagné, à sa cote ; candidats d'avant plus courants, cotes croissantes",
+			function()
+				for _, entry in { { id = "hero", size = 1 }, { id = "gold", size = 3 }, { id = "cosmic", size = 1 } } do
+					local sequence = Collection.teaseSequence(entry)
+					local last = sequence[#sequence]
+					T.expectEqual(last.id, entry.id)
+					T.expectEqual(last.size, entry.size)
+					T.expectEqual(last.odds, Collection.odds(entry))
+					local prize = Collection.get(entry.id)
+					local previous = 0
+					for index, step in sequence do
+						T.expect(step.odds > previous, "cote croissante pour " .. entry.id)
+						previous = step.odds
+						if index < #sequence then
+							T.expect(step.id ~= entry.id, "candidat différent du gagné")
+							T.expect(step.rarity <= prize.rarity, "candidat pas plus rare que le gagné")
+						end
+					end
+				end
+			end
+		)
+		T.it("un gagné rare passe par des candidats (suspense), un commun courant va droit au but", function()
+			T.expect(#Collection.teaseSequence({ id = "cosmic", size = 1 }) >= 3, "Secret : au moins 2 candidats")
+			T.expect(#Collection.teaseSequence({ id = "hero", size = 1 }) >= 2, "Rare : au moins 1 candidat")
+			T.expectEqual(#Collection.teaseSequence({ id = "crash", size = 1 }), 1)
+		end)
+	end)
 end

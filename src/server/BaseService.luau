@@ -14,6 +14,7 @@ local DummyShape = require(Shared.DummyShape)
 local Format = require(Shared.Format)
 local GameConfig = require(Shared.GameConfig)
 local Rarity = require(Shared.Rarity)
+local Tutorial = require(Shared.Tutorial)
 
 local CourseBuilder = require(script.Parent.CourseBuilder)
 local PlayerData = require(script.Parent.PlayerData)
@@ -114,13 +115,16 @@ local function render(slot: Slot, player: Player?)
 		slot.base.income.Text = ""
 		for _, top in slot.base.displays do
 			top:SetAttribute("Occupied", nil)
+			top:SetAttribute("Objective", nil)
 		end
 		return
 	end
 	for index, top in slot.base.displays do
 		local entry = collection.base[index]
-		-- Lu par le client : invite « Place » seulement sur les présentoirs libres
+		-- Lu par le client : invite « Place » seulement sur les présentoirs libres ; un présentoir libre est aussi la cible
+		-- de l'objectif « Place your dummy! » (flèche et chevrons du tutoriel)
 		top:SetAttribute("Occupied", if entry then true else nil)
+		top:SetAttribute("Objective", if entry then nil else "Place")
 		if entry then
 			local model = buildDisplayed(entry, top, slot.base.facing)
 			model.Parent = slot.base.model
@@ -151,7 +155,7 @@ function BaseService.award(player: Player, luck: number): Prize?
 		return nil
 	end
 	if collection.pending then
-		BaseService.place(player, nil)
+		BaseService.place(player, nil, true) -- le précédent, jamais posé : rangé d'office plutôt que perdu
 	end
 	local draws = (player:GetAttribute("Draws") :: number?) or 0
 	local entry = if draws == 0
@@ -176,9 +180,25 @@ function BaseService.award(player: Player, luck: number): Prize?
 	}
 end
 
--- Cette méthode permet de poser le mannequin en main lorsque le joueur choisit un présentoir libre (`display`) ou
--- clique sur AUTO (`display` nil : Collection.autoSlot, revente si rien ne lui va) ; renvoie true si la base a changé.
-function BaseService.place(player: Player, display: any): boolean
+-- Cette méthode permet de savoir si le joueur peut utiliser AUTO lorsqu'il le demande : première pose du tutoriel
+-- déjà faite à la main, et avatar dans sa base ou tout près.
+local function canAuto(player: Player): boolean
+	if Tutorial.current((player:GetAttribute("Tutorial") :: number?) or 0) == "Place" then
+		return false
+	end
+	local slot = slotOf[player]
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	-- Marge pour la latence : l'avatar a pu bouger depuis le clic
+	return slot ~= nil
+		and root ~= nil
+		and CourseLayout.isNearBase(slot.index, root.Position - (root.AssemblyLinearVelocity * 0.3))
+end
+
+-- Cette méthode permet de poser le mannequin en main lorsque le joueur choisit un présentoir libre (`display`, ce qui
+-- compte pour le tutoriel) ou clique sur AUTO près de sa base (`display` nil : Collection.autoSlot, revente si rien ne
+-- lui va) ; `force` (serveur) pose d'office sans ces conditions. Renvoie true si la base a changé.
+function BaseService.place(player: Player, display: any, force: boolean?): boolean
 	local collection = PlayerData.collection(player)
 	local entry = collection and collection.pending
 	if not collection or not entry then
@@ -187,6 +207,9 @@ function BaseService.place(player: Player, display: any): boolean
 	local capacity = CourseLayout.DISPLAY_COUNT
 	local index: number?
 	if display == nil then
+		if not force and not canAuto(player) then
+			return false
+		end
 		index = Collection.autoSlot(collection.base, capacity, entry)
 	elseif typeof(display) == "number" and display == math.floor(display) and display >= 1 and display <= capacity then
 		if collection.base[display] then
@@ -206,7 +229,9 @@ function BaseService.place(player: Player, display: any): boolean
 	else
 		PlayerData.addMoney(player, Collection.sellValue(entry))
 	end
-	PlayerData.tutorialStep(player, "Place")
+	if display ~= nil then
+		PlayerData.tutorialStep(player, "Place") -- seule une pose à la main compte (première pose du tutoriel)
+	end
 	refresh(player)
 	return true
 end
@@ -316,12 +341,18 @@ function BaseService.init(builtSlots: { Slot }, placeRemote: RemoteEvent)
 		end
 	end)
 	if RunService:IsStudio() then
-		-- Studio : DebugPlace (n'importe quelle valeur) pose le mannequin en main avec AUTO
+		-- Studio : DebugPlace = n pose le mannequin en main sur le présentoir n (comme l'invite), toute autre valeur avec
+		-- AUTO sans condition
 		Players.PlayerAdded:Connect(function(player)
 			player:GetAttributeChangedSignal("DebugPlace"):Connect(function()
-				if player:GetAttribute("DebugPlace") ~= nil then
+				local value = player:GetAttribute("DebugPlace")
+				if value ~= nil then
 					player:SetAttribute("DebugPlace", nil)
-					BaseService.place(player, nil)
+					BaseService.place(
+						player,
+						if typeof(value) == "number" then value else nil,
+						typeof(value) ~= "number"
+					)
 				end
 			end)
 		end)

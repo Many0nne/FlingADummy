@@ -285,4 +285,35 @@ function Collection.teaseSteps(odds: number): { number }
 	return steps
 end
 
+export type TeaseStep = { id: string, size: number, odds: number, rarity: number }
+
+-- Cette méthode permet de donner les étapes du suspense avant la révélation, comme la silhouette de la référence 09
+-- qui se change en candidats de plus en plus rares (pousse « 1 EN 3 » → buisson « 1 EN 40 » → arbre « 1 EN 1.37K ») :
+-- 0 à 3 mannequins plus courants que le gagné, à cotes croissantes (chacun à sa propre cote), puis le gagné lui-même
+-- (dernière étape, sa cote) lorsque le tirage se joue.
+function Collection.teaseSequence(entry: Entry): { TeaseStep }
+	local prize = byId[entry.id]
+	local finalOdds = Collection.odds(entry)
+	local sequence: { TeaseStep } = {}
+	local lastOdds = 1
+	for _, value in Collection.teaseSteps(finalOdds) do
+		-- Candidat : le mannequin (autre que le gagné, pas plus rare) dont la cote approche le palier par en dessous
+		local best: Dummy? = nil
+		for _, dummy in Collection.DUMMIES do
+			local odds = baseOdds[dummy.id]
+			if dummy.id ~= entry.id and dummy.rarity <= prize.rarity and odds <= value and odds > lastOdds then
+				if not best or odds > baseOdds[best.id] then
+					best = dummy
+				end
+			end
+		end
+		if best and baseOdds[best.id] < finalOdds then
+			lastOdds = baseOdds[best.id]
+			table.insert(sequence, { id = best.id, size = 1, odds = lastOdds, rarity = best.rarity })
+		end
+	end
+	table.insert(sequence, { id = entry.id, size = entry.size, odds = finalOdds, rarity = prize.rarity })
+	return sequence
+end
+
 return Collection

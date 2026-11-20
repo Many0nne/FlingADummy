@@ -112,22 +112,26 @@ function FlightCamera.follow(model: Model)
 end
 
 -- Cette méthode permet de cadrer le mannequin gagné (debout au point d'atterrissage, `height` studs de haut) depuis
--- l'arrière de la piste, en se rapprochant doucement, lorsque le tirage se joue ; stop rend la caméra.
+-- l'arrière de la piste, en se rapprochant doucement, lorsque le tirage se joue ; les secousses (shake) marquent
+-- chaque palier du suspense ; stop rend la caméra.
 function FlightCamera.showcase(focus: Vector3, height: number)
 	FlightCamera.stop()
 	following = true
+	shake = 0
 	local camera = Workspace.CurrentCamera
 	camera.CameraType = Enum.CameraType.Scriptable
 	camera.FieldOfView = BASE_FOV
 	local distance = math.max(height, 5) * 2.2 + 4
 	local from = camera.CFrame.Position
 	local start = os.clock()
-	RunService:BindToRenderStep(BIND_NAME, Enum.RenderPriority.Camera.Value + 1, function()
+	RunService:BindToRenderStep(BIND_NAME, Enum.RenderPriority.Camera.Value + 1, function(dt)
 		local t = os.clock() - start
 		local blend = 1 - math.exp(-6 * t) -- arrive vite depuis la caméra de vol
 		local push = distance * (1 - 0.12 * math.min(t / SHOWCASE_PUSH, 1)) -- puis se rapproche lentement
 		local target = focus + Vector3.new(push * 0.25, height * 0.35 + 1.5, -push)
-		camera.CFrame = CFrame.lookAt(from:Lerp(target, blend), focus)
+		shake *= math.exp(-SHAKE_DECAY * dt)
+		local jitter = Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * shake
+		camera.CFrame = CFrame.lookAt(from:Lerp(target, blend) + jitter, focus + jitter * 0.3)
 	end)
 end
 

@@ -1,8 +1,11 @@
--- Tirage « 1 en N » et pose du mannequin gagné, au style de la référence 09 : après le résultat, silhouette noire du
--- mannequin debout au point d'atterrissage, cote qui grimpe en 1 à 3 paliers (« 1 IN 3 » → « 1 IN 40 »), puis
--- révélation (mannequin en couleurs, anneau et étincelles ; rareté, nom, « NEW! », $/s et cote en haut au centre),
--- bouton GO BACK. De retour au hub, panneau « Place your … » en bas au centre avec le bouton AUTO, et invite « Place »
--- sur les présentoirs libres de sa base tant que le mannequin gagné n'est pas posé.
+-- Tirage « 1 en N » et pose du mannequin gagné, calés sur les références. Suspense (09 et 01) : silhouette noire
+-- debout au point d'atterrissage qui se change en candidats de plus en plus rares (Collection.teaseSequence), chaque
+-- palier marqué d'un éclair blanc, d'étincelles, d'un anneau, d'une secousse et d'une exclamation colorée en haut
+-- (« Lucky! 1 IN 10 » → « Super lucky! 1 IN 150 »), puis roulement (la silhouette tremble) et révélation : éclair
+-- plein écran, mannequin en couleurs qui grossit, rayons ; rareté, nom, « NEW! », $/s et cote une seule fois, en haut
+-- au centre (comme 09) ; bouton GO BACK. De retour au hub, panneau « Place your … » en bas au centre : la première
+-- pose se fait à la main (tutoriel : flèche vers un présentoir libre, invite « Place »), ensuite le bouton AUTO
+-- apparaît quand le joueur est dans sa base ou tout près.
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -11,23 +14,28 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Collection = require(Shared:WaitForChild("Collection"))
+local CourseLayout = require(Shared:WaitForChild("CourseLayout"))
 local DummyShape = require(Shared:WaitForChild("DummyShape"))
 local Format = require(Shared:WaitForChild("Format"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Tutorial = require(Shared:WaitForChild("Tutorial"))
 
 local FlightCamera = require(script.Parent.FlightCamera)
-local Hud = require(script.Parent.Hud)
 local UIKit = require(script.Parent.UIKit)
 
 local C = UIKit.COLORS
 local FEET = 3.82 -- du centre du torse au bas des pieds, échelle 1 (Shared.DummyShape)
 local HEIGHT = 6.7 -- hauteur du mannequin debout, échelle 1 (studs)
-local TEASE_FIRST = 0.5 -- silhouette seule avant la première cote (s)
-local TEASE_STEP = 0.75 -- durée de chaque palier de cote (s)
+local TEASE_FIRST = 0.45 -- silhouette seule avant le premier palier (s)
+local TEASE_STEP = 0.85 -- durée de chaque palier du suspense (s)
+local DRUMROLL = 1.1 -- roulement avant la révélation : la silhouette tremble de plus en plus (s)
 local AUTO_CLOSE = 5 -- GO BACK automatique après la révélation (s)
 local PROMPT_REFRESH = 0.25 -- s entre deux mises à jour des invites « Place »
 local BLACK = Color3.fromRGB(12, 12, 16)
+-- Exclamation de chaque palier selon la rareté du candidat (« Super chanceux ! », « Chance incroyable ! » de 01)
+local EXCLAIM =
+	{ "Hmm…", "Lucky!", "Super lucky!", "Incredible luck!", "LEGENDARY LUCK!", "MYTHIC LUCK!", "SECRET!!!" }
 
 local Prize = {}
 
@@ -37,7 +45,12 @@ local gui: ScreenGui
 local token = 0
 local showing = false -- tirage à l'écran (GO BACK pas encore envoyé)
 local worldModel: Model? = nil
-local oddsLabel: TextLabel? = nil
+local glow: Highlight? = nil -- contour de la silhouette, à la couleur du palier
+-- Suspense (haut de l'écran) : exclamation et cote du palier
+local tease: Frame
+local exclaimLabel: TextLabel
+local teaseOdds: TextLabel
+local flash: Frame -- éclair blanc plein écran de la révélation
 -- Révélation (haut de l'écran)
 local reveal: Frame
 local rarityLabel: TextLabel
@@ -52,8 +65,10 @@ local placePanel: Frame
 local placeTitle: TextLabel
 local placeHint: TextLabel
 local placeViewport: ViewportFrame
+local placeAuto: TextButton
 local placeKey: string? = nil
 local lastPromptRefresh = 0
+local glows: { [Instance]: Highlight } = {} -- présentoirs libres en surbrillance pendant qu'on tient un mannequin
 
 -- Cette méthode permet de relire le mannequin en main (« id:taille ») lorsque l'attribut PendingDummy change ; nil
 -- s'il n'y en a pas ou qu'il est illisible.
@@ -113,25 +128,12 @@ local function buildStanding(entry: Collection.Entry, ground: Vector3, silhouett
 	return model
 end
 
--- Cette méthode permet d'accrocher au-dessus du mannequin du tirage l'étiquette de cote (« 1 IN 40 ») lorsque la
--- silhouette apparaît.
-local function attachOdds(model: Model, scale: number): TextLabel
-	local billboard = UIKit.create("BillboardGui", {
-		Size = UDim2.fromOffset(260, 70),
-		StudsOffsetWorldSpace = Vector3.new(0, (HEIGHT - FEET) * scale + 1.6, 0),
-		AlwaysOnTop = true,
-		LightInfluence = 0,
-		Adornee = model.PrimaryPart,
-		Parent = model,
-	})
-	return UIKit.text({ Size = UDim2.fromScale(1, 1), TextSize = 48, StrokeThickness = 4, Parent = billboard })
-end
-
--- Cette méthode permet de faire grossir le mannequin révélé (de 60 % à sa taille, petit rebond) lorsque la
--- silhouette laisse place aux couleurs.
-local function growIn(model: Model)
+-- Cette méthode permet de faire grossir un mannequin du tirage (depuis `from` de sa taille, petit rebond) lorsqu'il
+-- apparaît : silhouette d'un nouveau palier, ou mannequin révélé.
+local function growIn(model: Model, from: number?)
+	local low = from or 0.6
 	local start = os.clock()
-	model:ScaleTo(0.6)
+	model:ScaleTo(low)
 	local connection
 	connection = RunService.RenderStepped:Connect(function()
 		local k = math.clamp((os.clock() - start) / 0.3, 0, 1)
@@ -140,7 +142,7 @@ local function growIn(model: Model)
 			return
 		end
 		-- Dépasse un peu (1,08) à 70 % puis revient à 1
-		local value = if k < 0.7 then 0.6 + 0.48 * (k / 0.7) else 1.08 - 0.08 * ((k - 0.7) / 0.3)
+		local value = if k < 0.7 then low + (1.08 - low) * (k / 0.7) else 1.08 - 0.08 * ((k - 0.7) / 0.3)
 		model:ScaleTo(math.max(value, 0.01))
 		if k >= 1 then
 			connection:Disconnect()
@@ -175,8 +177,96 @@ local function ring(ground: Vector3, scale: number)
 	end)
 end
 
--- Cette méthode permet de retirer le mannequin du tirage, l'écran de révélation et les rayons lorsque le tirage se
--- termine (GO BACK, fin forcée par le serveur, nouveau lancer).
+-- Cette méthode permet de faire éclater un palier du suspense au centre `center` (éclair blanc qui gonfle et
+-- s'efface, gerbe d'étincelles, contour de la silhouette qui flashe) lorsque la silhouette change de candidat.
+local function burst(center: Vector3, scale: number, color: Color3)
+	local ball = UIKit.create("Part", {
+		Name = "TeaseBurst",
+		Shape = Enum.PartType.Ball,
+		Anchored = true,
+		CanCollide = false,
+		CanQuery = false,
+		CanTouch = false,
+		CastShadow = false,
+		Material = Enum.Material.Neon,
+		Color = Color3.new(1, 1, 1),
+		Transparency = 0.1,
+		Size = Vector3.one * 2,
+		Position = center,
+		Parent = Workspace,
+	})
+	TweenService:Create(ball, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = Vector3.one * (7 * scale + 2),
+		Transparency = 1,
+	}):Play()
+	local holder = UIKit.create("Attachment", { WorldPosition = center, Parent = Workspace.Terrain })
+	local sparks = UIKit.create("ParticleEmitter", {
+		Texture = "rbxasset://textures/particles/sparkles_main.dds",
+		Color = ColorSequence.new(Color3.new(1, 1, 1), color),
+		LightEmission = 1,
+		Size = NumberSequence.new(0.9 * scale, 0),
+		Lifetime = NumberRange.new(0.5, 0.9),
+		Speed = NumberRange.new(10 * scale, 22 * scale),
+		SpreadAngle = Vector2.new(180, 180),
+		Drag = 4,
+		Enabled = false,
+		Parent = holder,
+	})
+	sparks:Emit(28)
+	if glow then
+		glow.OutlineColor = color
+		glow.FillTransparency = 0.1
+		TweenService:Create(glow, TweenInfo.new(0.4), { FillTransparency = 1 }):Play()
+	end
+	task.delay(1.2, function()
+		ball:Destroy()
+		holder:Destroy()
+	end)
+end
+
+-- Cette méthode permet de remplacer la silhouette du tirage par celle d'un candidat (`step`), contour lumineux à la
+-- couleur de sa rareté, lorsque le suspense passe au palier suivant.
+local function showSilhouette(step: Collection.TeaseStep, ground: Vector3)
+	if worldModel then
+		worldModel:Destroy()
+	end
+	local model = buildStanding({ id = step.id, size = step.size }, ground, true)
+	worldModel = model
+	glow = UIKit.create("Highlight", {
+		DepthMode = Enum.HighlightDepthMode.Occluded,
+		FillColor = Color3.new(1, 1, 1),
+		FillTransparency = 1,
+		OutlineColor = Rarity.get(step.rarity).color,
+		OutlineTransparency = 0,
+		Parent = model,
+	})
+	growIn(model, 0.8)
+end
+
+-- Cette méthode permet de faire trembler la silhouette de plus en plus fort pendant `duration` s (roulement avant la
+-- révélation) lorsque le dernier palier est affiché ; s'arrête si le tirage est interrompu (`current` périmé).
+local function drumroll(model: Model, scale: number, duration: number, current: number)
+	local base = model:GetPivot()
+	local start = os.clock()
+	local connection
+	connection = RunService.RenderStepped:Connect(function()
+		local k = (os.clock() - start) / duration
+		if k >= 1 or current ~= token or not model.Parent then
+			connection:Disconnect()
+			if model.Parent then
+				model:PivotTo(base)
+			end
+			return
+		end
+		local amount = 0.04 + 0.22 * k * k
+		local offset = Vector3.new(math.random() - 0.5, 0, math.random() - 0.5) * 2 * amount * scale
+		model:PivotTo(base + offset)
+		FlightCamera.shake(0.02 + 0.05 * k)
+	end)
+end
+
+-- Cette méthode permet de retirer le mannequin du tirage, le suspense, l'écran de révélation et les rayons lorsque le
+-- tirage se termine (GO BACK, fin forcée par le serveur, nouveau lancer).
 local function cleanup()
 	token += 1
 	showing = false
@@ -184,11 +274,12 @@ local function cleanup()
 		worldModel:Destroy()
 		worldModel = nil
 	end
-	oddsLabel = nil
+	glow = nil
 	if rays then
 		rays:Destroy()
 		rays = nil
 	end
+	UIKit.closeWindow(tease, true)
 	UIKit.closeWindow(reveal, true)
 	goBack.Visible = false
 end
@@ -206,18 +297,32 @@ end
 -- Cette méthode permet d'afficher la révélation (mannequin en couleurs, anneau, rayons et textes, GO BACK) lorsque la
 -- dernière cote de la silhouette est passée.
 local function showReveal(prize: any, entry: Collection.Entry, ground: Vector3, current: number)
-	local scale = Collection.SIZES[entry.size].scale
+	local size = Collection.SIZES[entry.size]
+	local scale = size.scale
 	if worldModel then
 		worldModel:Destroy()
 	end
+	glow = nil
 	local model = buildStanding(entry, ground, false)
 	worldModel = model
-	oddsLabel = attachOdds(model, scale);
-	(oddsLabel :: TextLabel).Text = "1 IN " .. Format.short(prize.odds)
 	growIn(model)
 	ring(ground, scale)
+	burst(ground + Vector3.new(0, HEIGHT * scale / 2, 0), scale, Rarity.get(prize.rarity).color)
+	FlightCamera.shake(0.6)
+	-- Éclair blanc plein écran, comme le flash de révélation des références
+	flash.BackgroundTransparency = 0.15
+	flash.Visible = true
+	local fade = TweenService:Create(flash, TweenInfo.new(0.45), { BackgroundTransparency = 1 })
+	fade.Completed:Once(function()
+		flash.Visible = false
+	end)
+	fade:Play()
+	UIKit.closeWindow(tease, true)
 	local tier = Rarity.get(prize.rarity)
-	rarityLabel.Text = string.upper(tier.name)
+	-- « BIG · RARE » comme « Grand et rare » de 09 (taille seulement si elle n'est pas normale)
+	rarityLabel.Text = if size.name ~= ""
+		then string.upper(size.name) .. " · " .. string.upper(tier.name)
+		else string.upper(tier.name)
 	rarityLabel.TextColor3 = tier.color
 	nameLabel.Text = prize.name
 	UIKit.gradientText(nameLabel, Color3.new(1, 1, 1), tier.color:Lerp(Color3.new(1, 1, 1), 0.25))
@@ -261,37 +366,90 @@ function Prize.play(result: any)
 		return
 	end
 	showing = true
-	local scale = Collection.SIZES[entry.size].scale
+	local finalScale = Collection.SIZES[entry.size].scale
 	local ground = groundAt(result.landing)
-	FlightCamera.showcase(ground + Vector3.new(0, HEIGHT * scale / 2, 0), HEIGHT * scale)
-	worldModel = buildStanding(entry, ground, true)
-	local label = attachOdds(worldModel :: Model, scale)
-	oddsLabel = label
-	label.Text = ""
+	FlightCamera.showcase(ground + Vector3.new(0, HEIGHT * finalScale / 2, 0), HEIGHT * finalScale)
+	local sequence = Collection.teaseSequence(entry :: Collection.Entry)
+	-- Silhouette du premier candidat, seule un instant, avant le premier palier
+	showSilhouette(sequence[1], ground)
 	task.spawn(function()
 		task.wait(TEASE_FIRST)
-		local steps = Collection.teaseSteps(prize.odds)
-		if #steps == 0 then
-			steps = { 1 }
-		end
-		for index, value in steps do
+		for index, step in sequence do
 			if current ~= token then
 				return
 			end
-			label.Text = if value <= 1 then "1 IN ?" else "1 IN " .. Format.short(value)
-			UIKit.pop(label, 1.5)
-			UIKit.playSound("Click", 0.9 + index * 0.15)
+			local scale = Collection.SIZES[step.size].scale
+			if index > 1 then
+				showSilhouette(step, ground)
+			end
+			local tier = Rarity.get(step.rarity)
+			burst(ground + Vector3.new(0, HEIGHT * scale / 2, 0), scale, tier.color)
+			ring(ground, scale)
+			FlightCamera.shake(0.25 + 0.2 * index)
+			exclaimLabel.Text = EXCLAIM[math.clamp(step.rarity, 1, #EXCLAIM)]
+			exclaimLabel.TextColor3 = tier.color
+			teaseOdds.Text = "1 IN " .. Format.short(step.odds)
+			if index == 1 then
+				UIKit.openWindow(tease, false)
+			end
+			UIKit.pop(exclaimLabel, 1.6)
+			UIKit.pop(teaseOdds, 1.4)
+			UIKit.playSound("Click", 0.8 + index * 0.2)
+			UIKit.playSound("Whoosh", 1.2 + index * 0.15)
 			task.wait(TEASE_STEP)
 		end
+		if current ~= token or not worldModel then
+			return
+		end
+		-- Roulement : la dernière silhouette tremble de plus en plus, puis éclate en couleurs
+		drumroll(worldModel :: Model, finalScale, DRUMROLL, current)
+		UIKit.playSound("Crowd", 1.1)
+		task.wait(DRUMROLL)
 		if current == token then
 			showReveal(prize, entry :: Collection.Entry, ground, current)
 		end
 	end)
 end
 
--- Cette méthode permet de construire l'écran de révélation (haut au centre) et le bouton GO BACK lorsque le client
--- démarre.
+-- Cette méthode permet de construire l'écran de révélation (suspense puis révélation, haut au centre), l'éclair
+-- plein écran et le bouton GO BACK lorsque le client démarre.
 local function buildReveal()
+	tease = UIKit.create("Frame", {
+		Name = "PrizeTease",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 40),
+		Size = UDim2.fromOffset(560, 120),
+		BackgroundTransparency = 1,
+		Visible = false,
+		ZIndex = 20,
+		Parent = gui,
+	})
+	exclaimLabel = UIKit.text({
+		Size = UDim2.new(1, 0, 0, 52),
+		TextSize = 46,
+		StrokeThickness = 4,
+		Rotation = -3,
+		ZIndex = 21,
+		Parent = tease,
+	})
+	teaseOdds = UIKit.text({
+		Position = UDim2.fromOffset(0, 56),
+		Size = UDim2.new(1, 0, 0, 60),
+		TextSize = 56,
+		StrokeThickness = 4,
+		ZIndex = 21,
+		Parent = tease,
+	})
+	flash = UIKit.create("Frame", {
+		Name = "RevealFlash",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = Color3.new(1, 1, 1),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Visible = false,
+		ZIndex = 19,
+		Parent = gui,
+	})
 	reveal = UIKit.create("Frame", {
 		Name = "PrizeReveal",
 		AnchorPoint = Vector2.new(0.5, 0),
@@ -415,19 +573,19 @@ local function buildPlacePanel()
 		ZIndex = 10,
 		Parent = placePanel,
 	})
-	local auto = UIKit.button({
+	placeAuto = UIKit.button({
 		Name = "Auto",
 		Position = UDim2.fromOffset(122, 68),
 		Size = UDim2.fromOffset(150, 44),
 		Text = "AUTO",
 		TextSize = 28,
 		Shine = true,
+		Visible = false,
 		ZIndex = 10,
 		Parent = placePanel,
 	}, function()
 		remotes.PlaceDummy:FireServer(nil)
 	end)
-	Hud.setAnchor("Place", auto)
 end
 
 -- Cette méthode permet de donner les invites « Place » des présentoirs de la base du joueur lorsque l'on les met à
@@ -469,9 +627,22 @@ local function refreshPanel()
 				free += 1
 			end
 		end
-		placeHint.Text = if free > 0
-			then "Walk to a display in your base, or press AUTO"
-			else "Base full: AUTO swaps your worst dummy or sells it"
+		-- Première pose (tutoriel) à la main ; ensuite AUTO, seulement dans sa base ou tout près
+		local firstPlace = Tutorial.current((player:GetAttribute("Tutorial") :: number?) or 0) == "Place"
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local slot = player:GetAttribute("Slot")
+		local near = root ~= nil and typeof(slot) == "number" and CourseLayout.isNearBase(slot, root.Position)
+		placeAuto.Visible = near and not firstPlace
+		if firstPlace then
+			placeHint.Text = "Walk to a glowing display in your base!"
+		elseif not near then
+			placeHint.Text = "Go to your base to place it"
+		elseif free > 0 then
+			placeHint.Text = "Press E on a display, or AUTO"
+		else
+			placeHint.Text = "Base full: AUTO swaps your worst dummy or sells it"
+		end
 	end
 	if visible and not placePanel.Visible then
 		UIKit.openWindow(placePanel, false)
@@ -491,11 +662,27 @@ local function refreshPrompts()
 	local open = entry ~= nil and canPlace()
 	local name = if entry then Collection.label(entry) else ""
 	for _, prompt in myPrompts() do
-		local enabled = open and not (prompt.Parent :: Instance):GetAttribute("Occupied")
+		local display = prompt.Parent :: Instance
+		local enabled = open and not display:GetAttribute("Occupied")
 		if prompt.Enabled ~= enabled then
 			prompt.Enabled = enabled
 		end
 		prompt.ObjectText = name
+		-- Présentoirs libres en surbrillance (vu par ce joueur seulement) tant qu'il a un mannequin à poser
+		local highlight = glows[display]
+		if enabled and not highlight then
+			glows[display] = UIKit.create("Highlight", {
+				DepthMode = Enum.HighlightDepthMode.Occluded,
+				FillColor = C.yellow,
+				FillTransparency = 0.55,
+				OutlineColor = Color3.new(1, 1, 1),
+				Adornee = display,
+				Parent = display,
+			})
+		elseif not enabled and highlight then
+			highlight:Destroy()
+			glows[display] = nil
+		end
 	end
 	refreshPanel()
 end

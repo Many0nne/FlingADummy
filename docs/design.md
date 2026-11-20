@@ -38,13 +38,19 @@ base, il rapporte des $/s, seule source d'argent.
 5. **Résultat** (≈ 2,7 s) : titre selon la violence du crash, lignes en ×CHANCE qui tombent une à une (distance et zone
    `x1.36`, os `+10%`, casse `+3%`), CHANCE totale qui grimpe, phrase de blessure (« Shattered skull, broken left arm »)
    et cause (« Hit a brick wall at 140 km/h »).
-6. **Tirage « 1 en N »** (référence 09, `Client.Prize`) : le mannequin gagné se dresse en silhouette noire au point
-   d'atterrissage, caméra de face qui se rapproche ; la cote grimpe en 1 à 3 paliers (« 1 IN 3 » → « 1 IN 40 » →
-   « 1 IN 1.37K », `Collection.teaseSteps`, 0,75 s chacun), puis révélation : mannequin en couleurs qui grossit, anneau
-   blanc au sol, rayons, et en haut au centre rareté, nom (taille comprise), « NEW! », $/s, cote ; bouton GO BACK
-   (automatique après 5 s ; le serveur rend la main au plus tard 20 s après l'atterrissage).
-7. **Poser** : de retour au hub, panneau « Place your Crash Dummy! » en bas au centre (rendu 3D, bouton **AUTO**) et
-   invite « Place » sur les présentoirs libres de sa base. Un nouveau lancer pose d'office le mannequin encore en main.
+6. **Tirage « 1 en N »** (`Client.Prize`, suspense calé sur 09 et 01) : silhouette noire debout au point
+   d'atterrissage, caméra de face qui se rapproche ; la silhouette se change en candidats de plus en plus rares
+   (`Collection.teaseSequence` : 0 à 3 mannequins plus courants, chacun à sa cote, puis le gagné), comme la pousse →
+   buisson → arbre de 09. Chaque palier (0,85 s) : éclair blanc, étincelles, anneau, secousse, contour à la couleur de
+   la rareté, exclamation en haut (« Lucky! » → « Super lucky! » → « Incredible luck! », comme « Super chanceux ! » de
+   01) et cote « 1 IN N ». Puis roulement (1,1 s, la silhouette tremble de plus en plus) et révélation : éclair plein
+   écran, mannequin en couleurs qui grossit, rayons ; en haut au centre, **une seule fois** : taille et rareté
+   (« BIG · RARE »), nom, « NEW! », $/s, cote ; bouton GO BACK (automatique après 5 s ; le serveur rend la main au plus
+   tard 20 s après l'atterrissage).
+7. **Poser** : de retour au hub, panneau « Place your Crash Dummy! » en bas au centre (rendu 3D). **Première pose à la
+   main** (étape du tutoriel) : flèche et chevrons vers un présentoir libre de sa base, présentoirs libres en
+   surbrillance, invite « Place » (E). Ensuite le bouton **AUTO** apparaît seulement dans sa base ou à moins de
+   12 studs de sa clôture (vérifié aussi par le serveur). Mannequin jamais posé : rangé d'office au tirage suivant.
 
 ## Mécanique secondaire : l'entraînement
 - Un appareil d'entraînement par joueur, devant sa base à côté de l'entrée (podium à tenons, râtelier de mannequins
@@ -156,8 +162,8 @@ Interface : section suivante.
 - **Compteurs** (bas gauche) : biceps + Throw Power (cyan), liasse + argent (blanc), revenu « +$N/s » en vert à droite
   de l'argent quand l'attribut joueur `Income` (revenu de la base) est positif ; l'argent du revenu tombe tout seul.
 - **Tutoriel** (objectif en haut au centre) : toute la boucle une fois, dans l'ordre des références, puis plus jamais de
-  texte, de flèche ni de chevrons : « Throw your dummy! » (premier lancer) → « Place your dummy! » (flèche sur le bouton
-  AUTO) → « Train! » (jusqu'au premier niveau) → « Buy better gear! » dès que le premier équipement est abordable. Pour un achat,
+  texte, de flèche ni de chevrons : « Throw your dummy! » (premier lancer) → « Place your dummy! » (première pose à la main,
+  flèche vers un présentoir libre) → « Train! » (jusqu'au premier niveau) → « Buy better gear! » dès que le premier équipement est abordable. Pour un achat,
   la flèche désigne où cliquer : bouton UPGRADE du popup « NEW GEAR! », sinon bouton d'achat de la carte quand la
   fenêtre est ouverte (comme la flèche rouge de la boutique de 09), sinon le bouton du HUD qui ouvre la fenêtre. Étapes
   sauvegardées avec le joueur (attribut `Tutorial`, drapeaux) ; une sauvegarde antérieure en déduit les étapes déjà faites.

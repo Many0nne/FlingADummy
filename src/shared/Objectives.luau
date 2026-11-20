@@ -1,10 +1,11 @@
 -- Objectif du tutoriel (texte en haut au centre, comme « Lancer à nouveau » / « Acheter une barre de traction » dans
--- les jeux de référence ; étapes : Shared.Tutorial) et cible désignée : une pièce du décor (flèche au-dessus, chevrons au sol) ou un bouton du HUD.
+-- les jeux de référence ; étapes : Shared.Tutorial) et cible désignée : une pièce du décor (flèche au-dessus, chevrons
+-- au sol) ou un bouton du HUD.
 --
 -- Point d'accroche des cibles du décor : toute BasePart portant le tag `ObjectiveTarget` (CollectionService) et
--- l'attribut `Objective` (« Throw » zone de lancer, « Train » appareil d'entraînement ; d'autres valeurs pour
--- #14). Facultatifs : `Slot` (place du lobby : la cible ne vaut que pour le joueur de cette place) et `OwnerUserId`
--- (cible d'un seul joueur). Sans l'un ni l'autre, la cible est partagée et le joueur suit la plus proche. `Span`
+-- l'attribut `Objective` (« Throw » zone de lancer, « Train » appareil d'entraînement, « Place » présentoir libre de
+-- sa base ; d'autres valeurs pour #14). Facultatifs : `Slot` (place du lobby : la cible ne vaut que pour le joueur de
+-- cette place) et `OwnerUserId` (cible d'un seul joueur). Sans l'un ni l'autre, la cible est partagée et le joueur suit la plus proche. `Span`
 -- (studs) : cible allongée sur l'axe X (bande de lancer) ; la flèche et les chevrons visent son point le plus proche
 -- du joueur, à `Span` au plus de son centre.
 local Objectives = {}
@@ -23,14 +24,15 @@ export type Objective = {
 	id: string,
 	text: string,
 	target: string?, -- valeur de l'attribut Objective de la cible du décor
-	button: string?, -- élément du HUD désigné : "Shop", "Place" (bouton AUTO du panneau « Place your dummy »)
+	button: string?, -- bouton du HUD désigné : "Shop"
 	buy: string?, -- achat visé dans la fenêtre du bouton (« Gear ») : la flèche passe sur son bouton
 }
 
 export type Candidate = { position: Vector3, slot: number?, owner: number? }
 
 local THROW = { id = "Throw", text = "Throw your dummy!", target = "Throw" }
-local PLACE = { id = "Place", text = "Place your dummy!", button = "Place" }
+-- Première pose à la main (tutoriel) : flèche et chevrons vers un présentoir libre de sa base
+local PLACE = { id = "Place", text = "Place your dummy!", target = "Place" }
 local TRAIN = { id = "Train", text = "Train!", target = "Train" }
 local BUY_GEAR = { id = "BuyGear", text = "Buy better gear!", button = "Shop", buy = "Gear" }
 
