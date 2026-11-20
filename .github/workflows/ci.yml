@@ -48,7 +48,10 @@ jobs:
     needs: changes
     if: needs.changes.outputs.scripts == 'true'
     runs-on: windows-latest
-    timeout-minutes: 40
+    timeout-minutes: 20
+    concurrency:
+      group: pester-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
 
