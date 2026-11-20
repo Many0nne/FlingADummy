@@ -79,34 +79,35 @@ AnimationData.HOLD = {
 	},
 } :: Clip
 
--- Entraînement (une répétition) : mannequin d'entraînement couché sur les deux mains à la poitrine, accroupi, puis
--- développé au-dessus de la tête jambes tendues (sommet à mi-clip), et retour.
+-- Entraînement (une répétition, développé) : le mannequin d'entraînement couché en travers des deux mains reste
+-- au-dessus de la tête ; en bas, coudes pliés devant, mains au ras du haut de la tête et genoux fléchis ; au sommet
+-- (mi-clip), bras tendus et jambes droites. Les mains ne descendent pas plus bas : le mannequin traverserait la tête.
 local TRAIN_LOW = {
-	LowerTorso = { 0, 0, 0, 0, -0.36, 0 },
-	UpperTorso = { 12, 0, 0 },
-	Head = { -6, 0, 0 },
-	RightUpperArm = { 20, 0, 38 },
-	RightLowerArm = { 125, 0, 0 },
+	LowerTorso = { 0, 0, 0, 0, -0.5, 0 },
+	UpperTorso = { 4, 0, 0 },
+	Head = { -2, 0, 0 },
+	RightUpperArm = { 152, 0, 4 },
+	RightLowerArm = { 20, 0, 0 },
 	RightHand = { 0, 0, 0 },
-	LeftUpperArm = { 20, 0, -38 },
-	LeftLowerArm = { 125, 0, 0 },
+	LeftUpperArm = { 152, 0, -4 },
+	LeftLowerArm = { 20, 0, 0 },
 	LeftHand = { 0, 0, 0 },
-	RightUpperLeg = { 38, 0, 6 },
-	RightLowerLeg = { -62, 0, 0 },
-	RightFoot = { 24, 0, 0 },
-	LeftUpperLeg = { 38, 0, -6 },
-	LeftLowerLeg = { -62, 0, 0 },
-	LeftFoot = { 24, 0, 0 },
+	RightUpperLeg = { 50, 0, 6 },
+	RightLowerLeg = { -90, 0, 0 },
+	RightFoot = { 40, 0, 0 },
+	LeftUpperLeg = { 50, 0, -6 },
+	LeftLowerLeg = { -90, 0, 0 },
+	LeftFoot = { 40, 0, 0 },
 }
 local TRAIN_HIGH = {
 	LowerTorso = { 0, 0, 0, 0, 0.05, 0 },
-	UpperTorso = { -4, 0, 0 },
-	Head = { 12, 0, 0 },
-	RightUpperArm = { 176, 0, 18 },
-	RightLowerArm = { 8, 0, 0 },
+	UpperTorso = { 2, 0, 0 },
+	Head = { 8, 0, 0 },
+	RightUpperArm = { 178, 0, 4 },
+	RightLowerArm = { 4, 0, 0 },
 	RightHand = { 0, 0, 0 },
-	LeftUpperArm = { 176, 0, -18 },
-	LeftLowerArm = { 8, 0, 0 },
+	LeftUpperArm = { 178, 0, -4 },
+	LeftLowerArm = { 4, 0, 0 },
 	LeftHand = { 0, 0, 0 },
 	RightUpperLeg = { 2, 0, 6 },
 	RightLowerLeg = { -3, 0, 0 },

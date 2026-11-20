@@ -1,7 +1,7 @@
 -- HUD permanent au style des jeux de référence : boutons à icône (Index et Shop à gauche, Dummies à droite, pastille
 -- « ! »), compteurs icône + valeur en bas à gauche (Throw Power, argent et revenu « +$N/s »), fenêtres à bandeau et
--- cartes d'objets (équipements d'entraînement, mannequins, index), barre d'entraînement avec STOP, gains qui
--- s'envolent, popups LEVEL UP! / NEW EQUIPMENT!.
+-- cartes d'objets (équipements d'entraînement, mannequins, index), barre d'entraînement avec STOP, « +1 EXP » qui
+-- s'envole à chaque répétition, popups LEVEL UP! (Throw Power gagnée au niveau) / NEW EQUIPMENT!.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
@@ -39,7 +39,6 @@ local trainLevel: TextLabel
 local trainFill: Frame
 local trainCount: TextLabel
 local lastPower = 0
-local levelStartPower = 0
 local knownLevel = math.huge -- palier d'entraînement et équipement déjà annoncés (aucun avant le chargement)
 local knownTier = math.huge
 local popupEndsAt = 0
@@ -380,9 +379,9 @@ function Hud.refresh()
 	end
 end
 
--- Cette méthode permet de faire s'envoler un gain (« +3 » et biceps) au-dessus de la barre d'entraînement lorsque la
--- puissance augmente.
-local function floatGain(amount: number)
+-- Cette méthode permet de faire s'envoler « +1 EXP » au-dessus de la barre d'entraînement lorsque l'avatar termine une
+-- répétition (la barre de niveau prend +1 en même temps, comme « +1 d'EXP » de la référence 01).
+local function floatExp()
 	local holder = UIKit.create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, math.random(-90, 90), 1, -130),
@@ -390,17 +389,11 @@ local function floatGain(amount: number)
 		BackgroundTransparency = 1,
 		Parent = gui,
 	})
-	local icon = UIKit.icon("power", { Size = UDim2.fromOffset(36, 36), Parent = holder })
-	TweenService:Create(icon, TweenInfo.new(0.9), {
-		[if icon:IsA("ImageLabel") then "ImageTransparency" else "TextTransparency"] = 1,
-	}):Play()
 	local label = UIKit.text({
-		Position = UDim2.fromOffset(40, 0),
-		Size = UDim2.new(1, -40, 1, 0),
-		Text = "+" .. Format.short(amount),
+		Size = UDim2.fromScale(1, 1),
+		Text = "+1 EXP",
 		TextSize = 32,
 		TextColor3 = C.cyan,
-		TextXAlignment = Enum.TextXAlignment.Left,
 		Parent = holder,
 	})
 	TweenService:Create(holder, TweenInfo.new(0.9, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
@@ -557,15 +550,13 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 	buildTrainBar(onStop)
 
 	lastPower = stat("ThrowPower", GameConfig.START_POWER)
-	levelStartPower = lastPower
 	for _, attribute in { "Money", "GearTier", "ValueLevel", "Income" } do
 		player:GetAttributeChangedSignal(attribute):Connect(Hud.refresh)
 	end
 	player:GetAttributeChangedSignal("ThrowPower"):Connect(function()
 		local power = stat("ThrowPower", GameConfig.START_POWER)
 		if power > lastPower and player:GetAttribute("Action") == "Training" then
-			floatGain(power - lastPower)
-			UIKit.pop(powerLabel, 1.2)
+			UIKit.pop(powerLabel, 1.2) -- gain du niveau franchi
 		end
 		lastPower = power
 		Hud.refresh()
@@ -574,7 +565,6 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 	-- avant, avec ou après DataReady) ne s'annoncent pas
 	local function seed()
 		lastPower = stat("ThrowPower", GameConfig.START_POWER)
-		levelStartPower = lastPower
 		knownLevel = stat("TrainLevel", 1)
 		knownTier = stat("GearTier", 1)
 	end
@@ -583,19 +573,25 @@ function Hud.init(localPlayer: Player, onStop: () -> ())
 	end
 	player:GetAttributeChangedSignal("DataReady"):Connect(seed)
 	player:GetAttributeChangedSignal("TrainLevel"):Connect(function()
-		local power = stat("ThrowPower", GameConfig.START_POWER)
 		local level = stat("TrainLevel", 1)
 		if level <= knownLevel then
 			refreshTraining()
 			return
 		end
 		knownLevel = level
-		showPopup("LEVEL UP!", "Throw Power +" .. Format.short(power - levelStartPower), C.cyan)
-		levelStartPower = power
+		-- Même calcul que le serveur (Shared.Training) : gain de l'équipement × répétitions du niveau franchi
+		local gained = Training.levelPower(stat("GearTier", 1), level - 1)
+		showPopup("LEVEL UP!", "Throw Power +" .. Format.short(gained), C.cyan)
 		UIKit.playSound("LevelUp")
 		refreshTraining()
 	end)
-	player:GetAttributeChangedSignal("TrainReps"):Connect(refreshTraining)
+	player:GetAttributeChangedSignal("TrainReps"):Connect(function()
+		-- Une répétition terminée change toujours TrainReps (+1, ou retour à 0 au passage de niveau)
+		if player:GetAttribute("Action") == "Training" then
+			floatExp()
+		end
+		refreshTraining()
+	end)
 	player:GetAttributeChangedSignal("GearTier"):Connect(function()
 		local tier = stat("GearTier", 1)
 		if tier <= knownTier then

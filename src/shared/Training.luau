@@ -1,5 +1,6 @@
--- Entraînement : l'avatar soulève un mannequin d'entraînement ; chaque répétition ajoute de la Throw Power selon
--- l'équipement, et les répétitions remplissent des niveaux (popup « LEVEL UP! »).
+-- Entraînement : l'avatar soulève un mannequin d'entraînement au-dessus de la tête ; chaque répétition donne 1 EXP qui
+-- remplit la barre de niveau, et chaque niveau franchi (popup « LEVEL UP! ») donne la Throw Power de l'équipement pour
+-- toutes les répétitions du niveau (comme les jeux de référence 01 / 09).
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 
@@ -7,7 +8,7 @@ local Training = {}
 
 export type Gear = {
 	name: string,
-	gain: number, -- Throw Power par répétition
+	gain: number, -- Throw Power par répétition, versée au passage de niveau
 	cost: number, -- prix d'achat (le premier est offert)
 	color: Color3,
 	material: Enum.Material,
@@ -89,6 +90,19 @@ function Training.addRep(progress: Progress): (Progress, boolean)
 		return { level = progress.level + 1, reps = 0 }, true
 	end
 	return { level = progress.level, reps = reps }, false
+end
+
+-- Cette méthode permet de donner la Throw Power gagnée en franchissant le niveau `level` avec l'équipement du palier
+-- `tier` (gain par répétition × répétitions du niveau) lorsque le niveau est franchi ou annoncé.
+function Training.levelPower(tier: number, level: number): number
+	return Training.gear(tier).gain * Training.repsForLevel(level)
+end
+
+-- Cette méthode permet de compter une répétition terminée avec l'équipement du palier `tier` lorsque REP_TIME s'est
+-- écoulé ; renvoie la nouvelle progression et la Throw Power gagnée (0 tant que le niveau n'est pas franchi).
+function Training.completeRep(progress: Progress, tier: number): (Progress, number)
+	local nextProgress, leveled = Training.addRep(progress)
+	return nextProgress, if leveled then Training.levelPower(tier, progress.level) else 0
 end
 
 -- Cette méthode permet de donner le prix du palier suivant lorsque le joueur possède le palier `tier` ; nil au dernier.

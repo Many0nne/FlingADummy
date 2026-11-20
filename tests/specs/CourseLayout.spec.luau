@@ -1,4 +1,4 @@
--- Plan de la carte : places de la zone de lancer, postes, bases, colonnes d'obstacles, gradins ; zones et leur décor.
+-- Plan de la carte : places de la zone de lancer, appareils d'entraînement, bases, colonnes d'obstacles, gradins ; zones et leur décor.
 local fs = require("@lune/fs")
 
 return function(T, Loader)
@@ -29,13 +29,30 @@ return function(T, Loader)
 			T.expect(math.abs(sum) < 1e-6, "places centrées")
 		end)
 
-		T.it("place un poste par joueur dans le hub, sans chevauchement", function()
+		T.it("place l'appareil d'entraînement devant l'entrée de la base, au milieu, passage libre", function()
+			local half = CourseLayout.BASE_SIZE / 2
+			local podium = CourseLayout.STATION_SIZE / 2
 			for index = 1, count do
-				local station = CourseLayout.stationPosition(index)
-				T.expect(station.Z < -GameConfig.LAUNCH_DEPTH, "poste derrière la zone de lancer")
-				T.expect(math.abs(station.X) < GameConfig.HUB_WIDTH / 2 - 10, "poste dans le hub")
-				if index > 1 then
-					T.expect(station.X - CourseLayout.stationPosition(index - 1).X >= 12, "postes espacés")
+				local station, facing = CourseLayout.stationPosition(index)
+				local base = CourseLayout.basePosition(index)
+				local side = CourseLayout.entranceSide(index)
+				T.expectEqual(station.Z, base.Z, "au milieu de l'entrée")
+				T.expectEqual(math.sign(station.X - base.X), side, "du côté de l'entrée (centre du hub)")
+				T.expect(-side * base.X > 0, "entrée tournée vers le centre du hub")
+				T.expectEqual(facing, Vector3.new(side, 0, 0), "avatar face au centre du hub")
+				local gap = math.abs(station.X - base.X) - half.X - podium
+				T.expect(gap >= 4, "passage libre entre l'appareil et la clôture, obtenu " .. gap)
+				T.expect(math.abs(station.X) + podium <= GameConfig.HUB_WIDTH / 2, "dans la largeur du hub")
+				T.expect(station.Z + podium < -GameConfig.LAUNCH_DEPTH, "derrière la zone de lancer")
+				for other = 1, count do
+					local o = CourseLayout.basePosition(other)
+					local apart = math.abs(o.X - station.X) >= half.X + podium
+						or math.abs(o.Z - station.Z) >= half.Z + podium
+					T.expect(apart, string.format("appareil %d hors de la base %d", index, other))
+					if other ~= index then
+						local s2 = CourseLayout.stationPosition(other)
+						T.expect((s2 - station).Magnitude > 2 * podium, "appareils séparés")
+					end
 				end
 			end
 		end)
@@ -50,10 +67,6 @@ return function(T, Loader)
 				T.expect(
 					base.Z - half.Z >= -GameConfig.LAUNCH_DEPTH - GameConfig.HUB_DEPTH,
 					"base dans la profondeur du hub"
-				)
-				T.expect(
-					math.abs(base.X) - half.X > math.abs(CourseLayout.stationPosition(index).X) + 5,
-					"loin des postes"
 				)
 				for other = 1, index - 1 do
 					local o = CourseLayout.basePosition(other)

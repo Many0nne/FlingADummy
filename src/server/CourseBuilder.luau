@@ -1,5 +1,5 @@
--- Construction du décor au style des jeux de référence (01 / 09) : hub en pelouse à damier (postes d'entraînement,
--- bases des joueurs, stands à auvents), zone de lancer commune à SLOT_COUNT places, piste unique au fond d'un canyon
+-- Construction du décor au style des jeux de référence (01 / 09) : hub en pelouse à damier (bases des joueurs avec
+-- leur appareil d'entraînement devant l'entrée, stands à auvents), zone de lancer commune à SLOT_COUNT places, piste unique au fond d'un canyon
 -- en gradins (parois à briques, herbe voxel qui déborde, arbres et rochers voxel) qui change de couleurs à chaque zone,
 -- obstacles partagés (Server.Obstacles). Repère : Shared.CourseLayout.
 local CollectionService = game:GetService("CollectionService")
@@ -10,7 +10,9 @@ local Workspace = game:GetService("Workspace")
 local CourseLayout = require(ReplicatedStorage.Shared.CourseLayout)
 local Drips = require(ReplicatedStorage.Shared.Drips)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local DummyShape = require(ReplicatedStorage.Shared.DummyShape)
 local Objectives = require(ReplicatedStorage.Shared.Objectives)
+local Training = require(ReplicatedStorage.Shared.Training)
 local Zones = require(ReplicatedStorage.Shared.Zones)
 local Build = require(script.Parent.Build)
 local Obstacles = require(script.Parent.Obstacles)
@@ -23,6 +25,9 @@ local SEGMENT_LENGTH = 400 -- longueur maximale d'une pièce de sol ou de paroi 
 local CAP_THICKNESS = Drips.CAP_THICKNESS
 local CAP_OVERHANG = 1 -- l'herbe déborde du bord de chaque marche
 local END_Z = GameConfig.COURSE_LENGTH + 40 -- fond du canyon, derrière la paroi de bout de piste
+local STATION_HEIGHT = 1.4 -- hauteur du podium de l'appareil d'entraînement
+local STATION_SPOT = 0.6 -- avance de la place de l'avatar devant le centre du podium (le râtelier est derrière)
+local RACK_MESH_WAIT = 20 -- attente maximale des gabarits maillés pour les mannequins du râtelier (s)
 
 local rgb = Color3.fromRGB
 local COLORS = {
@@ -41,8 +46,8 @@ export type Slot = {
 	index: number,
 	color: Color3,
 	pad: Vector3, -- centre de la place sur la zone de lancer, au sol
-	station: CFrame, -- position de l'avatar qui s'entraîne
-	prompt: ProximityPrompt, -- « Train » sur le poste d'entraînement
+	station: CFrame, -- position de l'avatar qui s'entraîne (sur le podium, face au centre du hub)
+	prompt: ProximityPrompt, -- « Lift » sur l'appareil d'entraînement, devant la base
 	sign: TextLabel, -- nom du joueur et record, au-dessus de sa place
 	base: Base, -- présentoirs vides, remplis par la tâche collection
 	direction: Vector3,
@@ -56,7 +61,7 @@ local CourseBuilder = {}
 local rng = Random.new(SEED)
 
 -- Cette méthode permet de désigner une pièce comme cible d'objectif du HUD (réservée au joueur de la place `slot`)
--- lorsque l'on construit sa pastille ou son poste.
+-- lorsque l'on construit sa pastille ou son appareil d'entraînement.
 local function markObjective(part: BasePart, objective: string, slot: number)
 	part:SetAttribute("Objective", objective)
 	part:SetAttribute("Slot", slot)
@@ -308,48 +313,103 @@ local function buildLaunchZone(parent: Instance, slots: { Slot })
 	end
 end
 
--- Cette méthode permet de construire le poste d'entraînement d'une place (deux poteaux en bois voxel, barre de
--- traction, pastille jaune, invite « Train ») lorsque le hub est construit, au style de la barre de traction de 01 / 09.
+-- Cette méthode permet de poser un mannequin d'entraînement décoratif debout (pièces ancrées, sans collision) sur le
+-- râtelier lorsque l'appareil est construit ; `feet` = repère sous ses pieds (face vers -Z).
+local function rackDummy(parent: Instance, gear: Training.Gear, feet: CFrame)
+	local model = Instance.new("Model")
+	model.Name = "RackDummy"
+	local parts = DummyShape.buildPieces(model, gear.scale, { color = gear.color, material = gear.material })
+	local lowest = math.huge
+	for _, part in parts do
+		lowest = math.min(lowest, part.Position.Y - part.Size.Y / 2)
+	end
+	for _, part in parts do
+		part.Anchored = true
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CanTouch = false
+		part.CFrame = feet * CFrame.new(0, -lowest, 0) * part.CFrame
+	end
+	model.Parent = parent
+end
+
+-- Cette méthode permet de construire l'appareil d'entraînement d'une place devant l'entrée de sa base (podium en
+-- briques à tenons, pastille jaune où l'avatar soulève son mannequin, râtelier de mannequins derrière lui, invite
+-- « Lift ») lorsque le hub est construit, à la place de la barre de traction de 01 / 09.
 local function buildStation(parent: Instance, slot: Slot)
-	local center = slot.station.Position - Vector3.new(0, 3, 0)
+	local size = CourseLayout.STATION_SIZE
+	local center, facing = CourseLayout.stationPosition(slot.index)
+	local floor = CFrame.lookAt(center, center + facing) -- centre du podium au sol, -Z = face de l'avatar
 	local model = Instance.new("Model")
 	model.Name = "Station" .. slot.index
+	-- Podium : socle en briques, bordure à la couleur de la place, dessus en bois
+	Build.block(
+		model,
+		Vector3.new(size, STATION_HEIGHT - 0.4, size),
+		floor * CFrame.new(0, (STATION_HEIGHT - 0.4) / 2, 0),
+		COLORS.stone
+	)
+	Build.block(model, Vector3.new(size + 0.6, 0.6, size + 0.6), floor * CFrame.new(0, 0.3, 0), slot.color)
+	Build.block(
+		model,
+		Vector3.new(size - 0.4, 0.4, size - 0.4),
+		floor * CFrame.new(0, STATION_HEIGHT - 0.2, 0),
+		COLORS.wood
+	)
+	-- Marche devant le podium
+	Build.block(
+		model,
+		Vector3.new(4, STATION_HEIGHT / 2, 1.6),
+		floor * CFrame.new(0, STATION_HEIGHT / 4, -size / 2 - 0.8),
+		COLORS.woodDark
+	)
+	local top = floor * CFrame.new(0, STATION_HEIGHT, 0)
 	Build.decor({
 		Name = "TrainPad",
 		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(0.16, 7, 7),
-		CFrame = CFrame.new(center + Vector3.new(0, 0.08, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+		Size = Vector3.new(0.16, 4.6, 4.6),
+		CFrame = top * CFrame.new(0, 0.08, -STATION_SPOT) * CFrame.Angles(0, 0, math.rad(90)),
 		Color = COLORS.pad,
 		Parent = model,
 	})
+	-- Râtelier derrière l'avatar : deux montants, une traverse, les mannequins des premiers paliers debout devant
+	local rackZ = size / 2 - 1.2
 	for _, side in { -1, 1 } do
-		local x = side * 4.6
-		Build.block(model, Vector3.new(2, 13, 2), CFrame.new(center + Vector3.new(x, 6.5, 1.5)), COLORS.wood)
-		for _, y in { 3, 7, 11 } do
-			Build.block(model, Vector3.new(2.3, 0.8, 2.3), CFrame.new(center + Vector3.new(x, y, 1.5)), COLORS.woodDark)
-		end
-		Build.block(model, Vector3.new(2.6, 1.2, 2.6), CFrame.new(center + Vector3.new(x, 13.6, 1.5)), slot.color)
+		Build.block(model, Vector3.new(1, 6.4, 1), top * CFrame.new(side * 3.9, 3.2, rackZ), COLORS.wood)
+		Build.block(model, Vector3.new(1.3, 0.6, 1.3), top * CFrame.new(side * 3.9, 6.5, rackZ), slot.color)
 	end
-	Build.block(model, Vector3.new(7.2, 1, 1), CFrame.new(center + Vector3.new(0, 12, 1.5)), COLORS.woodDark)
+	Build.block(model, Vector3.new(8.8, 0.8, 0.8), top * CFrame.new(0, 5.4, rackZ), COLORS.woodDark)
+	Build.block(model, Vector3.new(8.2, 0.5, 1.6), top * CFrame.new(0, 0.25, rackZ - 0.2), COLORS.woodDark)
 	model.Parent = parent
+	-- Mannequins maillés quand les gabarits sont prêts (blocs du gabarit s'ils ne se chargent pas)
+	task.spawn(function()
+		local waited = 0
+		while not DummyShape.isMeshed() and waited < RACK_MESH_WAIT do
+			waited += task.wait(0.5)
+		end
+		for i, x in { -2.1, 0, 2.1 } do
+			local feet = top * CFrame.new(x, 0.5, rackZ - 0.3) -- tournés vers le hub, comme l'avatar
+			rackDummy(model, Training.GEARS[i], feet)
+		end
+	end)
 	local anchor = Build.decor({
 		Name = "TrainSpot",
 		Size = Vector3.new(2, 2, 2),
-		Position = center + Vector3.new(0, 2, 0),
+		Position = slot.station.Position - Vector3.new(0, 1, 0),
 		Transparency = 1,
 		Parent = model,
 	})
 	markObjective(anchor, "Train", slot.index)
 	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = "Train"
-	prompt.ObjectText = "Pull-up bar"
+	prompt.ActionText = "Lift"
+	prompt.ObjectText = "Training dummy"
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
 	prompt.HoldDuration = 0
 	prompt.MaxActivationDistance = 10
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = anchor
 	slot.prompt = prompt
-	Build.billboard(model, center + Vector3.new(0, 17, 1.5), "💪 TRAIN", Vector2.new(6, 1.8))
+	Build.billboard(model, (top * CFrame.new(0, 9, rackZ)).Position, "💪 TRAIN", Vector2.new(6, 1.8))
 end
 
 -- Cette méthode permet de construire la base d'une place (terrain clôturé, présentoirs vides, panneau au nom du
@@ -409,7 +469,7 @@ local function buildBase(parent: Instance, slot: Slot)
 	slot.base = { model = model, sign = sign, displays = displays }
 end
 
--- Cette méthode permet de construire le hub (pelouse à damier, parois en gradins, postes, bases, stands à auvents,
+-- Cette méthode permet de construire le hub (pelouse à damier, parois en gradins, bases et leurs appareils, stands à auvents,
 -- chevrons vers la zone de lancer, point d'apparition) lorsque le serveur démarre.
 local function buildHub(parent: Instance, slots: { Slot })
 	local zone = Zones.LIST[1]
@@ -581,13 +641,15 @@ local function newSlots(): { Slot }
 	local slots = {}
 	for index = 1, GameConfig.SLOT_COUNT do
 		local pad = CourseLayout.padPosition(index)
-		local stationPos = CourseLayout.stationPosition(index) + Vector3.new(0, 3, 0)
+		local stationGround, stationFacing = CourseLayout.stationPosition(index)
+		-- Avatar debout sur la pastille du podium (HumanoidRootPart à 3 studs au-dessus des pieds), dos au râtelier
+		local stationPos = stationGround + Vector3.new(0, STATION_HEIGHT + 3, 0) + stationFacing * STATION_SPOT
 		local spawnPos = pad + Vector3.new(0, 3, -GameConfig.PAD_RADIUS - 3)
 		slots[index] = {
 			index = index,
 			color = CourseLayout.SLOT_COLORS[(index - 1) % #CourseLayout.SLOT_COLORS + 1],
 			pad = pad,
-			station = CFrame.lookAt(stationPos, stationPos + Vector3.zAxis),
+			station = CFrame.lookAt(stationPos, stationPos + stationFacing),
 			prompt = nil :: any,
 			sign = nil :: any,
 			base = nil :: any,

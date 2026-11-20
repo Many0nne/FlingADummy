@@ -6,7 +6,7 @@ et le rythme : fiches `04 - Jeux disséqués/` du vault (01 *Throw Food For Anim
 Ragdoll*, 06 *BloxNG*, 12 *Net a Fish!*).
 
 ## Le jeu en une phrase
-Dans un lobby de 4 joueurs, on s'entraîne à la barre de traction pour devenir plus fort, puis on lance un mannequin de
+Dans un lobby de 4 joueurs, on s'entraîne en soulevant un mannequin pour devenir plus fort, puis on lance un mannequin de
 crash-test à bout de bras dans un canyon de briques à tenons, sur une piste partagée semée de vitres, de tours de caisses,
 de murs, de voitures-cibles et de panneaux-cibles. On gagne selon la distance, les os cassés et les objets détruits,
 multipliés par la zone atteinte.
@@ -32,9 +32,12 @@ multipliés par la zone atteinte.
    phrase de blessure (« Shattered skull, broken left arm ») et cause (« Hit a brick wall at 140 km/h »).
 
 ## Mécanique secondaire : l'entraînement
-- Un poste d'entraînement par joueur dans le hub (barre de traction, invite « Train ») : l'avatar soulève un mannequin en boucle.
-- Chaque répétition (0,8 s) ajoute la **Throw Power** de l'équipement ; les répétitions remplissent des niveaux
-  (« LEVEL UP! Throw Power +N »), 3 répétitions au premier niveau puis × 1,2 par niveau.
+- Un appareil d'entraînement par joueur, devant l'entrée de sa base, au milieu (podium à tenons, râtelier de mannequins,
+  invite « Lift » / « Training dummy ») : l'avatar soulève au-dessus de la tête (développé) le mannequin de son palier
+  d'équipement, en boucle. Pendant la séance, l'invite est masquée et aucun objectif ne s'affiche : seul le bouton STOP.
+- Chaque répétition (0,8 s) donne **+1 EXP** et remplit la barre de niveau, 3 répétitions au premier niveau puis × 1,2
+  par niveau. Le passage de niveau (« LEVEL UP! Throw Power +N ») donne la **Throw Power** : N = gain de l'équipement ×
+  répétitions du niveau franchi (`Training.levelPower`), soit le même rythme qu'un gain à chaque répétition.
 - **Équipements** (achetés avec l'argent) : mannequin en bois +1, pierre +3, fer +10, or +40, diamant +160, néon +700,
   cosmique +3 000 par répétition ; prix 100 $, 1,5 K, 25 K, 150 K, 2 M, 25 M.
 - Vitesse de lancer = 110 + 30 × ln(puissance / 10) studs/s : la puissance explose (10 → 1 M), la distance monte
@@ -46,9 +49,9 @@ multipliés par la zone atteinte.
   niveau, de 250 $ × 1,7 par niveau).
 
 ## Carte (v0.3) : lobby de 4 joueurs, piste unique
-- **Hub** (pelouse à damier entourée de parois en gradins) : un **poste d'entraînement par joueur** (barre de traction en
-  bois voxel, pastille jaune, invite « Train »), une **base par joueur** (terrain clôturé, 6 présentoirs vides prêts pour la
-  collection, panneau « NOM'S BASE »), stands à auvents rayés « SELL » et « SHOP » (branchés par la collection et la
+- **Hub** (pelouse à damier entourée de parois en gradins) : une **base par joueur** (terrain clôturé, 6 présentoirs vides
+  prêts pour la collection, panneau « NOM'S BASE ») avec son **appareil d'entraînement** devant l'entrée, au milieu
+  (podium à tenons, pastille jaune, râtelier, invite « Lift »), passage libre entre les deux, stands à auvents rayés « SELL » et « SHOP » (branchés par la collection et la
   boutique), chevrons jaunes vers la zone de lancer. Plan dans `Shared.CourseLayout`.
 - **Zone de lancer commune** : bande orange à damier, ligne de départ blanche, **4 places côte à côte** (pastille à la
   couleur du joueur, nom et record au-dessus). Le joueur réapparaît à côté de sa place.
@@ -99,13 +102,13 @@ Interface : section suivante.
 - **Compteurs** (bas gauche) : biceps + Throw Power (cyan), liasse + argent (blanc), revenu « +$N/s » en vert à droite
   de l'argent quand l'attribut joueur `Income` est positif (posé par la collection, #13).
 - **Objectif** (haut centre) : « Throw your dummy! » → « Train! » → « Throw your dummy! »… ; « Buy better gear! » /
-  « Buy a better dummy! » dès qu'un achat est possible (flèche au-dessus du bouton) ; « Press STOP to throw! » après un
-  niveau gagné à l'entraînement. Cible du décor : triangle jaune au-dessus, chevrons jaunes au sol qui défilent vers
+  « Buy a better dummy! » dès qu'un achat est possible (flèche au-dessus du bouton) ; rien pendant la séance
+  d'entraînement (le bouton STOP suffit). Cible du décor : triangle jaune au-dessus, chevrons jaunes au sol qui défilent vers
   elle. Logique dans `Shared.Objectives`.
 - **Cibles du décor** (point d'accroche pour la carte et la collection) : une `BasePart` avec le tag `ObjectiveTarget`
   et l'attribut `Objective` (`"Throw"`, `"Train"`…), plus `Slot` (place du lobby) ou `OwnerUserId` (joueur) si elle
   n'est pas partagée ; le joueur suit la plus proche de celles qui lui sont ouvertes. `CourseBuilder` marque la pastille
-  et le poste d'entraînement de chaque place.
+  et l'appareil d'entraînement de chaque place.
 - **Fenêtres** : cadre sombre, bandeau dégradé (icône, titre), croix rouge ; cartes d'objets grises (nom, rareté
   colorée de `Shared.Rarity`, rendu 3D en `ViewportFrame`, statistique, bouton : prix vert / rouge, « EQUIPPED »).
   Shop = équipements d'entraînement ; Dummies = mannequin lancé (valeur) et mannequins à venir en silhouette (#14) ;

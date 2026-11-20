@@ -1,5 +1,6 @@
--- Entraînement : l'invite « Train » du poste place l'avatar sur le tapis ; il soulève un mannequin en boucle, chaque
--- répétition ajoute la Throw Power de son équipement et remplit les niveaux (attributs TrainLevel / TrainReps).
+-- Entraînement : l'invite « Lift » de l'appareil (devant la base du joueur) place l'avatar sur le podium ; il soulève
+-- un mannequin en boucle, chaque répétition donne 1 EXP (attributs TrainLevel / TrainReps) et chaque niveau franchi
+-- donne la Throw Power de l'équipement (Shared.Training). L'invite est masquée pendant la séance.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -11,14 +12,26 @@ local SlotService = require(script.Parent.SlotService)
 
 local TrainingService = {}
 
-local timers: { [Player]: number } = {}
+type Session = { elapsed: number, prompt: ProximityPrompt }
+
+local sessions: { [Player]: Session } = {}
+
+-- Cette méthode permet de clore la séance d'un joueur (invite de son appareil réaffichée) lorsque l'entraînement
+-- s'arrête, que l'avatar disparaît ou que le joueur part.
+local function endSession(player: Player)
+	local session = sessions[player]
+	if session then
+		sessions[player] = nil
+		session.prompt.Enabled = true
+	end
+end
 
 -- Cette méthode permet de rendre la main à l'avatar (désancré, état libre) lorsque l'entraînement s'arrête.
 function TrainingService.stop(player: Player)
 	if player:GetAttribute("Action") ~= "Training" then
 		return
 	end
-	timers[player] = nil
+	endSession(player)
 	player:SetAttribute("Action", nil)
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -27,7 +40,7 @@ function TrainingService.stop(player: Player)
 	end
 end
 
--- Cette méthode permet de démarrer l'entraînement lorsque le joueur active l'invite de SON poste et que son lancer
+-- Cette méthode permet de démarrer l'entraînement lorsque le joueur active l'invite de SON appareil et que son lancer
 -- précédent est fini.
 function TrainingService.start(player: Player)
 	local slot = SlotService.getSlot(player)
@@ -39,27 +52,48 @@ function TrainingService.start(player: Player)
 	if player:GetAttribute("LaneState") ~= "Ready" then
 		return
 	end
-	-- Debout sur le tapis, face à la piste ; ancré pour que la boucle d'animation ne le fasse pas dériver
+	-- Debout sur le podium, dos au râtelier ; ancré pour que la boucle d'animation ne le fasse pas dériver
 	character:PivotTo(slot.station)
 	root.Anchored = true
-	timers[player] = 0
+	sessions[player] = { elapsed = 0, prompt = slot.prompt }
+	slot.prompt.Enabled = false
 	player:SetAttribute("Action", "Training")
 end
 
--- Cette méthode permet de compter une répétition (puissance, niveau) lorsque REP_TIME s'est écoulé.
+-- Cette méthode permet de compter une répétition (EXP, niveau, Throw Power au passage de niveau) lorsque REP_TIME
+-- s'est écoulé.
 local function completeRep(player: Player)
-	local gear = Training.gear((player:GetAttribute("GearTier") :: number?) or 1)
-	PlayerData.addPower(player, gear.gain)
-	local progress = Training.addRep({
+	local progress, power = Training.completeRep({
 		level = (player:GetAttribute("TrainLevel") :: number?) or 1,
 		reps = (player:GetAttribute("TrainReps") :: number?) or 0,
-	})
+	}, (player:GetAttribute("GearTier") :: number?) or 1)
+	-- Puissance d'abord : le client la lit déjà à jour quand il annonce le niveau
+	if power > 0 then
+		PlayerData.addPower(player, power)
+	end
 	player:SetAttribute("TrainReps", progress.reps)
 	player:SetAttribute("TrainLevel", progress.level)
 end
 
--- Cette méthode permet de brancher les invites des postes (un par place), l'arrêt demandé par le client et la boucle des
--- répétitions lorsque le serveur démarre.
+-- Cette méthode permet de démarrer ou d'arrêter l'entraînement par attribut lorsque l'on teste dans Studio sans
+-- input : DebugTrain = true démarre la séance sur l'appareil du joueur, false l'arrête.
+local function watchDebugTrain(player: Player)
+	player:GetAttributeChangedSignal("DebugTrain"):Connect(function()
+		local value = player:GetAttribute("DebugTrain")
+		if typeof(value) ~= "boolean" then
+			return
+		end
+		player:SetAttribute("DebugTrain", nil)
+		if value then
+			TrainingService.start(player)
+		else
+			TrainingService.stop(player)
+		end
+	end)
+end
+
+-- Cette méthode permet de brancher les invites des appareils (un par place), l'arrêt demandé par le client et la boucle
+-- des répétitions lorsque le serveur démarre.
 function TrainingService.init(slots: { any }, stopRemote: RemoteEvent)
 	for _, slot in slots do
 		slot.prompt.Triggered:Connect(function(player)
@@ -69,23 +103,26 @@ function TrainingService.init(slots: { any }, stopRemote: RemoteEvent)
 		end)
 	end
 	stopRemote.OnServerEvent:Connect(TrainingService.stop)
-	Players.PlayerRemoving:Connect(function(player)
-		timers[player] = nil
-	end)
+	Players.PlayerRemoving:Connect(endSession)
 	RunService.Heartbeat:Connect(function(dt)
-		for player, elapsed in timers do
+		for player, session in sessions do
 			if not player.Character or player:GetAttribute("Action") ~= "Training" then
-				timers[player] = nil
+				endSession(player) -- avatar réapparu (Action remise à zéro) ou disparu
 				continue
 			end
-			elapsed += dt
-			if elapsed >= GameConfig.REP_TIME then
-				elapsed -= GameConfig.REP_TIME
+			session.elapsed += dt
+			if session.elapsed >= GameConfig.REP_TIME then
+				session.elapsed -= GameConfig.REP_TIME
 				completeRep(player)
 			end
-			timers[player] = elapsed
 		end
 	end)
+	if RunService:IsStudio() then
+		Players.PlayerAdded:Connect(watchDebugTrain)
+		for _, player in Players:GetPlayers() do
+			watchDebugTrain(player)
+		end
+	end
 end
 
 return TrainingService

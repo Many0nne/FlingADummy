@@ -1,5 +1,5 @@
 -- Places du lobby (SLOT_COUNT joueurs sur une piste partagée) : chaque joueur reçoit une place (sa pastille sur la
--- zone de lancer commune, son poste d'entraînement, sa base), réapparaît à côté de sa pastille, et passe à l'état
+-- zone de lancer commune, sa base et son appareil d'entraînement), réapparaît à côté de sa pastille, et passe à l'état
 -- « Holding » (mannequin dans les bras) quand il s'y tient et que son lancer précédent est fini.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

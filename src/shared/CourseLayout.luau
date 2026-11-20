@@ -1,4 +1,5 @@
--- Plan de la carte (logique pure, testée) : places des joueurs (zone de lancer commune, postes d'entraînement, bases),
+-- Plan de la carte (logique pure, testée) : places des joueurs (zone de lancer commune, bases, appareil d'entraînement
+-- devant chaque base),
 -- colonnes des obstacles partagés, gradins du canyon. Repère : piste vers +Z, départ à z = 0, hub derrière (z < 0) ;
 -- +X est à gauche quand on regarde la piste.
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
@@ -10,8 +11,10 @@ local BASE_X = 64 -- centre des bases, de part et d'autre du hub
 local BASE_Z = { -48, -100 } -- rangée avant, rangée arrière
 CourseLayout.BASE_SIZE = Vector3.new(34, 0, 40)
 CourseLayout.DISPLAY_COUNT = 6 -- présentoirs par base (2 rangées de 3)
+CourseLayout.STATION_GAP = 13 -- de la clôture d'entrée de la base au centre de son appareil d'entraînement (studs)
+CourseLayout.STATION_SIZE = 9 -- côté du podium de l'appareil
 
--- Couleur de chaque place (pastille de la zone de lancer, poste, base) : on retrouve ses affaires d'un coup d'œil
+-- Couleur de chaque place (pastille de la zone de lancer, base, appareil) : on retrouve ses affaires d'un coup d'œil
 CourseLayout.SLOT_COLORS = {
 	Color3.fromRGB(255, 75, 75),
 	Color3.fromRGB(60, 150, 255),
@@ -35,13 +38,6 @@ function CourseLayout.padPosition(index: number): Vector3
 	return Vector3.new(CourseLayout.slotX(index), 0, GameConfig.PAD_Z)
 end
 
--- Cette méthode permet de donner le centre, au sol, du poste d'entraînement du joueur de la place `index` (rangée du
--- hub derrière la zone de lancer).
-function CourseLayout.stationPosition(index: number): Vector3
-	local x = (index - (GameConfig.SLOT_COUNT + 1) / 2) * GameConfig.STATION_SPACING
-	return Vector3.new(x, 0, GameConfig.STATION_Z)
-end
-
 -- Cette méthode permet de donner le centre, au sol, de la base du joueur de la place `index` : les places de gauche
 -- (x > 0) ont leur base à gauche du hub, celles de droite à droite, la plus proche du centre devant.
 function CourseLayout.basePosition(index: number): Vector3
@@ -51,6 +47,22 @@ function CourseLayout.basePosition(index: number): Vector3
 	-- Rang depuis le centre : 1 pour la place la plus proche de l'axe, puis 2…
 	local rank = if side > 0 then index - math.floor(half) else math.ceil(half) - index + 1
 	return Vector3.new(side * BASE_X, 0, BASE_Z[math.clamp(rank, 1, #BASE_Z)])
+end
+
+-- Cette méthode permet de donner le côté de l'entrée de la base `index` (+1 ou -1 sur X : vers le centre du hub)
+-- lorsque l'on clôture la base ou que l'on pose son appareil d'entraînement.
+function CourseLayout.entranceSide(index: number): number
+	return if CourseLayout.basePosition(index).X > 0 then -1 else 1
+end
+
+-- Cette méthode permet de donner le centre, au sol, de l'appareil d'entraînement de la place `index` et la direction
+-- vers laquelle l'avatar s'y tient : devant l'entrée de sa base, au milieu, face au centre du hub (comme la barre de
+-- Throw a Seed devant le terrain du joueur), avec un passage libre entre l'appareil et la clôture.
+function CourseLayout.stationPosition(index: number): (Vector3, Vector3)
+	local side = CourseLayout.entranceSide(index)
+	local base = CourseLayout.basePosition(index)
+	local x = base.X + side * (CourseLayout.BASE_SIZE.X / 2 + CourseLayout.STATION_GAP)
+	return Vector3.new(x, 0, base.Z), Vector3.new(side, 0, 0)
 end
 
 -- Cette méthode permet de donner les emplacements des présentoirs d'une base (2 rangées de 3, centrés sur la base)
