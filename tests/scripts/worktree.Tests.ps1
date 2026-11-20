@@ -790,6 +790,9 @@ Describe 'fad-worktree-cleanup.ps1 : decisions' {
     (Invoke-Cleanup $sb @('-Gh', (Join-Path $sb.Bin 'absent\gh.exe'))).Code | Should Be 0
     (Get-SbPaths $sb 'feature/8-clo').Dir | Should Exist
     (Get-Content (Get-SbPaths $sb 'x').Log -Raw) | Should Match 'gh sans reponse pour feature/8-clo .*introuvable'
+    # Message d'erreur de PowerShell sur plusieurs lignes : ramene a une ligne, il n'est pas repete au passage suivant.
+    Invoke-Cleanup $sb @('-Gh', (Join-Path $sb.Bin 'absent\gh.exe')) | Out-Null
+    @(Get-Content (Get-SbPaths $sb 'x').Log | Where-Object { $_ -match 'gh sans reponse pour feature/8-clo .*introuvable' }).Count | Should Be 1
   }
 
   # Chemin explicite de gh, comme la tache planifiee qui tourne sans profil ni shim dans le PATH (#35).

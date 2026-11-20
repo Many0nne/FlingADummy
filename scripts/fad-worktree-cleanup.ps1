@@ -108,25 +108,33 @@ function Test-PrCoversBranch([string]$Branch, $Pr) {
   return ($LASTEXITCODE -eq 0)
 }
 
+# Cette methode permet de ramener un message d'erreur (gh, PowerShell) a une ligne courte lorsqu'il va au journal :
+# -Once compare des lignes entieres, un message sur plusieurs lignes serait repete a chaque passage.
+function Format-OneLine([string]$Text) {
+  $t = ($Text -replace '\s+', ' ').Trim()
+  if ($t.Length -gt 200) { $t = $t.Substring(0, 200) + '...' }
+  $t
+}
+
 # Cette methode permet de lister les PR d'une branche (etat, commit de tete) lorsqu'il faut savoir si son travail est merge ;
 # $null si gh ne repond pas (on ne supprime alors rien), la cause (code de retour, debut de la sortie d'erreur) dans $script:ghError.
 function Get-BranchPrs([string]$Branch) {
   $script:ghError = $null
   $ErrorActionPreference = 'Continue'  # stderr de gh capture (2>&1) sans devenir une erreur bloquante
+  $global:LASTEXITCODE = 0  # un -Gh en .ps1 qui finit sans exit laisserait le code de la commande precedente
   try { $out = @(& $Gh pr list --repo $repo --head $Branch --state all --json number,state,headRefOid 2>&1) }
-  catch { $script:ghError = "$Gh introuvable ou en erreur : $($_.Exception.Message)"; return $null }
+  catch { $script:ghError = "$Gh introuvable ou en erreur : $(Format-OneLine $_.Exception.Message)"; return $null }
   $code = $LASTEXITCODE
-  $stderr = @($out | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] } | ForEach-Object { "$_".Trim() } | Where-Object { $_ })
+  # Le message de gh ne contient pas de jeton : il va tel quel (sur une ligne) au journal.
+  $stderr = Format-OneLine (@($out | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] } | ForEach-Object { "$_" }) -join ' | ')
   $json = ($out | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] }) -join "`n"
   if ($code -ne 0 -or -not $json.Trim()) {
-    # Une ligne, bornee : le message de gh ne contient pas de jeton, mais le journal reste lisible.
-    $detail = (($stderr -join ' | ') -replace '\s+', ' ')
-    if ($detail.Length -gt 200) { $detail = $detail.Substring(0, 200) + '...' }
-    $script:ghError = "code $code$(if ($detail) { " : $detail" } else { ', sans sortie d''erreur' })"
+    $cause = if ($code -ne 0) { "code $code" } else { 'code 0 mais sortie vide' }
+    $script:ghError = "$cause$(if ($stderr) { " : $stderr" } else { ', sans sortie d''erreur' })"
     return $null
   }
   # La virgule garde un tableau vide (branche sans PR) : sans elle, l'appelant recevrait $null, comme une panne de gh.
-  try { return , @($json | ConvertFrom-Json) } catch { $script:ghError = "sortie JSON illisible : $($_.Exception.Message)"; return $null }
+  try { return , @($json | ConvertFrom-Json) } catch { $script:ghError = "sortie JSON illisible : $(Format-OneLine $_.Exception.Message)"; return $null }
 }
 
 # Cette methode permet de dire pourquoi un worktree ou sa branche locale ne peuvent pas etre supprimes sans perte
