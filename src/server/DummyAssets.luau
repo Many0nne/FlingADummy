@@ -9,6 +9,9 @@ local DummyShape = require(ReplicatedStorage.Shared.DummyShape)
 
 local DummyAssets = {}
 
+local LOAD_ATTEMPTS = 3
+local RETRY_DELAY = 2 -- s
+
 -- Cette méthode permet de créer la MeshPart d'un maillage publié (collision en boîte, texture de l'atlas) lorsque
 -- les gabarits se construisent ; nil si le maillage n'est pas publié ou ne se charge pas.
 local function createPart(name: string): MeshPart?
@@ -16,12 +19,19 @@ local function createPart(name: string): MeshPart?
 	if not uri then
 		return nil
 	end
-	local ok, result = pcall(function()
-		return AssetService:CreateMeshPartAsync(Content.fromUri(uri), {
-			CollisionFidelity = Enum.CollisionFidelity.Box,
-			RenderFidelity = Enum.RenderFidelity.Automatic,
-		})
-	end)
+	local ok, result
+	for attempt = 1, LOAD_ATTEMPTS do
+		ok, result = pcall(function()
+			return AssetService:CreateMeshPartAsync(Content.fromUri(uri), {
+				CollisionFidelity = Enum.CollisionFidelity.Box,
+				RenderFidelity = Enum.RenderFidelity.Automatic,
+			})
+		end)
+		if ok or attempt == LOAD_ATTEMPTS then
+			break
+		end
+		task.wait(RETRY_DELAY) -- service d'assets momentanément indisponible ou limité
+	end
 	if not ok then
 		warn("[DummyAssets] maillage " .. name .. " : " .. tostring(result))
 		return nil

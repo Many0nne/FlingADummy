@@ -2,7 +2,7 @@
 return function(T, Loader)
 	local roblox = require("@lune/roblox")
 
-	-- ReplicatedStorage simulé : dossier de gabarits optionnel
+	-- Cette méthode permet de simuler ReplicatedStorage lorsqu'un test choisit d'avoir ou non des gabarits.
 	local function storage(folder)
 		return {
 			FindFirstChild = function(_, name)
@@ -11,7 +11,8 @@ return function(T, Loader)
 		}
 	end
 
-	-- Dossier de gabarits maillés prêt (une MeshPart par pièce et par accessoire)
+	-- Cette méthode permet de créer un dossier de gabarits maillés prêt (une MeshPart avec atlas par pièce et par
+	-- accessoire) lorsqu'un test simule des assets publiés.
 	local function templates(DummyShape)
 		local folder = roblox.Instance.new("Folder")
 		folder.Name = DummyShape.TEMPLATES
@@ -32,6 +33,7 @@ return function(T, Loader)
 		return folder
 	end
 
+	-- Cette méthode permet de charger DummyShape avec ou sans gabarits lorsqu'un groupe de tests démarre.
 	local function load(folderFactory)
 		local holder = {}
 		local loader = Loader.new({

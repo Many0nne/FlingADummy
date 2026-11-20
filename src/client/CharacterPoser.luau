@@ -21,27 +21,27 @@ local FADE = 0.2 -- fondu d'entrée et de sortie des clips (s)
 local THROW_FADE = 0.08
 local RELEASE_GRACE = 0.25 -- lâcher de secours après le marqueur (clip absent ou en retard, s)
 local THROW_TIMEOUT = 3 -- fin forcée d'un lancer local (s)
-local FLY_TIME = 0.6 -- vol du mannequin décoratif lâché, en attendant le mannequin du serveur (s)
-local FLY_SPIN = Vector3.new(7, 0, 2) -- rotation du mannequin décoratif lâché (rad/s)
+local HANDOFF_TIME = 0.6 -- attente du mannequin du serveur, décoratif figé au point de lâcher (s)
 
 type State = { visual: Model?, key: string? }
 type Throw = {
 	start: number,
 	released: boolean,
 	release: () -> (),
-	velocity: Vector3,
+	finished: () -> (),
 	track: AnimationTrack?,
 }
-type Flying = { model: Model, velocity: Vector3, born: number }
+type Released = { model: Model, born: number }
 
 local CharacterPoser = {}
 
 local localPlayer = Players.LocalPlayer
 local states: { [Player]: State } = {}
-local animations: { [string]: Animation } = {}
-local tracks: { character: Model?, byName: { [string]: AnimationTrack } } = { character = nil, byName = {} }
+-- false = chargement raté, pas retenté à chaque frame
+local animations: { [string]: Animation | false } = {}
+local tracks: { character: Model?, byName: { [string]: AnimationTrack | false } } = { character = nil, byName = {} }
 local throw: Throw? = nil
-local flying: Flying? = nil
+local released: Released? = nil
 
 local CLIPS: { [string]: AnimationData.Clip } = {}
 for _, clip in AnimationData.CLIPS do
@@ -52,8 +52,8 @@ end
 -- clip construit à la volée (KeyframeSequenceProvider) tant qu'il n'est pas publié ; nil sinon.
 local function animationFor(clip: AnimationData.Clip): Animation?
 	local cached = animations[clip.name]
-	if cached then
-		return cached
+	if cached ~= nil then
+		return cached or nil
 	end
 	local uri = Assets.uri(Assets.ANIMATIONS[clip.name])
 	if not uri and RunService:IsStudio() then
@@ -63,6 +63,7 @@ local function animationFor(clip: AnimationData.Clip): Animation?
 		uri = if ok then result else nil
 	end
 	if not uri then
+		animations[clip.name] = false
 		return nil
 	end
 	local animation = Instance.new("Animation")
@@ -83,19 +84,24 @@ local function trackFor(name: string): AnimationTrack?
 		tracks = { character = character, byName = {} }
 	end
 	local existing = tracks.byName[name]
-	if existing then
-		return existing
+	if existing ~= nil then
+		return existing or nil
 	end
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
+	if not animator then
+		return nil -- Animator pas encore créé : on retente à la frame suivante
+	end
 	local animation = animationFor(CLIPS[name])
-	if not animator or not animation then
+	if not animation then
+		tracks.byName[name] = false
 		return nil
 	end
 	local ok, track = pcall(function()
 		return animator:LoadAnimation(animation)
 	end)
 	if not ok then
+		tracks.byName[name] = false
 		return nil
 	end
 	tracks.byName[name] = track
@@ -105,7 +111,7 @@ end
 -- Cette méthode permet de jouer ou d'arrêter un clip en boucle du joueur local lorsque son action change ;
 -- l'entraînement est calé sur REP_TIME et démarre au sommet, là où le serveur compte la répétition.
 local function setLooping(name: string, on: boolean)
-	local track = if on then trackFor(name) else tracks.byName[name]
+	local track = if on then trackFor(name) else tracks.byName[name] or nil
 	if not track then
 		return
 	end
@@ -184,7 +190,8 @@ local function setVisual(state: State, key: string?, build: (() -> Model)?)
 end
 
 -- Cette méthode permet de lâcher le mannequin du joueur local lorsque l'animation de lancer atteint son marqueur
--- Release (ou le délai de secours) : le mannequin décoratif part sur sa lancée et le lancer est envoyé au serveur.
+-- Release (ou le délai de secours) : le décoratif reste figé au point de lâcher, là où le mannequin du serveur va
+-- apparaître (le faire voler d'avance le faisait reculer à l'arrivée du vrai), et le lancer part au serveur.
 local function release()
 	local current = throw
 	if not current or current.released then
@@ -193,32 +200,24 @@ local function release()
 	current.released = true
 	local state = states[localPlayer]
 	if state and state.visual then
-		if flying then
-			flying.model:Destroy()
+		if released then
+			released.model:Destroy()
 		end
-		flying = { model = state.visual, velocity = current.velocity, born = os.clock() }
+		released = { model = state.visual, born = os.clock() }
 		state.visual = nil
 		state.key = nil
 	end
 	current.release()
 end
 
--- Cette méthode permet d'avancer le mannequin décoratif lâché (balistique, en vrille) lorsque Heartbeat tourne ; il
--- disparaît quand le mannequin du serveur arrive (handOff) ou après FLY_TIME.
-local function updateFlying(now: number, dt: number)
-	local current = flying
-	if not current then
-		return
-	end
-	if now - current.born > FLY_TIME or not current.model.Parent then
+-- Cette méthode permet de retirer le décoratif lâché lorsque le mannequin du serveur tarde (HANDOFF_TIME) ou que
+-- le lancer a été refusé.
+local function updateReleased(now: number)
+	local current = released
+	if current and (now - current.born > HANDOFF_TIME or not current.model.Parent) then
 		current.model:Destroy()
-		flying = nil
-		return
+		released = nil
 	end
-	current.velocity -= Vector3.new(0, Workspace.Gravity * dt, 0)
-	local spin = CFrame.Angles(FLY_SPIN.X * dt, FLY_SPIN.Y * dt, FLY_SPIN.Z * dt)
-	local pivot = current.model:GetPivot()
-	current.model:PivotTo((pivot + current.velocity * dt) * spin)
 end
 
 -- Cette méthode permet de jouer les clips en boucle du joueur local selon son action et de clore son lancer
@@ -229,6 +228,7 @@ local function updateLocal(action: any, now: number)
 		local playing = current.track ~= nil and current.track.IsPlaying
 		if now - current.start > THROW_TIMEOUT or (current.released and not playing) then
 			throw = nil
+			current.finished()
 			current = nil
 		end
 	end
@@ -270,9 +270,9 @@ local function update(player: Player, state: State)
 end
 
 -- Cette méthode permet de lancer le geste du joueur local lorsque la jauge est arrêtée : clip de lancer, puis
--- `onRelease` au marqueur Release ; `velocity` est la vitesse de départ du mannequin (vol du décoratif).
-function CharacterPoser.playThrow(onRelease: () -> (), velocity: Vector3)
-	local current: Throw = { start = os.clock(), released = false, release = onRelease, velocity = velocity }
+-- `onRelease` au marqueur Release et `onFinished` quand le geste est fini (lancer parti ou refusé).
+function CharacterPoser.playThrow(onRelease: () -> (), onFinished: () -> ())
+	local current: Throw = { start = os.clock(), released = false, release = onRelease, finished = onFinished }
 	throw = current
 	setLooping("Hold", false)
 	local track = trackFor("Throw")
@@ -280,6 +280,12 @@ function CharacterPoser.playThrow(onRelease: () -> (), velocity: Vector3)
 		current.track = track
 		track:GetMarkerReachedSignal("Release"):Once(release)
 		track:Play(THROW_FADE)
+		-- Fondu de sortie avant la fin du clip : un clip qui s'arrête seul passe d'un coup à l'animation par défaut
+		task.delay(CLIPS.Throw.length - FADE, function()
+			if throw == current and track.IsPlaying then
+				track:Stop(FADE)
+			end
+		end)
 	end
 	task.delay(GameConfig.THROW_RELEASE_TIME + RELEASE_GRACE, function()
 		if throw == current then
@@ -295,14 +301,15 @@ end
 
 -- Cette méthode permet de retirer le mannequin décoratif lâché lorsque le mannequin du serveur prend le relais.
 function CharacterPoser.handOff()
-	if flying then
-		flying.model:Destroy()
-		flying = nil
+	if released then
+		released.model:Destroy()
+		released = nil
 	end
 end
 
 -- Cette méthode permet de brancher le suivi des joueurs et la boucle des animations lorsque le client démarre.
 function CharacterPoser.init()
+	-- Cette méthode permet de suivre un joueur lorsqu'il rejoint la partie (ou y est déjà).
 	local function track(player: Player)
 		states[player] = { visual = nil, key = nil }
 	end
@@ -318,13 +325,21 @@ function CharacterPoser.init()
 		end
 	end)
 	-- Heartbeat : après la simulation, les mains sont à leur place animée de la frame
-	RunService.Heartbeat:Connect(function(dt)
+	RunService.Heartbeat:Connect(function()
 		local now = os.clock()
 		updateLocal(localPlayer:GetAttribute("Action"), now)
 		for player, state in states do
 			update(player, state)
 		end
-		updateFlying(now, dt)
+		updateReleased(now)
+	end)
+	-- Le serveur compte la répétition au sommet : on y recale le clip à chaque répétition (le premier lancement
+	-- d'un clip publié encore en chargement ignore TimePosition)
+	localPlayer:GetAttributeChangedSignal("ThrowPower"):Connect(function()
+		local train = tracks.byName.Train
+		if train and train.IsPlaying and localPlayer:GetAttribute("Action") == "Training" then
+			train.TimePosition = CLIPS.Train.markers.Top
+		end
 	end)
 end
 

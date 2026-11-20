@@ -5,12 +5,13 @@ return function(T, Loader, Lib)
 	local GameConfig = loader:require("src/shared/GameConfig")
 	local R15Rig = Lib.R15Rig
 
-	-- Direction du bras droit (pendant au repos) dans le repère du torse après la rotation d'épaule d'une pose
+	-- Cette méthode permet de donner la direction du bras (pendant au repos) dans le repère du torse lorsqu'un test
+	-- vérifie la rotation d'épaule d'une pose.
 	local function armDirection(pose)
 		return AnimationData.toCFrame(pose):VectorToWorldSpace(Vector3.new(0, -1, 0))
 	end
 
-	-- Keyframe d'un clip la plus proche d'un instant
+	-- Cette méthode permet de trouver la keyframe d'un clip la plus proche d'un instant lorsqu'un test vérifie une pose.
 	local function keyframeAt(clip, t)
 		local best = clip.keyframes[1]
 		for _, keyframe in clip.keyframes do
@@ -68,8 +69,9 @@ return function(T, Loader, Lib)
 			local dir = armDirection(clip.keyframes[1].poses.RightUpperArm)
 			T.expect(dir.Y > 0.9, "bras vers le haut, obtenu " .. tostring(dir))
 		end)
-		-- Positions mesurées par cinématique directe sur un avatar R15 type (tests/lib/R15Rig) : la direction du
-		-- haut du bras ne suffit pas, le buste tourné et le coude replié peuvent ramener la main dans le dos.
+		-- Cette méthode permet de donner les positions de la main droite et de la tête (cinématique directe d'un avatar
+		-- R15, tests/lib/R15Rig) à la keyframe la plus proche de `t` : la direction du haut du bras ne suffit pas, le
+		-- buste tourné et le coude replié peuvent ramener la main dans le dos.
 		local function handAndHead(t)
 			local poses
 			local best = math.huge

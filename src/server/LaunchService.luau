@@ -65,15 +65,21 @@ local flights: { [Player]: Flight } = {}
 local rng = Random.new()
 
 -- Cette méthode permet de donner le point de départ du mannequin (main de l'avatar au lâcher de l'animation de
--- lancer, devant et au-dessus de la tête ; zone de lancer si le personnage manque) lorsqu'un lancer part.
+-- lancer, au-dessus de la tête côté bras droit ; zone de lancer si le personnage manque) lorsqu'un lancer part.
 local function throwOrigin(player: Player, lane: Lane): Vector3
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-	local ahead = lane.direction * GameConfig.THROW_FORWARD
+	-- Repère horizontal de la piste (la direction du lancer est inclinée de LAUNCH_PITCH_DEG)
+	local flat = Vector3.new(lane.direction.X, 0, lane.direction.Z)
+	local forward = if flat.Magnitude > 1e-3 then flat.Unit else Vector3.zAxis
+	local right = forward:Cross(Vector3.yAxis)
+	local offset = Vector3.new(0, GameConfig.THROW_HEIGHT, 0)
+		+ forward * GameConfig.THROW_FORWARD
+		+ right * GameConfig.THROW_SIDE
 	if root then
-		return root.Position + Vector3.new(0, GameConfig.THROW_HEIGHT, 0) + ahead
+		return root.Position + offset
 	end
-	return lane.pad + Vector3.new(0, 3 + GameConfig.THROW_HEIGHT, 0) + ahead
+	return lane.pad + Vector3.new(0, 3, 0) + offset
 end
 
 -- Cette méthode permet de tirer le mannequin d'un joueur lorsqu'il le tient sur la zone de lancer (ou que `force`

@@ -45,6 +45,7 @@ def rb(v):
 
 
 def clear_scene():
+    """Cette methode permet de repartir d'une scene vide lorsque le script demarre (reglages d'usine)."""
     bpy.ops.wm.read_factory_settings(use_empty=True)
 
 
@@ -206,6 +207,8 @@ def join(name, parts, center):
 
 
 def build_pieces(body, dark, target):
+    """Cette methode permet de modeliser les 10 pieces du gabarit (blocs arrondis, articulations, cibles) lorsque
+    le script construit le mannequin ; retourne nom -> objet."""
     objs = {}
     # Torse : bloc arrondi, ceinture noire, cibles devant et derriere, plaque de poitrine
     size, c = PIECES["Torso"]
@@ -359,6 +362,7 @@ def check_bounds(objs):
 
 
 def render_preview(path):
+    """Cette methode permet de rendre une image d'apercu du mannequin lorsque l'export est fini."""
     scene = bpy.context.scene
     try:
         scene.render.engine = "BLENDER_EEVEE"
@@ -399,6 +403,8 @@ def render_preview(path):
 
 
 def main():
+    """Cette methode permet d'enchainer construction, verification, sauvegarde, export et apercu lorsque Blender
+    lance le script."""
     argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
     os.makedirs(EXPORT, exist_ok=True)
     clear_scene()
