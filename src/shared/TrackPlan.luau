@@ -19,6 +19,7 @@ export type Site = {
 
 export type TrapBox = {
 	id: number,
+	site: number, -- piège (site) auquel appartient la boîte : un vol ne le déclenche qu'une fois, toutes colonnes confondues
 	kind: string, -- Shared.Traps.KINDS
 	zone: number,
 	column: number, -- colonne d'obstacles (1 à SLOT_COUNT)
@@ -34,7 +35,7 @@ TrackPlan.END_GAP = 6 -- dégagement avant la zone suivante (m)
 TrackPlan.SPACING = 35 -- écart visé entre deux sites (m)
 TrackPlan.MIN_SITES = 3 -- obstacles et pièges d'une zone, au moins…
 TrackPlan.MAX_SITES = 8 -- … et au plus (zones longues : sites plus espacés)
-TrackPlan.TRAP_EVERY = 150 -- un piège de plus par tranche de 150 m (zones longues)
+TrackPlan.TRAP_EVERY = 150 -- un piège de plus par tranche de 150 m (zones longues), au plus un site sur trois
 TrackPlan.GLASS_SITE = 2 -- les vitres prennent le 2e site de chaque zone
 
 -- Cette méthode permet de donner la hauteur d'une rangée de vitres (ou d'un piège en colonne) à `z` lorsque l'on la
@@ -58,11 +59,22 @@ function TrackPlan.zoneSites(index: number, courseLength: number): { Site }
 	local glassAt = math.min(TrackPlan.GLASS_SITE, count)
 	local trapAt: { [number]: boolean } = {}
 	for j = 1, trapCount do
-		local at = math.floor(j * (count + 1) / (trapCount + 1) + 0.5)
-		while at == glassAt or trapAt[at] do
-			at += 1
+		-- Place visée, sinon la plus proche libre (ni vitres, ni autre piège), d'un côté ou de l'autre
+		local wanted = math.clamp(math.floor(j * (count + 1) / (trapCount + 1) + 0.5), 1, count)
+		for shift = 0, count do
+			local candidates = { wanted + shift, wanted - shift }
+			local placed = false
+			for _, at in candidates do
+				if at >= 1 and at <= count and at ~= glassAt and not trapAt[at] then
+					trapAt[at] = true
+					placed = true
+					break
+				end
+			end
+			if placed then
+				break
+			end
 		end
-		trapAt[math.min(at, count)] = true
 	end
 	local sites = {}
 	local nextObstacle = 1
@@ -106,13 +118,16 @@ end
 -- lorsque le serveur construit la piste.
 function TrackPlan.trapBoxes(sites: { Site }): { TrapBox }
 	local boxes = {}
+	local trapSite = 0
 	for _, site in sites do
 		if site.kind == "Trap" then
+			trapSite += 1
 			for column = 1, GameConfig.SLOT_COUNT do
 				local x = CourseLayout.slotX(column)
 				local center, size = TrackPlan.trapBox(site.name, x, site.z)
 				table.insert(boxes, {
 					id = #boxes + 1,
+					site = trapSite,
 					kind = site.name,
 					zone = site.zone,
 					column = column,

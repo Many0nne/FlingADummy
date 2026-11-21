@@ -177,7 +177,8 @@ Comme 01 et 09 : le lancer fait le lien entre les deux.
 - **Obstacles partagés** (`Server.Obstacles`, plan dans `Shared.TrackPlan`) : dans chaque thème, une rangée de 4 vitres
   (une par colonne, repère de distance, cadre à la couleur du thème), puis les 2 ou 3 obstacles cassables du thème à
   tour de rôle (`Server.ThemeObstacles`, un par colonne ou d'un seul tenant sur la largeur des colonnes) et son piège
-  signature (section « Zones de la piste »), sites espacés régulièrement (≈ 35 m, 3 à 8 par thème).
+  signature (section « Zones de la piste », un second piège dans les thèmes longs), sites espacés régulièrement
+  (≈ 35 m, 3 à 8 par thème).
   Une pièce déplacée réapparaît à sa place **5 s après le dernier choc** subi par son obstacle, une par une de bas en haut
   (0,05 s d'écart), en grossissant depuis son centre ; jamais sur un mannequin posé dedans. Un objet projeté est compté
   pour le mannequin le plus proche (règles dans `Shared.ObstacleRules`).
@@ -205,9 +206,11 @@ du dessus des gradins, décor), comme les zones de *Throw a Seed*, ses obstacles
 Panneaux d'entrée de zone : « FOREST x1.35 CHANCE ».
 
 **Pièges signatures** (`Shared.Traps`, habillage `Server.TrapProps`) : un par colonne d'obstacles, décor sans collision ;
-le serveur le déclenche quand le torse traverse sa boîte (trajet de la frame testé, une fois par vol et par piège) et
+le serveur le déclenche quand le torse traverse sa boîte (trajet de la frame testé, une fois par vol et par piège,
+toutes colonnes confondues) et
 remplace la vitesse du mannequin (rebond, souffle, coup de côté, écrasement, arrachement, propulsion), casse 1 à 3 os
-sur les membres les plus proches et écrit la cause du crash (« Squashed by a hydraulic press »). Chaque client joue son
+sur les membres les plus proches et écrit la cause du crash (« Squashed by a hydraulic press », gardée pour les os
+cassés dans les 0,8 s qui suivent). Chaque client joue son
 son, sa gerbe de particules et son popup (« BOING! ») ; les pièces mobiles (pales, rondin, presse, diable, vague) sont
 animées par chaque client (`Client.TrapMotion`).
 

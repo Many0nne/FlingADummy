@@ -106,7 +106,9 @@ local function staggeredWall(
 	local step = brick.X + GAP
 	local count = math.floor(SPAN / step)
 	for row = 0, rows - 1 do
-		local offset = if row % 2 == 0 then 0 else step / 2
+		-- Rangée centrée sur la largeur des colonnes (la largeur d'un bloc ne divise pas toujours SPAN)
+		local margin = (SPAN - count * step) / 2
+		local offset = margin + (if row % 2 == 0 then 0 else step / 2)
 		for col = 0, count - 1 - row % 2 do
 			local x = -SPAN / 2 + step / 2 + col * step + offset
 			local y = brick.Y / 2 + row * (brick.Y + GAP)
@@ -290,7 +292,15 @@ builders.Sandcastle = function(kit, z)
 			block(add, "Tower", Vector3.new(2.2, 4, 2.2), position, dark, LIGHT, "Crate")
 		end
 		block(add, "Keep", Vector3.new(3.6, 5.6, 3.6), Vector3.new(x, 2.4 + GAP + 2.8, z), sand, LIGHT, "Crate")
-		block(add, "Flag", Vector3.new(1.6, 1.2, 0.3), Vector3.new(x, 8.24 + 0.6, z), rgb(235, 60, 60), LIGHT, "Crate")
+		block(
+			add,
+			"Flag",
+			Vector3.new(1.6, 1.2, 0.3),
+			Vector3.new(x, 2.4 + 2 * GAP + 5.6 + 0.6, z),
+			rgb(235, 60, 60),
+			LIGHT,
+			"Crate"
+		)
 	end)
 end
 

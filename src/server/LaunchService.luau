@@ -34,6 +34,7 @@ local THUD_DV = 40 -- choc du torse sans os cassé qui mérite un « boum »
 local THUD_COOLDOWN = 0.25
 local GLASS_CAUSE_WINDOW = 0.15 -- un os cassé juste après une vitre est attribué à la vitre (s)
 local CAUSE_RADIUS = 7 -- un os cassé près d'une pièce d'obstacle lui est attribué (studs)
+local TRAP_CAUSE_WINDOW = 0.8 -- un os cassé juste après un piège (retombée de la presse, du trampoline) lui est attribué (s)
 
 export type Impact = {
 	kind: string, -- "Throw" | "Glass" | "Bone" | "Smash" | "Thud" | "Trap"
@@ -63,7 +64,8 @@ type Flight = {
 	lastThud: number,
 	worstImpact: { kind: string, dv: number, speed: number }?,
 	impacts: { Impact },
-	traps: { [number]: boolean }, -- pièges déjà déclenchés par ce vol (id de TrackPlan.TrapBox)
+	traps: { [number]: boolean }, -- pièges déjà déclenchés par ce vol (site de TrackPlan.TrapBox, toutes colonnes)
+	lastTrap: { kind: string, at: number }?, -- dernier piège déclenché : cause des os cassés juste après
 }
 
 local LaunchService = {}
@@ -147,6 +149,7 @@ local function startFlight(owner: Player?, key: any, slot: Slot, power: number, 
 		worstImpact = nil,
 		impacts = {},
 		traps = {},
+		lastTrap = nil,
 	}
 	return dummy, origin, speed
 end
@@ -297,7 +300,8 @@ end
 -- vitesse de tout le mannequin (Shared.Traps.react, recalée comme référence pour ne pas compter de choc), rotation,
 -- os cassés, cause du crash et annonce aux clients.
 local function triggerTrap(flight: Flight, box: TrackPlan.TrapBox, position: Vector3)
-	flight.traps[box.id] = true
+	flight.traps[box.site] = true
+	flight.lastTrap = { kind = box.kind, at = os.clock() }
 	local def = Traps.KINDS[box.kind]
 	local before = flight.torso.AssemblyLinearVelocity
 	local outward = if position.X >= box.x then 1 else -1
@@ -340,7 +344,7 @@ local function checkTraps(flight: Flight, previous: Vector3, position: Vector3)
 	for _, box in Obstacles.traps() do
 		local half = box.size.Z / 2
 		if
-			not flight.traps[box.id]
+			not flight.traps[box.site]
 			and box.z + half >= minZ
 			and box.z - half <= maxZ
 			and Traps.crosses(box.center, box.size, previous, position)
@@ -356,6 +360,10 @@ end
 local function classifyCause(flight: Flight, position: Vector3): string
 	if os.clock() - flight.lastGlass < GLASS_CAUSE_WINDOW then
 		return "Glass"
+	end
+	local trap = flight.lastTrap
+	if trap and os.clock() - trap.at < TRAP_CAUSE_WINDOW then
+		return trap.kind
 	end
 	local piece = Obstacles.nearest(position, CAUSE_RADIUS)
 	return if piece then piece.kind else "Ground"

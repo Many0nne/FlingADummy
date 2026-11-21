@@ -70,6 +70,8 @@ local function moving(
 		Parent = model,
 	})
 	model.PrimaryPart = anchor
+	-- Diffusé d'un bloc (instance streaming) : une pièce arrivée après les autres ne garde pas un décalage
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	model:SetAttribute("Motion", motion)
 	model:SetAttribute("Axis", axis)
 	model:SetAttribute("Amplitude", amplitude)
@@ -158,8 +160,8 @@ builders.SwingLog = function(model, at, box)
 		put(model, at, Vector3.new(2, top, 2), Vector3.new(side * 6.5, top / 2, 0), bark)
 	end
 	put(model, at, Vector3.new(15, 1.6, 1.6), Vector3.new(0, top, 0), rgb(150, 95, 50))
-	-- Rondin suspendu : balance autour de l'axe X (vers l'avant et l'arrière de la piste)
-	local swing = moving(model, at * CFrame.new(0, top, 0), "Swing", Vector3.xAxis, 50, 2.2)
+	-- Rondin suspendu : balance autour de l'axe Z, en travers de la colonne (il frappe le mannequin de côté)
+	local swing = moving(model, at * CFrame.new(0, top, 0), "Swing", Vector3.zAxis, 50, 2.2)
 	for _, x in { -3.5, 3.5 } do
 		put(swing, at, Vector3.new(0.4, top - 6, 0.4), Vector3.new(x, top - (top - 6) / 2, 0), rgb(235, 215, 165))
 	end

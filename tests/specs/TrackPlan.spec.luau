@@ -77,6 +77,23 @@ return function(T, Loader)
 		end)
 	end)
 
+	T.describe("TrackPlan.zoneSites (pièges)", function()
+		T.it("pose tous les pièges prévus sans en perdre, ni sur les vitres", function()
+			for index, zone in Zones.LIST do
+				local length = Zones.finish(index, LENGTH) - zone.start
+				local zoneSites = TrackPlan.zoneSites(index, LENGTH)
+				local traps = 0
+				for _, site in zoneSites do
+					traps += if site.kind == "Trap" then 1 else 0
+				end
+				local base =
+					math.clamp(math.floor(length / TrackPlan.SPACING + 0.5), TrackPlan.MIN_SITES, TrackPlan.MAX_SITES)
+				local expected = math.max(1, math.min(math.floor(length / TrackPlan.TRAP_EVERY), math.floor(base / 3)))
+				T.expectEqual(traps, expected)
+			end
+		end)
+	end)
+
 	T.describe("TrackPlan.trapBoxes", function()
 		local boxes = TrackPlan.trapBoxes(sites)
 		T.it("pose une boîte par colonne d'obstacles et par piège, numérotées", function()
@@ -89,6 +106,18 @@ return function(T, Loader)
 				T.expectEqual(box.id, i)
 				T.expectEqual(box.x, CourseLayout.slotX(box.column))
 			end
+		end)
+
+		T.it("donne le même site aux boîtes d'un piège (une fois par vol, toutes colonnes confondues)", function()
+			local columnsBySite = {}
+			for _, box in boxes do
+				columnsBySite[box.site] = (columnsBySite[box.site] or 0) + 1
+			end
+			for site, columns in columnsBySite do
+				T.expectEqual(columns, GameConfig.SLOT_COUNT)
+				T.expect(site >= 1, "site numéroté")
+			end
+			T.expectEqual(#boxes, #columnsBySite * GameConfig.SLOT_COUNT)
 		end)
 
 		T.it("part sous le sol (mannequin couché) et monte à la hauteur du piège ou des vitres", function()
