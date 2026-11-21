@@ -362,9 +362,8 @@ DummyShape.SEE_THROUGH = {
 } :: { [string]: { min: number, max: number } } -- par nom de matériau
 DummyShape.MAX_TRANSPARENCY = 0.5 -- au-delà, une pièce visible ne se voit plus en jeu (garde-fou des tests)
 
--- Cette méthode permet de donner le matériau et la transparence d'une pièce ajoutée (`def` : Shared.DummyModels.ADDONS)
--- sous une déclinaison lorsque l'on la pose : matériau de la palette sauf pour une vitre, puis verre et champ de force
--- rendus en plastique lisse translucide (SEE_THROUGH).
+-- Cette méthode permet de donner le matériau et la transparence d'une pièce ajoutée (`def`) sous une déclinaison lorsque
+-- l'on la pose : matériau de la palette sauf pour une vitre, verre et champ de force bornés par SEE_THROUGH.
 function DummyShape.addonFinish(def: DummyModels.Addon, variant: Variant?): (Enum.Material, number)
 	local transparency = def.transparency or 0
 	-- Une vitre (casque de scaphandre, visière, verres) garde son matériau d'origine sous une palette de variante générée
@@ -450,7 +449,11 @@ local function attachAddon(
 		weld.Parent = accessory
 		accessory:SetAttribute("FxBase", offset)
 		if def.spin then
-			accessory:SetAttribute("FxSpin", def.spin.axis.Unit * def.spin.speed)
+			-- Axe du gabarit exprimé dans le repère réel de la pièce (demi-tour MESH_FLIP : X et Z inversés)
+			local axis = if accessory:GetAttribute(DummyShape.FLIPPED)
+				then DummyShape.MESH_FLIP:VectorToObjectSpace(def.spin.axis.Unit)
+				else def.spin.axis.Unit
+			accessory:SetAttribute("FxSpin", axis * def.spin.speed)
 		end
 		if def.bob then
 			accessory:SetAttribute("FxBob", Vector2.new(def.bob.amplitude * scale, def.bob.period))

@@ -217,6 +217,11 @@ return function(T, Loader)
 			local base = ring:GetAttribute("FxBase")
 			T.expectNear((base.Position - DummyShape.ACCESSORIES.gold_CoinRing.offset * 2).Magnitude, 0, 1e-5)
 			T.expectNear(ring:GetAttribute("FxSpin").Magnitude, DummyShape.ACCESSORIES.gold_CoinRing.spin.speed, 1e-4)
+			-- Pièce retournée (MESH_FLIP) : l'axe Z du gabarit devient -Z dans son repère, sens de rotation gardé
+			local disc = DummyShape.buildVisual(1, { accessories = { "void_AccretionHot" } }).void_AccretionHot
+			local def = DummyShape.ACCESSORIES.void_AccretionHot
+			local world = disc.CFrame:VectorToWorldSpace(disc:GetAttribute("FxSpin"))
+			T.expectNear((world - def.spin.axis.Unit * def.spin.speed).Magnitude, 0, 1e-3, "axe de rotation du gabarit")
 		end)
 		T.it("flotte d'une amplitude à l'échelle de construction", function()
 			local def = DummyShape.ACCESSORIES.ghost_LanternFlame

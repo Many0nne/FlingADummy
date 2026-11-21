@@ -1,6 +1,6 @@
 -- Catalogue généré (#94) : familles × palettes, règles de cote et de revenu, looks reconstruits à partir des modèles
 -- dessinés.
-return function(T, Loader)
+return function(T, Loader, Lib)
 	local loader = Loader.new()
 	local Collection = loader:require("src/shared/Collection")
 	local DummyFamilies = loader:require("src/shared/DummyFamilies")
@@ -24,6 +24,27 @@ return function(T, Loader)
 		end
 		return list
 	end
+
+	T.describe("assets/dummy/export/generated.json (aperçus et icônes des générés)", function()
+		T.it("suit les palettes et les modèles : sinon réexporter, rendre et republier les icônes", function()
+			local fs = require("@lune/fs")
+			local serde = require("@lune/serde")
+			local built = Lib.GeneratedLooks.build(Loader.new())
+			local saved = serde.decode("json", fs.readFile(Lib.GeneratedLooks.PATH))
+			local fresh = serde.decode("json", serde.encode("json", built, true))
+			for id, look in fresh do
+				T.expect(
+					serde.encode("json", saved[id] or {}) == serde.encode("json", look),
+					id
+						.. " : lune run tools/export-generated-looks.luau, build_collection.py --generated, dummy_icons.py,"
+						.. " puis publier l'icône (Assets.DUMMY_ICONS)"
+				)
+			end
+			for id in saved do
+				T.expect(fresh[id] ~= nil, id .. " n'est plus généré")
+			end
+		end)
+	end)
 
 	T.describe("DummyFamilies.PAIRS / PALETTES", function()
 		T.it("une liste par rareté, familles et palettes connues, aucun couple en double", function()
