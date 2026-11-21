@@ -1,0 +1,1173 @@
+{
+  "cell": [
+    7,
+    11
+  ],
+  "row": 6,
+  "sheets": [
+    {
+      "name": "collection",
+      "shots": [
+        {
+          "framing": "row",
+          "group": {
+            "color": "#ebebeb",
+            "name": "Common"
+          },
+          "items": [
+            {
+              "key": "crash",
+              "lines": [
+                "1 IN 3",
+                "$4/s"
+              ],
+              "look": "b42c673e10",
+              "title": "Crash Dummy"
+            },
+            {
+              "key": "rookie",
+              "lines": [
+                "1 IN 6",
+                "$5/s"
+              ],
+              "look": "4134a010c3",
+              "title": "Rookie Dummy"
+            },
+            {
+              "key": "traffic",
+              "lines": [
+                "1 IN 8",
+                "$6/s"
+              ],
+              "look": "ea015d642f",
+              "title": "Traffic Dummy"
+            },
+            {
+              "key": "pink_rookie",
+              "lines": [
+                "1 IN 10",
+                "$9/s"
+              ],
+              "look": "6fccb03a27",
+              "title": "Pink Rookie Dummy"
+            }
+          ],
+          "name": "collection-1"
+        },
+        {
+          "framing": "row",
+          "group": {
+            "color": "#5adc5a",
+            "name": "Uncommon"
+          },
+          "items": [
+            {
+              "key": "mint",
+              "lines": [
+                "1 IN 13",
+                "$15/s"
+              ],
+              "look": "c64b74a884",
+              "title": "Mint Dummy"
+            },
+            {
+              "key": "biker",
+              "lines": [
+                "1 IN 18",
+                "$22/s"
+              ],
+              "look": "7868b5debf",
+              "title": "Biker Dummy"
+            },
+            {
+              "key": "nerd",
+              "lines": [
+                "1 IN 28",
+                "$30/s"
+              ],
+              "look": "75d88664ce",
+              "title": "Nerd Dummy"
+            },
+            {
+              "key": "tangerine_nerd",
+              "lines": [
+                "1 IN 34",
+                "$37/s"
+              ],
+              "look": "36c40cab6d",
+              "title": "Tangerine Nerd Dummy"
+            },
+            {
+              "key": "grape_mint",
+              "lines": [
+                "1 IN 42",
+                "$46/s"
+              ],
+              "look": "839cfad28b",
+              "title": "Grape Mint Dummy"
+            },
+            {
+              "key": "cherry_biker",
+              "lines": [
+                "1 IN 51",
+                "$57/s"
+              ],
+              "look": "7570063115",
+              "title": "Cherry Biker Dummy"
+            }
+          ],
+          "name": "collection-2"
+        },
+        {
+          "framing": "row",
+          "group": {
+            "color": "#46a0ff",
+            "name": "Rare"
+          },
+          "items": [
+            {
+              "key": "ocean",
+              "lines": [
+                "1 IN 62",
+                "$70/s"
+              ],
+              "look": "946e06818e",
+              "title": "Ocean Dummy"
+            },
+            {
+              "key": "hero",
+              "lines": [
+                "1 IN 102",
+                "$100/s"
+              ],
+              "look": "14b7da8481",
+              "title": "Hero Dummy"
+            },
+            {
+              "key": "pilot",
+              "lines": [
+                "1 IN 153",
+                "$150/s"
+              ],
+              "look": "86aba9d9a6",
+              "title": "Pilot Dummy"
+            },
+            {
+              "key": "emerald_ocean",
+              "lines": [
+                "1 IN 203",
+                "$190/s"
+              ],
+              "look": "838a154e8e",
+              "title": "Emerald Ocean Dummy"
+            },
+            {
+              "key": "ruby_hero",
+              "lines": [
+                "1 IN 272",
+                "$240/s"
+              ],
+              "look": "c69fd5e632",
+              "title": "Ruby Hero Dummy"
+            },
+            {
+              "key": "sapphire_pilot",
+              "lines": [
+                "1 IN 372",
+                "$310/s"
+              ],
+              "look": "b0db469507",
+              "title": "Sapphire Pilot Dummy"
+            }
+          ],
+          "name": "collection-3"
+        },
+        {
+          "framing": "row",
+          "group": {
+            "color": "#be5aff",
+            "name": "Epic"
+          },
+          "items": [
+            {
+              "key": "ice",
+              "lines": [
+                "1 IN 502",
+                "$400/s"
+              ],
+              "look": "aa0853db7f",
+              "title": "Ice Dummy"
+            },
+            {
+              "key": "toxic",
+              "lines": [
+                "1 IN 802",
+                "$550/s"
+              ],
+              "look": "7834b63f20",
+              "title": "Toxic Dummy"
+            },
+            {
+              "key": "royal",
+              "lines": [
+                "1 IN 1.2K",
+                "$700/s"
+              ],
+              "look": "7bfea84994",
+              "title": "Royal Dummy"
+            },
+            {
+              "key": "shadow_ice",
+              "lines": [
+                "1 IN 1.6K",
+                "$960/s"
+              ],
+              "look": "dd4eececf3",
+              "title": "Shadow Ice Dummy"
+            },
+            {
+              "key": "amber_royal",
+              "lines": [
+                "1 IN 2.2K",
+                "$1.3K/s"
+              ],
+              "look": "82ca3f930f",
+              "title": "Amber Royal Dummy"
+            },
+            {
+              "key": "ruby_toxic",
+              "lines": [
+                "1 IN 3K",
+                "$1.8K/s"
+              ],
+              "look": "06048a0e12",
+              "title": "Ruby Toxic Dummy"
+            }
+          ],
+          "name": "collection-4"
+        },
+        {
+          "framing": "row",
+          "group": {
+            "color": "#ffbe28",
+            "name": "Legendary"
+          },
+          "items": [
+            {
+              "key": "gold",
+              "lines": [
+                "1 IN 4K",
+                "$2.5K/s"
+              ],
+              "look": "71e22c551f",
+              "title": "Gold Dummy"
+            },
+            {
+              "key": "lava",
+              "lines": [
+                "1 IN 7K",
+                "$3.5K/s"
+              ],
+              "look": "b3a6432b40",
+              "title": "Lava Dummy"
+            },
+            {
+              "key": "diamond",
+              "lines": [
+                "1 IN 10K",
+                "$5K/s"
+              ],
+              "look": "84efb2e994",
+              "title": "Diamond Dummy"
+            },
+            {
+              "key": "shadow_gold",
+              "lines": [
+                "1 IN 14K",
+                "$7.1K/s"
+              ],
+              "look": "31f2e005fe",
+              "title": "Shadow Gold Dummy"
+            },
+            {
+              "key": "ruby_diamond",
+              "lines": [
+                "1 IN 20K",
+                "$10K/s"
+              ],
+              "look": "39c7d0299d",
+              "title": "Ruby Diamond Dummy"
+            },
+            {
+              "key": "frost_lava",
+              "lines": [
+                "1 IN 28K",
+                "$14K/s"
+              ],
+              "look": "3e7b8d7277",
+              "title": "Frost Lava Dummy"
+            }
+          ],
+          "name": "collection-5"
+        },
+        {
+          "framing": "row",
+          "group": {
+            "color": "#ff466e",
+            "name": "Mythic"
+          },
+          "items": [
+            {
+              "key": "galaxy",
+              "lines": [
+                "1 IN 40K",
+                "$20K/s"
+              ],
+              "look": "02c30ee412",
+              "title": "Galaxy Dummy"
+            },
+            {
+              "key": "ghost",
+              "lines": [
+                "1 IN 70K",
+                "$30K/s"
+              ],
+              "look": "b6271d9c7c",
+              "title": "Ghost Dummy"
+            },
+            {
+              "key": "neon",
+              "lines": [
+                "1 IN 100K",
+                "$40K/s"
+              ],
+              "look": "ee89bf65ff",
+              "title": "Neon Dummy"
+            },
+            {
+              "key": "magma_ghost",
+              "lines": [
+                "1 IN 150K",
+                "$56K/s"
+              ],
+              "look": "0ea9716687",
+              "title": "Magma Ghost Dummy"
+            },
+            {
+              "key": "golden_galaxy",
+              "lines": [
+                "1 IN 220K",
+                "$77K/s"
+              ],
+              "look": "24b4c97a42",
+              "title": "Golden Galaxy Dummy"
+            },
+            {
+              "key": "frost_neon",
+              "lines": [
+                "1 IN 330K",
+                "$110K/s"
+              ],
+              "look": "a90f21afc7",
+              "title": "Frost Neon Dummy"
+            }
+          ],
+          "name": "collection-6"
+        },
+        {
+          "framing": "row",
+          "group": {
+            "color": "#6effe1",
+            "name": "Secret"
+          },
+          "items": [
+            {
+              "key": "king",
+              "lines": [
+                "1 IN 500K",
+                "$150K/s"
+              ],
+              "look": "f95c0461ac",
+              "title": "Crash King"
+            },
+            {
+              "key": "void",
+              "lines": [
+                "1 IN 1M",
+                "$200K/s"
+              ],
+              "look": "1f742354e9",
+              "title": "Void Dummy"
+            },
+            {
+              "key": "cosmic",
+              "lines": [
+                "1 IN 2M",
+                "$300K/s"
+              ],
+              "look": "600db6022e",
+              "title": "Cosmic Dummy"
+            },
+            {
+              "key": "shadow_king",
+              "lines": [
+                "1 IN 2.5M",
+                "$330K/s"
+              ],
+              "look": "68acd411ef",
+              "title": "Shadow Crash King"
+            },
+            {
+              "key": "golden_void",
+              "lines": [
+                "1 IN 3.2M",
+                "$370K/s"
+              ],
+              "look": "d9b82aa200",
+              "title": "Golden Void Dummy"
+            },
+            {
+              "key": "magma_cosmic",
+              "lines": [
+                "1 IN 4M",
+                "$410K/s"
+              ],
+              "look": "2c0a61b501",
+              "title": "Magma Cosmic Dummy"
+            }
+          ],
+          "name": "collection-7"
+        },
+        {
+          "framing": "row",
+          "group": {
+            "color": "#fff08c",
+            "name": "Divine"
+          },
+          "items": [
+            {
+              "key": "angelic_royal",
+              "lines": [
+                "1 IN 5M",
+                "$450K/s"
+              ],
+              "look": "d684e8dc21",
+              "title": "Angelic Royal Dummy"
+            },
+            {
+              "key": "radiant_galaxy",
+              "lines": [
+                "1 IN 9.1M",
+                "$590K/s"
+              ],
+              "look": "de8ed46c2a",
+              "title": "Radiant Galaxy Dummy"
+            },
+            {
+              "key": "angelic_hero",
+              "lines": [
+                "1 IN 17M",
+                "$790K/s"
+              ],
+              "look": "c1e9baf1d4",
+              "title": "Angelic Hero Dummy"
+            },
+            {
+              "key": "radiant_diamond",
+              "lines": [
+                "1 IN 30M",
+                "$1M/s"
+              ],
+              "look": "db5e98c7b1",
+              "title": "Radiant Diamond Dummy"
+            },
+            {
+              "key": "angelic_ghost",
+              "lines": [
+                "1 IN 55M",
+                "$1.3M/s"
+              ],
+              "look": "62af0753f6",
+              "title": "Angelic Ghost Dummy"
+            },
+            {
+              "key": "radiant_king",
+              "lines": [
+                "1 IN 100M",
+                "$1.7M/s"
+              ],
+              "look": "513bf03ea5",
+              "title": "Radiant Crash King"
+            }
+          ],
+          "name": "collection-8"
+        },
+        {
+          "framing": "row",
+          "group": {
+            "color": "#ff8ceb",
+            "name": "Celestial"
+          },
+          "items": [
+            {
+              "key": "starlight_hero",
+              "lines": [
+                "1 IN 500M",
+                "$3.6M/s"
+              ],
+              "look": "041b8ed735",
+              "title": "Starlight Hero Dummy"
+            },
+            {
+              "key": "nebula_galaxy",
+              "lines": [
+                "1 IN 910M",
+                "$4.7M/s"
+              ],
+              "look": "b15f21064d",
+              "title": "Nebula Galaxy Dummy"
+            },
+            {
+              "key": "aurora_ghost",
+              "lines": [
+                "1 IN 1.7B",
+                "$6.2M/s"
+              ],
+              "look": "d1db62a3a6",
+              "title": "Aurora Ghost Dummy"
+            },
+            {
+              "key": "starlight_cosmic",
+              "lines": [
+                "1 IN 3B",
+                "$8.1M/s"
+              ],
+              "look": "b209cf587c",
+              "title": "Starlight Cosmic Dummy"
+            },
+            {
+              "key": "nebula_king",
+              "lines": [
+                "1 IN 5.5B",
+                "$11M/s"
+              ],
+              "look": "4ef026fa92",
+              "title": "Nebula Crash King"
+            },
+            {
+              "key": "starlight_void",
+              "lines": [
+                "1 IN 10B",
+                "$14M/s"
+              ],
+              "look": "547aef8204",
+              "title": "Starlight Void Dummy"
+            }
+          ],
+          "name": "collection-9"
+        },
+        {
+          "framing": "row",
+          "group": {
+            "color": "#aa8cff",
+            "name": "Ethereal"
+          },
+          "items": [
+            {
+              "key": "prism_ice",
+              "lines": [
+                "1 IN 50B",
+                "$29M/s"
+              ],
+              "look": "71356c6d39",
+              "title": "Prism Ice Dummy"
+            },
+            {
+              "key": "aurora_royal",
+              "lines": [
+                "1 IN 91B",
+                "$37M/s"
+              ],
+              "look": "a73395d4d5",
+              "title": "Aurora Royal Dummy"
+            },
+            {
+              "key": "plasma_neon",
+              "lines": [
+                "1 IN 170B",
+                "$50M/s"
+              ],
+              "look": "7c1091c0c3",
+              "title": "Plasma Neon Dummy"
+            },
+            {
+              "key": "prism_diamond",
+              "lines": [
+                "1 IN 300B",
+                "$64M/s"
+              ],
+              "look": "650303fd29",
+              "title": "Prism Diamond Dummy"
+            },
+            {
+              "key": "plasma_void",
+              "lines": [
+                "1 IN 550B",
+                "$84M/s"
+              ],
+              "look": "e3cc72de83",
+              "title": "Plasma Void Dummy"
+            },
+            {
+              "key": "quantum_cosmic",
+              "lines": [
+                "1 IN 1T",
+                "$110M/s"
+              ],
+              "look": "5bfe346552",
+              "title": "Quantum Cosmic Dummy"
+            }
+          ],
+          "name": "collection-10"
+        },
+        {
+          "framing": "row",
+          "group": {
+            "color": "#ff6e1e",
+            "name": "Infinity"
+          },
+          "items": [
+            {
+              "key": "solar_galaxy",
+              "lines": [
+                "1 IN 5T",
+                "$230M/s"
+              ],
+              "look": "1b1c04c70f",
+              "title": "Solar Galaxy Dummy"
+            },
+            {
+              "key": "omega_ghost",
+              "lines": [
+                "1 IN 9.1T",
+                "$300M/s"
+              ],
+              "look": "02ad3fd59a",
+              "title": "Omega Ghost Dummy"
+            },
+            {
+              "key": "infinite_neon",
+              "lines": [
+                "1 IN 17T",
+                "$390M/s"
+              ],
+              "look": "0b51de0058",
+              "title": "Infinite Neon Dummy"
+            },
+            {
+              "key": "omega_void",
+              "lines": [
+                "1 IN 30T",
+                "$510M/s"
+              ],
+              "look": "9c35d29bcd",
+              "title": "Omega Void Dummy"
+            },
+            {
+              "key": "infinite_cosmic",
+              "lines": [
+                "1 IN 55T",
+                "$670M/s"
+              ],
+              "look": "0250576834",
+              "title": "Infinite Cosmic Dummy"
+            },
+            {
+              "key": "infinite_king",
+              "lines": [
+                "1 IN 100T",
+                "$870M/s"
+              ],
+              "look": "a90c3c2eee",
+              "title": "Infinite Crash King"
+            }
+          ],
+          "name": "collection-11"
+        }
+      ],
+      "title": "Mannequins de collection"
+    },
+    {
+      "name": "a-lancer",
+      "shots": [
+        {
+          "framing": "row",
+          "items": [
+            {
+              "key": "crash",
+              "lines": [
+                "FREE",
+                "LUCK x1"
+              ],
+              "look": "e215ae9396",
+              "title": "Crash Dummy"
+            },
+            {
+              "key": "rubber",
+              "lines": [
+                "$1.2K",
+                "LUCK x1.25"
+              ],
+              "look": "3089108b9f",
+              "title": "Rubber Dummy"
+            },
+            {
+              "key": "glass",
+              "lines": [
+                "$15K",
+                "LUCK x1.5"
+              ],
+              "look": "aabc2d01ca",
+              "title": "Glass Dummy"
+            },
+            {
+              "key": "steel",
+              "lines": [
+                "$300K",
+                "LUCK x2"
+              ],
+              "look": "00e6ab347b",
+              "title": "Steel Dummy"
+            },
+            {
+              "key": "glider",
+              "lines": [
+                "$4M",
+                "LUCK x2.5"
+              ],
+              "look": "a71914902e",
+              "title": "Glider Dummy"
+            },
+            {
+              "key": "rocket",
+              "lines": [
+                "$50M",
+                "LUCK x3"
+              ],
+              "look": "d47c8bf11f",
+              "title": "Rocket Dummy"
+            }
+          ],
+          "name": "a-lancer-1"
+        },
+        {
+          "framing": "row",
+          "items": [
+            {
+              "key": "ruby_rubber",
+              "lines": [
+                "$84M",
+                "LUCK x4"
+              ],
+              "look": "12929e932d",
+              "title": "Ruby Rubber Dummy"
+            },
+            {
+              "key": "emerald_glass",
+              "lines": [
+                "$130M",
+                "LUCK x5"
+              ],
+              "look": "d8be15c61c",
+              "title": "Emerald Glass Dummy"
+            },
+            {
+              "key": "sapphire_steel",
+              "lines": [
+                "$200M",
+                "LUCK x6.5"
+              ],
+              "look": "6d9df0f965",
+              "title": "Sapphire Steel Dummy"
+            },
+            {
+              "key": "amber_glider",
+              "lines": [
+                "$290M",
+                "LUCK x8"
+              ],
+              "look": "a55901bef5",
+              "title": "Amber Glider Dummy"
+            },
+            {
+              "key": "golden_rocket",
+              "lines": [
+                "$440M",
+                "LUCK x10"
+              ],
+              "look": "c261727128",
+              "title": "Golden Rocket Dummy"
+            },
+            {
+              "key": "frost_rubber",
+              "lines": [
+                "$700M",
+                "LUCK x13"
+              ],
+              "look": "d2d87c5380",
+              "title": "Frost Rubber Dummy"
+            }
+          ],
+          "name": "a-lancer-2"
+        },
+        {
+          "framing": "row",
+          "items": [
+            {
+              "key": "magma_glass",
+              "lines": [
+                "$1.1B",
+                "LUCK x17"
+              ],
+              "look": "c95d6ad633",
+              "title": "Magma Glass Dummy"
+            },
+            {
+              "key": "shadow_steel",
+              "lines": [
+                "$1.8B",
+                "LUCK x22"
+              ],
+              "look": "ab4b6371f4",
+              "title": "Shadow Steel Dummy"
+            },
+            {
+              "key": "radiant_glider",
+              "lines": [
+                "$3.2B",
+                "LUCK x30"
+              ],
+              "look": "f5f3d05a63",
+              "title": "Radiant Glider Dummy"
+            },
+            {
+              "key": "starlight_rocket",
+              "lines": [
+                "$5.3B",
+                "LUCK x40"
+              ],
+              "look": "cf4cfcc5f2",
+              "title": "Starlight Rocket Dummy"
+            },
+            {
+              "key": "nebula_rubber",
+              "lines": [
+                "$9.4B",
+                "LUCK x55"
+              ],
+              "look": "54aace13aa",
+              "title": "Nebula Rubber Dummy"
+            },
+            {
+              "key": "plasma_glass",
+              "lines": [
+                "$16B",
+                "LUCK x75"
+              ],
+              "look": "2497d55c53",
+              "title": "Plasma Glass Dummy"
+            }
+          ],
+          "name": "a-lancer-3"
+        },
+        {
+          "framing": "row",
+          "items": [
+            {
+              "key": "quantum_glider",
+              "lines": [
+                "$28B",
+                "LUCK x100"
+              ],
+              "look": "9700507519",
+              "title": "Quantum Glider Dummy"
+            },
+            {
+              "key": "infinite_rocket",
+              "lines": [
+                "$47B",
+                "LUCK x135"
+              ],
+              "look": "1123624ba3",
+              "title": "Infinite Rocket Dummy"
+            }
+          ],
+          "name": "a-lancer-4"
+        }
+      ],
+      "title": "Mannequins à lancer"
+    },
+    {
+      "name": "base",
+      "shots": [
+        {
+          "framing": "base",
+          "items": [
+            {
+              "key": 1,
+              "lines": [
+                "6 présentoirs"
+              ],
+              "look": "9da4df5b49",
+              "title": "1. Wood"
+            }
+          ],
+          "name": "base-1"
+        },
+        {
+          "framing": "base",
+          "items": [
+            {
+              "key": 2,
+              "lines": [
+                "7 présentoirs"
+              ],
+              "look": "71ae0cdad7",
+              "title": "2. Garden"
+            }
+          ],
+          "name": "base-2"
+        },
+        {
+          "framing": "base",
+          "items": [
+            {
+              "key": 3,
+              "lines": [
+                "8 présentoirs"
+              ],
+              "look": "0748339d4b",
+              "title": "3. Stone"
+            }
+          ],
+          "name": "base-3"
+        },
+        {
+          "framing": "base",
+          "items": [
+            {
+              "key": 4,
+              "lines": [
+                "9 présentoirs"
+              ],
+              "look": "132e7acd53",
+              "title": "4. Noble"
+            }
+          ],
+          "name": "base-4"
+        },
+        {
+          "framing": "base",
+          "items": [
+            {
+              "key": 5,
+              "lines": [
+                "10 présentoirs"
+              ],
+              "look": "e7ef3e6204",
+              "title": "5. Golden"
+            }
+          ],
+          "name": "base-5"
+        }
+      ],
+      "title": "Paliers de la base"
+    },
+    {
+      "name": "entrainement",
+      "shots": [
+        {
+          "framing": "station",
+          "items": [
+            {
+              "key": 1,
+              "lines": [
+                "FREE",
+                "+1 EXP / rep"
+              ],
+              "look": "a33e15738f",
+              "title": "1. Wooden Dummy"
+            }
+          ],
+          "name": "entrainement-1"
+        },
+        {
+          "framing": "station",
+          "items": [
+            {
+              "key": 2,
+              "lines": [
+                "$100",
+                "+3 EXP / rep"
+              ],
+              "look": "ce7c3b1c25",
+              "title": "2. Stone Dummy"
+            }
+          ],
+          "name": "entrainement-2"
+        },
+        {
+          "framing": "station",
+          "items": [
+            {
+              "key": 3,
+              "lines": [
+                "$1.5K",
+                "+10 EXP / rep"
+              ],
+              "look": "b1531e1088",
+              "title": "3. Iron Dummy"
+            }
+          ],
+          "name": "entrainement-3"
+        },
+        {
+          "framing": "station",
+          "items": [
+            {
+              "key": 4,
+              "lines": [
+                "$25K",
+                "+40 EXP / rep"
+              ],
+              "look": "5b6f3412f8",
+              "title": "4. Gold Dummy"
+            }
+          ],
+          "name": "entrainement-4"
+        },
+        {
+          "framing": "station",
+          "items": [
+            {
+              "key": 5,
+              "lines": [
+                "$150K",
+                "+160 EXP / rep"
+              ],
+              "look": "1f03bbeef7",
+              "title": "5. Diamond Dummy"
+            }
+          ],
+          "name": "entrainement-5"
+        },
+        {
+          "framing": "station",
+          "items": [
+            {
+              "key": 6,
+              "lines": [
+                "$2M",
+                "+700 EXP / rep"
+              ],
+              "look": "e4d0095e34",
+              "title": "6. Neon Dummy"
+            }
+          ],
+          "name": "entrainement-6"
+        },
+        {
+          "framing": "station",
+          "items": [
+            {
+              "key": 7,
+              "lines": [
+                "$25M",
+                "+3K EXP / rep"
+              ],
+              "look": "c487cbeeb4",
+              "title": "7. Cosmic Dummy"
+            }
+          ],
+          "name": "entrainement-7"
+        },
+        {
+          "framing": "station",
+          "items": [
+            {
+              "key": 8,
+              "lines": [
+                "$88M",
+                "+12K EXP / rep"
+              ],
+              "look": "78e8cde226",
+              "title": "8. Ruby Dummy"
+            }
+          ],
+          "name": "entrainement-8"
+        },
+        {
+          "framing": "station",
+          "items": [
+            {
+              "key": 9,
+              "lines": [
+                "$310M",
+                "+48K EXP / rep"
+              ],
+              "look": "80e6a79543",
+              "title": "9. Emerald Dummy"
+            }
+          ],
+          "name": "entrainement-9"
+        },
+        {
+          "framing": "station",
+          "items": [
+            {
+              "key": 10,
+              "lines": [
+                "$1.1B",
+                "+190K EXP / rep"
+              ],
+              "look": "d0a5028312",
+              "title": "10. Plasma Dummy"
+            }
+          ],
+          "name": "entrainement-10"
+        },
+        {
+          "framing": "station",
+          "items": [
+            {
+              "key": 11,
+              "lines": [
+                "$3.9B",
+                "+760K EXP / rep"
+              ],
+              "look": "a34f9899ec",
+              "title": "11. Omega Dummy"
+            }
+          ],
+          "name": "entrainement-11"
+        },
+        {
+          "framing": "station",
+          "items": [
+            {
+              "key": 12,
+              "lines": [
+                "$14B",
+                "+3M EXP / rep"
+              ],
+              "look": "21e18d3472",
+              "title": "12. Infinite Dummy"
+            }
+          ],
+          "name": "entrainement-12"
+        }
+      ],
+      "title": "Paliers de l'appareil d'entraînement"
+    }
+  ]
+}
