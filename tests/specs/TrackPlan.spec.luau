@@ -60,10 +60,14 @@ return function(T, Loader)
 			T.expect(first <= 50, "premier piège à " .. first .. " m")
 		end)
 
-		T.it("ajoute des pièges dans les zones longues, sans dépasser MAX_SITES obstacles et pièges", function()
+		T.it("ajoute des pièges dans les zones longues, sans dépasser MAX_SITES (plus l'obstacle en plus)", function()
 			for index in Zones.LIST do
 				local zoneSites = TrackPlan.zoneSites(index, LENGTH)
-				T.expect(#zoneSites - 1 <= math.max(TrackPlan.MAX_SITES, #Zones.LIST[index].obstacles + 1), "sites")
+				T.expect(
+					#zoneSites - TrackPlan.EXTRA_OBSTACLES
+						<= math.max(TrackPlan.MAX_SITES, #Zones.LIST[index].obstacles + 1),
+					"sites"
+				)
 			end
 			local moon = TrackPlan.zoneSites(#Zones.LIST, LENGTH)
 			local traps = 0
