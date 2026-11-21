@@ -297,6 +297,7 @@ end
 local function cleanup()
 	token += 1
 	showing = false
+	player:SetAttribute("PrizePhase", nil) -- phase du tirage, locale (Client.Music)
 	if worldModel then
 		worldModel:Destroy()
 		worldModel = nil
@@ -332,6 +333,7 @@ local function showReveal(prize: any, entry: Collection.Entry, ground: Vector3, 
 	glow = nil
 	local model = buildStanding(entry, ground, false)
 	worldModel = model
+	player:SetAttribute("PrizePhase", if prize.isNew then "RevealNew" else "Reveal") -- fanfare : nouveau seulement
 	growIn(model)
 	ring(ground, scale)
 	burst(ground + Vector3.new(0, HEIGHT * scale / 2, 0), scale, Rarity.get(prize.rarity).color)
@@ -393,6 +395,7 @@ function Prize.play(result: any)
 		return
 	end
 	showing = true
+	player:SetAttribute("PrizePhase", "Tease")
 	local finalScale = Collection.SIZES[entry.size].scale
 	local ground = groundAt(result.landing)
 	FlightCamera.showcase(ground + Vector3.new(0, HEIGHT * finalScale / 2, 0), HEIGHT * finalScale)

@@ -23,10 +23,14 @@ local UIKit = require(script.Parent.UIKit)
 
 local C = UIKit.COLORS
 local BUTTON_SIZE = 92 -- côté des boutons à icône à 720 px de haut (≈ 0,13 h, comme les références)
+local MUSIC_SIZE = 64 -- bouton musique, plus discret, sous Dummies
 local FLY_GROUP = 0.35 -- s : un gain arrivé moins de FLY_GROUP s après le précédent rejoint son « +N » en vol
 local FLY_MAX = 3 -- « +N » en vol au plus par compteur
 
 local Hud = {}
+
+-- Appelée au clic du bouton musique (Client.Music.toggle, branché par l'amorçage du client)
+Hud.onMusicToggle = nil :: (() -> ())?
 
 local player: Player
 local gui: ScreenGui
@@ -49,6 +53,7 @@ type Counter = {
 }
 local counters: { [string]: Counter } = {}
 local anchors: { [string]: GuiObject } = {} -- éléments que l'objectif peut désigner
+local musicOff: Frame -- barre rouge en travers du bouton musique quand la musique est coupée
 local windows: { [string]: Frame } = {}
 local gearCards: { UIKit.Card } = {}
 local modelsMeshed: boolean? = nil -- forme (maillée ou blocs) des rendus 3D des cartes déjà construits
@@ -200,6 +205,34 @@ local function buildButtons()
 	}, function()
 		toggle("Dummies")
 	end)
+	-- Bouton musique (muet), sous Dummies ; barre rouge en travers quand la musique est coupée
+	local music = UIKit.iconButton("music", "Music", MUSIC_SIZE, {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(1, -14 - BUTTON_SIZE / 2, 0.5, BUTTON_SIZE / 2 + gap + MUSIC_SIZE / 2),
+		Parent = root,
+	}, function()
+		if Hud.onMusicToggle then
+			Hud.onMusicToggle()
+		end
+	end)
+	musicOff = UIKit.create("Frame", {
+		Name = "Off",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.45),
+		Size = UDim2.new(1.05, 0, 0, 9),
+		Rotation = -45,
+		BackgroundColor3 = C.red,
+		Visible = false,
+		ZIndex = 4,
+		Parent = music,
+	})
+	UIKit.corner(musicOff, 4)
+	UIKit.outline(musicOff, 2)
+end
+
+-- Cette méthode permet d'afficher l'état du bouton musique (barre rouge en travers si coupée) lorsque le muet change.
+function Hud.setMusicOff(off: boolean)
+	musicOff.Visible = off
 end
 
 -- Cette méthode permet de construire le popup « NEW GEAR! » (bandeau dégradé et croix, rendu 3D, nom, prix et gain,

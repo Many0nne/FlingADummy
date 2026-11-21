@@ -1,7 +1,7 @@
--- Données du joueur : argent, Throw Power, équipement, niveaux et record, portés par des attributs du Player (répliqués au
--- client), recopiés dans les leaderstats ; collection (stock, présentoirs de la base et présentoirs achetés, Index :
--- Shared.Inventory) gardée côté serveur. Le tout est sauvegardé en DataStore (migration des sauvegardes de #13 par
--- Inventory.read).
+-- Données du joueur : argent, Throw Power, équipement, niveaux, record et muet musique, portés par des attributs du
+-- Player (répliqués au client), recopiés dans les leaderstats ; collection (stock, présentoirs de la base et
+-- présentoirs achetés, Index : Shared.Inventory) gardée côté serveur. Le tout est sauvegardé en DataStore (migration
+-- des sauvegardes de #13 par Inventory.read).
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -24,6 +24,7 @@ local DEFAULTS = {
 	BestDistance = 0,
 	Tutorial = 0, -- étapes du tutoriel faites (drapeaux, Shared.Tutorial)
 	Draws = 0, -- mannequins de collection gagnés (le premier est garanti : Collection.STARTER)
+	MusicOff = false, -- musique de fond coupée (bouton du HUD, Client.Music)
 }
 
 -- Collection d'un joueur : stock, présentoirs, Index (Shared.Inventory)
@@ -34,6 +35,10 @@ local PlayerData = {}
 local store: DataStore? = nil
 local loaded: { [Player]: boolean } = {}
 local collections: { [Player]: CollectionData } = {}
+local musicChangedAt: { [Player]: number } = {}
+local musicWanted: { [Player]: boolean } = {} -- dernier choix reçu, appliqué à la fin du délai
+local musicScheduled: { [Player]: boolean } = {}
+local MUSIC_COOLDOWN = 0.25 -- s entre deux changements du muet musique (attribut répliqué à tout le serveur)
 
 -- Cette méthode permet de construire la clé DataStore d'un joueur lorsque l'on lit ou écrit ses données.
 local function keyOf(player: Player): string
@@ -77,8 +82,8 @@ local function load(player: Player)
 			warn("[PlayerData] lecture impossible pour " .. player.Name .. " : " .. tostring(data))
 		else
 			if type(data) == "table" then
-				for key in DEFAULTS do
-					if type(data[key]) == "number" then
+				for key, default in DEFAULTS do
+					if type(data[key]) == type(default) then
 						player:SetAttribute(key, data[key])
 					end
 				end
@@ -168,6 +173,33 @@ function PlayerData.tutorialStep(player: Player, event: string)
 	end
 end
 
+-- Cette méthode permet de noter le choix du bouton musique (true = coupée) lorsque le client l'envoie ; au plus un
+-- changement par MUSIC_COOLDOWN s (attribut répliqué à tout le serveur), le dernier choix reçu appliqué en différé.
+function PlayerData.setMusicOff(player: Player, off: any)
+	if type(off) ~= "boolean" or player:GetAttribute("DataReady") ~= true then
+		return
+	end
+	musicWanted[player] = off
+	if musicScheduled[player] then
+		return
+	end
+	local function apply()
+		musicScheduled[player] = nil
+		local wanted = musicWanted[player]
+		if wanted ~= nil and player.Parent and player:GetAttribute("MusicOff") ~= wanted then
+			musicChangedAt[player] = os.clock()
+			player:SetAttribute("MusicOff", wanted)
+		end
+	end
+	local delay = MUSIC_COOLDOWN - (os.clock() - (musicChangedAt[player] or -math.huge))
+	if delay <= 0 then
+		apply()
+	else
+		musicScheduled[player] = true
+		task.delay(delay, apply)
+	end
+end
+
 -- Cette méthode permet d'ajouter de la Throw Power lorsque l'avatar franchit un niveau d'entraînement.
 function PlayerData.addPower(player: Player, amount: number)
 	player:SetAttribute("ThrowPower", ((player:GetAttribute("ThrowPower") :: number?) or 0) + amount)
@@ -192,6 +224,9 @@ function PlayerData.init()
 		save(player)
 		loaded[player] = nil
 		collections[player] = nil
+		musicChangedAt[player] = nil
+		musicWanted[player] = nil
+		musicScheduled[player] = nil
 	end)
 	game:BindToClose(function()
 		for _, player in Players:GetPlayers() do
