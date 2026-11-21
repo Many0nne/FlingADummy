@@ -1,5 +1,5 @@
 -- Lancers : l'avatar projette le mannequin depuis ses mains, le serveur suit le vol (distance, zone, os cassés par
--- membre, vitres et objets détruits sur la piste partagée, pièges des thèmes déclenchés), annonce chaque choc aux clients (effets) et calcule la
+-- membre, objets détruits sur la piste partagée, pièges des thèmes déclenchés), annonce chaque choc aux clients (effets) et calcule la
 -- CHANCE qui pousse le tirage du mannequin de collection (pas d'argent). Toute la physique est simulée par le
 -- serveur (propriétaire réseau nil) ; plusieurs vols coexistent (un par joueur, plus les mannequins de test lancés
 -- dans Studio).
@@ -31,16 +31,14 @@ local SlotService = require(script.Parent.SlotService)
 
 type Slot = CourseBuilder.Slot
 
-local GLASS_SLOWDOWN = 0.97 -- vitesse conservée en traversant une vitre (il y en a jusqu'à 9 par vol)
 local SPIN = Vector3.new(5, 2, 2) -- rotation aléatoire maximale au départ (rad/s par axe)
 local THUD_DV = 40 -- choc du torse sans os cassé qui mérite un « boum »
 local THUD_COOLDOWN = 0.25
-local GLASS_CAUSE_WINDOW = 0.15 -- un os cassé juste après une vitre est attribué à la vitre (s)
 local CAUSE_RADIUS = 7 -- un os cassé près d'une pièce d'obstacle lui est attribué (studs)
 local TRAP_CAUSE_WINDOW = 0.8 -- un os cassé juste après un piège (retombée de la presse, du trampoline) lui est attribué (s)
 
 export type Impact = {
-	kind: string, -- "Throw" | "Glass" | "Bone" | "Smash" | "Thud" | "Trap"
+	kind: string, -- "Throw" | "Bone" | "Smash" | "Thud" | "Trap"
 	position: Vector3,
 	value: number?, -- os ajoutés, objets détruits, ou force du choc
 	material: string?, -- "Crate" | "Brick" pour Smash ; piège (Shared.Traps.KINDS) pour Trap
@@ -66,7 +64,6 @@ type Flight = {
 	distance: number,
 	prevPosition: Vector3,
 	restTime: number,
-	lastGlass: number,
 	lastThud: number,
 	worstImpact: { kind: string, dv: number, speed: number }?,
 	impacts: { Impact },
@@ -166,7 +163,6 @@ local function startFlight(
 		distance = 0,
 		prevPosition = torso.Position,
 		restTime = 0,
-		lastGlass = -math.huge,
 		lastThud = -math.huge,
 		worstImpact = nil,
 		impacts = {},
@@ -271,28 +267,6 @@ local function addImpact(flight: Flight, kind: string, position: Vector3, value:
 		material = material,
 		userId = if flight.owner then flight.owner.UserId else 0,
 	})
-end
-
--- Cette méthode permet de briser une vitre et de ralentir un peu le mannequin lorsqu'il la traverse au point
--- `crossing` ; les vitesses de référence sont recalées pour que le ralentissement ne compte pas comme un choc.
-local function shatterGlass(flight: Flight, glass: Obstacles.Glass, crossing: Vector3)
-	Obstacles.shatter(glass, crossing, flight.torso.AssemblyLinearVelocity)
-	for _, p in flight.parts do
-		local v = p.AssemblyLinearVelocity * GLASS_SLOWDOWN
-		p.AssemblyLinearVelocity = v
-		flight.prevVelocity[p] = v
-	end
-	flight.smashed += 1
-	flight.lastGlass = os.clock()
-	addImpact(flight, "Glass", crossing)
-end
-
--- Cette méthode permet de détecter les vitres franchies par le torse entre deux frames lorsqu'il avance ; le
--- franchissement remplace la collision, qui raterait une vitre fine à grande vitesse.
-local function checkGlass(flight: Flight, previous: Vector3, position: Vector3)
-	for _, hit in Obstacles.crossedGlass(previous, position) do
-		shatterGlass(flight, hit.glass, hit.crossing)
-	end
 end
 
 -- Cette méthode permet de casser `bones` os sur les membres les plus proches de `contact` (un chacun, au plus
@@ -427,12 +401,9 @@ local function checkTraps(flight: Flight, previous: Vector3, position: Vector3)
 	end
 end
 
--- Cette méthode permet de trouver ce qui a cassé un os (vitre, obstacle ou sol) lorsqu'un membre subit un choc
+-- Cette méthode permet de trouver ce qui a cassé un os (piège, obstacle ou sol) lorsqu'un membre subit un choc
 -- au point `position`.
 local function classifyCause(flight: Flight, position: Vector3): string
-	if os.clock() - flight.lastGlass < GLASS_CAUSE_WINDOW then
-		return "Glass"
-	end
 	local trap = flight.lastTrap
 	if trap and os.clock() - trap.at < TRAP_CAUSE_WINDOW then
 		return trap.kind
@@ -665,7 +636,6 @@ local function step(flight: Flight, dt: number)
 	local previous = flight.prevPosition
 	local before = flight.prevVelocity[torso] -- vitesse du torse à la frame précédente (rebond du caoutchouc)
 	flight.prevPosition = position
-	checkGlass(flight, previous, position)
 	checkBones(flight, elapsed)
 	checkTraps(flight, previous, position)
 	flight.distance = math.max(flight.distance, position.Z)

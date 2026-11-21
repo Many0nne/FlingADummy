@@ -1,11 +1,13 @@
 -- Caméra du lancer et du vol : gros plan sur l'avatar pendant le geste (côté du bras qui lance, léger
--- rapprochement), puis suit le torse du mannequin lancé (arrière, côté, haut), secousses proportionnelles aux chocs,
+-- rapprochement), puis suit le torse du mannequin lancé (arrière, côté, haut ; plongée qui suit l'altitude :
+-- Shared.FlightFraming), secousses proportionnelles aux chocs,
 -- coup de champ de vision au départ ; rend la caméra normale quand le couloir redevient prêt.
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
-local OFFSET = Vector3.new(16, 10, -26) -- côté (+X), haut, derrière (le vol part vers +Z)
+local FlightFraming = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("FlightFraming"))
+
 local POSITION_SHARPNESS = 6 -- vitesse de rattrapage de la position (1/s)
 local FOCUS_SHARPNESS = 12 -- vitesse de rattrapage du point visé (1/s)
 local SHAKE_DECAY = 6 -- extinction des secousses (1/s)
@@ -82,8 +84,8 @@ function FlightCamera.closeUp(root: BasePart, duration: number)
 	end)
 end
 
--- Cette méthode permet de suivre un mannequin lancé lorsque le serveur annonce le lancer ; la caméra avance avec la
--- vitesse du torse et le lissage ne corrige que l'écart, d'où aucun retard même à grande vitesse.
+-- Cette méthode permet de suivre un mannequin lancé (cadrage Shared.FlightFraming, position et point visé qui avancent
+-- avec le torse, lissage de l'écart seul) lorsque le serveur annonce le lancer.
 function FlightCamera.follow(model: Model)
 	local torso = model:WaitForChild("Torso", 2) :: BasePart?
 	if not torso then
@@ -102,8 +104,13 @@ function FlightCamera.follow(model: Model)
 			return
 		end
 		local target = torso.Position
-		position += torso.AssemblyLinearVelocity * dt
-		position = position:Lerp(target + OFFSET, 1 - math.exp(-POSITION_SHARPNESS * dt))
+		local velocity = torso.AssemblyLinearVelocity
+		position += velocity * dt
+		local offset = FlightFraming.offset(target.Y, velocity.Magnitude) -- piste à y = 0
+		position = position:Lerp(target + offset, 1 - math.exp(-POSITION_SHARPNESS * dt))
+		-- Le point visé avance lui aussi avec le torse : sinon, en montée rapide, il traîne en dessous et le mannequin
+		-- sort par le haut de l'image (#88)
+		focus += velocity * dt
 		focus = focus:Lerp(target, 1 - math.exp(-FOCUS_SHARPNESS * dt))
 		shake *= math.exp(-SHAKE_DECAY * dt)
 		local jitter = Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 2 * shake

@@ -42,10 +42,9 @@ local LIMB_ORDER = {
 	"RightLowerLeg",
 }
 
--- Libellé de l'objet heurté pour la phrase de cause : vitres, obstacles des thèmes (Server.ThemeObstacles), pièges
+-- Libellé de l'objet heurté pour la phrase de cause : obstacles des thèmes (Server.ThemeObstacles), pièges
 -- (Shared.Traps), sol
 Damage.CAUSE_LABELS = {
-	Glass = "Went through a window",
 	Ground = "Hit the ground",
 	-- Obstacles cassables
 	Wall = "Hit a brick wall",

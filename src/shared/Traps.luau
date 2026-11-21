@@ -9,7 +9,9 @@ export type Kind = {
 	label: string, -- popup au point de déclenchement (« BOING! »)
 	sound: string, -- son joué par le client (Shared.Sounds)
 	burst: string, -- gerbe de particules jouée par le client (Client.Effects)
-	height: number?, -- hauteur de la boîte au-dessus du sol (studs) ; nil = colonne haute (hauteur des vitres)
+	height: number, -- haut de la boîte au-dessus du sol (studs)
+	bottom: number?, -- bas de la boîte (studs) ; nil = Traps.FLOOR (posée au sol)
+	width: number?, -- largeur de la boîte, axe X (studs) ; nil = Traps.WIDTH (toute la colonne)
 	depth: number, -- profondeur de la boîte, axe Z (studs)
 	keep: number, -- part de la vitesse horizontale gardée
 	forward: number, -- vitesse ajoutée vers l'avant de la piste (+Z, studs/s)
@@ -22,6 +24,9 @@ export type Kind = {
 
 Traps.WIDTH = 12 -- largeur d'un piège : une colonne d'obstacles (SLOT_SPACING), moins un passage de 2 studs
 Traps.FLOOR = -1 -- bas des boîtes : un mannequin couché au sol (torse à moins d'un stud) est dedans
+-- Anneau propulseur (#85) : centre du cerceau à 85 studs, là où passe un vol de 32° qui retomberait ≈ 150 m plus loin
+-- (z · tan 32° · 150 / (z + 150) ≈ 87 à 1,85 km comme à 2,2 km : les sites de la Moon Base) ; ouverture de 9,8 studs
+-- de diamètre, boîte carrée de 8 studs dedans (coins sur les pans)
 
 -- stylua: ignore
 Traps.KINDS = {
@@ -58,8 +63,10 @@ Traps.KINDS = {
 	-- Jouets : diable en boîte, éjecte à la verticale
 	JackBox    = { label = "POP!",      sound = "Spring", burst = "Confetti", height = 8,   depth = 8,
 	               keep = 0.7,  forward = 0,   side = 0,  up = 105, restitution = 0,   spin = 5,  bones = 1 },
-	-- Base lunaire : anneau propulseur, énorme poussée vers l'avant
-	Booster    = { label = "BOOST!",    sound = "Rocket", burst = "Sparks",   height = nil, depth = 6,
+	-- Base lunaire : anneau propulseur suspendu, énorme poussée vers l'avant ; seule l'ouverture du cerceau déclenche
+	-- (boîte de 8 × 8 studs autour du centre du cerceau, voir plus haut)
+	Booster    = { label = "BOOST!",    sound = "Rocket", burst = "Sparks",   height = 89,  depth = 6,
+	               bottom = 81, width = 8,
 	               keep = 1,    forward = 70,  side = 0,  up = 25,  restitution = 0,   spin = 0,  bones = 1 },
 } :: { [string]: Kind }
 
