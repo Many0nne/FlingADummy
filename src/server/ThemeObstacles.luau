@@ -227,7 +227,7 @@ end
 
 -- Forêt -------------------------------------------------------------------------------------------------------------
 
--- Cette méthode permet d'empiler des rondins équarris en pyramide (3, 2, 1, chacun sur deux du dessous, bouts clairs)
+-- Cette méthode permet d'empiler des rondins équarris en pyramide (3, 2, 1, chacun sur deux du dessous, deux tons)
 -- dans chaque colonne lorsque le site est construit ; des blocs plutôt que des cylindres, qui rouleraient.
 builders.Logs = function(kit, z)
 	local side = 2.8
@@ -304,7 +304,7 @@ builders.Sandcastle = function(kit, z)
 	end)
 end
 
--- Cette méthode permet de dresser une rangée de planches de surf debout (couleurs vives, liseré blanc) dans chaque
+-- Cette méthode permet de dresser une rangée de planches de surf debout (couleurs vives) dans chaque
 -- colonne lorsque le site est construit.
 builders.Surfboards = function(kit, z)
 	local colors = { rgb(255, 90, 90), rgb(60, 190, 240), rgb(255, 200, 50), rgb(120, 220, 110) }
