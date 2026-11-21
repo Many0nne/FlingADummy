@@ -12,7 +12,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local MusicRules = require(Shared:WaitForChild("Music"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
-type Playing = { sound: Sound, track: MusicRules.Track, level: number, speed: number } -- speed : vitesse du fondu
+-- speed : vitesse du fondu d'entrée (bascule de moment plus vive), remise à 1 une fois la piste à son volume
+type Playing = { sound: Sound, track: MusicRules.Track, level: number, speed: number, startedAt: number }
 
 local Music = {}
 
@@ -24,6 +25,7 @@ local remotes: Remotes.Remotes
 local group: SoundGroup
 local started = false -- musique lancée (données du joueur chargées : le muet sauvegardé est connu)
 local muted = false
+local pending: boolean? = nil -- muet envoyé au serveur dont l'écho n'est pas encore revenu
 local mood: MusicRules.Mood = "Hub"
 local bed: MusicRules.Bed? = nil
 local hubIndex: number? = nil -- piste du hub en cours ou dernière jouée (rotation)
@@ -62,7 +64,7 @@ local function play(list: MusicRules.Bed, i: number, fade: number)
 	end
 	-- La piste du vol tourne en boucle le temps du lancer ; celles du hub s'enchaînent
 	local sound = newSound(track, list == "Flight")
-	local playing = { sound = sound, track = track, level = 0, speed = speed }
+	local playing = { sound = sound, track = track, level = 0, speed = speed, startedAt = os.clock() }
 	current = playing
 	sound.Ended:Connect(function()
 		if current == playing and bed == "Hub" then
@@ -79,7 +81,7 @@ local function playFanfare()
 	end
 	local track = MusicRules.TRACKS.Fanfare
 	local sound = newSound(track, false)
-	fanfare = { sound = sound, track = track, level = 0, speed = 4 }
+	fanfare = { sound = sound, track = track, level = 0, speed = 4, startedAt = os.clock() }
 	fanfareEndsAt = os.clock() + MusicRules.FANFARE_MAX
 end
 
@@ -127,9 +129,15 @@ local function step(dt: number)
 	end
 	if current then
 		local c = current :: Playing
-		c.level = MusicRules.approach(c.level, MusicRules.bedLevel(mood, fanfareOn, muted), c.speed, dt)
+		local target = MusicRules.bedLevel(mood, fanfareOn, muted)
+		c.level = MusicRules.approach(c.level, target, c.speed, dt)
 		c.sound.Volume = c.level * c.track.volume
-		if bed == "Hub" and MusicRules.shouldAdvance(c.sound.TimePosition, c.sound.TimeLength) then
+		if c.level == target then
+			c.speed = 1 -- fondu d'entrée fini : muet et baisses suivantes au rythme normal
+		end
+		local advance = MusicRules.shouldAdvance(c.sound.TimePosition, c.sound.TimeLength)
+			or MusicRules.stalled(c.sound.IsLoaded, os.clock() - c.startedAt)
+		if bed == "Hub" and advance then
 			play("Hub", MusicRules.nextIndex("Hub", hubIndex), MusicRules.FADE)
 		end
 	end
@@ -157,19 +165,17 @@ local function setMuted(value: boolean)
 end
 
 -- Cette méthode permet de couper ou remettre la musique (effet immédiat, choix envoyé au serveur qui le sauvegarde)
--- lorsque le joueur clique le bouton musique du HUD.
+-- lorsque le joueur clique le bouton musique du HUD ; sans effet avant le chargement (le muet sauvegardé l'écraserait).
 function Music.toggle()
+	if not started then
+		return
+	end
 	setMuted(not muted)
+	pending = muted
 	remotes.SetMusic:FireServer(muted)
 end
 
--- Cette méthode permet de savoir si la musique est coupée lorsque le HUD construit son bouton.
-function Music.isMuted(): boolean
-	return muted
-end
-
--- Cette méthode permet de lancer la musique (muet sauvegardé appliqué) lorsque les
--- données du joueur sont chargées.
+-- Cette méthode permet de lancer la musique (muet sauvegardé appliqué) lorsque les données du joueur sont chargées.
 local function start()
 	if started or player:GetAttribute("DataReady") ~= true then
 		return
@@ -192,9 +198,18 @@ function Music.init(localPlayer: Player, allRemotes: Remotes.Remotes)
 		player:GetAttributeChangedSignal(attribute):Connect(refresh)
 	end
 	player:GetAttributeChangedSignal("MusicOff"):Connect(function()
-		if started then
-			setMuted(player:GetAttribute("MusicOff") == true)
+		if not started then
+			return
 		end
+		local value = player:GetAttribute("MusicOff") == true
+		-- Clics rapides : seuls comptent les échos du dernier choix envoyé, pas ceux des clics intermédiaires
+		if pending ~= nil then
+			if value == pending then
+				pending = nil
+			end
+			return
+		end
+		setMuted(value)
 	end)
 	player:GetAttributeChangedSignal("DataReady"):Connect(start)
 	RunService.RenderStepped:Connect(step)

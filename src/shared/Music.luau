@@ -32,10 +32,10 @@ Music.FADE = 1.5 -- s d'un fondu entre deux pistes du hub, et du muet
 Music.SWITCH_FADE = 0.5 -- s d'une bascule de moment (le vol ne dure que quelques secondes)
 Music.DUCK = 0.25 -- part du volume gardée pendant la silhouette du tirage et la fanfare
 Music.FANFARE_MAX = 4.5 -- s : la fanfare s'efface au-delà, même si la piste dure plus
+Music.LOAD_TIMEOUT = 10 -- s : une piste du hub pas chargée dans ce délai (asset retiré, réseau) est sautée
 
--- Cette méthode permet de déduire le moment musical lorsque l'état du couloir (attribut `LaneState`) ou la phase du
--- tirage (attribut local `PrizePhase` : "Tease", "Reveal" ou nil) change ; `previous` = moment précédent : un
--- résultat qui suit la révélation reste au hub (le tirage se ferme juste avant le retour du couloir à « Ready »).
+-- Cette méthode permet de déduire le moment musical lorsque `LaneState` ou la phase du tirage (`PrizePhase` local)
+-- change ; `previous` = moment précédent (un résultat qui suit la révélation reste au hub).
 function Music.mood(laneState: string?, prizePhase: string?, previous: Mood?): Mood
 	if prizePhase == "Reveal" then
 		return "Reveal"
@@ -63,7 +63,7 @@ end
 function Music.bedLevel(mood: Mood, fanfarePlaying: boolean, muted: boolean): number
 	if muted then
 		return 0
-	elseif mood == "Tease" or (mood == "Reveal" and fanfarePlaying) then
+	elseif mood == "Tease" or fanfarePlaying then
 		return Music.DUCK
 	end
 	return 1
@@ -90,6 +90,12 @@ end
 -- (fondu lancé FADE s avant la fin) ; faux tant que la durée n'est pas connue (piste en chargement).
 function Music.shouldAdvance(position: number, length: number): boolean
 	return length > Music.FADE * 2 and position >= length - Music.FADE
+end
+
+-- Cette méthode permet de savoir s'il faut sauter une piste du hub lorsqu'elle n'est toujours pas chargée
+-- LOAD_TIMEOUT s après son lancement (sinon le hub resterait muet : ni durée connue, ni fin de piste).
+function Music.stalled(loaded: boolean, elapsed: number): boolean
+	return not loaded and elapsed >= Music.LOAD_TIMEOUT
 end
 
 -- Cette méthode permet de rapprocher un volume de sa cible à vitesse constante (un fondu complet en FADE s) lorsque

@@ -170,9 +170,9 @@ function PlayerData.tutorialStep(player: Player, event: string)
 end
 
 -- Cette méthode permet de noter le choix du bouton musique (true = coupée) lorsque le client l'envoie ; sauvegardé
--- avec les données du joueur, ignoré si la valeur n'est pas un booléen.
+-- avec les données du joueur, ignoré avant le chargement ou si la valeur n'est pas un booléen.
 function PlayerData.setMusicOff(player: Player, off: any)
-	if type(off) == "boolean" then
+	if type(off) == "boolean" and player:GetAttribute("DataReady") == true then
 		player:SetAttribute("MusicOff", off)
 	end
 end
