@@ -288,6 +288,87 @@ def merge(objs):
     return bpy.context.active_object
 
 
+def place(obj, rot=(0, 0, 0), center=(0, 0, 0)):
+    """Cette methode permet de tourner puis deplacer une forme deja construite autour de l'origine (repere Roblox)
+    lorsque l'on assemble un groupe de formes d'un bloc (anneau incline, aile)."""
+    m = rot_matrix(rot)
+    c = Vector(center)
+    for v in obj.data.vertices:
+        v.co = rb(m @ br(v.co) + c)
+    obj.data.update()
+    return obj
+
+
+def group(objs, rot=(0, 0, 0), center=(0, 0, 0)):
+    """Cette methode permet de fusionner des formes construites autour de l'origine puis de les tourner et placer
+    ensemble lorsque l'on modelise un ensemble incline (anneau a graduations, faisceau d'ailes)."""
+    return place(merge(objs), rot, center)
+
+
+def annulus(r_in, r_out, thickness, center, rot=(0, 0, 0), segs=48):
+    """Cette methode permet de creer un anneau plat (disque perce) du plan XY Roblox, epais de `thickness` en Z, lorsque
+    l'on modelise un disque d'accretion ou un anneau de planete."""
+    me = bpy.data.meshes.new("annulus")
+    verts, faces = [], []
+    for i in range(segs):
+        a = 2 * math.pi * i / segs
+        ca, sa = math.cos(a), math.sin(a)
+        for r in (r_in, r_out):
+            for z in (-thickness / 2, thickness / 2):
+                verts.append(tuple(rb((r * ca, r * sa, z))))
+    for i in range(segs):
+        j = (i + 1) % segs
+        a0, a1 = 4 * i, 4 * j  # indices : (in, bas) (in, haut) (out, bas) (out, haut)
+        faces += [
+            [a0 + 1, a1 + 1, a1 + 3, a0 + 3],  # dessus
+            [a0 + 0, a0 + 2, a1 + 2, a1 + 0],  # dessous
+            [a0 + 2, a0 + 3, a1 + 3, a1 + 2],  # bord exterieur
+            [a0 + 0, a1 + 0, a1 + 1, a0 + 1],  # bord interieur
+        ]
+    me.from_pydata(verts, [], faces)
+    me.update()
+    obj = bpy.data.objects.new("annulus", me)
+    bpy.context.scene.collection.objects.link(obj)
+    bpy.ops.object.select_all(action="DESELECT")
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.mesh.normals_make_consistent(inside=False)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    obj.data.materials.append(export_material())
+    return place(obj, rot, center)
+
+
+def star(r_out, r_in, thickness, center, rot=(0, 0, 0), points=5):
+    """Cette methode permet de creer une etoile plate a `points` branches (plan XY Roblox) lorsque l'on modelise une
+    couronne d'etoiles, un embleme ou des etoiles semees."""
+    pts = []
+    for k in range(points * 2):
+        a = math.pi / 2 + math.pi * k / points
+        r = r_out if k % 2 == 0 else r_in
+        pts.append((r * math.cos(a), r * math.sin(a)))
+    return prism(pts, thickness, center, rot=rot, bevel=0)
+
+
+def spiral_arm(center, phase, r0, r1, sweep, count, w0, w1, thickness=0.08, z=0.0):
+    """Cette methode permet de poser un bras spiral (blocs alignes sur la tangente, du coeur vers l'exterieur, de plus
+    en plus fins) dans le plan XY autour de `center` lorsque l'on modelise une galaxie ou un tourbillon."""
+    out = []
+    drda = (r1 - r0) / sweep
+    for i in range(count):
+        t = i / (count - 1)
+        a = phase + t * sweep
+        r = r0 + (r1 - r0) * t
+        w = w0 + (w1 - w0) * t
+        tangent = a + math.atan2(r, drda)
+        step = math.hypot(r, drda) * sweep / (count - 1)
+        out.append(box((max(0.2, step * 1.5), w, thickness),
+                       (center[0] + r * math.cos(a), center[1] + r * math.sin(a), center[2] + z),
+                       bevel=min(0.03, w * 0.3), rot=(0, 0, math.degrees(tangent)), segments=1))
+    return out
+
+
 def ring_of(count, radius, make, y=0.0, phase=0.0):
     """Cette methode permet de repartir `count` formes sur un cercle horizontal (make(x, z, angle_deg) cree chacune)
     lorsque l'on modelise des objets en orbite ou une couronne."""
@@ -853,28 +934,51 @@ def look_diamond():
 
 
 def look_galaxy():
-    """Cette methode permet de modeliser le Galaxy (astronaute : bulle de verre, sac de survie, anneau planetaire et
-    lunes en orbite, etoiles) lorsque le catalogue se construit."""
+    """Cette methode permet de modeliser le Galaxy (astronaute equipe : bulle de verre et visiere doree, combinaison a
+    protections et bandes lumineuses, sac de survie a antenne, anneau planetaire a trois bandes et asteroides, lunes en
+    orbite) lorsque le catalogue se construit."""
     purple, pink, cyan, yellow = (100, 50, 210), (255, 110, 200), (90, 230, 255), (255, 220, 80)
-    bubble = [ball(1.12, (0, 2.22, 0), seg=24)]
-    collar = [torus(0.72, 0.16, (0, 1.38, 0), seg=24), box((0.5, 0.3, 0.1), (0, 0.65, -0.6), bevel=0.04)]
+    bubble = [ball(1.12, (0, 2.22, 0), seg=28)]
+    visor = [box((1.25, 0.62, 0.12), (0, 2.32, -0.8), bevel=0.1, rot=(-8, 0, 0))]
+    collar = [torus(0.74, 0.17, (0, 1.38, 0), seg=28), box((0.55, 0.32, 0.1), (0, 0.65, -0.62), bevel=0.04)]
+    pads = []
+    for sx in (-1, 1):
+        pads.append(ball(0.55, (1.45 * sx, 1.12, 0), scale=(1, 0.55, 1), seg=16))
+        pads.append(box((0.95, 0.5, 1.05), (0.5 * sx, -3.55, -0.05), bevel=0.15))  # bottes
+        pads.append(box((1.05, 0.35, 1.05), (0.5 * sx, -2.5, 0), bevel=0.12))  # genouilleres
+        pads.append(box((0.95, 0.35, 0.95), (1.45 * sx, -1.05, 0), bevel=0.12))  # gants
+    pads.append(box((2.2, 0.3, 1.25), (0, -1.05, 0), bevel=0.1))  # ceinture
+    stripes = []
+    for sx in (-1, 1):
+        stripes.append(box((0.1, 2.1, 0.06), (0.62 * sx, 0.1, -0.58), bevel=0.02))
+        stripes.append(box((0.98, 0.08, 0.06), (0.5 * sx, -2.5, -0.55), bevel=0.02))
+    stripes.append(torus(0.36, 0.05, (0, 0.35, -0.6), rot=(90, 0, 0), seg=20, minor_seg=5))
     pack = [
-        box((1.6, 1.9, 0.7), (0, 0.15, 0.92), bevel=0.18, segments=3),
-        cyl(0.14, 0.6, (-0.55, 1.25, 0.92)),
-        cyl(0.14, 0.6, (0.55, 1.25, 0.92)),
+        box((1.7, 2.0, 0.75), (0, 0.15, 0.95), bevel=0.2, segments=3),
+        box((1.3, 0.3, 0.5), (0, -0.95, 0.95), bevel=0.1),
+        cyl(0.15, 0.65, (-0.6, 1.3, 0.95)),
+        cyl(0.15, 0.65, (0.6, 1.3, 0.95)),
+        cyl(0.04, 1.2, (0.6, 2.2, 0.95)),
+        ball(0.11, (0.6, 2.85, 0.95), seg=8),
     ]
-    lights = [box((0.18, 0.18, 0.08), (x, 0.55, 1.28), bevel=0.04) for x in (-0.45, -0.15, 0.15, 0.45)]
-    lights += [ball(0.12, (-0.55, 1.6, 0.92), seg=8), ball(0.12, (0.55, 1.6, 0.92), seg=8)]
-    ring = [torus(2.0, 0.12, (0, 0, 0), rot=(0, 0, 0), seg=40, minor_seg=6),
-            torus(2.35, 0.07, (0, 0, 0), rot=(0, 0, 0), seg=40, minor_seg=6)]
-    moons = [ball(0.32, (2.45, 0.6, 0), seg=12), ball(0.22, (-2.2, -0.4, 0.8), seg=10),
-             ball(0.26, (-0.6, 0.9, -2.3), seg=10)]
+    lights = [box((0.18, 0.18, 0.08), (x, 0.55, 1.34), bevel=0.04) for x in (-0.48, -0.16, 0.16, 0.48)]
+    lights += [ball(0.12, (-0.6, 1.66, 0.95), seg=8), ball(0.12, (0.6, 1.66, 0.95), seg=8)]
+    ring = [annulus(1.9, 2.15, 0.06, (0, 0, 0), rot=(90, 0, 0)), annulus(2.3, 2.45, 0.05, (0, 0, 0), rot=(90, 0, 0)),
+            annulus(2.6, 2.95, 0.04, (0, 0, 0), rot=(90, 0, 0))]
+    ring = [group(ring, rot=(18, 0, 10), center=(0, 0.1, 0))]
+    rocks = ring_of(10, 2.38, lambda x, z, a: box((0.16, 0.14, 0.16), (x, 0, z), bevel=0.04, rot=(a, a * 2, 0)))
+    rocks = [group(rocks, rot=(18, 0, 10), center=(0, 0.1, 0))]
+    moons = ring_of(4, 3.1, lambda x, z, a: ball(0.3 if int(a) % 180 == 0 else 0.22, (x, 0.5, z), seg=12))
     return dict(color=purple, pieces={"Torso": (235, 235, 245)}, parts=[
-        Part("SpaceHelmet", "Head", (190, 225, 255), bubble, material="Glass", transparency=0.45),
+        Part("SpaceHelmet", "Head", (190, 225, 255), bubble, material="Glass", transparency=0.5),
+        Part("GoldVisor", "Head", (255, 200, 70), visor, material="Foil"),
         Part("SuitCollar", "Head", WHITE, collar),
+        Part("SuitPads", "Torso", WHITE, pads),
+        Part("SuitStripes", "Torso", pink, stripes, material="Neon"),
         Part("LifePack", "Torso", WHITE, pack),
         Part("PackLights", "Torso", cyan, lights, material="Neon"),
-        Part("PlanetRing", "Torso", pink, ring, material="Neon", spin=((0.34, 0.94, 0), 35)),
+        Part("PlanetRing", "Torso", pink, ring, material="Neon", transparency=0.15, spin=((0, 1, 0), 30)),
+        Part("RingRocks", "Torso", yellow, rocks, material="Neon", spin=((0, 1, 0), 30)),
         Part("Moons", "Torso", yellow, moons, material="Neon", spin=((0, 1, 0), -50)),
     ], effects=[
         fx_particles("stars", "Torso", (0, 0.5, 0), (255, 255, 255), (200, 160, 255)),
@@ -883,8 +987,9 @@ def look_galaxy():
 
 
 def look_ghost():
-    """Cette methode permet de modeliser le Ghost (corps spectral sans jambes, queue de fumee, chaines brisees,
-    lanterne, feux follets en orbite) lorsque le catalogue se construit."""
+    """Cette methode permet de modeliser le Ghost (corps spectral sans jambes, cape dechiree a col en pointes, queue de
+    fumee, couronne de flammes spectrales, chaines brisees, lanterne, feux follets en orbite) lorsque le catalogue se
+    construit."""
     spirit, chain, cyan = (225, 240, 255), (90, 92, 105), (110, 255, 230)
     tail = []
     for i in range(6):
@@ -892,13 +997,24 @@ def look_ghost():
         w = 1.9 * (1 - t) + 0.25
         tail.append(box((w, 0.6, w * 0.6 + 0.1), (0.35 * math.sin(t * 3.2), -1.35 - 0.48 * i, 0.1 + 0.25 * t),
                         bevel=min(0.25, w * 0.3), rot=(10 * t, 0, 12 * math.sin(t * 3.2))))
-    parts = [Part("GhostTail", "Torso", spirit, tail, material="ForceField")]
+    # Cape dechiree : bord bas en dents de scie, col en pointes autour de la tete
+    cape_pts = [(-1.3, 1.3), (1.3, 1.3), (2.0, -1.2)]
+    for k in range(9):
+        x = 2.0 - 4.0 * (k + 0.5) / 9
+        cape_pts.append((x, -3.2 - 0.6 * (k % 2) - 0.3 * math.sin(k)))
+    cape_pts.append((-2.0, -1.2))
+    cape = [prism(cape_pts, 0.12, (0, 0, 0.75), rot=(-6, 0, 0))]
+    cape += [cone(0.18, 0.7, (0.95 * math.cos(math.radians(d)), 1.55, 0.95 * math.sin(math.radians(d))), verts=4)
+             for d in range(-20, 201, 30)]  # col en pointes, sur l'arriere et les cotes
+    parts = [Part("GhostTail", "Torso", spirit, tail, material="ForceField"),
+             Part("GhostCape", "Torso", (180, 220, 255), cape, material="ForceField", transparency=0.15)]
     for side, sx in (("L", -1), ("R", 1)):
         x = 1.45 * sx
         links = [torus(0.5, 0.1, (x, -0.55, 0), seg=18, minor_seg=6)]
-        for i in range(4):
+        for i in range(6):
             links.append(torus(0.14, 0.05, (x + 0.1 * sx * i, -0.95 - 0.22 * i, 0.1 * i),
                                rot=(0, 90 * (i % 2), 90), seg=12, minor_seg=5))
+        links.append(ball(0.22, (x + 0.65 * sx, -2.35, 0.6), seg=10))  # boulet
         parts.append(Part("Shackle" + side, side == "L" and "LeftLowerArm" or "RightLowerArm", chain, links,
                           material="Metal"))
     lantern = [
@@ -907,13 +1023,19 @@ def look_ghost():
         *[box((0.07, 0.7, 0.07), (1.45 + dx, -1.75, -0.45 + dz), bevel=0.01) for dx in (-0.25, 0.25)
           for dz in (-0.25, 0.25)],
         torus(0.14, 0.04, (1.45, -1.2, -0.45), rot=(90, 0, 0), seg=12, minor_seg=4),
+        cone(0.32, 0.3, (1.45, -1.15, -0.45), verts=4),
     ]
+    flames = ring_of(6, 0.62, lambda x, z, a: gem(0.13, 0.5 + 0.15 * (int(a) // 60 % 2), (x, HEAD_TOP + 0.45, z),
+                                                  verts=5))
+    flames.append(gem(0.2, 0.8, (0, HEAD_TOP + 0.7, 0), verts=6))
     parts += [
         Part("Lantern", "RightLowerArm", (40, 42, 50), lantern, material="Metal"),
         Part("LanternFlame", "RightLowerArm", cyan, [gem(0.2, 0.5, (1.45, -1.75, -0.45), verts=8)], material="Neon",
              bob=(0.05, 0.8)),
-        Part("Wisps", "Torso", cyan, ring_of(3, 1.8, lambda x, z, a: ball(0.18, (x, 0.3 * math.sin(math.radians(a * 2)),
-                                                                                   z), seg=10)),
+        Part("SpiritCrown", "Head", cyan, flames, material="Neon", bob=(0.08, 1.6)),
+        Part("Wisps", "Torso", cyan, ring_of(6, 2.0, lambda x, z, a: ball(0.18 if int(a) % 120 == 0 else 0.13,
+                                                                          (x, 0.4 * math.sin(math.radians(a * 2)), z),
+                                                                          seg=10)),
              material="Neon", spin=((0, 1, 0), 70)),
         Part("GhostEyes", "Head", cyan, [box((0.22, 0.32, 0.06), (sx * 0.3, 2.31, -0.73), bevel=0.05)
                                          for sx in (-1, 1)], material="Neon"),
@@ -925,36 +1047,103 @@ def look_ghost():
                 ])
 
 
+def tech_ring(radius, ticks, nodes):
+    """Cette methode permet de modeliser un anneau technologique horizontal (tore fin, graduations, noeuds) autour de
+    l'origine lorsque l'on habille le Neon."""
+    out = [torus(radius, 0.06, (0, 0, 0), seg=48, minor_seg=6)]
+    out += ring_of(ticks, radius, lambda x, z, a: box((0.07, 0.24, 0.07), (x, 0, z), bevel=0.02, segments=1))
+    out += ring_of(nodes, radius, lambda x, z, a: box((0.26, 0.26, 0.26), (x, 0, z), bevel=0.07, rot=(0, -a, 45),
+                                                      segments=2), phase=math.pi / nodes)
+    return out
+
+
 def look_neon():
-    """Cette methode permet de modeliser le Neon (cyber : visiere, crete et lignes fluo, epaulettes, deux anneaux qui
+    """Cette methode permet de modeliser le Neon (cyber : casque a visiere, oreillettes et antennes, crete, armure de
+    plaques a lignes fluo, epaulettes et gantelets, ailes de lames lumineuses, halo segmente, deux anneaux gradues qui
     tournent) lorsque le catalogue se construit."""
-    dark, pink, cyan = (40, 40, 55), (255, 60, 200), (60, 255, 255)
+    dark, metal, pink, cyan = (40, 40, 55), (70, 75, 95), (255, 60, 200), (60, 255, 255)
     visor = [box((1.62, 0.36, 1.2), (0, 2.32, -0.18), bevel=0.14)]
     mohawk = [box((0.2, 0.36 + 0.12 * (2 - abs(i - 2)), 0.3), (0, HEAD_TOP + 0.15 + 0.06 * (2 - abs(i - 2)),
                                                                    -0.45 + 0.24 * i), bevel=0.05,
                   rot=(-15 + 8 * i, 0, 0)) for i in range(5)]
+    gear = []
+    for sx in (-1, 1):
+        gear.append(cyl(0.34, 0.24, (0.86 * sx, 2.2, 0), rot=(0, 0, 90), verts=16))
+        gear.append(cyl(0.04, 0.9, (0.92 * sx, 2.85, 0.15), rot=(0, 0, -12 * sx)))
+    tips = [ball(0.11, (1.01 * sx, 3.3, 0.15), seg=10) for sx in (-1, 1)]
+    tips += [torus(0.22, 0.05, (0.99 * sx, 2.2, 0), rot=(0, 0, 90), seg=18, minor_seg=5) for sx in (-1, 1)]
     lines = [
-        torus(0.5, 0.05, (0, 0.32, -0.57), rot=(90, 0, 0), seg=24, minor_seg=5),
+        torus(0.5, 0.05, (0, 0.32, -0.66), rot=(90, 0, 0), seg=24, minor_seg=5),
         box((0.08, 1.9, 0.06), (-0.98, 0.15, -0.56), bevel=0.02),
         box((0.08, 1.9, 0.06), (0.98, 0.15, -0.56), bevel=0.02),
         box((1.9, 0.08, 0.06), (0, -0.75, -0.57), bevel=0.02),
         box((0.08, 1.9, 0.06), (-0.6, 0.15, 0.56), bevel=0.02),
         box((0.08, 1.9, 0.06), (0.6, 0.15, 0.56), bevel=0.02),
     ]
+    for sx in (-1, 1):
+        lines.append(box((0.08, 1.0, 0.06), (0.5 * sx + 0.3 * sx, -1.85, -0.5), bevel=0.02))
+        lines.append(box((0.98, 0.08, 0.06), (0.5 * sx, -2.95, -0.5), bevel=0.02))
+    armor = [box((1.75, 0.95, 0.16), (0, 0.55, -0.63), bevel=0.06)]
+    armor += [box((1.4 - 0.12 * i, 0.2, 0.14), (0, -0.2 - 0.27 * i, -0.6), bevel=0.05) for i in range(3)]
+    for sx in (-1, 1):
+        armor.append(box((1.05, 0.4, 1.05), (0.5 * sx, -2.5, -0.05), bevel=0.12))  # genouilleres
+        armor.append(box((1.0, 0.55, 1.1), (0.5 * sx, -3.6, -0.08), bevel=0.14))  # bottes
+    core = [prism([(0.24 * math.cos(math.radians(30 + 60 * k)), 0.24 * math.sin(math.radians(30 + 60 * k)))
+                   for k in range(6)], 0.1, (0, 0.55, -0.74))]
+    core += [box((0.5, 0.06, 0.05), (0.55 * sx, 0.8, -0.73), bevel=0.02) for sx in (-1, 1)]
+    core += [box((0.06, 0.3, 0.05), (0.18 * sx, -2.5, -0.59), bevel=0.02) for sx in (-1, 1)]
+    # Ailes : 3 lames de lumiere par cote sur une armature, ancrees en haut du dos
+    frame, blades, edges = [box((0.5, 1.6, 0.3), (0, 0.4, 0.72), bevel=0.08)], [], []
+    for sx in (-1, 1):
+        root = (0.3 * sx, 0.9, 0.85)
+        for i in range(3):
+            phi = 90 - sx * (28 + 30 * i)
+            length = 2.7 - 0.35 * i
+            frame.append(box((length * 0.55, 0.14, 0.14), root, bevel=0.04, rot=(0, 0, phi)))
+            frame[-1] = place(frame[-1], (0, 0, 0), (0.5 * length * 0.55 * math.cos(math.radians(phi)),
+                                                    0.5 * length * 0.55 * math.sin(math.radians(phi)), 0))
+            pts = [(0.1, -0.12), (length, -0.32), (length + 0.35, 0.0), (0.1, 0.16)]
+            blades.append(prism(pts, 0.06, (root[0], root[1], root[2] + 0.05 + 0.04 * i), rot=(0, 0, phi),
+                                bevel=0.015))
+            edge_pts = [(0.1, 0.12), (length + 0.35, 0.0), (length + 0.25, 0.08), (0.1, 0.22)]
+            edges.append(prism(edge_pts, 0.08, (root[0], root[1], root[2] + 0.03 + 0.04 * i), rot=(0, 0, phi),
+                               bevel=0.015))
+    halo = []
+    for k in range(4):  # quatre arcs symetriques : le halo tourne sur son centre
+        a0 = k * 90
+        for j in range(6):
+            a = math.radians(a0 + j * 11)
+            halo.append(box((0.32, 0.12, 0.08), (1.05 * math.cos(a), 1.05 * math.sin(a), 0), bevel=0.03,
+                            rot=(0, 0, math.degrees(a) + 90)))
+    halo = [group(halo, center=(0, 2.25, 0.95))]
     parts = [
         Part("CyberVisor", "Head", cyan, visor, material="Neon"),
         Part("Mohawk", "Head", pink, mohawk, material="Neon"),
+        Part("HelmetGear", "Head", metal, gear, material="Metal"),
+        Part("AntennaTips", "Head", pink, tips, material="Neon"),
         Part("NeonLines", "Torso", pink, lines, material="Neon"),
-        Part("RingA", "Torso", cyan, [torus(1.85, 0.08, (0, 0.2, 0), rot=(20, 0, 0), seg=40, minor_seg=6)],
+        Part("CyberArmor", "Torso", metal, armor, material="Metal"),
+        Part("ArmorCore", "Torso", cyan, core, material="Neon"),
+        Part("WingFrame", "Torso", metal, frame, material="Metal"),
+        Part("WingBlades", "Torso", cyan, blades, material="Neon", transparency=0.25),
+        Part("WingEdges", "Torso", pink, edges, material="Neon"),
+        Part("HoloHalo", "Head", pink, halo, material="Neon", spin=((0, 0, 1), -60)),
+        Part("RingA", "Torso", cyan, [group(tech_ring(1.95, 16, 4), rot=(20, 0, 0), center=(0, 0.2, 0))],
              material="Neon", spin=((0, 1, 0), 90)),
-        Part("RingB", "Torso", pink, [torus(2.1, 0.08, (0, 0.2, 0), rot=(-15, 0, 25), seg=40, minor_seg=6)],
+        Part("RingB", "Torso", pink, [group(tech_ring(2.3, 20, 3), rot=(-15, 0, 25), center=(0, 0.2, 0))],
              material="Neon", spin=((0, 1, 0), -70)),
     ]
     for side, sx in (("L", -1), ("R", 1)):
-        parts.append(Part("NeonPad" + side, side == "L" and "LeftUpperArm" or "RightUpperArm", cyan, [
-            box((0.95, 0.24, 0.95), (1.48 * sx, 1.08, 0), bevel=0.08, rot=(0, 0, -12 * sx)),
-            box((0.12, 0.6, 0.9), (1.92 * sx, 0.75, 0), bevel=0.04),
+        arm = side == "L" and "Left" or "Right"
+        parts.append(Part("NeonPad" + side, arm + "UpperArm", cyan, [
+            box((1.0, 0.24, 1.0), (1.48 * sx, 1.1, 0), bevel=0.08, rot=(0, 0, -12 * sx)),
+            box((0.85, 0.2, 0.85), (1.58 * sx, 0.88, 0), bevel=0.07, rot=(0, 0, -22 * sx)),
+            box((0.12, 0.6, 0.9), (1.95 * sx, 0.72, 0), bevel=0.04),
         ], material="Neon"))
+        parts.append(Part("Gauntlet" + side, arm + "LowerArm", metal, [
+            box((0.98, 0.55, 0.98), (1.45 * sx, -0.75, 0), bevel=0.12),
+            box((0.2, 0.4, 0.5), (1.97 * sx, -0.7, 0), bevel=0.06),
+        ], material="Metal"))
     return dict(color=dark, parts=parts, effects=[
         fx_particles("sparkle", "Torso", (0, 0.5, 0), pink, cyan),
         fx_light("Torso", (0, 1, -1.5), pink, 14, 3),
@@ -962,140 +1151,259 @@ def look_neon():
 
 
 def look_king():
-    """Cette methode permet de modeliser le Crash King (couronne a gemmes, manteau royal a hermine, sceptre, trone dore
-    dans le dos, halo-soleil qui tourne, aura d'or) lorsque le catalogue se construit."""
-    red, ruby, ermine = (200, 20, 40), (255, 40, 70), (250, 250, 250)
-    crown = [cyl(0.8, 0.5, (0, HEAD_TOP + 0.22, 0), verts=8, bevel=0.04)]
-    crown += ring_of(8, 0.78, lambda x, z, a: cone(0.18, 0.6, (x, HEAD_TOP + 0.75, z), verts=4))
-    crown += ring_of(8, 0.78, lambda x, z, a: ball(0.08, (x, HEAD_TOP + 1.07, z), seg=8))
-    gems = ring_of(4, 0.82, lambda x, z, a: gem(0.13, 0.3, (x, HEAD_TOP + 0.22, z), rot=(90, -a - 90, 0)),
+    """Cette methode permet de modeliser le Crash King (couronne fermee a deux etages, arceaux, globe et croix, rubis,
+    saphirs et perles ; manteau a bordure d'or et hermine mouchetee ; sceptre a globe ; trone dore a dossier festonne,
+    velours, colonnes a pommeaux et gemmes ; halo-soleil a rayons alternes) lorsque le catalogue se construit."""
+    red, ruby, sapphire, ermine = (200, 20, 40), (255, 40, 70), (60, 130, 255), (250, 250, 250)
+    top = HEAD_TOP
+    crown = [torus(0.8, 0.13, (0, top + 0.08, 0), seg=32, minor_seg=8),
+             torus(0.82, 0.08, (0, top + 0.42, 0), seg=32, minor_seg=6),
+             cyl(0.78, 0.36, (0, top + 0.25, 0), verts=16, bevel=0.03)]
+    crown += ring_of(8, 0.8, lambda x, z, a: cone(0.17 if int(a) % 90 == 0 else 0.13,
+                                                 0.85 if int(a) % 90 == 0 else 0.55, (x, top + 0.75, z), verts=4))
+    crown += [torus(0.72, 0.06, (0, top + 0.45, 0), rot=rot, seg=32, minor_seg=6) for rot in ((90, 0, 0),
+                                                                                         (90, 90, 0))]
+    crown += [ball(0.2, (0, top + 1.25, 0), seg=14), box((0.1, 0.5, 0.1), (0, top + 1.6, 0), bevel=0.03),
+              box((0.34, 0.1, 0.1), (0, top + 1.65, 0), bevel=0.03)]
+    gems = ring_of(4, 0.88, lambda x, z, a: gem(0.15, 0.34, (x, top + 0.25, z), rot=(90, -a - 90, 0)),
                    phase=math.pi / 2)
-    robe = [
-        prism([(-1.15, 1.15), (1.15, 1.15), (1.9, -3.75), (-1.9, -3.75)], 0.14, (0, 0, 0.74), rot=(-8, 0, 0)),
-    ]
+    sapphires = ring_of(4, 0.88, lambda x, z, a: gem(0.11, 0.26, (x, top + 0.25, z), rot=(90, -a - 90, 0)),
+                        phase=math.pi / 4)
+    pearls = ring_of(8, 0.8, lambda x, z, a: ball(0.09, (x, top + 0.75 + (0.45 if int(a) % 90 == 0 else 0.3), z),
+                                                  seg=8))
+    robe_pts = [(-1.15, 1.15), (1.15, 1.15), (1.9, -3.75), (-1.9, -3.75)]
+    robe = [prism(robe_pts, 0.14, (0, 0, 0.74), rot=(-8, 0, 0))]
+    trim = []
+    for (x0, y0), (x1, y1) in ((robe_pts[1], robe_pts[2]), (robe_pts[2], robe_pts[3]), (robe_pts[3], robe_pts[0])):
+        length = math.hypot(x1 - x0, y1 - y0)
+        ang = math.degrees(math.atan2(y1 - y0, x1 - x0))
+        trim.append(place(box((length + 0.1, 0.18, 0.2), ((x0 + x1) / 2, (y0 + y1) / 2, 0), bevel=0.05,
+                              rot=(0, 0, ang)), rot=(-8, 0, 0), center=(0, 0, 0.72)))
+    trim += [box((0.12, 0.12, 0.12), (sx * 0.62, y, -0.6), bevel=0.03) for sx in (-1, 1) for y in (0.6, 0.1, -0.4)]
     fur = [
         box((2.4, 0.42, 1.5), (0, 1.12, 0.12), bevel=0.2, segments=4),
         box((0.28, 4.4, 0.18), (-1.45, -1.5, 0.92), bevel=0.08, rot=(-8, 0, 9)),
         box((0.28, 4.4, 0.18), (1.45, -1.5, 0.92), bevel=0.08, rot=(-8, 0, -9)),
     ]
+    spots = [box((0.09, 0.16, 0.05), (x, 1.12, -0.64), bevel=0.02) for x in (-0.9, -0.45, 0.0, 0.45, 0.9)]
+    spots += [box((0.09, 0.16, 0.05), (x, 1.34, 0.4), bevel=0.02) for x in (-0.7, 0.0, 0.7)]
     scepter = [
-        cyl(0.09, 2.6, (1.45, -1.1, -0.45), rot=(0, 0, 0)),
-        cyl(0.18, 0.2, (1.45, 0.2, -0.45)),
-        cyl(0.16, 0.2, (1.45, -2.35, -0.45)),
+        cyl(0.09, 2.6, (1.45, -1.1, -0.45)),
+        cyl(0.17, 0.16, (1.45, 0.2, -0.45)),
+        cyl(0.14, 0.12, (1.45, -0.5, -0.45)),
+        cyl(0.14, 0.12, (1.45, -1.6, -0.45)),
+        cyl(0.17, 0.2, (1.45, -2.35, -0.45)),
+        torus(0.3, 0.05, (1.45, 0.62, -0.45), rot=(90, 0, 0), seg=20, minor_seg=5),
+        box((0.08, 0.36, 0.08), (1.45, 1.05, -0.45), bevel=0.02),
+        box((0.26, 0.08, 0.08), (1.45, 1.08, -0.45), bevel=0.02),
     ]
-    scepter_gem = [ball(0.28, (1.45, 0.5, -0.45), seg=12)]
-    throne = [
-        box((3.2, 6.6, 0.4), (0, -0.5, 1.75), bevel=0.15),
-        box((3.6, 0.5, 0.6), (0, 2.85, 1.75), bevel=0.15),
-        *[cone(0.3, 0.9, (x, 3.5, 1.75), verts=4) for x in (-1.5, -0.75, 0.75, 1.5)],
-        cone(0.4, 1.3, (0, 3.7, 1.75), verts=4),
-        box((0.4, 3.0, 2.4), (-1.9, -2.3, 0.75), bevel=0.12),
-        box((0.4, 3.0, 2.4), (1.9, -2.3, 0.75), bevel=0.12),
-        box((0.6, 0.3, 2.6), (-1.9, -0.7, 0.75), bevel=0.1),
-        box((0.6, 0.3, 2.6), (1.9, -0.7, 0.75), bevel=0.1),
-        *studs((-1.9, -0.55, 0.75), 1, 4, pitch=0.6, radius=0.15),
-        *studs((1.9, -0.55, 0.75), 1, 4, pitch=0.6, radius=0.15),
-    ]
-    cushion = [box((2.4, 4.6, 0.2), (0, -0.4, 1.5), bevel=0.15)]
-    halo = [torus(1.05, 0.08, (0, 0, 0), rot=(90, 0, 0), seg=32, minor_seg=6)]
-    halo += [cone(0.12, 0.45, (1.25 * math.cos(a), 1.25 * math.sin(a), 0),
-                  rot=(0, 0, math.degrees(a) - 90), verts=4) for a in np.linspace(0, 2 * math.pi, 13)[:-1]]
-    halo = [merge(halo)]
-    # Halo place derriere la tete : decalage applique apres la fusion
-    for v in halo[0].data.vertices:
-        p = br(v.co)
-        v.co = rb(Vector((p.x, p.y + 2.35, p.z + 0.95)))
+    scepter_gem = [ball(0.27, (1.45, 0.62, -0.45), seg=14)]
+    # Trone : dossier a sommet festonne, montants a pommeaux, accoudoirs a volutes, socle a deux marches
+    back_pts = [(-1.7, -3.6), (1.7, -3.6), (1.7, 2.2)]
+    for k in range(1, 12):
+        a = math.radians(180 * k / 12)
+        r = 1.95 if k % 2 else 1.7
+        back_pts.append((r * math.cos(a), 2.2 + r * math.sin(a) * 1.15))
+    back_pts.append((-1.7, 2.2))
+    throne = [prism(back_pts, 0.4, (0, 0, 1.85), bevel=0.08)]
+    for sx in (-1, 1):
+        throne += [cyl(0.24, 6.0, (2.05 * sx, -0.6, 1.6), verts=12), ball(0.34, (2.05 * sx, 2.65, 1.6), seg=12),
+                   cone(0.18, 0.6, (2.05 * sx, 3.2, 1.6), verts=8),
+                   box((0.45, 0.35, 2.4), (2.05 * sx, -1.0, 0.6), bevel=0.12),
+                   cyl(0.24, 0.5, (2.05 * sx, -1.0, -0.6), rot=(90, 0, 0), verts=12),
+                   box((0.4, 2.4, 0.4), (2.05 * sx, -2.4, -0.4), bevel=0.1)]
+    throne += [box((4.6, 0.3, 2.6), (0, -3.68, 1.0), bevel=0.08), box((5.2, 0.16, 3.0), (0, -3.78, 1.05), bevel=0.05)]
+    cushion_pts = [(p[0] * 0.78, -3.0 + (p[1] + 3.6) * 0.86) for p in back_pts]
+    cushion = [prism(cushion_pts, 0.12, (0, 0, 1.6), bevel=0.04)]
+    tgems = []
+    for k in range(1, 12, 2):
+        a = math.radians(180 * k / 12)
+        tgems.append(gem(0.14, 0.32, (1.72 * math.cos(a), 2.2 + 1.72 * math.sin(a) * 1.15, 1.6), rot=(90, 0, 0)))
+    tgems += [gem(0.18, 0.4, (2.05 * sx, 1.2, 1.32), rot=(90, 0, 0)) for sx in (-1, 1)]
+    trubies = [gem(0.3, 0.6, (0, 4.35, 1.6), rot=(90, 0, 0))]
+    trubies += [gem(0.14, 0.3, (2.05 * sx, -0.1, 1.33), rot=(90, 0, 0)) for sx in (-1, 1)]
+    halo = [torus(1.05, 0.08, (0, 0, 0), rot=(90, 0, 0), seg=40, minor_seg=6),
+            torus(0.82, 0.05, (0, 0, 0), rot=(90, 0, 0), seg=40, minor_seg=5)]
+    for k in range(24):
+        a = 2 * math.pi * k / 24
+        long_ray = k % 2 == 0
+        r = 1.42 if long_ray else 1.3
+        halo.append(cone(0.11 if long_ray else 0.08, 0.6 if long_ray else 0.35, (r * math.cos(a), r * math.sin(a), 0),
+                         rot=(0, 0, math.degrees(a) - 90), verts=4))
+        if long_ray:
+            halo.append(ball(0.07, (1.8 * math.cos(a), 1.8 * math.sin(a), 0), seg=6))
+    halo = [group(halo, center=(0, 2.35, 0.95))]
     return dict(color=(255, 200, 40), material="Foil", parts=[
         Part("Crown", "Head", GOLD, crown, material="Foil"),
         Part("CrownGems", "Head", ruby, gems, material="Neon"),
+        Part("CrownSapphires", "Head", sapphire, sapphires, material="Neon"),
+        Part("CrownPearls", "Head", WHITE, pearls),
         Part("Robe", "Torso", red, robe, material="Fabric"),
+        Part("RobeTrim", "Torso", GOLD, trim, material="Foil"),
         Part("Ermine", "Torso", ermine, fur, material="Fabric"),
+        Part("ErmineSpots", "Torso", BLACK, spots),
         Part("Scepter", "RightLowerArm", GOLD, scepter, material="Foil"),
         Part("ScepterGem", "RightLowerArm", ruby, scepter_gem, material="Neon"),
         Part("Throne", "Torso", (255, 190, 40), throne, material="Foil"),
         Part("ThroneCushion", "Torso", red, cushion, material="Fabric"),
+        Part("ThroneSapphires", "Torso", sapphire, tgems, material="Neon"),
+        Part("ThroneRubies", "Torso", ruby, trubies, material="Neon"),
         Part("SunHalo", "Head", (255, 215, 70), halo, material="Neon", spin=((0, 0, 1), 40)),
     ], effects=[
         fx_particles("sparkle", "Torso", (0, 1, 0), (255, 220, 90), (255, 255, 255)),
-        fx_particles("aura", "Torso", (0, 0, 0), (255, 200, 60)),
         fx_light("Torso", (0, 2, -2), (255, 200, 80), 18, 3),
     ])
 
 
 def look_void():
-    """Cette methode permet de modeliser le Void (trou noir et disque d'accretion dans le dos, fissures et yeux
-    violets, eclats en orbite, particules aspirees) lorsque le catalogue se construit."""
-    black, purple, deep = (12, 8, 20), (170, 60, 255), (90, 30, 170)
-    core = [ball(1.25, (0, 1.0, 1.7), scale=(1, 1, 0.35), seg=24)]
-    disc = [torus(1.75, 0.22, (0, 1.0, 1.7), rot=(90, 0, 0), seg=40, minor_seg=8),
-            torus(2.3, 0.08, (0, 1.0, 1.7), rot=(90, 0, 0), seg=40, minor_seg=6)]
-    for i in range(6):
-        a = i * math.pi / 3
-        disc.append(box((0.9, 0.12, 0.08), (1.95 * math.cos(a), 1.0 + 1.95 * math.sin(a), 1.7), bevel=0.03,
-                        rot=(0, 0, math.degrees(a) + 60)))
+    """Cette methode permet de modeliser le Void (trou noir dans le dos : horizon noir, anneau de photons, trois
+    tourbillons d'accretion qui tournent de plus en plus vite vers le centre ; couronne d'eclats de cristal noir a
+    coeurs violets ; ailes d'eclats ; fissures et yeux violets ; eclats en orbite) lorsque le catalogue se construit."""
+    black, purple, magenta, hot, deep = (14, 10, 22), (170, 60, 255), (235, 80, 255), (255, 170, 110), (90, 30, 170)
+    # Trou noir haut dans le dos (au-dessus des epaules) pour rester visible de face
+    c = (0, 1.7, 2.0)
+    core = [ball(1.3, c, scale=(1, 1, 0.6), seg=28)]
+    photon = [torus(1.38, 0.08, (c[0], c[1], c[2] - 0.1), rot=(90, 0, 0), seg=48, minor_seg=6),
+              torus(2.05, 0.04, (c[0], c[1], c[2] - 0.12), rot=(90, 0, 0), seg=48, minor_seg=5)]
+    inner = [torus(1.6, 0.14, (c[0], c[1], c[2] - 0.05), rot=(90, 0, 0), seg=48, minor_seg=8)]
+    mid = []
+    outer = [annulus(3.3, 3.55, 0.05, (c[0], c[1], c[2] + 0.1))]
+    for k in range(6):
+        inner += spiral_arm(c, k * math.pi / 3, 1.5, 2.2, 1.4, 8, 0.34, 0.12, thickness=0.08, z=-0.06)
+        mid += spiral_arm(c, k * math.pi / 3 + 0.4, 1.9, 3.0, 1.5, 10, 0.4, 0.12, thickness=0.07, z=0.0)
+        outer += spiral_arm(c, k * math.pi / 3 + 0.9, 2.5, 3.5, 1.3, 9, 0.42, 0.14, thickness=0.06, z=0.06)
+    outer += [box((0.24, 0.18, 0.14), (c[0] + 3.42 * math.cos(math.radians(a)),
+                                       c[1] + 3.42 * math.sin(math.radians(a)), c[2] + 0.05), bevel=0.04,
+                  rot=(a, a, a)) for a in range(0, 360, 30)]
     cracks = [
         box((0.07, 0.6, 0.05), (-0.3, 0.6, -0.57), bevel=0.02, rot=(0, 0, 25)),
         box((0.07, 0.5, 0.05), (-0.15, 0.15, -0.57), bevel=0.02, rot=(0, 0, -30)),
         box((0.07, 0.6, 0.05), (0.35, -0.2, -0.57), bevel=0.02, rot=(0, 0, 35)),
         box((0.07, 0.45, 0.05), (0.55, 0.45, -0.57), bevel=0.02, rot=(0, 0, -20)),
         box((0.07, 0.5, 0.05), (-0.6, -0.5, -0.57), bevel=0.02, rot=(0, 0, 15)),
+        box((0.07, 0.5, 0.05), (-0.5, -1.9, -0.5), bevel=0.02, rot=(0, 0, 20)),
+        box((0.07, 0.6, 0.05), (0.45, -2.9, -0.5), bevel=0.02, rot=(0, 0, -25)),
+        box((0.07, 0.4, 0.05), (0.55, -1.6, -0.5), bevel=0.02, rot=(0, 0, 10)),
     ]
     eyes = [box((0.24, 0.3, 0.06), (sx * 0.3, 2.31, -0.73), bevel=0.05) for sx in (-1, 1)]
-    horns = [cone(0.2, 0.9, (sx * 0.55, HEAD_TOP + 0.3, 0.05), rot=(0, 0, -sx * 25), verts=6) for sx in (-1, 1)]
-    shards = ring_of(4, 2.1, lambda x, z, a: gem(0.22, 0.7, (x, 0.3 * (1 if int(a) % 180 else -1), z),
-                                                rot=(20, a, 0), verts=5))
+    heights = [1.25, 0.7, 0.95, 0.6, 0.95, 0.7, 1.25, 0.8]
+    crown = [torus(0.8, 0.1, (0, HEAD_TOP + 0.05, 0), seg=32, minor_seg=6)]
+    cores = []
+    for i, h in enumerate(heights):
+        a = 2 * math.pi * i / len(heights) + math.pi / 2
+        x, z = 0.8 * math.cos(a), 0.8 * math.sin(a)
+        tilt_x, tilt_z = 14 * math.sin(a), -14 * math.cos(a)
+        crown.append(shard(0.16, h, (x, HEAD_TOP, z), rot=(tilt_x, 0, tilt_z), verts=5))
+        cores.append(gem(0.08, 0.22, (x * 1.12, HEAD_TOP + h * 0.55, z * 1.12), verts=5))
+    crown.append(shard(0.22, 1.6, (0, HEAD_TOP + 0.05, -0.75), verts=5))  # grand eclat frontal
+    cores.append(gem(0.13, 0.35, (0, HEAD_TOP + 0.75, -0.95), verts=6))
+    wings, tips = [], []
+    for sx in (-1, 1):
+        for i in range(3):
+            ang = sx * (40 + 28 * i)
+            length = 2.8 - 0.45 * i
+            root = (0.35 * sx, 0.8 - 0.25 * i, 1.0)
+            wings.append(shard(0.22 - 0.03 * i, length, root, rot=(0, 0, -ang), verts=5))
+            a = math.radians(90 - ang)
+            tips.append(gem(0.12, 0.34, (root[0] + length * 0.97 * math.cos(a), root[1] + length * 0.97 * math.sin(a),
+                                         root[2] - 0.05), rot=(0, 0, -ang), verts=5))
+            # Nervure lumineuse sur la face avant de l'eclat
+            tips.append(box((0.06, length * 0.7, 0.04), (root[0] + length * 0.4 * math.cos(a),
+                                                         root[1] + length * 0.4 * math.sin(a), root[2] - 0.2),
+                            bevel=0.015, rot=(0, 0, -ang), segments=1))
+    shards = ring_of(6, 2.35, lambda x, z, a: gem(0.2 if int(a) % 120 == 0 else 0.15, 0.65,
+                                                  (x, 0.35 * (1 if int(a) % 120 == 0 else -1), z), rot=(20, a, 0),
+                                                  verts=5))
     return dict(color=(24, 20, 36), parts=[
-        Part("VoidCore", "Torso", black, core, material="Neon"),
-        Part("Accretion", "Torso", purple, disc, material="Neon", spin=((0, 0, 1), 80)),
+        Part("VoidCore", "Torso", black, core),
+        Part("PhotonRing", "Torso", (245, 215, 255), photon, material="Neon"),
+        Part("AccretionHot", "Torso", hot, inner, material="Neon", spin=((0, 0, 1), 140)),
+        Part("Accretion", "Torso", magenta, mid, material="Neon", spin=((0, 0, 1), 90)),
+        Part("AccretionOuter", "Torso", deep, outer, material="Neon", transparency=0.25, spin=((0, 0, 1), 45)),
         Part("VoidCracks", "Torso", purple, cracks, material="Neon"),
         Part("VoidEyes", "Head", purple, eyes, material="Neon"),
-        Part("VoidHorns", "Head", black, horns),
+        Part("VoidCrown", "Head", (35, 25, 55), crown, material="Glass", transparency=0.1),
+        Part("CrownCores", "Head", magenta, cores, material="Neon"),
+        Part("VoidWings", "Torso", (85, 40, 140), wings, material="Glass", transparency=0.15),
+        Part("WingTips", "Torso", magenta, tips, material="Neon"),
         Part("VoidShards", "Torso", deep, shards, material="Neon", spin=((0, 1, 0), -55)),
     ], effects=[
-        fx_particles("vortex", "Torso", (0, 1, 1.7), (190, 90, 255), (40, 0, 80)),
-        fx_particles("aura", "Torso", (0, 0, 0), (120, 40, 220)),
+        fx_particles("vortex", "Torso", (0, 1.7, 2.0), (190, 90, 255), (40, 0, 80)),
         fx_light("Torso", (0, 1, 0), (170, 60, 255), 16, 3),
     ])
 
 
 def look_cosmic():
-    """Cette methode permet de modeliser le Cosmic (corps d'energie, galaxie spirale qui tourne dans le dos, couronne
-    d'etoiles, lunes en orbite, etoiles et aura) lorsque le catalogue se construit."""
-    magenta, cyan, core_col, star, moon = (255, 70, 220), (90, 220, 255), (255, 245, 200), (255, 230, 90), (110, 255, 225)
-    center = (0, 1.0, 1.6)
-
-    def arms(phase):
-        """Cette methode permet de poser deux bras spiraux opposes (blocs le long d'une spirale) lorsque l'on modelise
-        la galaxie."""
-        out = []
-        for k in (0, math.pi):
-            for i in range(9):
-                t = 0.35 + i * 0.3
-                a = phase + k + t * 1.3
-                r = 0.6 + t * 1.05
-                s = 0.55 - i * 0.035
-                out.append(box((s, s, 0.12), (center[0] + r * math.cos(a), center[1] + r * math.sin(a), center[2]),
-                               bevel=0.04, rot=(0, 0, math.degrees(a))))
-        return out
-
-    core = [ball(0.65, center, scale=(1, 1, 0.5), seg=18)]
-    disc = [cyl(3.3, 0.06, (center[0], center[1], center[2] + 0.12), rot=(90, 0, 0), verts=40, bevel=0.02)]
-    crown = ring_of(5, 0.75, lambda x, z, a: prism(
-        [(0.3 * math.cos(math.radians(90 + 72 * k / 2)) * (1 if k % 2 == 0 else 0.45),
-          0.3 * math.sin(math.radians(90 + 72 * k / 2)) * (1 if k % 2 == 0 else 0.45)) for k in range(10)],
-        0.1, (x, HEAD_TOP + 0.95, z), rot=(0, -a - 90, 0)))
-    moons = [ball(0.3, (2.3, 0.4, 0), seg=12), ball(0.24, (-1.6, -0.5, 1.6), seg=10),
-             ball(0.2, (-0.8, 1.1, -2.1), seg=10)]
-    return dict(color=(120, 70, 240), material="Neon", parts=[
-        Part("GalaxyArmsA", "Torso", magenta, arms(0.0), material="Neon", spin=((0, 0, 1), 30)),
-        Part("GalaxyArmsB", "Torso", cyan, arms(math.pi / 2), material="Neon", spin=((0, 0, 1), 30)),
+    """Cette methode permet de modeliser le Cosmic (gardien cosmique en armure doree : galaxie spirale a quatre bras
+    et etoiles semees qui tourne dans le dos, cerclee d'or et de gemmes, coeur lumineux ; couronne a pointes et grande
+    etoile flottante ; epaulieres a gemmes ; planetes annelees en orbite) lorsque le catalogue se construit."""
+    indigo, magenta, cyan, core_col = (70, 40, 170), (255, 70, 220), (90, 220, 255), (255, 245, 200)
+    starc, deep = (255, 230, 90), (35, 15, 95)
+    c = (0, 1.1, 1.85)
+    disc = [cyl(3.05, 0.06, (c[0], c[1], c[2] + 0.1), rot=(90, 0, 0), verts=56, bevel=0.02)]
+    arms_a = spiral_arm(c, 0.0, 0.5, 2.9, 3.4, 24, 0.7, 0.16, z=-0.02) + \
+        spiral_arm(c, math.pi, 0.5, 2.9, 3.4, 24, 0.7, 0.16, z=-0.02)
+    arms_b = spiral_arm(c, math.pi / 2, 0.5, 2.7, 3.2, 22, 0.55, 0.14, z=-0.04) + \
+        spiral_arm(c, 3 * math.pi / 2, 0.5, 2.7, 3.2, 22, 0.55, 0.14, z=-0.04)
+    rng = random.Random(7)
+    stars = []
+    for _ in range(16):
+        a, r = rng.uniform(0, 2 * math.pi), rng.uniform(0.9, 2.9)
+        s = rng.uniform(0.13, 0.26)
+        for sign in (1, -1):
+            stars.append(star(s, s * 0.4, 0.05, (c[0] + sign * r * math.cos(a), c[1] + sign * r * math.sin(a),
+                                                 c[2] - 0.1), rot=(0, 0, rng.uniform(0, 72)), points=4))
+    core = [ball(0.55, c, scale=(1, 1, 0.6), seg=20), torus(0.82, 0.06, c, rot=(90, 0, 0), seg=32, minor_seg=5)]
+    rim = [torus(3.15, 0.1, (c[0], c[1], c[2] + 0.08), rot=(90, 0, 0), seg=64, minor_seg=6)]
+    rim += [ball(0.12, (c[0] + 3.15 * math.cos(math.radians(a)), c[1] + 3.15 * math.sin(math.radians(a)), c[2]),
+                 seg=8) for a in range(15, 360, 30)]
+    rim_gems = [gem(0.18, 0.4, (c[0] + 3.15 * math.cos(math.radians(a)), c[1] + 3.15 * math.sin(math.radians(a)),
+                                c[2] - 0.05), rot=(90, 0, 0)) for a in range(0, 360, 30)]
+    top = HEAD_TOP
+    crown = [torus(0.8, 0.11, (0, top + 0.08, 0), seg=32, minor_seg=6)]
+    crown += ring_of(10, 0.8, lambda x, z, a: cone(0.12, 0.9 if int(round(a)) % 72 == 0 else 0.5,
+                                                  (x, top + 0.55 if int(round(a)) % 72 == 0 else top + 0.35, z),
+                                                  verts=4))
+    crown_gems = ring_of(5, 0.88, lambda x, z, a: gem(0.12, 0.28, (x, top + 0.1, z), rot=(90, -a - 90, 0)),
+                         phase=math.pi / 5)
+    big_star = [star(0.5, 0.22, 0.14, (0, top + 1.5, 0)), star(0.3, 0.13, 0.16, (0, top + 1.5, -0.02))]
+    armor = [torus(0.5, 0.07, (0, 0.4, -0.62), rot=(90, 0, 0), seg=28, minor_seg=6),
+             box((2.15, 0.28, 1.25), (0, -1.05, 0), bevel=0.1),
+             box((0.5, 0.5, 0.12), (0, -1.05, -0.66), bevel=0.08, rot=(0, 0, 45))]
+    for sx in (-1, 1):
+        armor += [box((1.05, 0.35, 1.05), (0.5 * sx, -2.5, -0.02), bevel=0.12),
+                  box((0.95, 0.4, 0.95), (1.45 * sx, -0.95, 0), bevel=0.12)]
+    chest = [star(0.38, 0.17, 0.1, (0, 0.4, -0.68))]
+    chest += [gem(0.09, 0.22, (0.5 * sx, -2.5, -0.58), rot=(90, 0, 0)) for sx in (-1, 1)]
+    parts = [
+        Part("GalaxyDisc", "Torso", deep, disc, material="Neon", transparency=0.1, spin=((0, 0, 1), 25)),
+        Part("GalaxyArmsA", "Torso", magenta, arms_a, material="Neon", spin=((0, 0, 1), 25)),
+        Part("GalaxyArmsB", "Torso", cyan, arms_b, material="Neon", spin=((0, 0, 1), 25)),
+        Part("GalaxyStars", "Torso", WHITE, stars, material="Neon", spin=((0, 0, 1), 25)),
         Part("GalaxyCore", "Torso", core_col, core, material="Neon"),
-        Part("GalaxyDisc", "Torso", (45, 20, 110), disc, material="Neon", transparency=0.15, spin=((0, 0, 1), 30)),
-        Part("StarCrown", "Head", star, crown, material="Neon", spin=((0, 1, 0), 60)),
-        Part("CosmicMoons", "Torso", moon, moons, material="Neon", spin=((0, 1, 0), -40)),
-    ], effects=[
+        Part("GalaxyRim", "Torso", GOLD, rim, material="Foil"),
+        Part("RimGems", "Torso", cyan, rim_gems, material="Neon"),
+        Part("StarCrown", "Head", GOLD, crown, material="Foil"),
+        Part("CrownGems", "Head", magenta, crown_gems, material="Neon"),
+        Part("CrownStar", "Head", starc, big_star, material="Neon", spin=((0, 1, 0), 60), bob=(0.12, 2.0)),
+        Part("CosmicArmor", "Torso", GOLD, armor, material="Foil"),
+        Part("ArmorGems", "Torso", cyan, chest, material="Neon"),
+    ]
+    for side, sx in (("L", -1), ("R", 1)):
+        pad = [ball(0.62, (1.47 * sx, 1.12, 0), scale=(1, 0.55, 1), seg=18)]
+        pad += [cone(0.12, 0.55, (1.47 * sx + 0.25 * sx * k, 1.45, -0.3 + 0.3 * k), rot=(0, 0, -25 * sx), verts=4)
+                for k in range(3)]
+        parts.append(Part("Pauldron" + side, ("Left" if side == "L" else "Right") + "UpperArm", GOLD, pad,
+                          material="Foil"))
+    planets = ring_of(4, 3.0, lambda x, z, a: ball(0.32 if int(a) % 180 == 0 else 0.24, (x, 0.25, z), seg=14))
+    rings = ring_of(4, 3.0, lambda x, z, a: annulus(0.42, 0.6 if int(a) % 180 == 0 else 0.48, 0.03, (x, 0.25, z),
+                                                    rot=(70, 0, 20)))
+    parts += [
+        Part("CosmicMoons", "Torso", (110, 255, 225), planets, material="Neon", spin=((0, 1, 0), -35)),
+        Part("MoonRings", "Torso", magenta, rings, material="Neon", spin=((0, 1, 0), -35)),
+    ]
+    return dict(color=indigo, pieces={"Torso": (55, 28, 140)}, parts=parts, effects=[
         fx_particles("stars", "Torso", (0, 0.5, 0), (255, 255, 255), (255, 120, 230)),
-        fx_particles("aura", "Torso", (0, 0, 0), (200, 120, 255)),
         fx_light("Torso", (0, 1, -1.5), (220, 120, 255), 18, 3),
     ])
 

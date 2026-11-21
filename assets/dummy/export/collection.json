@@ -2263,19 +2263,44 @@
      255
     ],
     "material": "Glass",
-    "transparency": 0.45,
+    "transparency": 0.5,
     "spin": null,
     "bob": null,
-    "triangles": 528
+    "triangles": 728
+   },
+   {
+    "name": "GoldVisor",
+    "mesh": "galaxy_GoldVisor",
+    "piece": "Head",
+    "size": [
+     1.25,
+     0.616,
+     0.19
+    ],
+    "offset": [
+     0.0,
+     0.22,
+     -0.8
+    ],
+    "color": [
+     255,
+     200,
+     70
+    ],
+    "material": "Foil",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": null,
+    "triangles": 188
    },
    {
     "name": "SuitCollar",
     "mesh": "galaxy_SuitCollar",
     "piece": "Head",
     "size": [
-     1.76,
-     1.04,
-     1.76
+     1.82,
+     1.06,
+     1.82
     ],
     "offset": [
      0.0,
@@ -2291,21 +2316,21 @@
     "transparency": 0.0,
     "spin": null,
     "bob": null,
-    "triangles": 572
+    "triangles": 636
    },
    {
-    "name": "LifePack",
-    "mesh": "galaxy_LifePack",
+    "name": "SuitPads",
+    "mesh": "galaxy_SuitPads",
     "piece": "Torso",
     "size": [
-     1.6,
-     2.35,
-     0.7
+     4.0,
+     5.222,
+     1.25
     ],
     "offset": [
      0.0,
-     0.375,
-     0.92
+     -1.189,
+     0.0
     ],
     "color": [
      245,
@@ -2316,21 +2341,71 @@
     "transparency": 0.0,
     "spin": null,
     "bob": null,
-    "triangles": 612
+    "triangles": 1764
+   },
+   {
+    "name": "SuitStripes",
+    "mesh": "galaxy_SuitStripes",
+    "piece": "Torso",
+    "size": [
+     1.98,
+     3.69,
+     0.128
+    ],
+    "offset": [
+     0.0,
+     -0.695,
+     -0.584
+    ],
+    "color": [
+     255,
+     110,
+     200
+    ],
+    "material": "Neon",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": null,
+    "triangles": 952
+   },
+   {
+    "name": "LifePack",
+    "mesh": "galaxy_LifePack",
+    "piece": "Torso",
+    "size": [
+     1.7,
+     4.06,
+     0.75
+    ],
+    "offset": [
+     0.0,
+     0.93,
+     0.95
+    ],
+    "color": [
+     245,
+     245,
+     245
+    ],
+    "material": "SmoothPlastic",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": null,
+    "triangles": 1092
    },
    {
     "name": "PackLights",
     "mesh": "galaxy_PackLights",
     "piece": "Torso",
     "size": [
-     1.34,
-     1.26,
-     0.52
+     1.44,
+     1.32,
+     0.55
     ],
     "offset": [
      0.0,
-     1.09,
-     1.06
+     1.12,
+     1.105
     ],
     "color": [
      90,
@@ -2348,13 +2423,13 @@
     "mesh": "galaxy_PlanetRing",
     "piece": "Torso",
     "size": [
-     4.84,
-     0.208,
-     4.84
+     5.817,
+     2.105,
+     5.624
     ],
     "offset": [
      0.0,
-     0.0,
+     0.1,
      0.0
     ],
     "color": [
@@ -2363,31 +2438,63 @@
      200
     ],
     "material": "Neon",
+    "transparency": 0.15,
+    "spin": [
+     [
+      0,
+      1,
+      0
+     ],
+     30
+    ],
+    "bob": null,
+    "triangles": 1152
+   },
+   {
+    "name": "RingRocks",
+    "mesh": "galaxy_RingRocks",
+    "piece": "Torso",
+    "size": [
+     4.859,
+     1.82,
+     4.51
+    ],
+    "offset": [
+     0.0,
+     0.1,
+     0.0
+    ],
+    "color": [
+     255,
+     220,
+     80
+    ],
+    "material": "Neon",
     "transparency": 0.0,
     "spin": [
      [
-      0.34,
-      0.94,
+      0,
+      1,
       0
      ],
-     35
+     30
     ],
     "bob": null,
-    "triangles": 960
+    "triangles": 1880
    },
    {
     "name": "Moons",
     "mesh": "galaxy_Moons",
     "piece": "Torso",
     "size": [
-     5.179,
-     1.78,
-     3.58
+     6.8,
+     0.6,
+     6.64
     ],
     "offset": [
-     0.18,
-     0.27,
-     -0.77
+     0.0,
+     0.5,
+     0.0
     ],
     "color": [
      255,
@@ -2405,7 +2512,7 @@
      -50
     ],
     "bob": null,
-    "triangles": 320
+    "triangles": 480
    }
   ]
  },
@@ -2487,18 +2594,43 @@
     "triangles": 1128
    },
    {
+    "name": "GhostCape",
+    "mesh": "ghost_GhostCape",
+    "piece": "Torso",
+    "size": [
+     3.994,
+     5.92,
+     1.732
+    ],
+    "offset": [
+     -0.0,
+     -1.06,
+     0.361
+    ],
+    "color": [
+     180,
+     220,
+     255
+    ],
+    "material": "ForceField",
+    "transparency": 0.15,
+    "spin": null,
+    "bob": null,
+    "triangles": 408
+   },
+   {
     "name": "ShackleL",
     "mesh": "ghost_ShackleL",
     "piece": "LeftLowerArm",
     "size": [
-     1.2,
-     1.337,
-     1.182
+     1.459,
+     2.107,
+     1.411
     ],
     "offset": [
-     -0.0,
-     -0.512,
-     0.0
+     -0.13,
+     -0.897,
+     0.115
     ],
     "color": [
      90,
@@ -2509,21 +2641,21 @@
     "transparency": 0.0,
     "spin": null,
     "bob": null,
-    "triangles": 696
+    "triangles": 1036
    },
    {
     "name": "ShackleR",
     "mesh": "ghost_ShackleR",
     "piece": "RightLowerArm",
     "size": [
-     1.2,
-     1.337,
-     1.182
+     1.459,
+     2.107,
+     1.411
     ],
     "offset": [
-     0.0,
-     -0.512,
-     0.0
+     0.13,
+     -0.897,
+     0.115
     ],
     "color": [
      90,
@@ -2534,20 +2666,20 @@
     "transparency": 0.0,
     "spin": null,
     "bob": null,
-    "triangles": 696
+    "triangles": 1036
    },
    {
     "name": "Lantern",
     "mesh": "ghost_Lantern",
     "piece": "RightLowerArm",
     "size": [
-     0.6,
-     1.19,
-     0.6
+     0.64,
+     1.21,
+     0.64
     ],
     "offset": [
      0.0,
-     -0.995,
+     -0.985,
      -0.45
     ],
     "color": [
@@ -2559,7 +2691,7 @@
     "transparency": 0.0,
     "spin": null,
     "bob": null,
-    "triangles": 1224
+    "triangles": 1230
    },
    {
     "name": "LanternFlame",
@@ -2590,16 +2722,44 @@
     "triangles": 28
    },
    {
+    "name": "SpiritCrown",
+    "mesh": "ghost_SpiritCrown",
+    "piece": "Head",
+    "size": [
+     1.487,
+     0.952,
+     1.334
+    ],
+    "offset": [
+     0.0,
+     1.254,
+     0.0
+    ],
+    "color": [
+     110,
+     255,
+     230
+    ],
+    "material": "Neon",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": [
+     0.08,
+     1.6
+    ],
+    "triangles": 116
+   },
+   {
     "name": "Wisps",
     "mesh": "ghost_Wisps",
     "piece": "Torso",
     "size": [
-     3.042,
-     0.88,
-     3.478
+     4.295,
+     0.953,
+     3.724
     ],
     "offset": [
-     0.45,
+     0.024,
      0.0,
      0.0
     ],
@@ -2619,7 +2779,7 @@
      70
     ],
     "bob": null,
-    "triangles": 300
+    "triangles": 600
    },
    {
     "name": "GhostEyes",
@@ -2744,18 +2904,43 @@
     "triangles": 940
    },
    {
-    "name": "NeonLines",
-    "mesh": "neon_NeonLines",
-    "piece": "Torso",
+    "name": "HelmetGear",
+    "mesh": "neon_HelmetGear",
+    "piece": "Head",
     "size": [
-     2.04,
-     1.9,
-     1.208
+     2.099,
+     1.436,
+     0.68
     ],
     "offset": [
      0.0,
-     0.15,
-     -0.014
+     0.478,
+     0.0
+    ],
+    "color": [
+     70,
+     75,
+     95
+    ],
+    "material": "Metal",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": null,
+    "triangles": 800
+   },
+   {
+    "name": "AntennaTips",
+    "mesh": "neon_AntennaTips",
+    "piece": "Head",
+    "size": [
+     2.229,
+     1.48,
+     0.532
+    ],
+    "offset": [
+     0.0,
+     0.57,
+     0.0
     ],
     "color": [
      255,
@@ -2766,16 +2951,198 @@
     "transparency": 0.0,
     "spin": null,
     "bob": null,
-    "triangles": 1180
+    "triangles": 560
+   },
+   {
+    "name": "NeonLines",
+    "mesh": "neon_NeonLines",
+    "piece": "Torso",
+    "size": [
+     2.04,
+     4.09,
+     1.298
+    ],
+    "offset": [
+     0.0,
+     -0.945,
+     -0.059
+    ],
+    "color": [
+     255,
+     60,
+     200
+    ],
+    "material": "Neon",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": null,
+    "triangles": 1932
+   },
+   {
+    "name": "CyberArmor",
+    "mesh": "neon_CyberArmor",
+    "piece": "Torso",
+    "size": [
+     2.05,
+     4.9,
+     1.185
+    ],
+    "offset": [
+     0.0,
+     -1.425,
+     -0.118
+    ],
+    "color": [
+     70,
+     75,
+     95
+    ],
+    "material": "Metal",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": null,
+    "triangles": 1504
+   },
+   {
+    "name": "ArmorCore",
+    "mesh": "neon_ArmorCore",
+    "piece": "Torso",
+    "size": [
+     1.6,
+     3.48,
+     0.225
+    ],
+    "offset": [
+     0.0,
+     -0.91,
+     -0.678
+    ],
+    "color": [
+     60,
+     255,
+     255
+    ],
+    "material": "Neon",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": null,
+    "triangles": 916
+   },
+   {
+    "name": "WingFrame",
+    "mesh": "neon_WingFrame",
+    "piece": "Torso",
+    "size": [
+     2.836,
+     2.63,
+     0.35
+    ],
+    "offset": [
+     0.0,
+     0.915,
+     0.745
+    ],
+    "color": [
+     70,
+     75,
+     95
+    ],
+    "material": "Metal",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": null,
+    "triangles": 1316
+   },
+   {
+    "name": "WingBlades",
+    "mesh": "neon_WingBlades",
+    "piece": "Torso",
+    "size": [
+     5.286,
+     2.938,
+     0.14
+    ],
+    "offset": [
+     0.0,
+     2.12,
+     0.94
+    ],
+    "color": [
+     60,
+     255,
+     255
+    ],
+    "material": "Neon",
+    "transparency": 0.25,
+    "spin": null,
+    "bob": null,
+    "triangles": 648
+   },
+   {
+    "name": "WingEdges",
+    "mesh": "neon_WingEdges",
+    "piece": "Torso",
+    "size": [
+     5.282,
+     2.902,
+     0.16
+    ],
+    "offset": [
+     -0.0,
+     2.136,
+     0.92
+    ],
+    "color": [
+     255,
+     60,
+     200
+    ],
+    "material": "Neon",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": null,
+    "triangles": 648
+   },
+   {
+    "name": "HoloHalo",
+    "mesh": "neon_HoloHalo",
+    "piece": "Head",
+    "size": [
+     2.229,
+     2.229,
+     0.08
+    ],
+    "offset": [
+     0.0,
+     0.15,
+     0.95
+    ],
+    "color": [
+     255,
+     60,
+     200
+    ],
+    "material": "Neon",
+    "transparency": 0.0,
+    "spin": [
+     [
+      0,
+      0,
+      1
+     ],
+     -60
+    ],
+    "bob": null,
+    "triangles": 4512
    },
    {
     "name": "RingA",
     "mesh": "neon_RingA",
     "piece": "Torso",
     "size": [
-     3.86,
-     1.423,
-     3.627
+     4.02,
+     1.57,
+     3.799
     ],
     "offset": [
      0.0,
@@ -2798,19 +3165,19 @@
      90
     ],
     "bob": null,
-    "triangles": 480
+    "triangles": 1712
    },
    {
     "name": "RingB",
     "mesh": "neon_RingB",
     "piece": "Torso",
     "size": [
-     3.977,
-     2.189,
-     4.211
+     4.392,
+     2.437,
+     4.563
     ],
     "offset": [
-     0.0,
+     -0.037,
      0.2,
      0.0
     ],
@@ -2830,20 +3197,20 @@
      -70
     ],
     "bob": null,
-    "triangles": 480
+    "triangles": 1780
    },
    {
     "name": "NeonPadL",
     "mesh": "neon_NeonPadL",
     "piece": "LeftUpperArm",
     "size": [
-     0.973,
-     0.83,
-     0.95
+     1.027,
+     0.885,
+     1.0
     ],
     "offset": [
-     -0.044,
-     0.265,
+     -0.046,
+     0.262,
      0.0
     ],
     "color": [
@@ -2855,6 +3222,31 @@
     "transparency": 0.0,
     "spin": null,
     "bob": null,
+    "triangles": 564
+   },
+   {
+    "name": "GauntletL",
+    "mesh": "neon_GauntletL",
+    "piece": "LeftLowerArm",
+    "size": [
+     1.11,
+     0.55,
+     0.98
+    ],
+    "offset": [
+     -0.065,
+     -0.13,
+     0.0
+    ],
+    "color": [
+     70,
+     75,
+     95
+    ],
+    "material": "Metal",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": null,
     "triangles": 376
    },
    {
@@ -2862,13 +3254,13 @@
     "mesh": "neon_NeonPadR",
     "piece": "RightUpperArm",
     "size": [
-     0.973,
-     0.83,
-     0.95
+     1.027,
+     0.885,
+     1.0
     ],
     "offset": [
-     0.044,
-     0.265,
+     0.046,
+     0.262,
      0.0
     ],
     "color": [
@@ -2877,6 +3269,31 @@
      255
     ],
     "material": "Neon",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": null,
+    "triangles": 564
+   },
+   {
+    "name": "GauntletR",
+    "mesh": "neon_GauntletR",
+    "piece": "RightLowerArm",
+    "size": [
+     1.11,
+     0.55,
+     0.98
+    ],
+    "offset": [
+     0.065,
+     -0.13,
+     0.0
+    ],
+    "color": [
+     70,
+     75,
+     95
+    ],
+    "material": "Metal",
     "transparency": 0.0,
     "spin": null,
     "bob": null,
@@ -2913,26 +3330,6 @@
     ]
    },
    {
-    "kind": "particles",
-    "preset": "aura",
-    "piece": "Torso",
-    "offset": [
-     0,
-     0,
-     0
-    ],
-    "color": [
-     255,
-     200,
-     60
-    ],
-    "color2": [
-     255,
-     200,
-     60
-    ]
-   },
-   {
     "kind": "light",
     "piece": "Torso",
     "offset": [
@@ -2955,13 +3352,13 @@
     "mesh": "king_Crown",
     "piece": "Head",
     "size": [
-     1.92,
-     1.18,
-     1.92
+     1.94,
+     2.18,
+     1.94
     ],
     "offset": [
      0.0,
-     1.31,
+     1.51,
      0.0
     ],
     "color": [
@@ -2973,20 +3370,20 @@
     "transparency": 0.0,
     "spin": null,
     "bob": null,
-    "triangles": 908
+    "triangles": 2444
    },
    {
     "name": "CrownGems",
     "mesh": "king_CrownGems",
     "piece": "Head",
     "size": [
-     2.03,
-     0.26,
-     2.03
+     2.202,
+     0.3,
+     2.202
     ],
     "offset": [
      0.0,
-     0.97,
+     1.0,
      0.0
     ],
     "color": [
@@ -2999,6 +3396,56 @@
     "spin": null,
     "bob": null,
     "triangles": 80
+   },
+   {
+    "name": "CrownSapphires",
+    "mesh": "king_CrownSapphires",
+    "piece": "Head",
+    "size": [
+     1.484,
+     0.22,
+     1.484
+    ],
+    "offset": [
+     0.0,
+     1.0,
+     0.0
+    ],
+    "color": [
+     60,
+     130,
+     255
+    ],
+    "material": "Neon",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": null,
+    "triangles": 80
+   },
+   {
+    "name": "CrownPearls",
+    "mesh": "king_CrownPearls",
+    "piece": "Head",
+    "size": [
+     1.78,
+     0.33,
+     1.78
+    ],
+    "offset": [
+     0.0,
+     1.875,
+     0.0
+    ],
+    "color": [
+     245,
+     245,
+     245
+    ],
+    "material": "SmoothPlastic",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": null,
+    "triangles": 640
    },
    {
     "name": "Robe",
@@ -3026,6 +3473,31 @@
     "triangles": 108
    },
    {
+    "name": "RobeTrim",
+    "mesh": "king_RobeTrim",
+    "piece": "Torso",
+    "size": [
+     3.978,
+     5.01,
+     2.006
+    ],
+    "offset": [
+     0.0,
+     -1.304,
+     0.343
+    ],
+    "color": [
+     255,
+     196,
+     40
+    ],
+    "material": "Foil",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": null,
+    "triangles": 1692
+   },
+   {
     "name": "Ermine",
     "mesh": "king_Ermine",
     "piece": "Torso",
@@ -3051,17 +3523,42 @@
     "triangles": 676
    },
    {
+    "name": "ErmineSpots",
+    "mesh": "king_ErmineSpots",
+    "piece": "Torso",
+    "size": [
+     1.89,
+     0.38,
+     1.09
+    ],
+    "offset": [
+     0.0,
+     1.23,
+     -0.12
+    ],
+    "color": [
+     32,
+     32,
+     38
+    ],
+    "material": "SmoothPlastic",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": null,
+    "triangles": 1504
+   },
+   {
     "name": "Scepter",
     "mesh": "king_Scepter",
     "piece": "RightLowerArm",
     "size": [
-     0.355,
-     2.75,
-     0.36
+     0.7,
+     3.68,
+     0.34
     ],
     "offset": [
      0.0,
-     -0.455,
+     0.01,
      -0.45
     ],
     "color": [
@@ -3073,20 +3570,20 @@
     "transparency": 0.0,
     "spin": null,
     "bob": null,
-    "triangles": 636
+    "triangles": 1636
    },
    {
     "name": "ScepterGem",
     "mesh": "king_ScepterGem",
     "piece": "RightLowerArm",
     "size": [
-     0.56,
-     0.56,
-     0.56
+     0.513,
+     0.54,
+     0.526
     ],
     "offset": [
      0.0,
-     1.12,
+     1.24,
      -0.45
     ],
     "color": [
@@ -3098,21 +3595,21 @@
     "transparency": 0.0,
     "spin": null,
     "bob": null,
-    "triangles": 120
+    "triangles": 168
    },
    {
     "name": "Throne",
     "mesh": "king_Throne",
     "piece": "Torso",
     "size": [
-     4.4,
-     8.15,
-     2.7
+     5.2,
+     8.199,
+     3.4
     ],
     "offset": [
      0.0,
-     0.275,
-     0.8
+     0.239,
+     0.85
     ],
     "color": [
      255,
@@ -3123,21 +3620,21 @@
     "transparency": 0.0,
     "spin": null,
     "bob": null,
-    "triangles": 2278
+    "triangles": 2372
    },
    {
     "name": "ThroneCushion",
     "mesh": "king_ThroneCushion",
     "piece": "Torso",
     "size": [
-     2.4,
-     4.6,
-     0.2
+     2.918,
+     6.836,
+     0.12
     ],
     "offset": [
      0.0,
-     -0.4,
-     1.5
+     0.418,
+     1.6
     ],
     "color": [
      200,
@@ -3148,16 +3645,66 @@
     "transparency": 0.0,
     "spin": null,
     "bob": null,
-    "triangles": 188
+    "triangles": 416
+   },
+   {
+    "name": "ThroneSapphires",
+    "mesh": "king_ThroneSapphires",
+    "piece": "Torso",
+    "size": [
+     4.412,
+     3.231,
+     0.652
+    ],
+    "offset": [
+     0.0,
+     2.635,
+     1.386
+    ],
+    "color": [
+     60,
+     130,
+     255
+    ],
+    "material": "Neon",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": null,
+    "triangles": 160
+   },
+   {
+    "name": "ThroneRubies",
+    "mesh": "king_ThroneRubies",
+    "piece": "Torso",
+    "size": [
+     4.342,
+     4.89,
+     0.675
+    ],
+    "offset": [
+     0.0,
+     2.205,
+     1.473
+    ],
+    "color": [
+     255,
+     40,
+     70
+    ],
+    "material": "Neon",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": null,
+    "triangles": 60
    },
    {
     "name": "SunHalo",
     "mesh": "king_SunHalo",
     "piece": "Head",
     "size": [
-     2.95,
-     2.95,
-     0.24
+     3.721,
+     3.74,
+     0.22
     ],
     "offset": [
      0.0,
@@ -3180,7 +3727,7 @@
      40
     ],
     "bob": null,
-    "triangles": 456
+    "triangles": 1744
    }
   ]
  },
@@ -3197,8 +3744,8 @@
     "piece": "Torso",
     "offset": [
      0,
-     1,
-     1.7
+     1.7,
+     2.0
     ],
     "color": [
      190,
@@ -3209,26 +3756,6 @@
      40,
      0,
      80
-    ]
-   },
-   {
-    "kind": "particles",
-    "preset": "aura",
-    "piece": "Torso",
-    "offset": [
-     0,
-     0,
-     0
-    ],
-    "color": [
-     120,
-     40,
-     220
-    ],
-    "color2": [
-     120,
-     40,
-     220
     ]
    },
    {
@@ -3254,43 +3781,100 @@
     "mesh": "void_VoidCore",
     "piece": "Torso",
     "size": [
-     2.5,
-     2.5,
-     0.875
+     2.6,
+     2.6,
+     1.56
     ],
     "offset": [
      0.0,
-     1.0,
-     1.7
+     1.7,
+     2.0
     ],
     "color": [
-     12,
-     8,
-     20
+     14,
+     10,
+     22
+    ],
+    "material": "SmoothPlastic",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": null,
+    "triangles": 728
+   },
+   {
+    "name": "PhotonRing",
+    "mesh": "void_PhotonRing",
+    "piece": "Torso",
+    "size": [
+     4.18,
+     4.18,
+     0.139
+    ],
+    "offset": [
+     0.0,
+     1.7,
+     1.9
+    ],
+    "color": [
+     245,
+     215,
+     255
     ],
     "material": "Neon",
     "transparency": 0.0,
     "spin": null,
     "bob": null,
-    "triangles": 528
+    "triangles": 1056
+   },
+   {
+    "name": "AccretionHot",
+    "mesh": "void_AccretionHot",
+    "piece": "Torso",
+    "size": [
+     4.35,
+     4.684,
+     0.28
+    ],
+    "offset": [
+     0.0,
+     1.7,
+     1.95
+    ],
+    "color": [
+     255,
+     170,
+     110
+    ],
+    "material": "Neon",
+    "transparency": 0.0,
+    "spin": [
+     [
+      0,
+      0,
+      1
+     ],
+     140
+    ],
+    "bob": null,
+    "triangles": 2880
    },
    {
     "name": "Accretion",
     "mesh": "void_Accretion",
     "piece": "Torso",
     "size": [
-     4.76,
-     4.76,
-     0.44
+     6.295,
+     5.89,
+     0.07
     ],
     "offset": [
      0.0,
-     1.0,
-     1.7
+     1.7,
+     2.0
     ],
     "color": [
-     170,
-     60,
+     235,
+     80,
      255
     ],
     "material": "Neon",
@@ -3301,10 +3885,42 @@
       0,
       1
      ],
-     80
+     90
     ],
     "bob": null,
-    "triangles": 2248
+    "triangles": 2640
+   },
+   {
+    "name": "AccretionOuter",
+    "mesh": "void_AccretionOuter",
+    "piece": "Torso",
+    "size": [
+     7.191,
+     7.1,
+     0.274
+    ],
+    "offset": [
+     0.0,
+     1.7,
+     2.05
+    ],
+    "color": [
+     90,
+     30,
+     170
+    ],
+    "material": "Neon",
+    "transparency": 0.25,
+    "spin": [
+     [
+      0,
+      0,
+      1
+     ],
+     45
+    ],
+    "bob": null,
+    "triangles": 5016
    },
    {
     "name": "VoidCracks",
@@ -3312,13 +3928,13 @@
     "piece": "Torso",
     "size": [
      1.347,
-     1.625,
-     0.05
+     4.06,
+     0.12
     ],
     "offset": [
      -0.02,
-     0.067,
-     -0.57
+     -1.15,
+     -0.535
     ],
     "color": [
      170,
@@ -3329,7 +3945,7 @@
     "transparency": 0.0,
     "spin": null,
     "bob": null,
-    "triangles": 940
+    "triangles": 1504
    },
    {
     "name": "VoidEyes",
@@ -3357,42 +3973,117 @@
     "triangles": 376
    },
    {
-    "name": "VoidHorns",
-    "mesh": "void_VoidHorns",
+    "name": "VoidCrown",
+    "mesh": "void_VoidCrown",
     "piece": "Head",
     "size": [
-     1.48,
-     0.889,
-     0.4
+     2.268,
+     1.689,
+     2.253
+    ],
+    "offset": [
+     0.025,
+     1.556,
+     0.011
+    ],
+    "color": [
+     35,
+     25,
+     55
+    ],
+    "material": "Glass",
+    "transparency": 0.1,
+    "spin": null,
+    "bob": null,
+    "triangles": 600
+   },
+   {
+    "name": "CrownCores",
+    "mesh": "void_CrownCores",
+    "piece": "Head",
+    "size": [
+     1.944,
+     0.685,
+     2.056
     ],
     "offset": [
      0.0,
-     1.013,
-     0.05
+     1.28,
+     -0.052
     ],
     "color": [
-     12,
-     8,
-     20
+     235,
+     80,
+     255
     ],
-    "material": "SmoothPlastic",
+    "material": "Neon",
     "transparency": 0.0,
     "spin": null,
     "bob": null,
-    "triangles": 20
+    "triangles": 148
+   },
+   {
+    "name": "VoidWings",
+    "mesh": "void_VoidWings",
+    "piece": "Torso",
+    "size": [
+     5.058,
+     2.935,
+     0.398
+    ],
+    "offset": [
+     0.0,
+     1.477,
+     0.979
+    ],
+    "color": [
+     85,
+     40,
+     140
+    ],
+    "material": "Glass",
+    "transparency": 0.15,
+    "spin": null,
+    "bob": null,
+    "triangles": 144
+   },
+   {
+    "name": "WingTips",
+    "mesh": "void_WingTips",
+    "piece": "Torso",
+    "size": [
+     5.148,
+     2.978,
+     0.29
+    ],
+    "offset": [
+     0.0,
+     1.483,
+     0.925
+    ],
+    "color": [
+     235,
+     80,
+     255
+    ],
+    "material": "Neon",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": null,
+    "triangles": 360
    },
    {
     "name": "VoidShards",
     "mesh": "void_VoidShards",
     "piece": "Torso",
     "size": [
-     4.618,
-     1.258,
-     4.618
+     5.033,
+     1.311,
+     4.361
     ],
     "offset": [
-     0.0,
-     -0.099,
+     0.024,
+     -0.092,
      0.0
     ],
     "color": [
@@ -3411,17 +4102,23 @@
      -55
     ],
     "bob": null,
-    "triangles": 64
+    "triangles": 96
    }
   ]
  },
  "cosmic": {
   "color": [
-   120,
    70,
-   240
+   40,
+   170
   ],
-  "material": "Neon",
+  "pieces": {
+   "Torso": [
+    55,
+    28,
+    140
+   ]
+  },
   "effects": [
    {
     "kind": "particles",
@@ -3444,26 +4141,6 @@
     ]
    },
    {
-    "kind": "particles",
-    "preset": "aura",
-    "piece": "Torso",
-    "offset": [
-     0,
-     0,
-     0
-    ],
-    "color": [
-     200,
-     120,
-     255
-    ],
-    "color2": [
-     200,
-     120,
-     255
-    ]
-   },
-   {
     "kind": "light",
     "piece": "Torso",
     "offset": [
@@ -3482,18 +4159,50 @@
   ],
   "parts": [
    {
+    "name": "GalaxyDisc",
+    "mesh": "cosmic_GalaxyDisc",
+    "piece": "Torso",
+    "size": [
+     6.1,
+     6.1,
+     0.06
+    ],
+    "offset": [
+     0.0,
+     1.1,
+     1.95
+    ],
+    "color": [
+     35,
+     15,
+     95
+    ],
+    "material": "Neon",
+    "transparency": 0.1,
+    "spin": [
+     [
+      0,
+      0,
+      1
+     ],
+     25
+    ],
+    "bob": null,
+    "triangles": 668
+   },
+   {
     "name": "GalaxyArmsA",
     "mesh": "cosmic_GalaxyArmsA",
     "piece": "Torso",
     "size": [
-     6.662,
-     4.542,
-     0.12
+     5.818,
+     3.908,
+     0.08
     ],
     "offset": [
      0.0,
-     1.0,
-     1.6
+     1.1,
+     1.83
     ],
     "color": [
      255,
@@ -3508,24 +4217,24 @@
       0,
       1
      ],
-     30
+     25
     ],
     "bob": null,
-    "triangles": 3384
+    "triangles": 2112
    },
    {
     "name": "GalaxyArmsB",
     "mesh": "cosmic_GalaxyArmsB",
     "piece": "Torso",
     "size": [
-     4.542,
-     6.662,
-     0.12
+     3.754,
+     5.638,
+     0.08
     ],
     "offset": [
      0.0,
-     1.0,
-     1.6
+     1.1,
+     1.81
     ],
     "color": [
      90,
@@ -3540,24 +4249,56 @@
       0,
       1
      ],
-     30
+     25
     ],
     "bob": null,
-    "triangles": 3384
+    "triangles": 1936
+   },
+   {
+    "name": "GalaxyStars",
+    "mesh": "cosmic_GalaxyStars",
+    "piece": "Torso",
+    "size": [
+     5.362,
+     4.693,
+     0.05
+    ],
+    "offset": [
+     -0.011,
+     1.1,
+     1.75
+    ],
+    "color": [
+     245,
+     245,
+     245
+    ],
+    "material": "Neon",
+    "transparency": 0.0,
+    "spin": [
+     [
+      0,
+      0,
+      1
+     ],
+     25
+    ],
+    "bob": null,
+    "triangles": 896
    },
    {
     "name": "GalaxyCore",
     "mesh": "cosmic_GalaxyCore",
     "piece": "Torso",
     "size": [
-     1.261,
-     1.3,
-     0.64
+     1.76,
+     1.76,
+     0.66
     ],
     "offset": [
      0.0,
-     1.0,
-     1.6
+     1.1,
+     1.85
     ],
     "color": [
      255,
@@ -3568,53 +4309,121 @@
     "transparency": 0.0,
     "spin": null,
     "bob": null,
-    "triangles": 288
+    "triangles": 680
    },
    {
-    "name": "GalaxyDisc",
-    "mesh": "cosmic_GalaxyDisc",
+    "name": "GalaxyRim",
+    "mesh": "cosmic_GalaxyRim",
     "piece": "Torso",
     "size": [
-     6.6,
-     6.6,
-     0.06
+     6.5,
+     6.5,
+     0.287
     ],
     "offset": [
      0.0,
-     1.0,
-     1.72
+     1.1,
+     1.873
     ],
     "color": [
-     45,
-     20,
-     110
+     255,
+     196,
+     40
+    ],
+    "material": "Foil",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": null,
+    "triangles": 1728
+   },
+   {
+    "name": "RimGems",
+    "mesh": "cosmic_RimGems",
+    "piece": "Torso",
+    "size": [
+     6.612,
+     6.66,
+     0.4
+    ],
+    "offset": [
+     0.0,
+     1.1,
+     1.74
+    ],
+    "color": [
+     90,
+     220,
+     255
     ],
     "material": "Neon",
-    "transparency": 0.15,
-    "spin": [
-     [
-      0,
-      0,
-      1
-     ],
-     30
-    ],
+    "transparency": 0.0,
+    "spin": null,
     "bob": null,
-    "triangles": 476
+    "triangles": 240
    },
    {
     "name": "StarCrown",
     "mesh": "cosmic_StarCrown",
     "piece": "Head",
     "size": [
-     1.589,
-     0.522,
-     1.657
+     1.84,
+     1.015,
+     1.82
     ],
     "offset": [
-     0.006,
-     1.728,
+     0.0,
+     1.242,
      0.0
+    ],
+    "color": [
+     255,
+     196,
+     40
+    ],
+    "material": "Foil",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": null,
+    "triangles": 444
+   },
+   {
+    "name": "CrownGems",
+    "mesh": "cosmic_CrownGems",
+    "piece": "Head",
+    "size": [
+     1.921,
+     0.24,
+     2.02
+    ],
+    "offset": [
+     -0.101,
+     0.85,
+     0.0
+    ],
+    "color": [
+     255,
+     70,
+     220
+    ],
+    "material": "Neon",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": null,
+    "triangles": 100
+   },
+   {
+    "name": "CrownStar",
+    "mesh": "cosmic_CrownStar",
+    "piece": "Head",
+    "size": [
+     0.951,
+     0.905,
+     0.17
+    ],
+    "offset": [
+     0.0,
+     2.298,
+     -0.015
     ],
     "color": [
      255,
@@ -3631,22 +4440,125 @@
      ],
      60
     ],
+    "bob": [
+     0.12,
+     2.0
+    ],
+    "triangles": 72
+   },
+   {
+    "name": "CosmicArmor",
+    "mesh": "cosmic_CosmicArmor",
+    "piece": "Torso",
+    "size": [
+     3.85,
+     3.645,
+     1.345
+    ],
+    "offset": [
+     0.0,
+     -0.852,
+     -0.048
+    ],
+    "color": [
+     255,
+     196,
+     40
+    ],
+    "material": "Foil",
+    "transparency": 0.0,
+    "spin": null,
     "bob": null,
-    "triangles": 1380
+    "triangles": 1464
+   },
+   {
+    "name": "ArmorGems",
+    "mesh": "cosmic_ArmorGems",
+    "piece": "Torso",
+    "size": [
+     1.156,
+     3.37,
+     0.227
+    ],
+    "offset": [
+     0.0,
+     -0.905,
+     -0.616
+    ],
+    "color": [
+     90,
+     220,
+     255
+    ],
+    "material": "Neon",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": null,
+    "triangles": 76
+   },
+   {
+    "name": "PauldronL",
+    "mesh": "cosmic_PauldronL",
+    "piece": "LeftUpperArm",
+    "size": [
+     1.218,
+     0.92,
+     1.221
+    ],
+    "offset": [
+     -0.027,
+     0.639,
+     0.0
+    ],
+    "color": [
+     255,
+     196,
+     40
+    ],
+    "material": "Foil",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": null,
+    "triangles": 306
+   },
+   {
+    "name": "PauldronR",
+    "mesh": "cosmic_PauldronR",
+    "piece": "RightUpperArm",
+    "size": [
+     1.218,
+     0.92,
+     1.221
+    ],
+    "offset": [
+     0.027,
+     0.639,
+     0.0
+    ],
+    "color": [
+     255,
+     196,
+     40
+    ],
+    "material": "Foil",
+    "transparency": 0.0,
+    "spin": null,
+    "bob": null,
+    "triangles": 306
    },
    {
     "name": "CosmicMoons",
     "mesh": "cosmic_CosmicMoons",
     "piece": "Torso",
     "size": [
-     4.428,
-     2.04,
-     4.14
+     6.608,
+     0.64,
+     6.468
     ],
     "offset": [
-     0.386,
-     0.28,
-     -0.23
+     0.0,
+     0.25,
+     0.0
     ],
     "color": [
      110,
@@ -3661,10 +4573,42 @@
       1,
       0
      ],
-     -40
+     -35
     ],
     "bob": null,
-    "triangles": 320
+    "triangles": 672
+   },
+   {
+    "name": "MoonRings",
+    "mesh": "cosmic_MoonRings",
+    "piece": "Torso",
+    "size": [
+     7.146,
+     0.589,
+     6.912
+    ],
+    "offset": [
+     0.0,
+     0.25,
+     0.0
+    ],
+    "color": [
+     255,
+     70,
+     220
+    ],
+    "material": "Neon",
+    "transparency": 0.0,
+    "spin": [
+     [
+      0,
+      1,
+      0
+     ],
+     -35
+    ],
+    "bob": null,
+    "triangles": 1536
    }
   ]
  }
