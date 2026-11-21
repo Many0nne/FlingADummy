@@ -19,6 +19,7 @@ local ThrowDummies = require(Shared:WaitForChild("ThrowDummies"))
 local Training = require(Shared:WaitForChild("Training"))
 local Tutorial = require(Shared:WaitForChild("Tutorial"))
 local UIMotion = require(Shared:WaitForChild("UIMotion"))
+local Overlay = require(Shared:WaitForChild("Overlay"))
 
 local CollectionWindows = require(script.Parent.CollectionWindows)
 local ThrowShop = require(script.Parent.ThrowShop)
@@ -99,6 +100,10 @@ local offerKind: string? = nil -- "Gear" | "Dummy"
 local offerTier: number? = nil
 local soundedOffer: string? = nil
 local dismissedOffers: { [string]: { [number]: boolean } } = { Gear = {}, Dummy = {} }
+local OFFER_SCALE = 0.8 -- échelle du popup d'offre (440 × 136 dessiné, 352 × 109 affiché à 720 px de haut)
+local OFFER_TOP = 40 -- px : haut du popup d'offre
+Hud.OFFER_SCALE = OFFER_SCALE -- la flèche du tutoriel posée sur l'offre compense cette échelle
+Hud.OFFER_BOTTOM = OFFER_TOP + math.round(136 * OFFER_SCALE) -- px : bas du popup d'offre (le texte de l'objectif passe dessous)
 local OFFER_COLORS = {
 	Gear = { Color3.fromRGB(150, 60, 230), Color3.fromRGB(255, 70, 170) },
 	Dummy = { Color3.fromRGB(255, 90, 150), Color3.fromRGB(215, 30, 95) },
@@ -115,13 +120,16 @@ end
 local function toggle(name: string)
 	local target = windows[name]
 	local open = not UIKit.isWindowOpen(target) and player:GetAttribute("Action") ~= "Holding"
+	-- Cible ouverte avant de fermer les autres : jamais d'instant sans fenêtre, où l'offre surgirait (Visible → refresh)
+	if open then
+		UIKit.openWindow(target)
+	end
 	for _, window in windows do
 		if window ~= target or not open then
 			UIKit.closeWindow(window, window ~= target)
 		end
 	end
 	if open then
-		UIKit.openWindow(target)
 		-- Boutiques longues (#94) : ouvertes sur le prochain achat
 		if name == "Shop" and gearRow then
 			UIKit.scrollToCard(gearRow, math.min(stat("GearTier", 1) + 1, #Training.GEARS))
@@ -267,16 +275,28 @@ end
 -- vert : UPGRADE qui achète l'équipement directement, ou SHOP qui ouvre la boutique des mannequins à lancer, comme
 -- « Nouvel équipement ! » et « Nouvelle graine débloquée ! » de la référence 09) lorsque le HUD est construit.
 local function buildGearOffer()
-	local frame = UIKit.create("Frame", {
+	-- Support transparent (ouvert et fermé en pop) autour du panneau réduit à OFFER_SCALE : popup à la taille de celui
+	-- de 09 (≈ un quart de la largeur), qui masque moins le texte flottant de la base vue de près
+	local holder = UIKit.create("Frame", {
 		Name = "GearOffer",
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 40),
-		Size = UDim2.fromOffset(440, 136),
-		BackgroundColor3 = C.panel,
+		Position = UDim2.new(0.5, 0, 0, OFFER_TOP),
+		Size = UDim2.fromOffset(math.round(440 * OFFER_SCALE), math.round(136 * OFFER_SCALE)),
+		BackgroundTransparency = 1,
 		Visible = false,
 		ZIndex = 15,
 		Parent = root,
 	})
+	local frame = UIKit.create("Frame", {
+		Name = "Panel",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(440, 136),
+		BackgroundColor3 = C.panel,
+		ZIndex = 15,
+		Parent = holder,
+	})
+	UIKit.create("UIScale", { Scale = OFFER_SCALE, Parent = frame })
 	UIKit.corner(frame, 12)
 	UIKit.outline(frame, 4)
 	local header = UIKit.create("Frame", {
@@ -402,7 +422,7 @@ local function buildGearOffer()
 		end
 	end)
 	offer = {
-		frame = frame,
+		frame = holder,
 		button = button,
 		viewport = viewport,
 		title = title,
@@ -410,36 +430,6 @@ local function buildGearOffer()
 		stat = statLabel,
 		gradients = { headerGradient, flatGradient },
 	}
-end
-
--- Cette méthode permet de créer une rangée défilante de cartes dans le corps d'une fenêtre lorsque la fenêtre est
--- construite.
-local function cardRow(body: Frame): ScrollingFrame
-	local row = UIKit.create("ScrollingFrame", {
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		CanvasSize = UDim2.new(),
-		AutomaticCanvasSize = Enum.AutomaticSize.X,
-		ScrollingDirection = Enum.ScrollingDirection.X,
-		ScrollBarThickness = 6,
-		ScrollBarImageColor3 = C.white,
-		ZIndex = 11,
-		Parent = body,
-	})
-	UIKit.create("UIListLayout", {
-		FillDirection = Enum.FillDirection.Horizontal,
-		Padding = UDim.new(0, UIKit.CARD_GAP),
-		SortOrder = Enum.SortOrder.LayoutOrder,
-		VerticalAlignment = Enum.VerticalAlignment.Center,
-		Parent = row,
-	})
-	UIKit.create("UIPadding", {
-		PaddingLeft = UDim.new(0, 4),
-		PaddingRight = UDim.new(0, 4),
-		Parent = row,
-	})
-	return row
 end
 
 -- Cette méthode permet de construire la fenêtre des équipements d'entraînement lorsque le HUD est construit (fenêtres de
@@ -457,7 +447,7 @@ local function buildWindows()
 		Hud.refresh()
 	end)
 	windows.Shop = shop.frame
-	local rowFrame = cardRow(shop.body)
+	local rowFrame = UIKit.cardGrid(shop.body, 3) -- 3 cartes par rangée, défilement vertical (#45)
 	gearRow = rowFrame
 	for tier in Training.GEARS do
 		gearCards[tier] = UIKit.card(rowFrame, tier, function()
@@ -586,16 +576,14 @@ local function dressOffer(kind: string, tier: number)
 end
 
 -- Cette méthode permet d'afficher, de mettre à jour ou de masquer le popup d'offre lorsque l'argent affiché, les
--- achats ou l'état du joueur changent, écran libre et boutiques fermées : l'équipement suivant s'il est abordable
--- (« NEW GEAR! », d'abord : étape du tutoriel), sinon le mannequin à lancer suivant (« NEW DUMMY! ») ; pas une offre
--- fermée par le joueur.
+-- achats ou l'état du joueur changent, écran libre (ni fenêtre ni bandeau, Shared.Overlay) : l'équipement suivant
+-- s'il est abordable (« NEW GEAR! », d'abord : étape du tutoriel), sinon le mannequin à lancer suivant
+-- (« NEW DUMMY! ») ; pas une offre fermée par le joueur. Revenue après une fenêtre ou un popup, elle ne resonne pas.
 local function refreshOffer(money: number, cost: number?)
 	local free = seeded
 		and player:GetAttribute("LaneState") == "Ready"
 		and player:GetAttribute("Action") ~= "Holding"
-		and not UIKit.isWindowOpen(windows.Shop)
-		and not UIKit.isWindowOpen(windows.DummyShop)
-		and os.clock() >= bannerEndsAt -- bandeau d'annonce au même endroit : l'offre revient après lui
+		and Overlay.offer({ windowOpen = Hud.isWindowOpen(), bannerShown = os.clock() < bannerEndsAt })
 	local kind, tier = nil, nil
 	if free then
 		tier = Tutorial.gearOffer(stat("GearTier", 1), cost, money, dismissedOffers.Gear)
@@ -930,6 +918,28 @@ function Hud.isPopupShown(): boolean
 	return os.clock() < popupEndsAt or os.clock() < bannerEndsAt
 end
 
+-- Cette méthode permet de savoir si une fenêtre du HUD (boutiques, collection, Index) est à l'écran, animation de
+-- fermeture comprise, lorsque l'offre ou l'objectif se demandent s'ils peuvent s'afficher (Shared.Overlay).
+function Hud.isWindowOpen(): boolean
+	for _, window in windows do
+		if UIKit.isWindowOpen(window) or window.Visible then
+			return true
+		end
+	end
+	return false
+end
+
+-- Cette méthode permet de savoir si le popup d'offre (« NEW GEAR! » / « NEW DUMMY! ») est à l'écran, animation de
+-- fermeture comprise, lorsque le texte de l'objectif, dessiné au même endroit, se place.
+function Hud.isOfferShown(): boolean
+	return offer.frame.Visible
+end
+
+-- Cette méthode permet de savoir si un bandeau d'annonce occupe le haut de l'écran lorsque l'objectif se place.
+function Hud.isBannerShown(): boolean
+	return os.clock() < bannerEndsAt
+end
+
 -- Cette méthode permet de savoir si un popup de palier (hors bandeau d'annonce) est à l'écran lorsque un bandeau
 -- attend son tour.
 function Hud.isLevelPopupShown(): boolean
@@ -1009,6 +1019,10 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 		Hud.refresh()
 	end)
 	buildTrainBar(onStop)
+	-- Fenêtre fermée (fin de l'animation) : l'offre masquée pendant qu'elle était à l'écran revient
+	for _, window in windows do
+		window:GetPropertyChangedSignal("Visible"):Connect(Hud.refresh)
+	end
 
 	lastPower = stat("ThrowPower", GameConfig.START_POWER)
 	lastMoney = stat("Money", 0)
