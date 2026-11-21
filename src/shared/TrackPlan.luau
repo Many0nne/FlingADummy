@@ -36,7 +36,8 @@ TrackPlan.MIN_SITES = 3 -- obstacles et pièges d'une zone, au moins…
 TrackPlan.MAX_SITES = 8 -- … et au plus (zones longues : sites plus espacés), plus EXTRA_OBSTACLES
 TrackPlan.TRAP_EVERY = 150 -- un piège de plus par tranche de 150 m (zones longues), au plus un site sur trois
 -- Un obstacle de plus par zone, au sol, à la place de l'ancienne rangée de vitres (#90) : autant de sites qu'avant. Les
--- vols hauts, qui brisaient une vitre par zone (+1 % de CHANCE chacune), ne le touchent pas (≈ -5 % au plus à 1,6 km)
+-- vols hauts, qui brisaient une vitre par zone (+1 % de CHANCE chacune), ne le touchent pas (au plus 9 vitres sur
+-- 1 + 2 % par os + 1 % par objet, soit ≈ -5 % de CHANCE à 1,6 km : calculé, non mesuré)
 TrackPlan.EXTRA_OBSTACLES = 1
 
 -- Cette méthode permet de répartir les sites d'une zone (obstacles à tour de rôle, pièges espacés) lorsque
