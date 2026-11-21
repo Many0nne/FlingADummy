@@ -133,15 +133,19 @@ function DummyTools.sync(player: Player, stock: { Collection.Entry })
 		end
 	end
 	-- Un outil retiré (posé, vendu) laisse un trou dans la barre, que le prochain outil ajouté comblerait hors ordre :
-	-- la barre est recalée à partir du premier trou
-	local hole = #state.sequence + 1
-	for index, tool in state.sequence do
+	-- la barre est recalée à partir du premier trou, compté parmi les outils rangés (comme `current`, sans l'outil tenu)
+	local hole: number? = nil
+	local storedBefore = 0
+	for _, tool in state.sequence do
 		if removed[tool] or tool.Parent == nil then
-			hole = index
+			hole = storedBefore + 1
 			break
 		end
+		if tool ~= held then
+			storedBefore += 1
+		end
 	end
-	if #plan.add == 0 and hole > #state.sequence and BackpackPlan.sameSequence(current, plan.sequence) then
+	if #plan.add == 0 and hole == nil and BackpackPlan.sameSequence(current, plan.sequence) then
 		return
 	end
 	for _, entry in plan.add do
@@ -159,7 +163,8 @@ function DummyTools.sync(player: Player, stock: { Collection.Entry })
 		end
 	end
 	local kept = 0
-	while kept < #current and kept < hole - 1 and current[kept + 1] == plan.sequence[kept + 1] do
+	local limit = if hole then hole - 1 else #current
+	while kept < #current and kept < limit and current[kept + 1] == plan.sequence[kept + 1] do
 		kept += 1
 	end
 	for index = kept + 1, #ordered do
