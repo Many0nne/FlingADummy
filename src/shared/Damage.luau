@@ -42,15 +42,53 @@ local LIMB_ORDER = {
 	"RightLowerLeg",
 }
 
--- Libellé de l'objet heurté pour la phrase de cause
-local CAUSE_LABELS = {
+-- Libellé de l'objet heurté pour la phrase de cause : vitres, obstacles des thèmes (Server.ThemeObstacles), pièges
+-- (Shared.Traps), sol
+Damage.CAUSE_LABELS = {
 	Glass = "Went through a window",
+	Ground = "Hit the ground",
+	-- Obstacles cassables
 	Wall = "Hit a brick wall",
 	Crates = "Crashed into crates",
 	Car = "Smashed into a car",
 	Sign = "Crashed through a sign",
-	Ground = "Hit the ground",
+	HayBales = "Plowed through hay bales",
+	Tractor = "Smashed into a tractor",
+	Fence = "Broke through a fence",
+	Logs = "Hit a log pile",
+	Beehives = "Knocked over beehives",
+	Sandcastle = "Flattened a sandcastle",
+	Surfboards = "Wiped out on surfboards",
+	Barrels = "Crashed into barrels",
+	Cactus = "Hugged a cactus",
+	Scaffolding = "Brought down scaffolding",
+	Cones = "Bowled over traffic cones",
+	Tires = "Bounced off a tire stack",
+	Snowmen = "Plowed through snowmen",
+	IceWall = "Hit an ice wall",
+	LavaRocks = "Hit molten rocks",
+	BasaltWall = "Hit a basalt wall",
+	CandyCanes = "Snapped candy canes",
+	MarshmallowWall = "Hit a marshmallow wall",
+	ToyBlocks = "Toppled toy blocks",
+	ToySoldiers = "Knocked down toy soldiers",
+	Satellites = "Crashed into a satellite",
+	Rover = "Smashed into a moon rover",
+	-- Pièges
+	Trampoline = "Bounced off a trampoline",
+	Fan = "Blown away by a giant fan",
+	SwingLog = "Whacked by a swinging log",
+	Wave = "Wiped out by a wave",
+	Twister = "Caught in a twister",
+	Press = "Squashed by a hydraulic press",
+	Magnet = "Yanked by a crane magnet",
+	SkiJump = "Flew off a ski jump",
+	Lava = "Bounced off lava",
+	Cannon = "Fired from a confetti cannon",
+	JackBox = "Popped by a jack-in-the-box",
+	Booster = "Blasted through a booster ring",
 }
+local CAUSE_LABELS = Damage.CAUSE_LABELS
 
 -- Cette méthode permet de compter les os cassés par un choc lorsque la vitesse d'un membre varie de `dv` en une frame.
 function Damage.bonesForImpact(dv: number): number

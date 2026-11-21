@@ -1,0 +1,126 @@
+-- Pièges signatures : réaction propre à chaque piège, traversée de boîte, membres qui cassent.
+return function(T, Loader)
+	local loader = Loader.new()
+	local Traps = loader:require("src/shared/Traps")
+	local Damage = loader:require("src/shared/Damage")
+	local Sounds = loader:require("src/shared/Sounds")
+
+	local falling = Vector3.new(2, -40, 30) -- mannequin qui retombe en avançant
+	local sliding = Vector3.new(0, 0, 25) -- mannequin qui glisse au sol
+
+	T.describe("Traps.KINDS", function()
+		T.it("donne à chaque piège un popup, un son connu, des os cassés et une cause de crash", function()
+			for kind, def in Traps.KINDS do
+				T.expect(#def.label > 0, kind .. " : popup")
+				T.expect(Sounds[def.sound] ~= nil, kind .. " : son inconnu " .. def.sound)
+				T.expect(def.bones >= 1 and def.bones <= 3, kind .. " : os")
+				T.expect(def.depth > 0, kind .. " : profondeur")
+				T.expect(def.height == nil or def.height > 0, kind .. " : hauteur")
+				local cause = Damage.cause(kind, 20)
+				T.expect(not string.find(cause, "Hit the ground", 1, true), kind .. " : cause de crash")
+			end
+		end)
+
+		T.it("fait réagir le mannequin de façon différente d'un piège à l'autre", function()
+			local seen = {}
+			for kind in Traps.KINDS do
+				local v = Traps.react(kind, falling, 1)
+				local key = string.format("%.0f/%.0f/%.0f", v.X, v.Y, v.Z)
+				T.expect(not seen[key], kind .. " réagit comme " .. tostring(seen[key]))
+				seen[key] = kind
+			end
+		end)
+	end)
+
+	T.describe("Traps.react", function()
+		T.it("trampoline et lave renvoient vers le haut un mannequin qui tombe", function()
+			T.expect(Traps.react("Trampoline", falling, 1).Y >= 60, "trampoline")
+			local lava = Traps.react("Lava", Vector3.new(0, -120, 20), 1)
+			T.expectNear(lava.Y, 120, 1e-6) -- rebond complet au-delà du minimum
+			T.expect(Traps.react("Lava", sliding, 1).Y >= 80, "lave : rebond même sans chute")
+		end)
+
+		T.it("la presse écrase vers le sol et coupe l'élan", function()
+			local v = Traps.react("Press", falling, 1)
+			T.expect(v.Y < 0, "vers le bas")
+			T.expect(v.Z < falling.Z, "élan coupé")
+		end)
+
+		T.it("l'aimant arrête presque net la course et soulève", function()
+			local v = Traps.react("Magnet", Vector3.new(0, 10, 200), 1)
+			T.expect(math.abs(v.Z) < 15, "élan coupé : " .. v.Z)
+			T.expect(v.Y > 0, "soulevé")
+		end)
+
+		T.it("ventilateur, vague, tremplin, canon et propulseur poussent vers l'avant", function()
+			for _, kind in { "Fan", "Wave", "SkiJump", "Cannon", "Booster" } do
+				T.expect(Traps.react(kind, sliding, 1).Z > sliding.Z + 30, kind)
+			end
+		end)
+
+		T.it("le rondin pousse vers l'extérieur de la colonne", function()
+			T.expect(Traps.react("SwingLog", sliding, 1).X > 0, "à droite")
+			T.expect(Traps.react("SwingLog", sliding, -1).X < 0, "à gauche")
+		end)
+	end)
+
+	T.describe("Traps.crosses", function()
+		local center, size = Vector3.new(0, 4, 100), Vector3.new(12, 10, 8)
+		T.it("voit un passage à grande vitesse d'un bout à l'autre de la boîte", function()
+			T.expect(Traps.crosses(center, size, Vector3.new(0, 4, 80), Vector3.new(0, 4, 120)), "traversée")
+		end)
+		T.it("voit un mannequin immobile dedans", function()
+			local inside = Vector3.new(1, 1, 101)
+			T.expect(Traps.crosses(center, size, inside, inside), "immobile dedans")
+		end)
+		T.it("ignore un passage au-dessus, à côté ou qui s'arrête avant", function()
+			T.expect(not Traps.crosses(center, size, Vector3.new(0, 20, 80), Vector3.new(0, 20, 120)), "au-dessus")
+			T.expect(not Traps.crosses(center, size, Vector3.new(8, 4, 80), Vector3.new(8, 4, 120)), "à côté")
+			T.expect(not Traps.crosses(center, size, Vector3.new(0, 4, 80), Vector3.new(0, 4, 95)), "avant")
+		end)
+		T.it("voit une chute en diagonale qui ne fait qu'effleurer un coin", function()
+			T.expect(Traps.crosses(center, size, Vector3.new(-10, 12, 94), Vector3.new(-4, 6, 98)), "coin")
+		end)
+	end)
+
+	T.describe("Traps.motion", function()
+		T.it("tourne d'un tour par période, balance et monte puis revient au repos", function()
+			local spin = Traps.motion("Spin", 0.25, Vector3.zAxis, 0, 1)
+			T.expect((spin.UpVector - Vector3.new(-1, 0, 0)).Magnitude < 1e-3, "quart de tour")
+			T.expect(Traps.motion("Swing", 0, Vector3.xAxis, 50, 2).UpVector:Dot(Vector3.yAxis) > 0.999, "au milieu")
+			local bob = Traps.motion("Bob", 0.5, Vector3.yAxis, 2, 1)
+			T.expectNear(bob.Position.Y, 2, 1e-6)
+			T.expectNear(Traps.motion("Bob", 1, Vector3.yAxis, 2, 1).Position.Y, 0, 1e-6)
+		end)
+		T.it("la presse s'abat vite puis remonte lentement", function()
+			local amplitude = -10
+			T.expectNear(Traps.motion("Press", 0, Vector3.yAxis, amplitude, 2).Position.Y, 0, 1e-6)
+			T.expectNear(Traps.motion("Press", 0.3, Vector3.yAxis, amplitude, 2).Position.Y, amplitude, 1e-6)
+			local rising = Traps.motion("Press", 1.3, Vector3.yAxis, amplitude, 2).Position.Y
+			T.expect(rising > amplitude and rising < 0, "en remontée : " .. rising)
+		end)
+	end)
+
+	T.describe("Traps.contact", function()
+		T.it("ramène un point sur la boîte", function()
+			local c = Traps.contact(Vector3.new(0, 4, 100), Vector3.new(12, 10, 8), Vector3.new(20, 4, 90))
+			T.expectEqual(c, Vector3.new(6, 4, 96))
+		end)
+	end)
+
+	T.describe("Traps.nearestLimbs", function()
+		T.it("casse les membres les plus proches du contact, un os chacun", function()
+			local limbs = {
+				Head = Vector3.new(0, 6, 0),
+				Torso = Vector3.new(0, 4, 0),
+				LeftLowerLeg = Vector3.new(-1, 0.5, 0),
+				RightLowerLeg = Vector3.new(1, 0.5, 0),
+			}
+			local chosen = Traps.nearestLimbs(limbs, Vector3.new(0, 0, 0), 2)
+			T.expectEqual(#chosen, 2)
+			T.expectEqual(chosen[1], "LeftLowerLeg") -- à égalité : ordre alphabétique
+			T.expectEqual(chosen[2], "RightLowerLeg")
+			T.expectEqual(#Traps.nearestLimbs(limbs, Vector3.zero, 9), 4)
+		end)
+	end)
+end

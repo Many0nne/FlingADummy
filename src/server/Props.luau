@@ -351,6 +351,119 @@ builders.rocket = function(parent, at, _rng, solid)
 	end
 end
 
+-- Cette méthode permet de construire une meule de foin (deux étages de blocs dorés) lorsque l'on habille la ferme.
+builders.haystack = function(parent, at, rng, solid)
+	local s = snap(rng, 0.8, 1.2, 0.2)
+	put(parent, at, Vector3.new(6, 3, 5) * s, Vector3.new(0, 1.5 * s, 0), rgb(240, 200, 70), solid)
+	put(parent, at, Vector3.new(4, 2.4, 3.6) * s, Vector3.new(0, 4.2 * s, 0), rgb(220, 175, 50), solid)
+end
+
+-- Cette méthode permet de construire un silo de ferme (cuve rouge à cerclages blancs, dôme gris) lorsque l'on habille
+-- la ferme.
+builders.silo = function(parent, at, _rng, solid)
+	local red = rgb(210, 55, 45)
+	for i = 0, 3 do
+		put(parent, at, Vector3.new(6, 3.6, 6), Vector3.new(0, 1.8 + i * 3.6, 0), red, solid)
+		put(parent, at, Vector3.new(6.2, 0.4, 6.2), Vector3.new(0, 3.6 + i * 3.6, 0), WHITE, false)
+	end
+	put(parent, at, Vector3.new(4.6, 1.6, 4.6), Vector3.new(0, 15.2, 0), STONE, solid)
+	put(parent, at, Vector3.new(2.6, 1, 2.6), Vector3.new(0, 16.5, 0), STONE, solid)
+end
+
+-- Cette méthode permet de planter un parasol de plage (mât blanc, toile en pétales rayés) lorsque l'on habille la
+-- plage.
+builders.parasol = function(parent, at, rng, solid)
+	local colors = { rgb(255, 80, 80), rgb(60, 180, 255), rgb(255, 200, 50) }
+	local color = colors[rng:NextInteger(1, #colors)]
+	put(parent, at, Vector3.new(0.6, 7, 0.6), Vector3.new(0, 3.5, 0), WHITE, solid)
+	for i = 0, 5 do
+		local yaw = i * 60
+		local petal = at * CFrame.new(0, 7, 0) * CFrame.Angles(0, math.rad(yaw), 0)
+		Build.block(
+			parent,
+			Vector3.new(3.4, 0.4, 2.2),
+			petal * CFrame.new(1.6, -0.5, 0) * CFrame.Angles(0, 0, math.rad(-18)),
+			if i % 2 == 0 then color else WHITE,
+			false
+		)
+	end
+end
+
+-- Cette méthode permet de poser un ballon de plage en cubes (quartiers de couleurs) lorsque l'on habille la plage ou
+-- le pays des jouets.
+builders.beachball = function(parent, at, rng)
+	local colors = { rgb(255, 80, 80), WHITE, rgb(60, 160, 255), rgb(255, 210, 50) }
+	local s = snap(rng, 1.2, 2, 0.2)
+	for i = 0, 3 do
+		local x, z = (i % 2 - 0.5) * s, (math.floor(i / 2) - 0.5) * s
+		put(parent, at, Vector3.new(s, s * 2, s), Vector3.new(x, s, z), colors[i + 1], false)
+	end
+end
+
+-- Cette méthode permet d'empiler des pneus usés en colonne (dernier à jante jaune) lorsque l'on habille la casse.
+builders.tirestack = function(parent, at, rng, solid)
+	local count = rng:NextInteger(2, 4)
+	for i = 0, count - 1 do
+		local tire = put(parent, at, Vector3.new(1.2, 4, 4), Vector3.new(0, 0.6 + i * 1.2, 0), rgb(45, 45, 50), solid)
+		tire.Shape = Enum.PartType.Cylinder
+		tire.CFrame = at * CFrame.new(0, 0.6 + i * 1.2, 0) * CFrame.Angles(0, 0, math.rad(90))
+	end
+	put(parent, at, Vector3.new(1.8, 0.2, 1.8), Vector3.new(0, count * 1.2 + 0.1, 0), rgb(255, 210, 40), false)
+end
+
+-- Cette méthode permet de poser une épave de voiture rouillée en blocs (caisse cabossée de travers, roue tombée)
+-- lorsque l'on habille la casse.
+builders.wreck = function(parent, at, rng, solid)
+	local colors = { rgb(170, 90, 55), rgb(95, 120, 150), rgb(140, 140, 120) }
+	local color = colors[rng:NextInteger(1, #colors)]
+	put(parent, at, Vector3.new(10, 2.6, 5), Vector3.new(0, 1.3, 0), color, solid, Vector3.new(0, 0, 4))
+	put(
+		parent,
+		at,
+		Vector3.new(5, 2.2, 4.4),
+		Vector3.new(-0.6, 3.6, 0),
+		Build.shade(color, 0.8),
+		solid,
+		Vector3.new(0, 6, -6)
+	)
+	put(parent, at, Vector3.new(1.2, 2.6, 2.6), Vector3.new(5.8, 1.3, 2.8), rgb(45, 45, 50), false)
+end
+
+-- Cette méthode permet d'empiler des cubes de jouet géants aux couleurs primaires lorsque l'on habille le pays des
+-- jouets.
+builders.toyblocks = function(parent, at, rng, solid)
+	local colors = { rgb(235, 50, 50), rgb(50, 120, 240), rgb(255, 210, 40), rgb(60, 190, 80) }
+	local size = snap(rng, 3, 4.5, 0.5)
+	for i = 0, 2 do
+		local offset = Vector3.new((i - 1) * size * 1.05, size / 2, 0)
+		put(parent, at, Vector3.one * size, offset, colors[rng:NextInteger(1, #colors)], solid)
+	end
+	put(
+		parent,
+		at,
+		Vector3.one * size,
+		Vector3.new(-size * 0.5, size * 1.5, 0),
+		colors[rng:NextInteger(1, #colors)],
+		solid
+	)
+end
+
+-- Cette méthode permet d'asseoir un ours en peluche géant en blocs (corps, tête, oreilles, museau, nœud) lorsque l'on
+-- habille le pays des jouets.
+builders.teddy = function(parent, at, rng, solid)
+	local s = snap(rng, 0.8, 1.2, 0.2)
+	local fur, light = rgb(190, 120, 65), rgb(235, 185, 130)
+	put(parent, at, Vector3.new(5, 5, 4) * s, Vector3.new(0, 2.5 * s, 0), fur, solid)
+	put(parent, at, Vector3.new(3, 2.4, 3) * s, Vector3.new(0, 2.2 * s, -1.2 * s), light, false)
+	put(parent, at, Vector3.new(4, 4, 3.6) * s, Vector3.new(0, 7 * s, 0), fur, solid)
+	for _, side in { -1, 1 } do
+		put(parent, at, Vector3.new(1.4, 1.4, 1) * s, Vector3.new(side * 1.8 * s, 9.4 * s, 0), fur, false)
+		put(parent, at, Vector3.new(1.6, 1.6, 2.4) * s, Vector3.new(side * 3 * s, 3 * s, -0.6 * s), fur, false)
+	end
+	put(parent, at, Vector3.new(1.8, 1.2, 1) * s, Vector3.new(0, 6.4 * s, -2 * s), light, false)
+	put(parent, at, Vector3.new(2.4, 1, 1) * s, Vector3.new(0, 4.9 * s, -1.9 * s), rgb(235, 50, 60), false)
+end
+
 -- Cette méthode permet de construire l'élément de décor `kind` au repère `at` lorsque l'on habille une zone ;
 -- `solid` = faux pour un élément que le mannequin traverse (pied des parois).
 function Props.build(kind: string, parent: Instance, at: CFrame, rng: Random, solid: boolean)

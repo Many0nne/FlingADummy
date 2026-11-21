@@ -1,5 +1,5 @@
 -- Lancers : l'avatar projette le mannequin depuis ses mains, le serveur suit le vol (distance, zone, os cassés par
--- membre, vitres et objets détruits sur la piste partagée), annonce chaque choc aux clients (effets) et calcule la
+-- membre, vitres et objets détruits sur la piste partagée, pièges des thèmes déclenchés), annonce chaque choc aux clients (effets) et calcule la
 -- CHANCE qui pousse le tirage du mannequin de collection (pas d'argent). Toute la physique est simulée par le
 -- serveur (propriétaire réseau nil) ; plusieurs vols coexistent (un par joueur, plus les mannequins de test lancés
 -- dans Studio).
@@ -13,9 +13,11 @@ local Economy = require(Shared.Economy)
 local GameConfig = require(Shared.GameConfig)
 local Gauge = require(Shared.Gauge)
 local Remotes = require(Shared.Remotes)
+local Traps = require(Shared.Traps)
 local Zones = require(Shared.Zones)
 
 local ObstacleRules = require(Shared.ObstacleRules)
+local TrackPlan = require(Shared.TrackPlan)
 
 local BaseService = require(script.Parent.BaseService)
 local CourseBuilder = require(script.Parent.CourseBuilder)
@@ -34,10 +36,10 @@ local GLASS_CAUSE_WINDOW = 0.15 -- un os cassé juste après une vitre est attri
 local CAUSE_RADIUS = 7 -- un os cassé près d'une pièce d'obstacle lui est attribué (studs)
 
 export type Impact = {
-	kind: string, -- "Throw" | "Glass" | "Bone" | "Smash" | "Thud"
+	kind: string, -- "Throw" | "Glass" | "Bone" | "Smash" | "Thud" | "Trap"
 	position: Vector3,
 	value: number?, -- os ajoutés, objets détruits, ou force du choc
-	material: string?, -- "Crate" | "Brick" pour Smash
+	material: string?, -- "Crate" | "Brick" pour Smash ; piège (Shared.Traps.KINDS) pour Trap
 	userId: number,
 }
 
@@ -61,6 +63,7 @@ type Flight = {
 	lastThud: number,
 	worstImpact: { kind: string, dv: number, speed: number }?,
 	impacts: { Impact },
+	traps: { [number]: boolean }, -- pièges déjà déclenchés par ce vol (id de TrackPlan.TrapBox)
 }
 
 local LaunchService = {}
@@ -143,6 +146,7 @@ local function startFlight(owner: Player?, key: any, slot: Slot, power: number, 
 		lastThud = -math.huge,
 		worstImpact = nil,
 		impacts = {},
+		traps = {},
 	}
 	return dummy, origin, speed
 end
@@ -258,11 +262,92 @@ end
 
 -- Cette méthode permet de détecter les vitres franchies par le torse entre deux frames lorsqu'il avance ; le
 -- franchissement remplace la collision, qui raterait une vitre fine à grande vitesse.
-local function checkGlass(flight: Flight, position: Vector3)
-	local previous = flight.prevPosition
-	flight.prevPosition = position
+local function checkGlass(flight: Flight, previous: Vector3, position: Vector3)
 	for _, hit in Obstacles.crossedGlass(previous, position) do
 		shatterGlass(flight, hit.glass, hit.crossing)
+	end
+end
+
+-- Cette méthode permet de casser `bones` os sur les membres les plus proches de `contact` (un chacun, au plus
+-- MAX_BONES_PER_LIMB par membre) lorsqu'un piège se déclenche ; renvoie les os réellement cassés.
+local function breakNearest(flight: Flight, contact: Vector3, bones: number): number
+	local limbs = {}
+	for _, p in flight.parts do
+		if (flight.bones[p.Name] or 0) < GameConfig.MAX_BONES_PER_LIMB then
+			limbs[p.Name] = p.Position
+		end
+	end
+	local broken = 0
+	for _, name in Traps.nearestLimbs(limbs, contact, bones) do
+		local p = flight.dummy:FindFirstChild(name) :: BasePart?
+		if p then
+			local count = (flight.bones[name] or 0) + 1
+			flight.bones[name] = count
+			flight.totalBones += 1
+			broken += 1
+			p.Color = Damage.tint(p:GetAttribute("BaseColor") or p.Color, count)
+			p:SetAttribute("Bones", count)
+			addImpact(flight, "Bone", p.Position, 1)
+		end
+	end
+	return broken
+end
+
+-- Cette méthode permet de déclencher le piège `box` (une fois par vol) lorsque le torse traverse sa boîte : nouvelle
+-- vitesse de tout le mannequin (Shared.Traps.react, recalée comme référence pour ne pas compter de choc), rotation,
+-- os cassés, cause du crash et annonce aux clients.
+local function triggerTrap(flight: Flight, box: TrackPlan.TrapBox, position: Vector3)
+	flight.traps[box.id] = true
+	local def = Traps.KINDS[box.kind]
+	local before = flight.torso.AssemblyLinearVelocity
+	local outward = if position.X >= box.x then 1 else -1
+	local after = Traps.react(box.kind, before, outward)
+	local spin = Vector3.new(0, def.spin, 0)
+	for _, p in flight.parts do
+		p.AssemblyLinearVelocity = after
+		p.AssemblyAngularVelocity += spin
+		flight.prevVelocity[p] = after
+	end
+	local contact = Traps.contact(box.center, box.size, position)
+	breakNearest(flight, contact, def.bones)
+	local dv = (after - before).Magnitude
+	if not flight.worstImpact or dv > flight.worstImpact.dv then
+		flight.worstImpact = { kind = box.kind, dv = dv, speed = before.Magnitude }
+	end
+	flight.restTime = 0
+	addImpact(flight, "Trap", contact, dv, box.kind)
+	if RunService:IsStudio() then
+		print(
+			string.format(
+				"[Trap] %s colonne %d à %.0f m : %.0f → %.0f studs/s",
+				box.kind,
+				box.column,
+				box.z,
+				before.Magnitude,
+				after.Magnitude
+			)
+		)
+	end
+end
+
+-- Cette méthode permet de déclencher les pièges dont le torse a traversé la boîte entre deux frames lorsqu'il bouge
+-- (passage à grande vitesse compris : le trajet est testé, pas seulement la position).
+local function checkTraps(flight: Flight, previous: Vector3, position: Vector3)
+	if os.clock() - flight.startTime <= GameConfig.IMPACT_GRACE_TIME then
+		return
+	end
+	local minZ, maxZ = math.min(previous.Z, position.Z), math.max(previous.Z, position.Z)
+	for _, box in Obstacles.traps() do
+		local half = box.size.Z / 2
+		if
+			not flight.traps[box.id]
+			and box.z + half >= minZ
+			and box.z - half <= maxZ
+			and Traps.crosses(box.center, box.size, previous, position)
+		then
+			triggerTrap(flight, box, position)
+			return -- un piège par frame : la nouvelle vitesse vaut pour la frame suivante
+		end
 	end
 end
 
@@ -451,8 +536,11 @@ local function step(flight: Flight, dt: number)
 		return
 	end
 	local position = torso.Position
-	checkGlass(flight, position)
+	local previous = flight.prevPosition
+	flight.prevPosition = position
+	checkGlass(flight, previous, position)
 	checkBones(flight, elapsed)
+	checkTraps(flight, previous, position)
 	flight.distance = math.max(flight.distance, position.Z)
 	publish(flight)
 	if #flight.impacts > 0 then

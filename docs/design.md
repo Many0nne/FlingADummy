@@ -7,8 +7,8 @@ Ragdoll*, 06 *BloxNG*, 12 *Net a Fish!*).
 
 ## Le jeu en une phrase
 Dans un lobby de 4 joueurs, on s'entraîne en soulevant un mannequin pour devenir plus fort, puis on lance un mannequin de
-crash-test à bout de bras dans un canyon de briques à tenons, sur une piste partagée semée de vitres, de tours de caisses,
-de murs, de voitures-cibles et de panneaux-cibles. Le lancer ne rapporte pas d'argent : sa **CHANCE** (zones traversées,
+crash-test à bout de bras dans un canyon de briques à tenons, sur une piste partagée en douze thèmes, chacun avec ses
+vitres, ses obstacles cassables et son piège signature (trampoline, ventilateur, presse, lave…). Le lancer ne rapporte pas d'argent : sa **CHANCE** (zones traversées,
 os cassés, objets détruits) pousse un tirage « 1 en N » qui fait gagner un **mannequin de collection** ; posé dans sa
 base, il rapporte des $/s, seule source d'argent.
 
@@ -174,26 +174,42 @@ Comme 01 et 09 : le lancer fait le lien entre les deux.
   joueur ne descend pas sur la piste et ne bouscule pas les obstacles des autres.
 - **Piste partagée** (80 studs de large, 2,4 km) au fond d'un canyon en 3 gradins : parois en briques, herbe (ou neige,
   sable…) voxel qui déborde de chaque marche, décor voxel sur les terre-pleins et au pied des parois (traversable).
-- **Obstacles partagés** (`Server.Obstacles`) : rangées de 4 vitres (une par colonne), tours de caisses (2 × 2 × 4) par
-  colonne, murs de briques sur toute la largeur des colonnes, voitures-cibles et panneaux-cibles en damier jaune et noir.
+- **Obstacles partagés** (`Server.Obstacles`, plan dans `Shared.TrackPlan`) : dans chaque thème, une rangée de 4 vitres
+  (une par colonne, repère de distance, cadre à la couleur du thème), puis les 2 ou 3 obstacles cassables du thème à
+  tour de rôle (`Server.ThemeObstacles`, un par colonne ou d'un seul tenant sur la largeur des colonnes) et son piège
+  signature (section « Zones de la piste »), sites espacés régulièrement (≈ 35 m, 3 à 8 par thème).
   Une pièce déplacée réapparaît à sa place **5 s après le dernier choc** subi par son obstacle, une par une de bas en haut
   (0,05 s d'écart), en grossissant depuis son centre ; jamais sur un mannequin posé dedans. Un objet projeté est compté
   pour le mannequin le plus proche (règles dans `Shared.ObstacleRules`).
 
-## Zones de la piste (2,4 km)
-Chaque zone a son identité (couleur du sol, des parois, du dessus des gradins, décor), comme les zones de *Throw a Seed* :
-| Zone | Début | CHANCE à l'entrée | Sol / parois | Décor |
+## Zones de la piste (2,4 km, #33)
+Douze thèmes courts au début (un changement tous les 60 à 150 m sur le premier kilomètre, où vole un joueur débutant :
+un premier lancer à ≈ 145 m en traverse 3), plus longs ensuite. Chaque thème a son identité (couleur du sol, des parois,
+du dessus des gradins, décor), comme les zones de *Throw a Seed*, ses obstacles cassables et un piège signature
+(`Shared.Zones`). CHANCE à l'entrée calée sur l'ancienne courbe (même valeur à même distance) :
+| Zone | Début | CHANCE | Obstacles | Piège |
 |---|---|---|---|---|
-| Meadow | 0 m | ×1 | vert citron / brun | arbres, buissons, fleurs, rochers |
-| Forest | 100 m | ×1,25 | vert foncé / brun | sapins, champignons géants |
-| Desert | 250 m | ×1,6 | sable / ocre | palmiers, cactus, buissons secs |
-| Construction | 450 m | ×2,2 | jaune / brique | plots, barrières rayées, poutrelles |
-| Snowfield | 700 m | ×3,2 | blanc bleuté / bleu glace | sapins enneigés, bonshommes de neige |
-| Volcano | 1 km | ×5 | rouge / basalte, dessus lave | roches à veines de lave, arbres morts |
-| Candy Land | 1,4 km | ×8 | rose / violet, dessus menthe | sucettes, sucres d'orge, boules de gomme |
-| Moon Base | 1,9 km | ×12 | lavande / violet nuit | cristaux, cratères, fusées |
+| Meadow | 0 m | ×1 | bottes de foin, tours de caisses, panneaux-cibles | trampoline |
+| Farm | 60 m | ×1,15 | tracteurs, clôture, bottes de foin | ventilateur géant |
+| Forest | 135 m | ×1,35 | rondins, ruches | rondin qui balance |
+| Beach | 220 m | ×1,5 | châteaux de sable, planches de surf | vague |
+| Desert | 315 m | ×1,8 | tonneaux, cactus | tornade de sable |
+| Construction | 420 m | ×2,1 | échafaudages, mur de briques, plots | presse hydraulique |
+| Junkyard | 535 m | ×2,5 | voitures-cibles, piles de pneus | aimant de grue |
+| Snowfield | 660 m | ×3 | bonshommes de neige, mur de glace | tremplin de saut à ski |
+| Volcano | 800 m | ×3,8 | rochers de lave, mur de basalte | bassin de lave |
+| Candy Land | 950 m | ×4,7 | sucres d'orge, mur de guimauves | canon à confettis |
+| Toy Town | 1,25 km | ×7 | cubes de jouet, soldats de plomb | diable en boîte |
+| Moon Base | 1,65 km | ×10 | satellites, rover | anneau propulseur |
 
-Panneaux d'entrée de zone : « FOREST x1.25 CHANCE ».
+Panneaux d'entrée de zone : « FOREST x1.35 CHANCE ».
+
+**Pièges signatures** (`Shared.Traps`, habillage `Server.TrapProps`) : un par colonne d'obstacles, décor sans collision ;
+le serveur le déclenche quand le torse traverse sa boîte (trajet de la frame testé, une fois par vol et par piège) et
+remplace la vitesse du mannequin (rebond, souffle, coup de côté, écrasement, arrachement, propulsion), casse 1 à 3 os
+sur les membres les plus proches et écrit la cause du crash (« Squashed by a hydraulic press »). Chaque client joue son
+son, sa gerbe de particules et son popup (« BOING! ») ; les pièces mobiles (pales, rondin, presse, diable, vague) sont
+animées par chaque client (`Client.TrapMotion`).
 
 ## Dégâts lisibles
 Chaque membre (10 pièces) suit les chocs : une variation brusque de vitesse au-delà d'un seuil casse un os (2 au-delà d'un
