@@ -189,13 +189,13 @@ du dessus des gradins, décor), comme les zones de *Throw a Seed*, ses obstacles
 (`Shared.Zones`). CHANCE à l'entrée calée sur l'ancienne courbe (même valeur à même distance) :
 | Zone | Début | CHANCE | Obstacles | Piège |
 |---|---|---|---|---|
-| Meadow | 0 m | ×1 | bottes de foin, tours de caisses, panneaux-cibles | trampoline |
+| Meadow | 0 m | ×1 | bottes de foin, tours de caisses | trampoline |
 | Farm | 60 m | ×1,15 | tracteurs, clôture, bottes de foin | ventilateur géant |
 | Forest | 135 m | ×1,35 | rondins, ruches | rondin qui balance |
 | Beach | 220 m | ×1,5 | châteaux de sable, planches de surf | vague |
 | Desert | 315 m | ×1,8 | tonneaux, cactus | tornade de sable |
 | Construction | 420 m | ×2,1 | échafaudages, mur de briques, plots | presse hydraulique |
-| Junkyard | 535 m | ×2,5 | voitures-cibles, piles de pneus | aimant de grue |
+| Junkyard | 535 m | ×2,5 | voitures-cibles, piles de pneus, panneaux-cibles | aimant de grue |
 | Snowfield | 660 m | ×3 | bonshommes de neige, mur de glace | tremplin de saut à ski |
 | Volcano | 800 m | ×3,8 | rochers de lave, mur de basalte | bassin de lave |
 | Candy Land | 950 m | ×4,7 | sucres d'orge, mur de guimauves | canon à confettis |
