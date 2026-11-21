@@ -1,8 +1,9 @@
 -- Joueur simulé de la progression longue (#94) : estime le temps de jeu pour atteindre chaque palier (équipement
 -- d'entraînement, mannequin à lancer, présentoir, première sortie de chaque rareté) avec les vrais modules du jeu
 -- (tirage Shared.Collection, entraînement Shared.Training, CHANCE Shared.Economy, prix Shared.ThrowDummies). Modèle
--- simple, à recaler sur les mesures de Studio (#15) : distance ∝ vitesse² (calée sur les vols mesurés de #14), une
--- boucle = un lancer (THROW_TIME s) puis TRAIN_TIME s d'entraînement, achats dès que possible (le moins cher d'abord),
+-- simple, à recaler sur les mesures de Studio (#15) : distance d'un vol plafonné (Shared.FlightArc : premier contact
+-- au point de l'arc naturel, puis glissade freinée, part mesurée en Studio par #113), une boucle = un lancer
+-- (THROW_TIME s) puis TRAIN_TIME s d'entraînement, achats dès que possible (le moins cher d'abord),
 -- mannequins hors présentoirs vendus aussitôt. Renaissance (#108, Shared.Rebirth) dès que possible, après les achats
 -- moins chers : progression remise à zéro, base et présentoirs gardés, CHANCE × 2 par renaissance.
 -- Usage : lune run tools/progression [joueurs] [heures] [facteur de prix des renaissances]
@@ -14,6 +15,7 @@ local Loader = require("../tests/lib/Loader")
 local loader = Loader.new()
 local Collection = loader:require("src/shared/Collection")
 local Economy = loader:require("src/shared/Economy")
+local FlightArc = loader:require("src/shared/FlightArc")
 local Format = loader:require("src/shared/Format")
 local GameConfig = loader:require("src/shared/GameConfig")
 local Inventory = loader:require("src/shared/Inventory")
@@ -29,15 +31,20 @@ Rebirth.PRICE_GROWTH = tonumber(process.args[3]) or Rebirth.PRICE_GROWTH
 
 local THROW_TIME = 15 -- lancer, vol, tirage et retour (s ; 15 s mesurés sur Throw a Seed)
 local TRAIN_TIME = 15 -- entraînement entre deux lancers (s)
--- Distance (m) ≈ DIST_K × vitesse² : 145-168 m à la puissance 10, ≈ 1 150 m à 10,5 K (vols mesurés de #14)
-local DIST_K = 0.012
+-- Distance (m) : premier contact au sol prévu par Shared.FlightArc (main à ORIGIN_HEIGHT au-dessus de la piste), plus
+-- SLIDE_SHARE de la glissade freinée théorique (le choc de l'atterrissage en mange une part ; mesuré en Studio, #113)
+local ORIGIN_HEIGHT = 5.3
+local SLIDE_SHARE = 1
 -- Bonus des os et objets (part ajoutée à la CHANCE) : ≈ +30 % au départ, ≈ +55 % à 10,5 K de puissance (mesures #14)
 local BONUS_BASE, BONUS_PER_LOG = 0.3, 0.035
 
 -- Cette méthode permet d'estimer la distance d'un lancer jauge pleine lorsque le joueur a `power` de Throw Power.
 local function distanceFor(power: number): number
-	local v = Economy.launchSpeed(power)
-	return math.min(DIST_K * v * v, GameConfig.COURSE_LENGTH)
+	local speed = Economy.launchSpeed(power)
+	local pitch = math.rad(GameConfig.LAUNCH_PITCH_DEG)
+	local forward = speed * math.cos(pitch)
+	local plan = FlightArc.plan(forward, speed * math.sin(pitch), ORIGIN_HEIGHT, GameConfig.GRAVITY)
+	return math.min(plan.range + SLIDE_SHARE * FlightArc.slide(forward), GameConfig.COURSE_LENGTH)
 end
 
 -- Cette méthode permet d'estimer la CHANCE d'un lancer lorsque le joueur a `power` et lance un mannequin de chance `luck`.
