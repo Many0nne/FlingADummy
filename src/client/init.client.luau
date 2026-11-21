@@ -1,12 +1,13 @@
 -- Amorçage du client : HUD, objectif, poses des avatars, lancer, caméra et écran de vol (CHANCE finale à l'arrêt),
--- effets des crashs, pièces mobiles des pièges, tirage du mannequin de collection et pose dans la base, animation des mannequins de collection,
--- musique de fond, branchés sur les remotes du serveur.
+-- effets des crashs, pièces mobiles des pièges, tirage du mannequin de collection (et annonces des tirages rares)
+-- et pose dans la base, animation des mannequins de collection, musique de fond, branchés sur les remotes du serveur.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local Remotes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Remotes"))
+local Announce = require(script.Announce)
 local CharacterPoser = require(script.CharacterPoser)
 local DummyFx = require(script.DummyFx)
 local Effects = require(script.Effects)
@@ -40,6 +41,11 @@ local gui = Hud.screen()
 Objective.init(player, gui)
 FlightView.init(gui)
 Prize.init(player, remotes, gui)
+-- Annonces des tirages rares : en attente pendant le vol et le tirage du joueur local (pas de résultat gâché)
+Announce.init(remotes.Announce, gui, function()
+	local state = player:GetAttribute("LaneState")
+	return Prize.isShowing() or state == "Flying" or state == "Result"
+end, Hud.reserveTop, Hud.isLevelPopupShown)
 CharacterPoser.init()
 DummyFx.init()
 ThrowController.init(player, remotes, gui)

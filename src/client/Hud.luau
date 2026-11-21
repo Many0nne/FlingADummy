@@ -72,6 +72,8 @@ local lastRepFloat = 0
 local knownLevel = math.huge -- palier d'entraînement et équipement déjà annoncés (aucun avant le chargement)
 local knownTier = math.huge
 local popupEndsAt = 0
+local bannerEndsAt = 0 -- bandeau d'annonce en haut de l'écran (Client.Announce) : les popups passent dessous
+local BANNER_POPUP_Y = 160 -- px : centre d'un popup ouvert pendant un bandeau (au lieu de 92)
 -- Ventes envoyées au serveur : leur argent volera du bouton au compteur quand il arrivera
 type ExpectedGain = { amount: number, from: Vector2, untilTime: number }
 local expectedGains: { ExpectedGain } = {}
@@ -80,6 +82,7 @@ local EXPECT_TIME = 3 -- s : une vente que le serveur n'a pas créditée dans ce
 type Offer = { frame: Frame, button: TextButton, viewport: ViewportFrame, name: TextLabel, stat: TextLabel }
 local offer: Offer
 local offerTier: number? = nil
+local soundedOffer: number? = nil
 local dismissedOffers: { [number]: boolean } = {}
 
 -- Cette méthode permet de lire un attribut numérique du joueur (valeur par défaut si absent) lorsque le HUD se
@@ -522,6 +525,7 @@ local function refreshOffer(money: number, cost: number?)
 		and player:GetAttribute("LaneState") == "Ready"
 		and player:GetAttribute("Action") ~= "Holding"
 		and not UIKit.isWindowOpen(windows.Shop)
+		and os.clock() >= bannerEndsAt -- bandeau d'annonce au même endroit : l'offre revient après lui
 	local tier = if free then Tutorial.gearOffer(stat("GearTier", 1), cost, money, dismissedOffers) else nil
 	if tier == offerTier then
 		return
@@ -536,7 +540,10 @@ local function refreshOffer(money: number, cost: number?)
 	offer.stat.Text = Format.money(gear.cost) .. "  •  +" .. Format.short(gear.gain) .. " EXP / rep"
 	UIKit.showModel(offer.viewport, gearModel(tier))
 	UIKit.openWindow(offer.frame, false)
-	UIKit.playSound("LevelUp", 1.4)
+	if tier ~= soundedOffer then
+		soundedOffer = tier -- offre déjà annoncée : pas de nouveau son quand elle revient après un bandeau
+		UIKit.playSound("LevelUp", 1.4)
+	end
 end
 
 -- Cette méthode permet de rafraîchir compteurs, cartes et pastilles « ! » lorsque l'argent, la puissance,
@@ -611,14 +618,15 @@ local function onRepProgress()
 	end
 end
 
--- Cette méthode permet d'afficher la barre d'entraînement et de masquer le HUD en vol lorsque l'action du joueur ou
--- l'état du couloir changent.
+-- Cette méthode permet d'afficher la barre d'entraînement et de masquer le HUD en vol et pendant le tirage lorsque
+-- l'action du joueur ou l'état du couloir changent.
 local function refreshState()
 	local action = player:GetAttribute("Action")
 	local state = player:GetAttribute("LaneState")
 	trainBar.Visible = action == "Training"
-	root.Visible = state ~= "Flying"
-	if state == "Flying" or action == "Holding" then
+	-- Écran dégagé pendant le vol, l'atterrissage, la silhouette et la révélation, jusqu'au GO BACK (#60, comme 09 et 01)
+	root.Visible = state ~= "Flying" and state ~= "Result"
+	if state == "Flying" or state == "Result" or action == "Holding" then
 		for _, window in windows do
 			UIKit.closeWindow(window, true)
 		end
@@ -685,8 +693,11 @@ end
 -- Cette méthode permet d'afficher un popup de palier et de retenir sa fin (l'objectif se tait pendant ce temps)
 -- lorsque le joueur gagne un niveau ou un équipement.
 local function showPopup(options: UIKit.PopupOptions)
+	if os.clock() < bannerEndsAt and not options.position then
+		options.position = UDim2.new(0.5, 0, 0, BANNER_POPUP_Y)
+	end
 	local duration = UIKit.popup(gui, options)
-	popupEndsAt = os.clock() + duration
+	popupEndsAt = math.max(popupEndsAt, os.clock() + duration)
 end
 
 -- Cette méthode permet de faire voler un gain (« +N » et icônes) de `from` (pixels d'écran) au compteur `kind`,
@@ -820,8 +831,22 @@ function Hud.popup(options: UIKit.PopupOptions)
 	showPopup(options)
 end
 
+-- Cette méthode permet de réserver le haut de l'écran pour `duration` s à partir de maintenant (0 : libéré ;
+-- l'objectif se tait, les popups passent dessous) lorsque un bandeau d'annonce s'affiche ou s'en va.
+function Hud.reserveTop(duration: number)
+	bannerEndsAt = os.clock() + duration
+	Hud.refresh() -- l'offre « NEW GEAR! » s'efface sous le bandeau, puis revient
+	task.delay(duration + 0.05, Hud.refresh)
+end
+
 -- Cette méthode permet de savoir si un popup de palier occupe le haut de l'écran lorsque l'objectif s'affiche.
 function Hud.isPopupShown(): boolean
+	return os.clock() < popupEndsAt or os.clock() < bannerEndsAt
+end
+
+-- Cette méthode permet de savoir si un popup de palier (hors bandeau d'annonce) est à l'écran lorsque un bandeau
+-- attend son tour.
+function Hud.isLevelPopupShown(): boolean
 	return os.clock() < popupEndsAt
 end
 

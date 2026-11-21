@@ -68,7 +68,7 @@ local GameConfig = {
 	REST_TIME           = 1.0,    -- durée d'arrêt avant de compter le résultat (s)
 	MAX_FLIGHT_TIME     = 16,
 	KILL_Y              = -40,    -- mannequin tombé du parcours
-	RESULT_MAX_TIME     = 20,     -- résultat et tirage : fin forcée si le client ne signale pas GO BACK (s)
+	RESULT_MAX_TIME     = 20,     -- résultat et tirage : fin forcée si le client ne signale pas GO BACK (s, minimum ; plus long selon la rareté : Shared.RevealPlan.resultTime)
 	RESULT_CLEAR_TIME   = 4.5,    -- mannequin d'un joueur parti pendant son résultat retiré après ce délai (s)
 	SMASH_SPEED         = 7,      -- une caisse ou une brique qui dépasse cette vitesse compte comme détruite
 }
