@@ -355,7 +355,8 @@ local function triggerTrap(flight: Flight, box: TrackPlan.TrapBox, position: Vec
 end
 
 -- Cette méthode permet de savoir si le piège `box` agit à l'instant `now` sur un torse allé de `previous` à `position`
--- pendant la frame lorsqu'il traverse sa boîte ; le rondin doit toucher le torse en un point du trajet (4 points testés).
+-- pendant la frame lorsqu'il traverse sa boîte ; le rondin doit toucher le torse en un point du trajet (4 points,
+-- ramenés dans la boîte ; rondin pris à `now` pour toute la frame, soit ≈ 0,5 stud d'écart au plus vite).
 local function trapActs(box: TrackPlan.TrapBox, now: number, previous: Vector3, position: Vector3): boolean
 	local offset = Traps.phaseOffset(box.x, box.z)
 	if box.kind ~= "SwingLog" then
@@ -363,7 +364,8 @@ local function trapActs(box: TrackPlan.TrapBox, now: number, previous: Vector3, 
 	end
 	local foot = Vector3.new(box.x, 0, box.z)
 	for step = 0, 3 do
-		if Traps.active(box.kind, now, offset, previous:Lerp(position, step / 3) - foot) then
+		local point = Traps.contact(box.center, box.size, previous:Lerp(position, step / 3))
+		if Traps.active(box.kind, now, offset, point - foot) then
 			return true
 		end
 	end

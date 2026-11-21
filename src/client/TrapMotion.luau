@@ -91,14 +91,15 @@ local function step()
 		if not model.Parent or not model.PrimaryPart then
 			continue
 		end
+		-- Plaques allumées : suivies même de loin (le néon se voit de loin, et ne change que deux fois par cycle)
+		if mover.kind and #mover.power > 0 then
+			setPower(mover, Traps.active(mover.kind, now, mover.offset))
+		end
 		if (mover.home.Position - eye).Magnitude > Traps.MOTION_RANGE then
 			continue
 		end
 		local t = now + mover.offset * mover.period
 		model:PivotTo(mover.home * Traps.motion(mover.motion, t, mover.axis, mover.amplitude, mover.period))
-		if mover.kind and #mover.power > 0 then
-			setPower(mover, Traps.active(mover.kind, now, mover.offset))
-		end
 	end
 end
 
