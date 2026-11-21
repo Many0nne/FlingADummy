@@ -33,6 +33,7 @@ local PENDING_TIMEOUT = 3 -- s : un écho jamais revenu (deux clics dans la mêm
 local mood: MusicRules.Mood = "Hub"
 local bed: MusicRules.Bed? = nil
 local hubIndex: number? = nil -- piste du hub en cours ou dernière jouée (rotation)
+local hubFailures = 0 -- pistes du hub en échec d'affilée : au bout d'un tour complet, on cesse de réessayer
 local current: Playing? = nil
 local fading: { Playing } = {}
 local fanfare: Playing? = nil
@@ -52,6 +53,20 @@ local function newSound(track: MusicRules.Track, looped: boolean): Sound
 	return sound
 end
 
+-- Cette méthode permet de suivre le chargement d'une piste (échec = piste sautée, sinon elle resterait muette sans
+-- durée ni fin) lorsqu'elle vient d'être créée.
+local function watchLoad(playing: Playing, hub: boolean)
+	task.spawn(function()
+		ContentProvider:PreloadAsync({ playing.sound }, function(_, status)
+			if status == Enum.AssetFetchStatus.Failure then
+				playing.failed = true
+			elseif status == Enum.AssetFetchStatus.Success and hub then
+				hubFailures = 0
+			end
+		end)
+	end)
+end
+
 -- Cette méthode permet de démarrer la piste `i` d'une liste de fond en fondu de `fade` s, la précédente s'effaçant
 -- au même rythme, lorsque le moment change de liste ou que la piste du hub se termine.
 local function play(list: MusicRules.Bed, i: number, fade: number)
@@ -66,18 +81,11 @@ local function play(list: MusicRules.Bed, i: number, fade: number)
 	if list == "Hub" then
 		hubIndex = i
 	end
-	-- La piste du vol tourne en boucle le temps du lancer ; celles du hub s'enchaînent
+	-- La piste du vol tourne en boucle le temps du lancer (en échec : vol sans musique) ; celles du hub s'enchaînent
 	local sound = newSound(track, list == "Flight")
 	local playing = { sound = sound, track = track, level = 0, speed = speed, failed = false }
 	current = playing
-	-- Asset introuvable (retiré, modéré) : la piste est sautée, sinon le hub resterait muet (ni durée, ni fin)
-	task.spawn(function()
-		ContentProvider:PreloadAsync({ sound }, function(_, status)
-			if status == Enum.AssetFetchStatus.Failure then
-				playing.failed = true
-			end
-		end)
-	end)
+	watchLoad(playing, list == "Hub")
 	sound.Ended:Connect(function()
 		if current == playing and bed == "Hub" then
 			play("Hub", MusicRules.nextIndex("Hub", hubIndex), MusicRules.FADE)
@@ -93,7 +101,9 @@ local function playFanfare()
 	end
 	local track = MusicRules.TRACKS.Fanfare
 	local sound = newSound(track, false)
-	fanfare = { sound = sound, track = track, level = 0, speed = 4, failed = false }
+	local playing = { sound = sound, track = track, level = 0, speed = 4, failed = false }
+	fanfare = playing
+	watchLoad(playing, false)
 	fanfareEndsAt = os.clock() + MusicRules.FANFARE_MAX
 end
 
@@ -129,7 +139,7 @@ local function step(dt: number)
 	local fanfareOn = false
 	if fanfare then
 		local f = fanfare :: Playing
-		local over = os.clock() >= fanfareEndsAt or (f.sound.TimeLength > 0 and not f.sound.IsPlaying)
+		local over = f.failed or os.clock() >= fanfareEndsAt or (f.sound.TimeLength > 0 and not f.sound.IsPlaying)
 		if over then
 			table.insert(fading, f)
 			fanfare = nil
@@ -147,8 +157,21 @@ local function step(dt: number)
 		if c.level == target then
 			c.speed = 1 -- fondu d'entrée fini : muet et baisses suivantes au rythme normal
 		end
-		local advance = c.failed or MusicRules.shouldAdvance(c.sound.TimePosition, c.sound.TimeLength)
-		if bed == "Hub" and advance then
+		-- Muet : piste en pause une fois silencieuse (pas de rotation ni de téléchargement pour rien), reprise au retour
+		if muted and c.level <= 0 then
+			if c.sound.IsPlaying then
+				c.sound:Pause()
+			end
+		elseif not c.sound.IsPlaying and c.sound.IsPaused then
+			c.sound:Resume()
+		end
+		if bed == "Hub" and c.failed then
+			c.failed = false
+			hubFailures += 1
+			if hubFailures < #MusicRules.TRACKS.Hub then
+				play("Hub", MusicRules.nextIndex("Hub", hubIndex), MusicRules.FADE)
+			end
+		elseif bed == "Hub" and MusicRules.shouldAdvance(c.sound.TimePosition, c.sound.TimeLength) then
 			play("Hub", MusicRules.nextIndex("Hub", hubIndex), MusicRules.FADE)
 		end
 	end

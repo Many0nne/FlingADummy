@@ -35,6 +35,10 @@ local PlayerData = {}
 local store: DataStore? = nil
 local loaded: { [Player]: boolean } = {}
 local collections: { [Player]: CollectionData } = {}
+local musicChangedAt: { [Player]: number } = {}
+local musicWanted: { [Player]: boolean } = {} -- dernier choix reçu, appliqué à la fin du délai
+local musicScheduled: { [Player]: boolean } = {}
+local MUSIC_COOLDOWN = 0.25 -- s entre deux changements du muet musique (attribut répliqué à tout le serveur)
 
 -- Cette méthode permet de construire la clé DataStore d'un joueur lorsque l'on lit ou écrit ses données.
 local function keyOf(player: Player): string
@@ -169,16 +173,30 @@ function PlayerData.tutorialStep(player: Player, event: string)
 	end
 end
 
--- Cette méthode permet de noter le choix du bouton musique (true = coupée) lorsque le client l'envoie ; sauvegardé
--- avec les données du joueur, ignoré avant le chargement ou si la valeur n'est pas un booléen.
+-- Cette méthode permet de noter le choix du bouton musique (true = coupée) lorsque le client l'envoie ; au plus un
+-- changement par MUSIC_COOLDOWN s (attribut répliqué à tout le serveur), le dernier choix reçu appliqué en différé.
 function PlayerData.setMusicOff(player: Player, off: any)
-	-- Valeur inchangée ignorée : un client qui spamme le remote ne réplique rien à tout le serveur
-	if
-		type(off) == "boolean"
-		and player:GetAttribute("DataReady") == true
-		and player:GetAttribute("MusicOff") ~= off
-	then
-		player:SetAttribute("MusicOff", off)
+	if type(off) ~= "boolean" or player:GetAttribute("DataReady") ~= true then
+		return
+	end
+	musicWanted[player] = off
+	if musicScheduled[player] then
+		return
+	end
+	local function apply()
+		musicScheduled[player] = nil
+		local wanted = musicWanted[player]
+		if wanted ~= nil and player.Parent and player:GetAttribute("MusicOff") ~= wanted then
+			musicChangedAt[player] = os.clock()
+			player:SetAttribute("MusicOff", wanted)
+		end
+	end
+	local delay = MUSIC_COOLDOWN - (os.clock() - (musicChangedAt[player] or -math.huge))
+	if delay <= 0 then
+		apply()
+	else
+		musicScheduled[player] = true
+		task.delay(delay, apply)
 	end
 end
 
@@ -206,6 +224,9 @@ function PlayerData.init()
 		save(player)
 		loaded[player] = nil
 		collections[player] = nil
+		musicChangedAt[player] = nil
+		musicWanted[player] = nil
+		musicScheduled[player] = nil
 	end)
 	game:BindToClose(function()
 		for _, player in Players:GetPlayers() do
