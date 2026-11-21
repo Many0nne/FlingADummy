@@ -107,6 +107,11 @@ return function(T, Loader)
 			T.expectEqual(model.rookie_FloatyL.Color, DummyShape.ACCESSORIES.rookie_FloatyL.color)
 			T.expectEqual(model.rookie_Helmet.Material, roblox.Enum.Material.Foil)
 			T.expectEqual(model.rookie_FloatyL.Material, roblox.Enum.Material.Foil)
+			local visor = DummyShape.buildVisual(1, {
+				accessories = { "biker_Visor" },
+				accessoryMaterial = roblox.Enum.Material.Neon,
+			})
+			T.expectEqual(visor.biker_Visor.Material, roblox.Enum.Material.Glass, "une vitre reste en verre")
 		end)
 		T.it("clone les MeshPart à la taille du gabarit et à l'échelle", function()
 			local model = DummyShape.buildVisual(0.5)

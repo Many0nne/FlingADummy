@@ -803,13 +803,27 @@ UIKit.CARD_WIDTH = 196 -- largeur d'une carte de boutique (px)
 UIKit.CARD_GAP = 10 -- écart entre deux cartes d'une rangée qui défile
 
 -- Cette méthode permet de faire défiler une rangée de cartes jusqu'à la carte `order` (la précédente reste visible à
--- gauche) lorsque une boutique s'ouvre : avec 12 équipements ou 20 mannequins (#94), le prochain achat est loin.
--- Différé d'une image (fenêtre tout juste visible, tailles pas encore à jour) ; la rangée borne elle-même la position.
+-- gauche) lorsque une boutique s'ouvre (12 équipements, 20 mannequins depuis #94 : le prochain achat est loin).
 function UIKit.scrollToCard(row: ScrollingFrame, order: number)
-	local x = math.max(0, (order - 2) * (UIKit.CARD_WIDTH + UIKit.CARD_GAP))
-	task.defer(function()
+	local padding = row:FindFirstChildOfClass("UIPadding")
+	local left = if padding then padding.PaddingLeft.Offset else 0
+	local x = if order <= 2 then 0 else left + (order - 2) * (UIKit.CARD_WIDTH + UIKit.CARD_GAP)
+	local function apply()
 		row.CanvasPosition = Vector2.new(x, 0)
-	end)
+	end
+	-- Différé d'une image (fenêtre tout juste visible), puis repris quand la rangée jamais affichée a calculé sa
+	-- largeur : sinon la position serait bornée à 0
+	task.defer(apply)
+	if row.AbsoluteCanvasSize.X <= row.AbsoluteWindowSize.X then
+		local connection: RBXScriptConnection
+		connection = row:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(function()
+			connection:Disconnect()
+			apply()
+		end)
+		task.delay(1, function()
+			connection:Disconnect()
+		end)
+	end
 end
 
 -- Cette méthode permet de créer une carte d'objet (nom, rareté, rendu 3D, statistique, bouton d'action) dans une

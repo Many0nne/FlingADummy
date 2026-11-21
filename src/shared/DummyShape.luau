@@ -550,7 +550,9 @@ function DummyShape.addAccessories(model: Model, parts: { [string]: BasePart }, 
 			local offset = CFrame.new(def.offset * scale)
 			accessory.CFrame = carrier.CFrame * offset
 			accessory.Color = variant.accessoryColor or (variant.accessoryColors or {})[name] or def.color
-			local material = variant.accessoryMaterial or def.material
+			-- Une vitre (casque de scaphandre, visière, verres) reste en verre sous une palette de variante générée
+			local seeThrough = def.material == Enum.Material.Glass or (def.transparency or 0) > 0
+			local material = if seeThrough then def.material else variant.accessoryMaterial or def.material
 			accessory.Material = material
 			accessory.Transparency = def.transparency or 0
 			accessory.Massless = true

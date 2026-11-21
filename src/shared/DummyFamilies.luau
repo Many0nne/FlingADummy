@@ -91,12 +91,13 @@ DummyFamilies.INCOME_ANCHOR = { n = 2e6, income = 300000 }
 DummyFamilies.INCOME_EXPONENT = 0.45
 
 -- Cette méthode permet d'arrondir un nombre à 2 chiffres significatifs (au moins 1 ; entier si `integer`) lorsque l'on
--- génère une cote ou un revenu lisible (« 1 IN 3.2M », « $45K/s ») ; une cote de Common garde sa décimale (6.3) : deux
--- cotes à moins de 1 d'écart sortiraient aussi souvent l'une que l'autre (tirage du plus rare au plus courant).
+-- génère une cote ou un revenu lisible (« 1 IN 3.2M », « $45K/s »).
 function DummyFamilies.nice(x: number, integer: boolean?): number
 	if x < 1 then
 		return 1
 	end
+	-- Une cote sous 10 garde sa décimale (6.3) : le tirage essaie du plus rare au plus courant, deux cotes à moins de 1
+	-- d'écart sortiraient aussi souvent l'une que l'autre
 	local magnitude = 10 ^ (math.floor(math.log10(x)) - 1)
 	if integer then
 		magnitude = math.max(magnitude, 1)
@@ -200,8 +201,7 @@ local function recolor(effect: DummyModels.Effect, glow: Color3): DummyModels.Ef
 end
 
 -- Cette méthode permet de construire le look d'un mannequin généré (famille `family` × palette `paletteId`) lorsque le
--- catalogue se construit : corps à la couleur et au matériau de la palette, pièces ajoutées et pièces colorées de la
--- famille tirées vers sa teinte, effets de la famille (modèle et thème) à la couleur de sa lueur.
+-- catalogue se construit ; corps à la palette, pièces et effets de la famille tirés vers sa teinte et sa lueur.
 function DummyFamilies.look(family: string, paletteId: string): DummyModels.Look
 	local base = DummyModels.LOOKS[family]
 	local palette = DummyFamilies.PALETTES[paletteId]
