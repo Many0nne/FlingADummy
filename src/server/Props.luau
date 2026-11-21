@@ -566,6 +566,8 @@ end
 local function merchant(parent: Instance, at: CFrame, shirt: Color3, cap: Color3): Model
 	local model = Instance.new("Model")
 	model.Name = "Merchant"
+	-- Atomique : le client l'anime d'un bloc (corps et bras arrivent ensemble, comme les pièges de Server.TrapProps)
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	local skin = rgb(255, 205, 150)
 	local pants = rgb(50, 60, 90)
 	put(model, at, Vector3.new(0.9, 2.4, 1), Vector3.new(-0.5, 1.2, 0), pants, false)
@@ -801,6 +803,7 @@ function Props.shopStand(parent: Instance, at: CFrame, displayTag: string, count
 	end
 	local head = Instance.new("Model")
 	head.Name = "SignHead"
+	head.ModelStreamingMode = Enum.ModelStreamingMode.Atomic -- tourne d'un bloc côté client
 	local skull = put(head, at, Vector3.new(4, 4, 4), Vector3.new(0, 21.4, 4.2), DUMMY_YELLOW, true)
 	for _, face in { -1, 1 } do
 		-- Cible de crash-test (disques noir et jaune) de chaque côté
@@ -959,6 +962,7 @@ function Props.sellStand(parent: Instance, at: CFrame)
 	Build.surfaceText(sign, Enum.NormalId.Front, "SELL")
 	local coin = Instance.new("Model")
 	coin.Name = "GiantCoin"
+	coin.ModelStreamingMode = Enum.ModelStreamingMode.Atomic -- tourne d'un bloc côté client
 	local disc = smooth(
 		coin,
 		at,

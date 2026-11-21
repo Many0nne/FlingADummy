@@ -190,7 +190,8 @@ function ThrowShop.init(
 	for _, attribute in { "ThrowTier", "ThrowEquipped", "Money" } do
 		player:GetAttributeChangedSignal(attribute):Connect(ThrowShop.refresh)
 	end
-	-- Achats annoncés seulement après le chargement (les valeurs sauvegardées ne s'annoncent pas)
+	-- Cette méthode permet de retenir les mannequins possédés au chargement lorsque les données du joueur sont prêtes
+	-- (les valeurs sauvegardées ne s'annoncent pas, seuls les achats suivants).
 	local function seed()
 		knownTier = levels()
 	end

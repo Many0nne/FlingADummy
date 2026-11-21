@@ -43,6 +43,7 @@ export type Prize = {
 local FEET = 3.82 -- du centre du torse au bas des pieds, échelle 1 (Shared.DummyShape)
 local LOCKED_COLOR = Color3.fromRGB(120, 122, 132) -- présentoir pas encore acheté
 local LOCKED_TRANSPARENCY = 0.55
+local SELL_BURST_REACH = 30 -- vente faite au stand SELL (invite à 10 studs) : éclat de pièces au-dessus du comptoir
 
 local BaseService = {}
 
@@ -381,9 +382,18 @@ function BaseService.act(player: Player, action: any, arg: any): boolean
 	if changed then
 		refresh(player)
 		if action == "Sell" or action == "SellRarity" then
-			-- Éclat de pièces au-dessus du comptoir du stand SELL (joué par chaque client, Client.HubShops)
+			-- Éclat de pièces au-dessus du comptoir du stand SELL (joué par chaque client, Client.HubShops), pour une
+			-- vente faite au stand : pas pour une vente depuis la fenêtre « My Dummies » loin de lui
+			local character = player.Character
+			local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 			for _, burst in CollectionService:GetTagged(CourseLayout.SELL_BURST_TAG) do
-				burst:SetAttribute("Sales", ((burst:GetAttribute("Sales") :: number?) or 0) + 1)
+				if
+					root
+					and burst:IsA("BasePart")
+					and (burst.Position - root.Position).Magnitude <= SELL_BURST_REACH
+				then
+					burst:SetAttribute("Sales", ((burst:GetAttribute("Sales") :: number?) or 0) + 1)
+				end
 			end
 		end
 	end

@@ -287,7 +287,7 @@ function ThrowDummies.offer(owned: number, money: number, dismissed: { [number]:
 end
 
 -- Cette méthode permet de donner l'état de la carte du mannequin `index` lorsque la boutique se rafraîchit :
--- "Equipped", "Owned" (bouton EQUIP), "Buy" (le suivant : prix vert ou rouge) ou "Locked" (après le suivant).
+-- "Equipped", "Owned" (bouton EQUIP), "Buy" (le suivant : prix jaune ou rouge) ou "Locked" (après le suivant).
 function ThrowDummies.cardState(owned: number, equipped: number, index: number): string
 	if index == equipped then
 		return "Equipped"
@@ -317,9 +317,9 @@ function ThrowDummies.boneImpact(dummy: Dummy, dv: number): number
 	return dv * dummy.boneFactor
 end
 
--- Cette méthode permet de donner l'accélération propre au mannequin en vol (portance du planeur quand il redescend,
--- poussée du réacteur au départ, vers l'avant à plat `forward`) lorsque le serveur avance le vol d'une frame ;
--- `elapsed` : temps depuis le lancer (s).
+-- Cette méthode permet de donner l'accélération propre au mannequin en vol (portance du planeur dès qu'il descend
+-- plus vite que GLIDE_MIN_FALL, en l'air comme en glissade sur une pente ; poussée du réacteur au départ, vers l'avant
+-- à plat `forward`) lorsque le serveur avance le vol d'une frame ; `elapsed` : temps depuis le lancer (s).
 function ThrowDummies.flightAccel(
 	dummy: Dummy,
 	velocity: Vector3,
