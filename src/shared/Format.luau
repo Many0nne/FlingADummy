@@ -61,4 +61,14 @@ function Format.multiplier(chance: number): string
 	return string.format("X%.2f", math.max(1, chance))
 end
 
+-- Cette méthode permet d'écrire le multiplicateur de chance d'un mannequin à lancer comme les graines de 09 (`1.0x`,
+-- `1.25x`, `2.0x` : au moins une décimale, au plus deux) lorsque la boutique ou la bannière CHANCE l'affichent.
+function Format.luck(multiplier: number): string
+	local text = string.format("%.2f", multiplier)
+	if string.sub(text, -1) == "0" then
+		text = string.sub(text, 1, -2)
+	end
+	return text .. "x"
+end
+
 return Format

@@ -15,6 +15,7 @@ local GameConfig = require(Shared.GameConfig)
 local Gauge = require(Shared.Gauge)
 local Remotes = require(Shared.Remotes)
 local RevealPlan = require(Shared.RevealPlan)
+local ThrowDummies = require(Shared.ThrowDummies)
 local Traps = require(Shared.Traps)
 local Zones = require(Shared.Zones)
 
@@ -50,6 +51,8 @@ type Flight = {
 	owner: Player?, -- nil pour un mannequin de test (DebugLaunchBots)
 	key: any, -- clé dans `flights` : le joueur, ou un identifiant de mannequin de test
 	slot: Slot,
+	thrown: ThrowDummies.Dummy, -- mannequin à lancer équipé au départ : chance, os, portance, poussée
+	forward: Vector3, -- direction du lancer (poussée du réacteur)
 	announce: any?, -- annonce du tirage (Legendary et plus), envoyée à tous quand le gagnant a vu sa révélation
 	dummy: Model,
 	torso: BasePart,
@@ -103,13 +106,22 @@ local function throwOrigin(player: Player?, slot: Slot): Vector3
 	return slot.launchPoint + Vector3.new(0, 3, 0) + offset
 end
 
--- Cette méthode permet de lancer un mannequin neuf depuis la main du lanceur (ou sa place) et de commencer à suivre
--- son vol lorsqu'un joueur, ou un test, lance ; renvoie le mannequin, le point de départ et la vitesse.
-local function startFlight(owner: Player?, key: any, slot: Slot, power: number, gauge: number): (Model, Vector3, number)
+-- Cette méthode permet de lancer un mannequin neuf (le mannequin à lancer `thrownIndex` du catalogue, avec son modèle
+-- et sa physique) depuis la main du lanceur (ou sa place) et de commencer à suivre son vol lorsqu'un joueur, ou un
+-- test, lance ; renvoie le mannequin, le point de départ et la vitesse.
+local function startFlight(
+	owner: Player?,
+	key: any,
+	slot: Slot,
+	power: number,
+	gauge: number,
+	thrownIndex: number
+): (Model, Vector3, number)
 	local speed = Economy.launchSpeed(power) * Gauge.launchFactor(gauge)
 	local dir = slot.direction
 	local origin = throwOrigin(owner, slot)
-	local dummy = DummyFactory.build()
+	local thrown = ThrowDummies.get(thrownIndex)
+	local dummy = DummyFactory.build(ThrowDummies.variant(thrownIndex) :: any, thrown.physics)
 	-- Tête la première : l'axe vertical du mannequin suit la direction du lancer
 	dummy:PivotTo(CFrame.fromMatrix(origin, Vector3.xAxis, dir))
 	dummy.Parent = dummiesFolder
@@ -130,12 +142,18 @@ local function startFlight(owner: Player?, key: any, slot: Slot, power: number, 
 	dummy:SetAttribute("Smashed", 0)
 	dummy:SetAttribute("Zone", 1)
 	dummy:SetAttribute("Speed", math.floor(speed))
+	dummy:SetAttribute("Luck", thrown.luck) -- bannière CHANCE : multiplicateur du mannequin lancé
+	-- CHANCE de départ déjà multipliée : la bannière ne montre pas « 1X » avant la première frame
+	dummy:SetAttribute("Chance", Economy.chance({ distance = 0, bones = 0, smashed = 0, luck = thrown.luck }).total)
+	dummy:SetAttribute("Thrown", thrown.name)
 
 	local torso = dummy.PrimaryPart :: BasePart
 	flights[key] = {
 		owner = owner,
 		key = key,
 		slot = slot,
+		thrown = thrown,
+		forward = dir,
 		dummy = dummy,
 		torso = torso,
 		parts = parts,
@@ -236,7 +254,8 @@ function LaunchService.launch(player: Player, gauge: any, force: boolean?)
 	PlayerData.tutorialStep(player, "Throw")
 
 	local power = (player:GetAttribute("ThrowPower") :: number?) or GameConfig.START_POWER
-	local dummy, origin, speed = startFlight(player, player, slot, power, gauge)
+	local _, equipped = ThrowDummies.sanitize(player:GetAttribute("ThrowTier"), player:GetAttribute("ThrowEquipped"))
+	local dummy, origin, speed = startFlight(player, player, slot, power, gauge, equipped)
 	remotes.LaunchStarted:FireClient(player, dummy)
 	remotes.Impact:FireAllClients({
 		{ kind = "Throw", position = origin, value = speed, userId = player.UserId },
@@ -436,7 +455,10 @@ local function checkBones(flight: Flight, elapsed: number)
 		end
 		local dv = (v - before).Magnitude
 		local current = flight.bones[p.Name] or 0
-		local added = math.min(Damage.bonesForImpact(dv), GameConfig.MAX_BONES_PER_LIMB - current)
+		local added = math.min(
+			Damage.bonesForImpact(ThrowDummies.boneImpact(flight.thrown, dv)),
+			GameConfig.MAX_BONES_PER_LIMB - current
+		)
 		if added > 0 then
 			flight.bones[p.Name] = current + added
 			flight.totalBones += added
@@ -525,6 +547,7 @@ local function finish(flight: Flight, elapsed: number)
 		distance = flight.distance,
 		bones = flight.totalBones,
 		smashed = flight.smashed,
+		luck = flight.thrown.luck,
 	})
 	result.bones = flight.totalBones
 	result.smashed = flight.smashed
@@ -560,8 +583,9 @@ local function finish(flight: Flight, elapsed: number)
 	if RunService:IsStudio() then
 		print(
 			string.format(
-				"[Launch] %s distance=%d zone=%d bones=%d smashed=%d chance=%.2f prize=%s gauge=%.2f time=%.1f | %s",
+				"[Launch] %s dummy=%s distance=%d zone=%d bones=%d smashed=%d chance=%.2f prize=%s gauge=%.2f time=%.1f | %s",
 				if player then player.Name else tostring(flight.key),
+				flight.thrown.id,
 				result.distance,
 				result.zone,
 				flight.totalBones,
@@ -592,12 +616,35 @@ local function publish(flight: Flight)
 			distance = flight.distance,
 			bones = flight.totalBones,
 			smashed = flight.smashed,
+			luck = flight.thrown.luck,
 		}).total,
 	}
 	for name, value in values do
 		if dummy:GetAttribute(name) ~= value then
 			dummy:SetAttribute(name, value)
 		end
+	end
+end
+
+-- Cette méthode permet d'appliquer le comportement en vol du mannequin lancé (portance du planeur, poussée du
+-- réacteur, rebond du caoutchouc d'après la vitesse du torse `before` de la frame précédente) à toutes ses pièces
+-- lorsque le vol avance d'une frame ; les vitesses de référence suivent (pas de choc).
+local function applyBehavior(flight: Flight, elapsed: number, dt: number, before: Vector3?)
+	local velocity = flight.torso.AssemblyLinearVelocity
+	local change = ThrowDummies.flightAccel(flight.thrown, velocity, flight.forward, elapsed, Workspace.Gravity) * dt
+	if before and elapsed > GameConfig.IMPACT_GRACE_TIME then
+		local bounced = ThrowDummies.bounce(flight.thrown, before, velocity, flight.forward)
+		if bounced then
+			change += bounced - velocity
+		end
+	end
+	if change == Vector3.zero then
+		return
+	end
+	for _, p in flight.parts do
+		local v = p.AssemblyLinearVelocity + change
+		p.AssemblyLinearVelocity = v
+		flight.prevVelocity[p] = v
 	end
 end
 
@@ -616,11 +663,13 @@ local function step(flight: Flight, dt: number)
 	end
 	local position = torso.Position
 	local previous = flight.prevPosition
+	local before = flight.prevVelocity[torso] -- vitesse du torse à la frame précédente (rebond du caoutchouc)
 	flight.prevPosition = position
 	checkGlass(flight, previous, position)
 	checkBones(flight, elapsed)
 	checkTraps(flight, previous, position)
 	flight.distance = math.max(flight.distance, position.Z)
+	applyBehavior(flight, elapsed, dt, before)
 	publish(flight)
 	if #flight.impacts > 0 then
 		remotes.Impact:FireAllClients(flight.impacts)
@@ -650,7 +699,7 @@ local function launchBots(player: Player, count: number)
 			break
 		end
 		botCount += 1
-		startFlight(nil, "Bot" .. botCount, slot, power, 1)
+		startFlight(nil, "Bot" .. botCount, slot, power, 1, 1)
 	end
 end
 

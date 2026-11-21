@@ -6,6 +6,7 @@
 -- stock, rien ne se perd. Fenêtres de collection (remote Inventory) : poser, retirer, vendre, « Place best ». Pad « 6 > 7 » devant la base : achat du présentoir suivant. Le serveur publie la
 -- collection dans des attributs du joueur (Stock, BaseDummies, Displays, DummyIndex) que le client affiche. Les
 -- mannequins posés sont construits par le serveur, visibles de tous.
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -42,6 +43,7 @@ export type Prize = {
 local FEET = 3.82 -- du centre du torse au bas des pieds, échelle 1 (Shared.DummyShape)
 local LOCKED_COLOR = Color3.fromRGB(120, 122, 132) -- présentoir pas encore acheté
 local LOCKED_TRANSPARENCY = 0.55
+local SELL_BURST_REACH = 15 -- vente faite au stand SELL (invite à 10 studs, 4,5 devant l'émetteur) : éclat de pièces
 
 local BaseService = {}
 
@@ -379,6 +381,21 @@ function BaseService.act(player: Player, action: any, arg: any): boolean
 	end
 	if changed then
 		refresh(player)
+		if action == "Sell" or action == "SellRarity" then
+			-- Éclat de pièces au-dessus du comptoir du stand SELL (joué par chaque client, Client.HubShops), pour une
+			-- vente faite au stand : pas pour une vente depuis la fenêtre « My Dummies » loin de lui
+			local character = player.Character
+			local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+			for _, burst in CollectionService:GetTagged(CourseLayout.SELL_BURST_TAG) do
+				if
+					root
+					and burst:IsA("BasePart")
+					and (burst.Position - root.Position).Magnitude <= SELL_BURST_REACH
+				then
+					burst:SetAttribute("Sales", ((burst:GetAttribute("Sales") :: number?) or 0) + 1)
+				end
+			end
+		end
 	end
 	return changed
 end

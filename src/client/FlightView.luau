@@ -1,5 +1,5 @@
--- Écran de vol : bandes noires de cinéma, bannière CHANCE (« 1.36X », qui monte avec la distance et les crashs) et zone
--- traversée, compteurs en direct (distance, os, objets) et panneau radio du mannequin (membres colorés selon leur gravité).
+-- Écran de vol : bandes noires de cinéma, bannière CHANCE (« 1.36X », qui monte avec la distance et les crashs ; badge
+-- du multiplicateur du mannequin à lancer, « RUBBER 1.25x ») et zone traversée, compteurs en direct (distance, os, objets) et panneau radio du mannequin (membres colorés selon leur gravité).
 -- À l'arrêt du mannequin (détecté ici, sans attendre le serveur) : trèfle et CHANCE finale « X1.36 » au-dessus de lui,
 -- titre du crash dessous (« BRUTAL! »), comme le « X1.22 » de 09 ; la radio reste quelques secondes dans son coin avec
 -- le bilan (os, objets, blessures, cause) pendant que le tirage (Client.Prize) enchaîne.
@@ -38,6 +38,8 @@ local bonesLabel: TextLabel
 local smashedLabel: TextLabel
 local chanceBox: Frame
 local chanceLabel: TextLabel
+local luckBadge: Frame
+local luckLabel: TextLabel
 local zoneBanner: Frame
 local zoneLabel: TextLabel
 local xray: Frame
@@ -233,6 +235,28 @@ local function build(gui: ScreenGui)
 		Text = "CHANCE",
 		TextSize = 24,
 		Parent = chanceBox,
+	})
+	-- Badge du mannequin à lancer, collé en biais au coin de la bannière (multiplicateur compris dans la CHANCE)
+	luckBadge = UIKit.create("Frame", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(1, -18, 0, 6),
+		Size = UDim2.fromOffset(0, 30),
+		AutomaticSize = Enum.AutomaticSize.X,
+		Rotation = 8,
+		BackgroundColor3 = C.green,
+		Visible = false,
+		ZIndex = 3,
+		Parent = chanceBox,
+	})
+	UIKit.corner(luckBadge, 15)
+	UIKit.outline(luckBadge, 3)
+	UIKit.create("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10), Parent = luckBadge })
+	luckLabel = UIKit.text({
+		Size = UDim2.fromScale(0, 1),
+		AutomaticSize = Enum.AutomaticSize.X,
+		TextSize = 20,
+		ZIndex = 4,
+		Parent = luckBadge,
 	})
 	zoneBanner = UIKit.create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0),
@@ -450,6 +474,14 @@ function FlightView.show(model: Model)
 				end)
 			)
 		end
+	end
+	-- Multiplicateur du mannequin lancé (boutique, #14), déjà compté dans la CHANCE affichée
+	local luck = (model:GetAttribute("Luck") :: number?) or 1
+	local thrown = model:GetAttribute("Thrown")
+	luckBadge.Visible = luck > 1
+	if luck > 1 then
+		local short = if typeof(thrown) == "string" then string.upper((string.gsub(thrown, " Dummy$", ""))) else ""
+		luckLabel.Text = string.format("%s %s", short, Format.luck(luck))
 	end
 	showZone(1)
 	update()

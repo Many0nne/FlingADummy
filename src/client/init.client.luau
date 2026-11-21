@@ -1,6 +1,7 @@
 -- Amorçage du client : HUD, objectif, poses des avatars, lancer, caméra et écran de vol (CHANCE finale à l'arrêt),
 -- effets des crashs, pièces mobiles des pièges, tirage du mannequin de collection (et annonces des tirages rares)
--- et pose dans la base, animation des mannequins de collection, musique de fond, branchés sur les remotes du serveur.
+-- et pose dans la base, animation des mannequins de collection, stands du hub (boutique des mannequins à lancer),
+-- musique de fond, branchés sur les remotes du serveur.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -14,6 +15,7 @@ local Effects = require(script.Effects)
 local FlightCamera = require(script.FlightCamera)
 local FlightView = require(script.FlightView)
 local Hud = require(script.Hud)
+local HubShops = require(script.HubShops)
 local Music = require(script.Music)
 local Objective = require(script.Objective)
 local Prize = require(script.Prize)
@@ -48,6 +50,8 @@ Announce.init(remotes.Announce, gui, function()
 end, Hud.reserveTop, Hud.isLevelPopupShown)
 CharacterPoser.init()
 DummyFx.init()
+HubShops.onShop = Hud.openDummyShop
+HubShops.init()
 ThrowController.init(player, remotes, gui)
 FlightCamera.init(player)
 Effects.init(player, remotes.Impact)

@@ -2,8 +2,9 @@
 -- « ! »), compteurs icône + valeur en bas à gauche (Throw Power, argent et revenu « +$N/s »), fenêtres à bandeau et
 -- cartes d'objets (équipements d'entraînement ; collection, vente et Index : Client.CollectionWindows), barre
 -- d'entraînement avec STOP, « +N EXP » qui
--- s'envole à chaque répétition, popups LEVEL UP! (Throw Power gagnée au niveau) / NEW EQUIPMENT!, et popup « NEW GEAR! »
--- qui propose l'équipement suivant dès qu'il est abordable (achat en un clic).
+-- s'envole à chaque répétition, popups LEVEL UP! (Throw Power gagnée au niveau) / NEW EQUIPMENT!, popup « NEW GEAR! »
+-- qui propose l'équipement suivant dès qu'il est abordable (achat en un clic) et popup « NEW DUMMY! » qui annonce le
+-- mannequin à lancer suivant abordable (bouton SHOP vers la boutique, Client.ThrowShop).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
@@ -14,11 +15,13 @@ local Format = require(Shared:WaitForChild("Format"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local ThrowDummies = require(Shared:WaitForChild("ThrowDummies"))
 local Training = require(Shared:WaitForChild("Training"))
 local Tutorial = require(Shared:WaitForChild("Tutorial"))
 local UIMotion = require(Shared:WaitForChild("UIMotion"))
 
 local CollectionWindows = require(script.Parent.CollectionWindows)
+local ThrowShop = require(script.Parent.ThrowShop)
 local UIKit = require(script.Parent.UIKit)
 
 local C = UIKit.COLORS
@@ -78,12 +81,27 @@ local BANNER_POPUP_Y = 160 -- px : centre d'un popup ouvert pendant un bandeau (
 type ExpectedGain = { amount: number, from: Vector2, untilTime: number }
 local expectedGains: { ExpectedGain } = {}
 local EXPECT_TIME = 3 -- s : une vente que le serveur n'a pas créditée dans ce délai ne vole plus
--- Popup « NEW GEAR! » (référence 09, « Nouvel équipement ! ») : palier proposé, et paliers dont le joueur l'a fermé
-type Offer = { frame: Frame, button: TextButton, viewport: ViewportFrame, name: TextLabel, stat: TextLabel }
+-- Popups d'offre (référence 09, « Nouvel équipement ! » / « Nouvelle graine débloquée ! ») : « NEW GEAR! » (équipement
+-- d'entraînement, achat en un clic) ou « NEW DUMMY! » (mannequin à lancer, bouton vers la boutique), un seul à la fois ;
+-- type et palier proposés, et paliers dont le joueur a fermé le popup, par type
+type Offer = {
+	frame: Frame,
+	button: TextButton,
+	viewport: ViewportFrame,
+	title: TextLabel,
+	name: TextLabel,
+	stat: TextLabel,
+	gradients: { UIGradient },
+}
 local offer: Offer
+local offerKind: string? = nil -- "Gear" | "Dummy"
 local offerTier: number? = nil
-local soundedOffer: number? = nil
-local dismissedOffers: { [number]: boolean } = {}
+local soundedOffer: string? = nil
+local dismissedOffers: { [string]: { [number]: boolean } } = { Gear = {}, Dummy = {} }
+local OFFER_COLORS = {
+	Gear = { Color3.fromRGB(150, 60, 230), Color3.fromRGB(255, 70, 170) },
+	Dummy = { Color3.fromRGB(255, 90, 150), Color3.fromRGB(215, 30, 95) },
+}
 
 -- Cette méthode permet de lire un attribut numérique du joueur (valeur par défaut si absent) lorsque le HUD se
 -- rafraîchit.
@@ -238,8 +256,9 @@ function Hud.setMusicOff(off: boolean)
 	musicOff.Visible = off
 end
 
--- Cette méthode permet de construire le popup « NEW GEAR! » (bandeau dégradé et croix, rendu 3D, nom, prix et gain,
--- bouton vert UPGRADE qui achète directement, comme « Nouvel équipement ! » de la référence 09) lorsque le HUD est construit.
+-- Cette méthode permet de construire le popup d'offre (bandeau dégradé et croix, rendu 3D, nom, prix et gain, bouton
+-- vert : UPGRADE qui achète l'équipement directement, ou SHOP qui ouvre la boutique des mannequins à lancer, comme
+-- « Nouvel équipement ! » et « Nouvelle graine débloquée ! » de la référence 09) lorsque le HUD est construit.
 local function buildGearOffer()
 	local frame = UIKit.create("Frame", {
 		Name = "GearOffer",
@@ -260,8 +279,8 @@ local function buildGearOffer()
 		Parent = frame,
 	})
 	UIKit.corner(header, 12)
-	UIKit.create("UIGradient", {
-		Color = ColorSequence.new(Color3.fromRGB(150, 60, 230), Color3.fromRGB(255, 70, 170)),
+	local headerGradient = UIKit.create("UIGradient", {
+		Color = ColorSequence.new(OFFER_COLORS.Gear[1], OFFER_COLORS.Gear[2]),
 		Parent = header,
 	})
 	-- Bas du bandeau droit, cerné d'un trait épais (comme les fenêtres)
@@ -274,8 +293,8 @@ local function buildGearOffer()
 		ZIndex = 15,
 		Parent = header,
 	})
-	UIKit.create("UIGradient", {
-		Color = ColorSequence.new(Color3.fromRGB(150, 60, 230), Color3.fromRGB(255, 70, 170)),
+	local flatGradient = UIKit.create("UIGradient", {
+		Color = ColorSequence.new(OFFER_COLORS.Gear[1], OFFER_COLORS.Gear[2]),
 		Parent = flat,
 	})
 	UIKit.create("Frame", {
@@ -287,7 +306,7 @@ local function buildGearOffer()
 		ZIndex = 16,
 		Parent = header,
 	})
-	UIKit.text({
+	local title = UIKit.text({
 		Position = UDim2.fromOffset(14, 0),
 		Size = UDim2.new(1, -60, 1, 0),
 		Text = "NEW GEAR!",
@@ -307,8 +326,8 @@ local function buildGearOffer()
 		ZIndex = 17,
 		Parent = header,
 	}, function()
-		if offerTier then
-			dismissedOffers[offerTier] = true
+		if offerKind and offerTier then
+			dismissedOffers[offerKind][offerTier] = true
 		end
 		Hud.refresh()
 	end)
@@ -368,11 +387,22 @@ local function buildGearOffer()
 		ZIndex = 17,
 		Parent = frame,
 	}, function()
-		if offerTier == stat("GearTier", 1) + 1 then
+		if offerKind == "Gear" and offerTier == stat("GearTier", 1) + 1 then
 			Hud.onBuy("Gear")
+		elseif offerKind == "Dummy" and offerTier then
+			dismissedOffers.Dummy[offerTier] = true -- vu dans la boutique : l'offre ne revient pas à sa fermeture
+			Hud.openDummyShop()
 		end
 	end)
-	offer = { frame = frame, button = button, viewport = viewport, name = name, stat = statLabel }
+	offer = {
+		frame = frame,
+		button = button,
+		viewport = viewport,
+		title = title,
+		name = name,
+		stat = statLabel,
+		gradients = { headerGradient, flatGradient },
+	}
 end
 
 -- Cette méthode permet de créer une rangée défilante de cartes dans le corps d'une fenêtre lorsque la fenêtre est
@@ -518,30 +548,67 @@ local function refreshGear(money: number)
 	end
 end
 
--- Cette méthode permet d'afficher, de mettre à jour ou de masquer le popup « NEW GEAR! » lorsque l'argent affiché,
--- l'équipement ou l'état du joueur changent : palier suivant abordable, pas fermé par le joueur, écran libre.
+-- Cette méthode permet d'habiller le popup d'offre pour le type `kind` (titre, couleurs du bandeau, bouton) et le
+-- palier `tier` (nom, prix et gain, rendu 3D) lorsque l'offre affichée change.
+local function dressOffer(kind: string, tier: number)
+	local colors = OFFER_COLORS[kind]
+	for _, gradient in offer.gradients do
+		gradient.Color = ColorSequence.new(colors[1], colors[2])
+	end
+	if kind == "Gear" then
+		local gear = Training.GEARS[tier]
+		offer.title.Text = "NEW GEAR!"
+		offer.button.Text = "UPGRADE"
+		offer.name.Text = gear.name
+		offer.stat.Text = Format.money(gear.cost) .. "  •  +" .. Format.short(gear.gain) .. " EXP / rep"
+		UIKit.showModel(offer.viewport, gearModel(tier))
+	else
+		local dummy = ThrowDummies.LIST[tier]
+		offer.title.Text = "NEW DUMMY!"
+		offer.button.Text = "SHOP"
+		offer.name.Text = dummy.name
+		offer.stat.Text = Format.money(dummy.cost) .. "  •  " .. Format.luck(dummy.luck) .. " CHANCE"
+		UIKit.showModel(
+			offer.viewport,
+			DummyShape.buildVisual(1, ThrowDummies.variant(tier, true) :: DummyShape.Variant)
+		)
+	end
+end
+
+-- Cette méthode permet d'afficher, de mettre à jour ou de masquer le popup d'offre lorsque l'argent affiché, les
+-- achats ou l'état du joueur changent, écran libre et boutiques fermées : l'équipement suivant s'il est abordable
+-- (« NEW GEAR! », d'abord : étape du tutoriel), sinon le mannequin à lancer suivant (« NEW DUMMY! ») ; pas une offre
+-- fermée par le joueur.
 local function refreshOffer(money: number, cost: number?)
 	local free = seeded
 		and player:GetAttribute("LaneState") == "Ready"
 		and player:GetAttribute("Action") ~= "Holding"
 		and not UIKit.isWindowOpen(windows.Shop)
+		and not UIKit.isWindowOpen(windows.DummyShop)
 		and os.clock() >= bannerEndsAt -- bandeau d'annonce au même endroit : l'offre revient après lui
-	local tier = if free then Tutorial.gearOffer(stat("GearTier", 1), cost, money, dismissedOffers) else nil
-	if tier == offerTier then
+	local kind, tier = nil, nil
+	if free then
+		tier = Tutorial.gearOffer(stat("GearTier", 1), cost, money, dismissedOffers.Gear)
+		kind = if tier then "Gear" else nil
+		if not tier then
+			local owned = ThrowDummies.sanitize(player:GetAttribute("ThrowTier"), nil)
+			tier = ThrowDummies.offer(owned, money, dismissedOffers.Dummy)
+			kind = if tier then "Dummy" else nil
+		end
+	end
+	if kind == offerKind and tier == offerTier then
 		return
 	end
-	offerTier = tier
-	if not tier then
+	offerKind, offerTier = kind, tier
+	if not kind or not tier then
 		UIKit.closeWindow(offer.frame, player:GetAttribute("LaneState") ~= "Ready")
 		return
 	end
-	local gear = Training.GEARS[tier]
-	offer.name.Text = gear.name
-	offer.stat.Text = Format.money(gear.cost) .. "  •  +" .. Format.short(gear.gain) .. " EXP / rep"
-	UIKit.showModel(offer.viewport, gearModel(tier))
+	dressOffer(kind, tier)
 	UIKit.openWindow(offer.frame, false)
-	if tier ~= soundedOffer then
-		soundedOffer = tier -- offre déjà annoncée : pas de nouveau son quand elle revient après un bandeau
+	local key = kind .. tier
+	if key ~= soundedOffer then
+		soundedOffer = key -- offre déjà annoncée : pas de nouveau son quand elle revient après un bandeau
 		UIKit.playSound("LevelUp", 1.4)
 	end
 end
@@ -567,6 +634,7 @@ function Hud.refresh()
 		refreshGear(money)
 	end
 	refreshOffer(money, gearCost)
+	ThrowShop.refresh()
 end
 
 -- Cette méthode permet de faire s'envoler « +N EXP » (EXP de l'équipement) au-dessus de la barre d'entraînement lorsque
@@ -804,7 +872,15 @@ end
 -- Cette méthode permet de donner le bouton UPGRADE du popup « NEW GEAR! » lorsque la flèche du tutoriel cherche où
 -- pointer ; nil quand le popup n'est pas affiché.
 function Hud.offerButton(): GuiObject?
-	return if offerTier ~= nil then offer.button else nil
+	return if offerKind == "Gear" and offerTier ~= nil then offer.button else nil
+end
+
+-- Cette méthode permet d'ouvrir la boutique des mannequins à lancer (et de fermer les autres fenêtres) lorsque le
+-- joueur déclenche l'invite du stand SHOP ou clique SHOP du popup « NEW DUMMY! » ; sans effet si elle est ouverte.
+function Hud.openDummyShop()
+	if not UIKit.isWindowOpen(windows.DummyShop) then
+		toggle("DummyShop")
+	end
 end
 
 -- Cette méthode permet de donner le bouton d'achat de la carte visée (« Gear » : équipement suivant) lorsque la
@@ -912,11 +988,21 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 	do
 		windows[name] = frame
 	end
+	-- Boutique des mannequins à lancer (stand SHOP, popup « NEW DUMMY! »)
+	windows.DummyShop = ThrowShop.init(player, remotes, gui, {
+		popup = Hud.popup,
+		money = function()
+			return math.max(0, stat("Money", 0) - counters.Money.pending)
+		end,
+	}, function()
+		UIKit.closeWindow(windows.DummyShop)
+		Hud.refresh()
+	end)
 	buildTrainBar(onStop)
 
 	lastPower = stat("ThrowPower", GameConfig.START_POWER)
 	lastMoney = stat("Money", 0)
-	for _, attribute in { "GearTier", "Income" } do
+	for _, attribute in { "GearTier", "Income", "ThrowTier" } do
 		player:GetAttributeChangedSignal(attribute):Connect(Hud.refresh)
 	end
 	player:GetAttributeChangedSignal("Money"):Connect(function()

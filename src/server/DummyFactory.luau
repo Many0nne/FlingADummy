@@ -3,10 +3,9 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local DummyShape = require(ReplicatedStorage.Shared.DummyShape)
+local ThrowDummies = require(ReplicatedStorage.Shared.ThrowDummies)
 local CollisionGroups = require(script.Parent.CollisionGroups)
 
--- Mannequin lourd (densité, frottement, rebond) : il garde son élan à travers les obstacles
-local PHYSICS = PhysicalProperties.new(1.5, 0.3, 0.3)
 local TWIST_LIMIT = 30
 
 local DummyFactory = {}
@@ -22,13 +21,17 @@ local function attach(partInstance: BasePart, world: Vector3, axis: Vector3): At
 end
 
 -- Cette méthode permet de construire un mannequin neuf, debout, centre du torse à l'origine, lorsqu'un lancer part ;
--- `variant` le décline (couleur, matériau, accessoires). L'appelant le place (PivotTo) puis le parente au monde.
-function DummyFactory.build(variant: DummyShape.Variant?): Model
+-- `variant` le décline (couleur, matériau, accessoires), `physics` règle ses pièces (mannequin à lancer équipé,
+-- Shared.ThrowDummies ; le Crash Dummy par défaut). L'appelant le place (PivotTo) puis le parente au monde.
+function DummyFactory.build(variant: DummyShape.Variant?, physics: ThrowDummies.Physics?): Model
 	local model = Instance.new("Model")
 	model.Name = "Dummy"
 	local parts = DummyShape.buildPieces(model, 1, variant)
+	local spec = physics or ThrowDummies.LIST[1].physics
+	local properties =
+		PhysicalProperties.new(spec.density, spec.friction, spec.elasticity, spec.frictionWeight, spec.elasticityWeight)
 	for _, p in parts do
-		p.CustomPhysicalProperties = PHYSICS
+		p.CustomPhysicalProperties = properties
 		p:SetAttribute("BaseColor", p.Color)
 		p:SetAttribute("Bones", 0)
 	end

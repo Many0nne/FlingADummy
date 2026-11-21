@@ -11,6 +11,7 @@ export type Stats = {
 	distance: number,
 	bones: number,
 	smashed: number,
+	luck: number?, -- multiplicateur du mannequin lancé (Shared.ThrowDummies), 1 par défaut
 }
 
 export type Chance = {
@@ -19,6 +20,7 @@ export type Chance = {
 	zoneChance: number, -- chance due à la distance (zones traversées)
 	bonesBonus: number, -- part ajoutée par les os cassés (0,03 = + 3 %)
 	smashBonus: number, -- part ajoutée par les objets détruits
+	luck: number, -- multiplicateur du mannequin lancé
 	total: number, -- chance finale, arrondie au centième
 }
 
@@ -48,19 +50,22 @@ function Economy.round(chance: number): number
 end
 
 -- Cette méthode permet de calculer la CHANCE d'un lancer (et son détail pour l'écran de résultat) lorsque le
--- mannequin vole ou s'est arrêté : chance des zones × (1 + bonus des os + bonus de la casse).
+-- mannequin vole ou s'est arrêté : chance des zones × (1 + bonus des os + bonus de la casse) × multiplicateur du
+-- mannequin lancé.
 function Economy.chance(stats: Stats): Chance
 	local distance = math.max(0, math.floor(stats.distance))
 	local zoneChance = Economy.zoneChance(stats.distance)
 	local bonesBonus = math.max(0, stats.bones) * GameConfig.CHANCE_PER_BONE
 	local smashBonus = math.max(0, stats.smashed) * GameConfig.CHANCE_PER_SMASH
+	local luck = math.max(1, stats.luck or 1)
 	return {
 		distance = distance,
 		zone = Zones.indexAt(distance),
 		zoneChance = Economy.round(zoneChance),
 		bonesBonus = bonesBonus,
 		smashBonus = smashBonus,
-		total = Economy.round(zoneChance * (1 + bonesBonus + smashBonus)),
+		luck = luck,
+		total = Economy.round(zoneChance * (1 + bonesBonus + smashBonus) * luck),
 	}
 end
 

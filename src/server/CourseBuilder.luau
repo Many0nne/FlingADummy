@@ -13,6 +13,7 @@ local Drips = require(ReplicatedStorage.Shared.Drips)
 local DummyShape = require(ReplicatedStorage.Shared.DummyShape)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local Objectives = require(ReplicatedStorage.Shared.Objectives)
+local ThrowDummies = require(ReplicatedStorage.Shared.ThrowDummies)
 local Training = require(ReplicatedStorage.Shared.Training)
 local Zones = require(ReplicatedStorage.Shared.Zones)
 local Build = require(script.Parent.Build)
@@ -694,6 +695,27 @@ local function buildBase(parent: Instance, slot: Slot)
 	}
 end
 
+-- Cette méthode permet de poser l'invite d'un stand du hub (E, sans maintien, 10 studs, marquée `tag` : chaque client
+-- y ouvre sa fenêtre) au point `position` lorsque l'on bâtit les stands.
+local function standPrompt(parent: Instance, position: Vector3, action: string, object: string, tag: string)
+	local anchor = Build.decor({
+		Name = object .. "Prompt",
+		Size = Vector3.one,
+		CFrame = CFrame.new(position),
+		Transparency = 1,
+		Parent = parent,
+	})
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = action
+	prompt.ObjectText = object
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 10
+	prompt.RequiresLineOfSight = false
+	CollectionService:AddTag(prompt, tag)
+	prompt.Parent = anchor
+end
+
 -- Cette méthode permet de construire le hub (pelouse à damier, parois en gradins, bases et leurs appareils, stands à
 -- auvents, chevrons vers la zone de lancer, point d'apparition) lorsque le serveur démarre.
 local function buildHub(parent: Instance, slots: { Slot })
@@ -712,34 +734,16 @@ local function buildHub(parent: Instance, slots: { Slot })
 		buildStation(parent, slot)
 		buildBase(parent, slot)
 	end
-	-- Stands du fond (vente ; boutique : branchée par la tâche boutique)
+	-- Stands du fond (#68) : vente des mannequins de collection, boutique des mannequins à lancer (#14)
 	local standZ = back + 14
 	local sellAt = CFrame.new(-24, 0, standZ) * CFrame.Angles(0, math.pi, 0)
-	Props.stand(parent, sellAt, "SELL", rgb(235, 45, 45), rgb(235, 45, 45))
+	Props.sellStand(parent, sellAt)
 	-- Invite du stand SELL, devant le comptoir : chaque client y ouvre sa fenêtre de vente
-	local sellAnchor = Build.decor({
-		Name = "SellPrompt",
-		Size = Vector3.one,
-		CFrame = sellAt * CFrame.new(0, 3, -5),
-		Transparency = 1,
-		Parent = parent,
-	})
-	local sellPrompt = Instance.new("ProximityPrompt")
-	sellPrompt.ActionText = "Sell dummies"
-	sellPrompt.ObjectText = "SELL"
-	sellPrompt.KeyboardKeyCode = Enum.KeyCode.E
-	sellPrompt.HoldDuration = 0
-	sellPrompt.MaxActivationDistance = 10
-	sellPrompt.RequiresLineOfSight = false
-	CollectionService:AddTag(sellPrompt, Collection.SELL_TAG)
-	sellPrompt.Parent = sellAnchor
-	Props.stand(
-		parent,
-		CFrame.new(24, 0, standZ) * CFrame.Angles(0, math.pi, 0),
-		"SHOP",
-		rgb(50, 140, 255),
-		rgb(50, 140, 255)
-	)
+	standPrompt(parent, (sellAt * CFrame.new(0, 3, -6)).Position, "Sell dummies", "SELL", Collection.SELL_TAG)
+	local shopAt = CFrame.new(24, 0, standZ) * CFrame.Angles(0, math.pi, 0)
+	local shop = Props.shopStand(parent, shopAt, ThrowDummies.DISPLAY_TAG, #ThrowDummies.LIST)
+	-- Invite du stand SHOP : chaque client y ouvre la boutique des mannequins à lancer
+	standPrompt(parent, shop.prompt, "Buy dummies", "SHOP", ThrowDummies.SHOP_TAG)
 	-- Chevrons jaunes au sol vers la zone de lancer (01 / 09)
 	for i = 0, 3 do
 		for _, side in { -1, 1 } do

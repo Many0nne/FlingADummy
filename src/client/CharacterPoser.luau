@@ -17,6 +17,7 @@ local Collection = require(Shared:WaitForChild("Collection"))
 local DummyShape = require(Shared:WaitForChild("DummyShape"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Inventory = require(Shared:WaitForChild("Inventory"))
+local ThrowDummies = require(Shared:WaitForChild("ThrowDummies"))
 local Training = require(Shared:WaitForChild("Training"))
 
 local HELD_SCALE = 0.6
@@ -292,8 +293,10 @@ local function update(player: Player, state: State)
 	local shape = ":mesh" .. DummyShape.meshStage()
 	local carried = if action == nil then carriedKey(character) else nil
 	if action == "Holding" and not releasedHere then
-		setVisual(state, "Holding" .. shape, function()
-			return DummyShape.buildVisual(HELD_SCALE)
+		-- Mannequin à lancer équipé (boutique, Shared.ThrowDummies) : celui qui part au lancer
+		local _, thrown = ThrowDummies.sanitize(player:GetAttribute("ThrowTier"), player:GetAttribute("ThrowEquipped"))
+		setVisual(state, "Holding" .. thrown .. shape, function()
+			return DummyShape.buildVisual(HELD_SCALE, ThrowDummies.variant(thrown) :: DummyShape.Variant)
 		end)
 		if state.visual then
 			state.visual:PivotTo(palmFrame(character, root, HELD_SCALE))

@@ -91,11 +91,12 @@ base, il rapporte des $/s, seule source d'argent.
 ## Deux courbes
 Comme 01 et 09 : le lancer fait le lien entre les deux.
 - **Throw Power** (entraînement) → distance → zones plus lointaines → **CHANCE** → mannequins plus rares.
-- **Revenu** (mannequins posés dans la base) → argent → équipements (entraînement plus rapide) ; plus tard la boutique
-  de mannequins à lancer (#14, multiplicateur de chance) et les présentoirs achetables.
+- **Revenu** (mannequins posés dans la base) → argent → équipements (entraînement plus rapide), **mannequins à lancer**
+  (boutique du stand SHOP, multiplicateur de chance) et présentoirs achetables.
 
 ## CHANCE et tirage (`Shared.Economy`, `Shared.Collection`)
-- CHANCE = chance des zones × (1 + 2 % par os cassé + 1 % par objet détruit), arrondie au centième. La chance des zones
+- CHANCE = chance des zones × (1 + 2 % par os cassé + 1 % par objet détruit) × multiplicateur du mannequin lancé
+  (section suivante), arrondie au centième. La chance des zones
   vaut celle de la zone à son entrée et monte en continu jusqu'à celle de la suivante (18 au bout de la piste) : un
   premier lancer (≈ 145 m) donne ≈ 1.4X, comme le 1.36X de 09.
 - Tirage : les mannequins sont essayés du plus rare au plus courant, chacun sort avec la probabilité min(1, CHANCE / n)
@@ -119,6 +120,46 @@ Comme 01 et 09 : le lancer fait le lien entre les deux.
   de la couleur de la rareté : éclats dès Rare, onde au sol et lumière dès Epic, flaque de lumière et poussières
   montantes dès Legendary, gloire de rayons dès Mythic, colonne de lumière et gerbe d'étoiles en Secret. Les
   particules ne se rendent pas dans les fenêtres (ViewportFrame) : les vignettes montrent le modèle seul.
+
+## Boutique de mannequins à lancer (#14, `Shared.ThrowDummies`)
+L'équivalent des aliments de 01 et des graines de 09 : le mannequin qu'on lance, distinct des mannequins de collection
+(on le possède une fois pour toutes, il ne rapporte rien, il ne va pas dans la barre d'outils).
+- **Catalogue** (prix provisoires, recalés par #15 ; ×12 à ×25 entre niveaux, comme 09 : $1.2K, $15K, $300K) :
+  | Mannequin | Prix | Chance | Comportement | Réglage |
+  |---|---|---|---|---|
+  | Crash Dummy | offert | 1.0x | Classic | densité 1,5, frottement 0,3, rebond 0,3 (le mannequin d'origine) |
+  | Rubber Dummy (rose, pompon) | $1.2K | 1.25x | Bouncy | frottement 0,05 ; chaque rebond au sol rend 85 % de la chute vers le haut et garde 85 % de l'élan vers l'avant |
+  | Glass Dummy (verre, étiquette FRAGILE) | $15K | 1.5x | Fragile | chocs × 2 pour les os : plus d'os cassés (+2 % chacun) |
+  | Steel Dummy (acier, plaques de lest) | $300K | 2.0x | Heavy | densité 8 : il défonce les obstacles au lieu d'y rebondir |
+  | Glider Dummy (vert, aile orange) | $4M | 2.5x | Glides | 70 % de la gravité compensée quand il descend (plus de 4 studs/s) |
+  | Rocket Dummy (rouge, réacteur) | $50M | 3.0x | Jetpack | poussée de 60 studs/s² vers l'avant pendant la 1re seconde |
+  Les pièges (`Shared.Traps`) remplacent la vitesse comme pour tous : le comportement reprend ensuite (portance,
+  rebond) ou est fini (poussée).
+- **Achat séquentiel** : seul le suivant s'achète, puis il est équipé d'office ; bouton **EQUIP** sur les possédés.
+  Validé par le serveur (`ThrowDummies.act` : action, indice, ordre, possession, argent ; remote `ThrowDummy`).
+- **Fenêtre « Dummy Shop »** (invite « Buy dummies » du stand SHOP, ou bouton SHOP du popup « NEW DUMMY! ») : bandeau
+  rose, une carte par mannequin teintée à sa couleur comme les graines de 09 : nom, « 1.25x CHANCE » en jaune, rendu,
+  comportement, bouton EQUIPPED / EQUIP (vert) / prix (jaune abordable, rouge sinon, refus « NOT ENOUGH MONEY! ») /
+  « 🔒 prix » pour ceux d'après. Quatre cartes visibles, la suite défile.
+- **Popup « NEW DUMMY! »** (« Nouvelle graine débloquée ! » de 09 à 2:00) : même cadre que « NEW GEAR! » (un seul à la
+  fois, l'équipement d'abord), bandeau rose, rendu, nom, prix et chance, bouton **SHOP** qui ouvre la boutique ; dès
+  que le suivant est abordable, fermé il ne revient pas pour ce mannequin. Achat : popup « NEW DUMMY! » jaune.
+- **En jeu** : l'avatar tient sur la bande le mannequin équipé (chaque client le construit d'après `ThrowEquipped`), le
+  serveur lance ce mannequin avec son modèle et sa physique ; la bannière CHANCE porte un badge vert « RUBBER 1.25x »
+  (multiplicateur déjà compté dans le chiffre).
+- **Sauvegarde** avec les données du joueur : `ThrowTier` (mannequins possédés : les N premiers) et `ThrowEquipped`,
+  bornés au catalogue au chargement.
+- **Mesures** (Studio, `DebugLaunch` = 1, attribut `DebugThrowDummy`, 2 vols chacun ; détail dans la PR #14) :
+  | Mannequin | Puissance 10 : distance, CHANCE | Puissance 10,5 K : distance, CHANCE |
+  |---|---|---|
+  | Crash | 143-168 m, 1.76-1.81X | 1 139-1 167 m, 9.42-10.06X |
+  | Rubber | 257-441 m, 2.69-3.56X, vol de 8,5-10,5 s | (avant le rebond dirigé) 1 033-1 136 m, 11.6-13.3X |
+  | Glass | 144-145 m, 19-20 os, 3.32-3.40X | 989-1 143 m, 30 os, 15.2-18.7X |
+  | Steel | 184-197 m, 28-30 objets, 3.85-3.91X | 1 645-1 649 m, 57-93 objets, 34.2-43.7X |
+  | Glider | 248-254 m, 4.45-4.59X | (portance 0,5) 993-1 240 m, 22.4-25.1X |
+  | Rocket | 320-324 m, 6.26-6.74X | 1 221-1 835 m, 33.0-62.9X |
+  À haute puissance les pièges (tremplin de ski à 731 m, lave, canons) décident de la distance : les comportements s'y
+  lisent surtout aux os et aux objets.
 
 ## Base et collection (`Server.BaseService`, `Shared.Inventory`)
 - **Présentoirs** : 6 au départ (2 rangées de 3), jusqu'à 10. Les mannequins posés sont construits par le serveur
@@ -172,9 +213,17 @@ Comme 01 et 09 : le lancer fait le lien entre les deux.
 - **Hub** (pelouse à damier entourée de parois en gradins) : une **base par joueur** (terrain clôturé, 6 à 10 présentoirs
   pour la collection, panneau « NOM'S BASE » et revenu au-dessus, pad d'achat de présentoir) avec son **appareil
   d'entraînement** à côté de l'entrée, qu'il
-  laisse libre (podium à tenons, pastille jaune, râtelier, invite « Lift », briques fines `FadBrickFine`), stands à
-  auvents rayés « SELL » (fenêtre de vente) et « SHOP » (branché par la boutique), chevrons jaunes vers la zone de
-  lancer. Plan dans `Shared.CourseLayout`.
+  laisse libre (podium à tenons, pastille jaune, râtelier, invite « Lift », briques fines `FadBrickFine`), deux stands
+  détaillés au fond (#68, `Server.Props`, animés par `Client.HubShops`), chevrons jaunes vers la zone de lancer. Plan
+  dans `Shared.CourseLayout`.
+- **Stands** (échoppes de 01 / 09 : bois, auvent rayé, comptoir garni, marchand en blocs juché derrière, qui se balance
+  et salue, bulle d'appel, anneau lumineux au sol devant l'invite) :
+  - **SHOP** (bleu, haut) : les mannequins à lancer exposés sur des plateaux tournants (comptoir, étagère du fond),
+    vitrine en verre du Rocket Dummy, caisses empilées dont une ouverte, enseigne néon « DUMMY SHOP » coiffée d'une tête
+    de mannequin à cibles qui tourne ; invite « Buy dummies ».
+  - **SELL** (rouge, large) : caisse enregistreuse, balance dorée, liasses et sacs « $ », pancarte « SELL = 2 MIN OF
+    INCOME », pièce géante qui tourne au-dessus de l'enseigne ; éclat de pièces au-dessus du comptoir à chaque vente
+    faite au stand (attribut `Sales`) ; invite « Sell dummies ».
 - **Zone de lancer commune** : la **bande de lancer**, sur toute la largeur de la piste et toute la profondeur de la zone
   (16 studs, du hub au départ), au ras de la pelouse : carreaux de 4 studs à tenons orange et jaune, reflet blanc qui
   glisse d'un bout à l'autre (animé par chaque client), liseré blanc à peine surélevé côté piste (compté comme bande),
@@ -273,7 +322,8 @@ Interface : section suivante.
   l'appareil d'entraînement de chaque place.
 - **Fenêtres** : cadre sombre, bandeau dégradé (icône, titre), croix rouge ; cartes d'objets grises (nom, rareté
   colorée de `Shared.Rarity`, rendu 3D en `ViewportFrame`, statistique, bouton : prix vert / rouge, « EQUIPPED »).
-  Shop = équipements d'entraînement ; Dummies (« My Dummies »), vente et Index : section « Base et collection ». Les
+  Shop = équipements d'entraînement ; Dummy Shop : section « Boutique de mannequins à lancer » ; Dummies (« My
+  Dummies »), vente et Index : section « Base et collection ». Les
   listes de collection défilent verticalement (grille en `ScrollingFrame` Y, #45).
 - **Jauge** : capsule verticale à contour noir, dégradé vert (haut) → rouge (bas), 4 traits, curseur blanc, `+N` à
   droite, « Click to throw! » dessous.
@@ -289,7 +339,8 @@ Interface : section suivante.
 - Lobby de 4 joueurs (`SLOT_COUNT`, `MaxPlayers` du projet Rojo) sur **une piste partagée** : chaque joueur a une place
   (`Server.SlotService`) ; les vols coexistent, les obstacles réapparaissent d'eux-mêmes au lieu d'être reconstruits.
 - Studio : `DebugLaunch` (0-1) sur le joueur lance son mannequin, `DebugLaunchBots` (n) lance n mannequins de test depuis
-  les places libres (mesure de 4 vols simultanés), `DebugPlace` pose le mannequin tenu ou le dernier gagné (AUTO), `DebugEquip` (« id:taille », « » pour ranger) équipe un mannequin de la barre ; `FreshPlayer` sur
+  les places libres (mesure de 4 vols simultanés), `DebugPlace` pose le mannequin tenu ou le dernier gagné (AUTO), `DebugEquip` (« id:taille », « » pour ranger) équipe un mannequin de la barre, `DebugThrowDummy` (1-6) donne et équipe ce
+  mannequin à lancer ; `FreshPlayer` sur
   Workspace : nouveau joueur sans sauvegarde.
 - Le décor est généré par le code (`CourseBuilder`) : rien à exporter depuis Studio.
 

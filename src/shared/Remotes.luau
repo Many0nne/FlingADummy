@@ -14,6 +14,7 @@ local NAMES = {
 	"Impact",
 	"SetMusic",
 	"Announce",
+	"ThrowDummy",
 }
 
 export type Remotes = {
@@ -33,6 +34,8 @@ export type Remotes = {
 	-- serveur → tous les clients : tirage Legendary ou plus (bandeau), à la fin du résultat du gagnant :
 	-- { userId, player, name, rarity, odds }
 	Announce: RemoteEvent,
+	-- client → serveur : boutique de mannequins à lancer (Shared.ThrowDummies) : "Buy" / "Equip" + indice du catalogue
+	ThrowDummy: RemoteEvent,
 }
 
 local Remotes = {}

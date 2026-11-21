@@ -26,6 +26,11 @@ CourseLayout.BAND_EDGE = 1.2 -- liseré blanc, côté piste (z de 0 à BAND_EDGE
 CourseLayout.BAND_REACH = 8 -- hauteur au-dessus de la bande où l'avatar compte comme posé dessus (studs)
 CourseLayout.BAND_SHINE_TAG = "LaunchBandShine" -- dégradé du reflet de la bande, que chaque client fait glisser
 
+-- Décor animé des stands du hub (#68), construit par Server.Props et animé par chaque client (Client.HubShops)
+CourseLayout.MERCHANT_TAG = "HubMerchant" -- marchand en blocs (il se balance et salue)
+CourseLayout.SPIN_TAG = "HubSpin" -- modèle qui tourne sur lui-même (pièce géante, tête de l'enseigne)
+CourseLayout.SELL_BURST_TAG = "SellBurst" -- émetteur de pièces du stand SELL (attribut Sales : une vente de plus)
+
 -- Couleur de chaque place (base, appareil) : on retrouve ses affaires d'un coup d'œil
 CourseLayout.SLOT_COLORS = {
 	Color3.fromRGB(255, 75, 75),
