@@ -79,6 +79,11 @@ base, il rapporte des $/s, seule source d'argent.
 - Un appareil d'entraînement par joueur, devant sa base à côté de l'entrée (podium à tenons, râtelier de mannequins
   suspendus, invite « Lift » / « Training dummy ») : l'avatar soulève au-dessus de la tête (développé) le mannequin de son palier
   d'équipement, en boucle. Pendant la séance, l'invite est masquée et aucun objectif ne s'affiche : seul le bouton STOP.
+- **L'appareil s'habille au Training Gear acheté** (#92, `Shared.BaseLook.station`, comme les barres bois → pierre →
+  fer → cyan de 01 / 09) : planches du podium, montants, traverse et marches à la couleur du mannequin du palier (bois,
+  pierre, fer, or, diamant, néon, cosmique) ; le râtelier montre les trois derniers mannequins possédés ; étincelles
+  dès le Diamond, liseré néon (bordure du podium, sous la traverse) dès le Neon. Achat : confettis au-dessus du
+  râtelier, vus de tous (en plus du popup du propriétaire). La bordure du podium reste à la couleur de la place.
 - Chaque répétition (0,8 s) donne l'**EXP de l'équipement** (« +N EXP », comme « +4 EXP / répétition » de 09) qui
   remplit la barre de niveau : 3 EXP au premier niveau puis × 1,2 par niveau, l'EXP en trop passe au niveau suivant
   (plusieurs niveaux d'un coup avec un bon équipement). Le passage de niveau (« LEVEL UP! Throw Power +N ») donne autant
@@ -163,8 +168,22 @@ L'équivalent des aliments de 01 et des graines de 09 : le mannequin qu'on lance
 
 ## Base et collection (`Server.BaseService`, `Shared.Inventory`)
 - **Présentoirs** : 6 au départ (2 rangées de 3), jusqu'à 10. Les mannequins posés sont construits par le serveur
-  (visibles de tous), nom coloré par rareté et $/s au-dessus ; revenu total de la base au-dessus du panneau « NOM'S
-  BASE » (comparaison entre joueurs).
+  (visibles de tous), nom coloré par rareté et $/s au-dessus.
+- **Texte flottant** au-dessus du centre de la base (#91, comme les jardins de 09 et les enclos de 01 ; `BillboardGui`
+  à 24 studs, police Fredoka One et contour du HUD) : portrait du joueur, « NOM'S BASE », revenu « $223/s » en vert et
+  Throw Power « 💪 1.2K » en cyan, mis à jour en direct (achat, pose, entraînement) ; « EMPTY BASE · $0/s » sans
+  joueur. Taille en studs plus une marge en pixels : lisible de près et à travers tout le hub (affiché jusqu'à
+  600 studs). Comparaison entre joueurs d'un coup d'œil ; plus de panneau à l'entrée.
+- **Paliers visuels de la base** (#61, `Shared.BaseLook`) : la base change d'aspect à chaque présentoir acheté, un
+  joueur voit de loin les bases les plus avancées du serveur.
+  | Présentoirs | Palier | Clôture | Sol | Décor |
+  |---|---|---|---|---|
+  | 6 | Wood | bois | terre | — |
+  | 7 | Garden | bois | terre | massifs de fleurs, lanternes à l'entrée |
+  | 8 | Stone | pierre (plus haute) | dalles grises | + lanternes aux 4 coins |
+  | 9 | Noble | pierre à chapeaux dorés | grès | + drapeaux à la couleur de la place aux coins |
+  | 10 | Golden | métal doré | tapis à la couleur de la place | + arche d'entrée (piliers à la couleur de la place, linteau doré), paillettes dorées sur toute la base |
+  Achat : confettis au-dessus de la base, vus de tous (en plus du popup « NEW DISPLAY! » du propriétaire).
 - Revenu versé chaque seconde (attribut `Income`, compteur « +$N/s ») : **seule source d'argent**.
 - **Stock** (inventaire) : les mannequins possédés non posés, doublons compris, dans l'ordre d'arrivée ; tout mannequin
   gagné y entre. Plafond technique 200 (`INVENTORY_MAX`) : au-delà, le moins rentable du stock est vendu d'office.
@@ -211,7 +230,8 @@ L'équivalent des aliments de 01 et des graines de 09 : le mannequin qu'on lance
 
 ## Carte (v0.3) : lobby de 4 joueurs, piste unique
 - **Hub** (pelouse à damier entourée de parois en gradins) : une **base par joueur** (terrain clôturé, 6 à 10 présentoirs
-  pour la collection, panneau « NOM'S BASE » et revenu au-dessus, pad d'achat de présentoir) avec son **appareil
+  pour la collection, texte flottant « NOM'S BASE » avec revenu et Throw Power, aspect qui monte avec les présentoirs
+  achetés, pad d'achat de présentoir) avec son **appareil
   d'entraînement** à côté de l'entrée, qu'il
   laisse libre (podium à tenons, pastille jaune, râtelier, invite « Lift », briques fines `FadBrickFine`), deux stands
   détaillés au fond (#68, `Server.Props`, animés par `Client.HubShops`), chevrons jaunes vers la zone de lancer. Plan

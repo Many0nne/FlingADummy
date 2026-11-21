@@ -110,12 +110,6 @@ local function setupCharacter(player: Player, character: Model)
 	end
 end
 
--- Cette méthode permet d'afficher le nom du joueur sur sa base lorsqu'il arrive ou part.
-local function refreshSign(slot: Slot)
-	local owner = owners[slot.index]
-	slot.base.sign.Text = if owner then string.upper(owner.DisplayName) .. "'S BASE" else "EMPTY BASE"
-end
-
 -- Cette méthode permet de donner au joueur la première place libre lorsqu'il arrive.
 local function assign(player: Player)
 	for index, slot in slots do
@@ -124,7 +118,6 @@ local function assign(player: Player)
 			slotOf[player] = slot
 			player:SetAttribute("Slot", index)
 			player:SetAttribute("LaneState", "Ready")
-			refreshSign(slot)
 			break
 		end
 	end
@@ -199,7 +192,6 @@ function SlotService.init(builtSlots: { Slot })
 		if slot then
 			owners[slot.index] = nil
 			slotOf[player] = nil
-			refreshSign(slot)
 		end
 	end)
 	RunService.Heartbeat:Connect(function()

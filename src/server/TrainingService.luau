@@ -1,12 +1,14 @@
 -- Entraînement : l'invite « Lift » de l'appareil (devant la base du joueur) place l'avatar sur le podium ; il soulève
 -- un mannequin en boucle, chaque répétition donne l'EXP de l'équipement (attributs TrainLevel / TrainExp) et chaque
--- niveau franchi donne sa Throw Power (Shared.Training). L'invite est masquée pendant la séance.
+-- niveau franchi donne sa Throw Power (Shared.Training). L'invite est masquée pendant la séance. L'appareil s'habille
+-- aux couleurs du Training Gear de son propriétaire (Shared.BaseLook, #92).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local Training = require(ReplicatedStorage.Shared.Training)
+local CourseBuilder = require(script.Parent.CourseBuilder)
 local PlayerData = require(script.Parent.PlayerData)
 local SlotService = require(script.Parent.SlotService)
 
@@ -97,9 +99,47 @@ local function watchDebugTrain(player: Player)
 	end)
 end
 
--- Cette méthode permet de brancher les invites des appareils (un par place), l'arrêt demandé par le client et la boucle
--- des répétitions lorsque le serveur démarre.
-function TrainingService.init(slots: { any }, stopRemote: RemoteEvent)
+-- Cette méthode permet d'habiller l'appareil de la place du joueur à son palier de Training Gear (#92), avec les
+-- confettis quand il en achète un (pas au chargement de ses données), lorsqu'il arrive puis à chaque achat ; son départ
+-- rend à l'appareil le premier palier.
+local function dressStation(player: Player, slots: { CourseBuilder.Slot })
+	-- SlotService pose l'attribut Slot dans son propre PlayerAdded : attendu s'il n'est pas encore là
+	if player:GetAttribute("Slot") == nil then
+		player:GetAttributeChangedSignal("Slot"):Wait()
+	end
+	local index = player:GetAttribute("Slot")
+	local slot = if typeof(index) == "number" then slots[index] else nil
+	if not slot or not player.Parent then
+		return
+	end
+	local shown = (player:GetAttribute("GearTier") :: number?) or 1
+	CourseBuilder.styleStation(slot, shown)
+	player:GetAttributeChangedSignal("GearTier"):Connect(function()
+		local tier = (player:GetAttribute("GearTier") :: number?) or 1
+		if tier > shown and player:GetAttribute("DataReady") == true then
+			CourseBuilder.celebrate(slot.trainer.burst)
+		end
+		shown = tier
+		CourseBuilder.styleStation(slot, tier)
+	end)
+	local leaving
+	leaving = Players.PlayerRemoving:Connect(function(gone)
+		if gone == player then
+			leaving:Disconnect()
+			CourseBuilder.styleStation(slot, 1)
+		end
+	end)
+end
+
+-- Cette méthode permet de brancher les invites des appareils (un par place), leur habillage au Training Gear du
+-- joueur, l'arrêt demandé par le client et la boucle des répétitions lorsque le serveur démarre.
+function TrainingService.init(slots: { CourseBuilder.Slot }, stopRemote: RemoteEvent)
+	Players.PlayerAdded:Connect(function(player)
+		dressStation(player, slots)
+	end)
+	for _, player in Players:GetPlayers() do
+		task.spawn(dressStation, player, slots)
+	end
 	for _, slot in slots do
 		slot.prompt.Triggered:Connect(function(player)
 			if SlotService.getSlot(player) == slot then

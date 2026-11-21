@@ -13,6 +13,7 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage.Shared
 local BackpackPlan = require(Shared.BackpackPlan)
+local BaseLook = require(Shared.BaseLook)
 local Collection = require(Shared.Collection)
 local CourseLayout = require(Shared.CourseLayout)
 local DummyShape = require(Shared.DummyShape)
@@ -44,6 +45,7 @@ local FEET = 3.82 -- du centre du torse au bas des pieds, échelle 1 (Shared.Dum
 local LOCKED_COLOR = Color3.fromRGB(120, 122, 132) -- présentoir pas encore acheté
 local LOCKED_TRANSPARENCY = 0.55
 local SELL_BURST_REACH = 15 -- vente faite au stand SELL (invite à 10 studs, 4,5 devant l'émetteur) : éclat de pièces
+local HEADSHOT = "rbxthumb://type=AvatarHeadShot&id=%d&w=150&h=150" -- portrait du propriétaire, au-dessus de sa base
 
 local BaseService = {}
 
@@ -53,6 +55,8 @@ type Shown = { key: string, model: Model }
 local slots: { Slot } = {}
 local slotOf: { [Player]: Slot } = {}
 local shown: { [number]: { [number]: Shown } } = {} -- mannequins posés, par place puis présentoir
+-- Palier visuel de chaque base, pour le propriétaire chargé qui l'a (confettis seulement s'il monte pour lui)
+local styled: { [number]: { player: Player, tier: number } } = {}
 local rng = Random.new()
 
 -- Cette méthode permet de construire le mannequin posé sur un présentoir (pièces ancrées sans collision, regard vers
@@ -137,15 +141,50 @@ local function stylePad(slot: Slot, displays: number?)
 	pad.prompt:SetAttribute("Maxed", if displays and not price then true else nil)
 end
 
+-- Cette méthode permet d'afficher au-dessus de la base le portrait, le nom, le revenu et la Throw Power de son
+-- propriétaire (« EMPTY BASE » sans lui ; revenu et puissance une fois ses données chargées) lorsque la base change,
+-- qu'il arrive, part ou que sa Throw Power change.
+local function updateLabel(slot: Slot, player: Player?)
+	local ready = player ~= nil and player:GetAttribute("DataReady") == true
+	local text = BaseLook.label(
+		if player then player.DisplayName else nil,
+		if ready and player then player:GetAttribute("Income") :: number? else 0,
+		if ready and player then player:GetAttribute("ThrowPower") :: number? else nil
+	)
+	local label = slot.base.label
+	label.title.Text = text.title
+	label.income.Text = text.income
+	label.power.Text = text.power
+	label.avatar.Visible = player ~= nil
+	label.avatar.Image = if player then string.format(HEADSHOT, player.UserId) else ""
+end
+
+-- Cette méthode permet d'habiller la base au palier visuel de ses présentoirs achetés (Shared.BaseLook) et d'y faire
+-- jaillir les confettis quand son propriétaire vient d'en acheter un (pas à son arrivée) lorsque la base est rendue.
+local function styleTier(slot: Slot, player: Player?, ready: boolean, displays: number)
+	local tier = BaseLook.baseTier(displays)
+	local previous = styled[slot.index]
+	if ready and player and previous and previous.player == player and tier > previous.tier then
+		CourseBuilder.celebrate(slot.base.burst)
+	end
+	if ready and player then
+		styled[slot.index] = { player = player, tier = tier }
+	else
+		styled[slot.index] = nil
+	end
+	CourseBuilder.styleBase(slot, tier)
+end
+
 -- Cette méthode permet de reconstruire les mannequins posés d'une place (vide si personne ne l'occupe), d'habiller ses
--- présentoirs et son pad, et d'y afficher le revenu de la base lorsque la base change, que son joueur arrive ou part,
--- ou que les maillages arrivent (`force` : tout reconstruire).
+-- présentoirs, son pad et son palier visuel, et d'afficher au-dessus le texte de la base lorsque la base change, que
+-- son joueur arrive ou part, ou que les maillages arrivent (`force` : tout reconstruire).
 local function render(slot: Slot, player: Player?, force: boolean?)
 	local current: { [number]: Shown } = shown[slot.index] or {}
 	shown[slot.index] = current
 	local data = if player then PlayerData.collection(player) else nil
 	local ready = player ~= nil and data ~= nil and player:GetAttribute("DataReady") == true
 	local displays = if ready and data then data.displays else GameConfig.DISPLAY_START
+	styleTier(slot, player, ready, displays)
 	for display, top in slot.base.displays do
 		local unlocked = display <= displays
 		styleDisplay(slot, display, unlocked)
@@ -167,13 +206,10 @@ local function render(slot: Slot, player: Player?, force: boolean?)
 		top:SetAttribute("Objective", if ready and unlocked and not entry then "Place" else nil)
 	end
 	stylePad(slot, if ready and data then data.displays else nil)
-	if not ready or not data or not player then
-		slot.base.income.Text = ""
-		return
+	if ready and data and player then
+		player:SetAttribute("Income", Inventory.income(data))
 	end
-	local income = Inventory.income(data)
-	player:SetAttribute("Income", income)
-	slot.base.income.Text = Format.money(income) .. "/s"
+	updateLabel(slot, player)
 end
 
 -- Cette méthode permet de savoir si la première pose du tutoriel reste à faire (elle se fait à la main, sur un
@@ -457,11 +493,16 @@ local function track(player: Player)
 			end
 		end)
 	end
-	if player:GetAttribute("DataReady") then
-		refresh(player)
-	end
+	-- Rendu dès l'arrivée (nom au-dessus de la base), puis au chargement des données
+	refresh(player)
 	player:GetAttributeChangedSignal("DataReady"):Connect(function()
 		refresh(player)
+	end)
+	-- Throw Power en direct au-dessus de la base (entraînement)
+	player:GetAttributeChangedSignal("ThrowPower"):Connect(function()
+		if slotOf[player] == slot then
+			updateLabel(slot, player)
+		end
 	end)
 end
 
