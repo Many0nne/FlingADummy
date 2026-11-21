@@ -142,7 +142,7 @@ L'équivalent des aliments de 01 et des graines de 09 : le mannequin qu'on lance
   rebond) ou est fini (poussée).
 - **Suite du catalogue** (#94, `ThrowDummies.EXTENDED`) : 14 mannequins de 4x à 135x (« Ruby Rubber Dummy »,
   « Infinite Rocket Dummy »), chacun avec le comportement et la physique d'un des cinq ci-dessus sous une palette de
-  `Shared.DummyFamilies`, prix = Rocket × (chance / 3)² ($84M à $47B) ; seuls les six premiers sont exposés sur le
+  `Shared.DummyFamilies`, prix = Rocket × (chance / 3)^1,8 ($84M à $47B) ; seuls les six premiers sont exposés sur le
   stand (`ThrowDummies.SHOWCASE`). La boutique s'ouvre sur le prochain achat (défilement automatique, comme la
   fenêtre Training Gear).
 - **Achat séquentiel** : seul le suivant s'achète, puis il est équipé d'office ; bouton **EQUIP** sur les possédés.

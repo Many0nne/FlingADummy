@@ -12,7 +12,8 @@ Rarity.LIST = {
 	{ name = "Legendary", color = Color3.fromRGB(255, 190, 40) },
 	{ name = "Mythic", color = Color3.fromRGB(255, 70, 110) },
 	{ name = "Secret", color = Color3.fromRGB(110, 255, 225) },
-	-- Au-delà de Secret (#94), comme les paliers Divin, Céleste, Cosmique de Throw a Seed : cotes de 10^7 à 10^15
+	-- Au-delà de Secret (#94), comme les paliers Divin, Céleste, Cosmique de Throw a Seed : cotes de 5 × 10^6 à 10^14
+	-- (10^16-10^17 en taille Giant)
 	{ name = "Divine", color = Color3.fromRGB(255, 240, 140) },
 	{ name = "Celestial", color = Color3.fromRGB(255, 140, 235) },
 	{ name = "Ethereal", color = Color3.fromRGB(170, 140, 255) },
