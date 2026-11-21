@@ -605,6 +605,11 @@ local function skip()
 	end
 	-- Décor du secret retiré, ciel gardé (assombri dès Legendary) ; retour au point d'atterrissage
 	RevealFx.clear(true)
+	if a.plan.cinematic then
+		-- La nuit du décor du secret redevient le ciel d'orage du suspense
+		RevealFx.restoreSky()
+		RevealFx.darkenSky(STORM, false, 0.4)
+	end
 	local height = HEIGHT * Collection.scale(a.entry)
 	FlightCamera.showcase(a.ground + Vector3.new(0, height / 2, 0), height)
 	revealModel(a, a.ground)

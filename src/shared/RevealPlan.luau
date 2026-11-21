@@ -231,10 +231,14 @@ function RevealPlan.announces(rarity: number): boolean
 	return rarity >= RevealPlan.ANNOUNCE_MIN
 end
 
--- Cette méthode permet d'écrire le texte du bandeau d'annonce (« Ana pulled a LEGENDARY Gold Dummy! 1 IN 4K »)
--- lorsque l'annonce d'un tirage arrive ; `odds` déjà abrégée par l'appelant.
-function RevealPlan.announceText(player: string, name: string, rarity: number, odds: string): string
-	return string.format("%s pulled a %s %s! 1 IN %s", player, string.upper(Rarity.get(rarity).name), name, odds)
+-- Cette méthode permet d'écrire le texte d'une annonce (« Ana pulled a LEGENDARY Gold Dummy! 1 IN 4K » ; rareté et nom
+-- à la couleur `hex` si donnée, en RichText) lorsque le bandeau ou le chat l'affiche ; `odds` déjà abrégée.
+function RevealPlan.announceText(player: string, name: string, rarity: number, odds: string, hex: string?): string
+	local prize = string.upper(Rarity.get(rarity).name) .. " " .. name
+	if hex then
+		prize = string.format('<font color="#%s">%s</font>', hex, prize)
+	end
+	return string.format("%s pulled a %s! 1 IN %s", player, prize, odds)
 end
 
 -- Cette méthode permet de lire une annonce reçue du serveur (nil si elle est mal formée) lorsque le client la reçoit.

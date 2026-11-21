@@ -182,6 +182,10 @@ return function(T, Loader)
 				RevealPlan.announceText("Ana", "Gold Dummy", 5, "4K"),
 				"Ana pulled a LEGENDARY Gold Dummy! 1 IN 4K"
 			)
+			T.expectEqual(
+				RevealPlan.announceText("You", "Neon Dummy", 6, "100K", "ff466e"),
+				'You pulled a <font color="#ff466e">MYTHIC Neon Dummy</font>! 1 IN 100K'
+			)
 		end)
 		T.it("refuse une annonce mal formée", function()
 			T.expectEqual(RevealPlan.parseAnnouncement(nil), nil)

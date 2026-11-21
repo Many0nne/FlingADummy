@@ -687,7 +687,7 @@ end
 -- lorsque le joueur gagne un niveau ou un équipement.
 local function showPopup(options: UIKit.PopupOptions)
 	local duration = UIKit.popup(gui, options)
-	popupEndsAt = os.clock() + duration
+	popupEndsAt = math.max(popupEndsAt, os.clock() + duration)
 end
 
 -- Cette méthode permet de faire voler un gain (« +N » et icônes) de `from` (pixels d'écran) au compteur `kind`,
