@@ -29,6 +29,7 @@ Assets.ANIMATIONS = {
 	Hold = 134156774546186,
 	Train = 72035491380919,
 	Throw = 98953473271707,
+	Carry = 119120800969306,
 } :: { [string]: number }
 
 -- Icônes d'interface (assets/icons/export/<nom>.png, rendues par assets/icons/build_icons.py). 0 = pas encore
@@ -46,7 +47,15 @@ Assets.ICONS = {
 -- Icônes des mannequins dans la barre d'outils (Backpack, #54), une par rareté (indice de Shared.Rarity) : buste du
 -- mannequin à la couleur de la rareté (assets/icons/export/rarity<N>.png). 0 = pas encore publiée : la barre affiche
 -- le nom du mannequin
-Assets.RARITY_ICONS = { 0, 0, 0, 0, 0, 0, 0 } :: { number }
+Assets.RARITY_ICONS = {
+	121103961543132,
+	136941604812875,
+	112130684550806,
+	123056701284362,
+	84656443866104,
+	92332277678523,
+	90361378631041,
+} :: { number }
 
 -- Cette méthode permet de donner l'URI d'un asset publié lorsque l'on le charge ; nil s'il n'est pas publié.
 function Assets.uri(id: number?): string?
