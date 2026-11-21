@@ -849,30 +849,37 @@ function UIKit.scrollToCard(grid: ScrollingFrame, order: number)
 	local hudScale = gui and gui:FindFirstChildOfClass("UIScale")
 	local token = {} -- placement en cours : un nouvel appel ou un défilement du joueur l'annulent
 	scrollTokens[grid] = token
-	local setting, expected = false, nil :: Vector2?
 	-- Cette méthode permet de placer la grille sur la carte visée lorsque la fenêtre s'affiche ou que la grille grandit,
 	-- tant que le joueur n'a pas défilé lui-même.
 	local function apply()
-		if scrollTokens[grid] ~= token then
+		if scrollTokens[grid] == token then
+			grid.CanvasPosition = Vector2.new(0, y * (if hudScale then hudScale.Scale else 1))
+		end
+	end
+	-- Cette méthode permet d'annuler les recalages lorsque le joueur fait défiler la grille (molette ou doigt sur elle) ;
+	-- seule une vraie entrée compte, le moteur bornant lui-même CanvasPosition pendant le pop d'ouverture.
+	local function onInput(input: InputObject)
+		local kind = input.UserInputType
+		if kind ~= Enum.UserInputType.MouseWheel and kind ~= Enum.UserInputType.Touch then
 			return
 		end
-		setting = true
-		grid.CanvasPosition = Vector2.new(0, y * (if hudScale then hudScale.Scale else 1))
-		setting = false
-		expected = grid.CanvasPosition
-	end
-	local watch = grid:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
-		if
-			not setting
-			and expected
-			and (grid.CanvasPosition - expected).Magnitude > 1
-			and scrollTokens[grid] == token
-		then
-			scrollTokens[grid] = nil -- le joueur a défilé : plus de recalage
+		local at, from, size = input.Position, grid.AbsolutePosition, grid.AbsoluteSize
+		local inset = GuiService:GetGuiInset() -- positions d'entrée sous la barre du haut, grille à IgnoreGuiInset
+		local x, py = at.X, at.Y + inset.Y
+		if x >= from.X and x <= from.X + size.X and py >= from.Y and py <= from.Y + size.Y then
+			if scrollTokens[grid] == token then
+				scrollTokens[grid] = nil
+			end
 		end
-	end)
+	end
+	local inputs = {
+		UserInputService.InputChanged:Connect(onInput),
+		UserInputService.InputBegan:Connect(onInput),
+	}
 	task.delay(1, function()
-		watch:Disconnect()
+		for _, connection in inputs do
+			connection:Disconnect()
+		end
 	end)
 	-- Différé d'une image (fenêtre tout juste visible), puis repris quand la grille jamais affichée a calculé sa
 	-- hauteur (sinon la position serait bornée à 0) et à la fin du pop d'ouverture (grille réduite pendant

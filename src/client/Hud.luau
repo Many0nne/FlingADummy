@@ -915,21 +915,21 @@ function Hud.isPopupShown(): boolean
 	return os.clock() < popupEndsAt or os.clock() < bannerEndsAt
 end
 
--- Cette méthode permet de savoir si une fenêtre du HUD (boutiques, collection, Index) est ouverte lorsque l'offre ou
--- l'objectif se demandent s'ils peuvent s'afficher (Shared.Overlay).
+-- Cette méthode permet de savoir si une fenêtre du HUD (boutiques, collection, Index) est à l'écran, animation de
+-- fermeture comprise, lorsque l'offre ou l'objectif se demandent s'ils peuvent s'afficher (Shared.Overlay).
 function Hud.isWindowOpen(): boolean
 	for _, window in windows do
-		if UIKit.isWindowOpen(window) then
+		if UIKit.isWindowOpen(window) or window.Visible then
 			return true
 		end
 	end
 	return false
 end
 
--- Cette méthode permet de savoir si le popup d'offre (« NEW GEAR! » / « NEW DUMMY! ») est affiché lorsque le texte de
--- l'objectif, dessiné au même endroit, se demande s'il peut s'afficher.
+-- Cette méthode permet de savoir si le popup d'offre (« NEW GEAR! » / « NEW DUMMY! ») est à l'écran, animation de
+-- fermeture comprise, lorsque le texte de l'objectif, dessiné au même endroit, se place.
 function Hud.isOfferShown(): boolean
-	return offerKind ~= nil and offerTier ~= nil
+	return offer.frame.Visible
 end
 
 -- Cette méthode permet de savoir si un bandeau d'annonce occupe le haut de l'écran lorsque l'objectif se place.
@@ -1016,6 +1016,10 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 		Hud.refresh()
 	end)
 	buildTrainBar(onStop)
+	-- Fenêtre fermée (fin de l'animation) : l'offre masquée pendant qu'elle était à l'écran revient
+	for _, window in windows do
+		window:GetPropertyChangedSignal("Visible"):Connect(Hud.refresh)
+	end
 
 	lastPower = stat("ThrowPower", GameConfig.START_POWER)
 	lastMoney = stat("Money", 0)

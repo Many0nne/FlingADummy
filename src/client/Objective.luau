@@ -150,20 +150,21 @@ local function placeHudArrow(anchor: GuiObject?)
 	end
 	local screen = Workspace.CurrentCamera.ViewportSize.X
 	local x = anchor.AbsolutePosition.X + anchor.AbsoluteSize.X / 2
+	local gap = 6 * (if arrowOnOffer then 1 / Hud.OFFER_SCALE else 1) -- px entre flèche et bouton (offre réduite)
 	if arrowOnEdge and x < screen / 3 then
 		hudArrow.AnchorPoint = Vector2.new(0, 0.5)
 		hudArrow.Rotation = 90 -- pointe à gauche
-		hudArrowBase = UDim2.new(1, 6, 0.5, 0)
+		hudArrowBase = UDim2.new(1, gap, 0.5, 0)
 		hudArrowBob = Vector2.xAxis
 	elseif arrowOnEdge and x > screen * 2 / 3 then
 		hudArrow.AnchorPoint = Vector2.new(1, 0.5)
 		hudArrow.Rotation = -90 -- pointe à droite
-		hudArrowBase = UDim2.new(0, -6, 0.5, 0)
+		hudArrowBase = UDim2.new(0, -gap, 0.5, 0)
 		hudArrowBob = -Vector2.xAxis
 	else
 		hudArrow.AnchorPoint = Vector2.new(0.5, 1)
 		hudArrow.Rotation = 0
-		hudArrowBase = UDim2.new(0.5, 0, 0, -6)
+		hudArrowBase = UDim2.new(0.5, 0, 0, -gap)
 		hudArrowBob = Vector2.yAxis
 	end
 end
