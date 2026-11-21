@@ -3,6 +3,7 @@
 -- `PrizePhase` posé localement par Client.Prize). Fondus : chaque piste rejoint son volume cible à vitesse constante,
 -- une piste remplacée s'efface puis est détruite. Muet : attribut `MusicOff` sauvegardé côté serveur (remote
 -- SetMusic), appliqué tout de suite en local.
+local ContentProvider = game:GetService("ContentProvider")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -12,8 +13,9 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local MusicRules = require(Shared:WaitForChild("Music"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
--- speed : vitesse du fondu d'entrée (bascule de moment plus vive), remise à 1 une fois la piste à son volume
-type Playing = { sound: Sound, track: MusicRules.Track, level: number, speed: number, startedAt: number }
+-- speed : vitesse du fondu d'entrée (bascule de moment plus vive), remise à 1 une fois la piste à son volume ;
+-- failed : chargement de l'asset en échec (piste sautée)
+type Playing = { sound: Sound, track: MusicRules.Track, level: number, speed: number, failed: boolean }
 
 local Music = {}
 
@@ -26,6 +28,8 @@ local group: SoundGroup
 local started = false -- musique lancée (données du joueur chargées : le muet sauvegardé est connu)
 local muted = false
 local pending: boolean? = nil -- muet envoyé au serveur dont l'écho n'est pas encore revenu
+local pendingAt = 0
+local PENDING_TIMEOUT = 3 -- s : un écho jamais revenu (deux clics dans la même image serveur) n'est plus attendu
 local mood: MusicRules.Mood = "Hub"
 local bed: MusicRules.Bed? = nil
 local hubIndex: number? = nil -- piste du hub en cours ou dernière jouée (rotation)
@@ -64,8 +68,16 @@ local function play(list: MusicRules.Bed, i: number, fade: number)
 	end
 	-- La piste du vol tourne en boucle le temps du lancer ; celles du hub s'enchaînent
 	local sound = newSound(track, list == "Flight")
-	local playing = { sound = sound, track = track, level = 0, speed = speed, startedAt = os.clock() }
+	local playing = { sound = sound, track = track, level = 0, speed = speed, failed = false }
 	current = playing
+	-- Asset introuvable (retiré, modéré) : la piste est sautée, sinon le hub resterait muet (ni durée, ni fin)
+	task.spawn(function()
+		ContentProvider:PreloadAsync({ sound }, function(_, status)
+			if status == Enum.AssetFetchStatus.Failure then
+				playing.failed = true
+			end
+		end)
+	end)
 	sound.Ended:Connect(function()
 		if current == playing and bed == "Hub" then
 			play("Hub", MusicRules.nextIndex("Hub", hubIndex), MusicRules.FADE)
@@ -81,7 +93,7 @@ local function playFanfare()
 	end
 	local track = MusicRules.TRACKS.Fanfare
 	local sound = newSound(track, false)
-	fanfare = { sound = sound, track = track, level = 0, speed = 4, startedAt = os.clock() }
+	fanfare = { sound = sound, track = track, level = 0, speed = 4, failed = false }
 	fanfareEndsAt = os.clock() + MusicRules.FANFARE_MAX
 end
 
@@ -135,8 +147,7 @@ local function step(dt: number)
 		if c.level == target then
 			c.speed = 1 -- fondu d'entrée fini : muet et baisses suivantes au rythme normal
 		end
-		local advance = MusicRules.shouldAdvance(c.sound.TimePosition, c.sound.TimeLength)
-			or MusicRules.stalled(c.sound.IsLoaded, os.clock() - c.startedAt)
+		local advance = c.failed or MusicRules.shouldAdvance(c.sound.TimePosition, c.sound.TimeLength)
 		if bed == "Hub" and advance then
 			play("Hub", MusicRules.nextIndex("Hub", hubIndex), MusicRules.FADE)
 		end
@@ -172,6 +183,7 @@ function Music.toggle()
 	end
 	setMuted(not muted)
 	pending = muted
+	pendingAt = os.clock()
 	remotes.SetMusic:FireServer(muted)
 end
 
@@ -203,12 +215,13 @@ function Music.init(localPlayer: Player, allRemotes: Remotes.Remotes)
 		end
 		local value = player:GetAttribute("MusicOff") == true
 		-- Clics rapides : seuls comptent les échos du dernier choix envoyé, pas ceux des clics intermédiaires
-		if pending ~= nil then
+		if pending ~= nil and os.clock() - pendingAt < PENDING_TIMEOUT then
 			if value == pending then
 				pending = nil
 			end
 			return
 		end
+		pending = nil
 		setMuted(value)
 	end)
 	player:GetAttributeChangedSignal("DataReady"):Connect(start)

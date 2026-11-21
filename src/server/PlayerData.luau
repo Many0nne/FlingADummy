@@ -172,7 +172,12 @@ end
 -- Cette méthode permet de noter le choix du bouton musique (true = coupée) lorsque le client l'envoie ; sauvegardé
 -- avec les données du joueur, ignoré avant le chargement ou si la valeur n'est pas un booléen.
 function PlayerData.setMusicOff(player: Player, off: any)
-	if type(off) == "boolean" and player:GetAttribute("DataReady") == true then
+	-- Valeur inchangée ignorée : un client qui spamme le remote ne réplique rien à tout le serveur
+	if
+		type(off) == "boolean"
+		and player:GetAttribute("DataReady") == true
+		and player:GetAttribute("MusicOff") ~= off
+	then
 		player:SetAttribute("MusicOff", off)
 	end
 end
