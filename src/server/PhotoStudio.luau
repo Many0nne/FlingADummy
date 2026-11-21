@@ -184,7 +184,9 @@ local function stage(name: string?)
 		return
 	end
 	if DummyShape.meshStage() < 2 then
-		warn("[planches] maillages des mannequins pas tous chargés : attendre, retirer PhotoShot (nil) puis reposer la prise")
+		warn(
+			"[planches] maillages des mannequins pas tous chargés : attendre, retirer PhotoShot (nil) puis reposer la prise"
+		)
 	end
 	local folder = Instance.new("Folder")
 	folder.Name = "PhotoStudio"
