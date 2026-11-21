@@ -24,6 +24,10 @@ export type Effect = {
 	color2: Color3?,
 	range: number?,
 	brightness: number?,
+	size: number?, -- multiplicateur de taille des particules (ou du faisceau)
+	rate: number?, -- multiplicateur du debit des particules
+	height: number?, -- faisceau : hauteur (studs, echelle 1)
+	width: number?, -- faisceau : largeur (studs, echelle 1)
 }
 
 export type Look = {

@@ -6,6 +6,7 @@
 -- et le plus courant ramasse le reste. La chance multiplie donc les chances des raretés hautes, et les probabilités
 -- exactes se calculent (Collection.probabilities) pour l'affichage. La taille se tire de même, à chance ^ 0,5.
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local DummyAura = require(Shared:WaitForChild("DummyAura"))
 local DummyModels = require(Shared:WaitForChild("DummyModels"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 
@@ -68,6 +69,10 @@ Collection.SIZES = {
 	{ name = "Huge",  income = 3,   scale = 1.7,  n = 60 },
 	{ name = "Giant", income = 8,   scale = 2.3,  n = 500 },
 } :: { Size }
+
+-- Échelle du modèle par rareté (indice de Shared.Rarity), multipliée par celle de la taille : plus rare, plus grand
+-- (comme les arbres de plus en plus grands de la référence 09)
+Collection.RARITY_SCALE = { 1, 1.1, 1.2, 1.32, 1.46, 1.62, 1.8 }
 
 Collection.STARTER = "crash" -- premier mannequin, garanti au premier lancer
 Collection.PROMPT_TAG = "DisplayPrompt" -- invites « Place » des présentoirs (attributs Slot, Display)
@@ -197,19 +202,32 @@ function Collection.label(entry: Entry): string
 	return if size and size.name ~= "" then size.name .. " " .. name else name
 end
 
+-- Cette méthode permet de donner l'échelle du modèle d'une entrée (taille × rareté) lorsque l'on le construit
+-- (présentoir, en main, tirage).
+function Collection.scale(entry: Entry): number
+	local dummy = byId[entry.id]
+	local size = Collection.SIZES[entry.size]
+	local rarity = if dummy then Collection.RARITY_SCALE[dummy.rarity] else nil
+	return (if size then size.scale else 1) * (rarity or 1)
+end
+
 -- Cette méthode permet de donner la déclinaison du modèle d'une entrée (couleur du corps et par pièce, matériau,
--- pièces masquées, pièces ajoutées, effets : Shared.DummyModels) lorsque l'on construit son modèle
--- (Shared.DummyShape).
+-- pièces masquées, pièces ajoutées, effets du modèle : Shared.DummyModels, puis thème et aura de rareté :
+-- Shared.DummyAura) lorsque l'on construit son modèle (Shared.DummyShape).
 function Collection.variant(entry: Entry): { [string]: any }
 	local dummy = byId[entry.id] or byId[Collection.STARTER]
 	local look = DummyModels.LOOKS[dummy.id]
+	local effects = table.clone(look.effects or {})
+	for _, effect in DummyAura.effects(dummy.id, dummy.rarity) do
+		table.insert(effects, effect)
+	end
 	return {
 		color = look.color,
 		material = look.material,
 		pieceColors = look.pieceColors,
 		hidden = look.hidden,
 		accessories = look.accessories,
-		effects = look.effects,
+		effects = if #effects > 0 then effects else nil,
 	}
 end
 

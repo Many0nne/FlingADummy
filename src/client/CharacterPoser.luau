@@ -311,7 +311,7 @@ local function update(player: Player, state: State)
 		-- Mannequin de collection porté (outil équipé), à l'échelle de sa taille
 		local key = carried
 		local entry = Inventory.parseKey(key) :: Collection.Entry
-		local scale = AnimationData.CARRY_SCALE * Collection.SIZES[entry.size].scale
+		local scale = AnimationData.CARRY_SCALE * Collection.scale(entry)
 		setVisual(state, "Carry" .. key .. shape, function()
 			return DummyShape.buildVisual(scale, Collection.variant(entry) :: DummyShape.Variant)
 		end)

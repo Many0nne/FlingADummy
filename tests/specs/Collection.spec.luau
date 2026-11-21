@@ -129,6 +129,18 @@ return function(T, Loader)
 		end)
 	end)
 
+	T.describe("Collection.scale", function()
+		T.it("taille × rareté : un Secret normal plus grand qu'un Common, un Giant encore plus", function()
+			T.expectNear(Collection.scale({ id = "crash", size = 1 }), 1, 1e-6)
+			local secret = Collection.scale({ id = "king", size = 1 })
+			T.expectNear(secret, Collection.RARITY_SCALE[7], 1e-6)
+			T.expect(secret > Collection.scale({ id = "gold", size = 1 }), "Secret > Legendary")
+			local giant = Collection.scale({ id = "king", size = #Collection.SIZES })
+			T.expectNear(giant, Collection.SIZES[#Collection.SIZES].scale * Collection.RARITY_SCALE[7], 1e-6)
+			T.expectEqual(#Collection.RARITY_SCALE, #Rarity.LIST)
+		end)
+	end)
+
 	T.describe("Collection.baseIncome", function()
 		local crash = { id = "crash", size = 1 } -- 4 $/s
 		local mint = { id = "mint", size = 1 } -- 15 $/s

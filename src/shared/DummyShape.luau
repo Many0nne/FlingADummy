@@ -6,6 +6,7 @@
 -- (Shared.DummyModels, généré depuis assets/dummy/build_collection.py).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Assets = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Assets"))
 local DummyModels = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("DummyModels"))
 
 local DummyShape = {}
@@ -67,35 +68,140 @@ DummyShape.JOINTS = {
 -- décalage du centre par rapport à la pièce, couleur, matériau, animation
 DummyShape.ACCESSORIES = DummyModels.ADDONS
 
--- Particules des effets (Legendary et plus) : textures de Roblox, tailles en studs à l'échelle 1
+-- Textures des effets : celles du jeu (Shared.Assets.FX_TEXTURES, assets/fx) une fois publiées, sinon une texture de
+-- Roblox de forme proche
 local SPARKLE = "rbxasset://textures/particles/sparkles_main.dds"
+local FIRE = "rbxasset://textures/particles/fire_main.dds"
+local SMOKE = "rbxasset://textures/particles/smoke_main.dds"
+local FALLBACK = {
+	star = SPARKLE,
+	glow = SPARKLE,
+	ring = SPARKLE,
+	bubble = SPARKLE,
+	flake = SPARKLE,
+	note = SPARKLE,
+	rays = SPARKLE,
+	beam = SPARKLE,
+}
+
+-- Cette méthode permet de donner l'URI d'une texture d'effet (publiée, sinon celle de Roblox) lorsque l'on crée un
+-- émetteur ou un faisceau ; une URI rbxasset:// passe telle quelle.
+function DummyShape.fxTexture(name: string): string
+	return Assets.uri(Assets.FX_TEXTURES[name]) or FALLBACK[name] or name
+end
+
+-- Particules des effets, tailles et vitesses en studs à l'échelle 1. `form` : courbe de taille (pop par défaut :
+-- éclot puis s'éteint ; twinkle : scintille ; grow : s'élargit en s'effaçant, onde au sol ; faint : halo pâle fixe).
+-- `flat` : couché à plat face au ciel (au sol) ; `locked` : suit la pièce ; `back` : dessiné derrière le mannequin ;
+-- `down` : émis vers le bas (réacteur) ; `alpha` : transparence de départ.
 DummyShape.PARTICLES = {
-	sparkle = { texture = SPARKLE, size = 0.45, rate = 8, life = 1.2, speed = 1.5, spread = 180, light = 1 },
-	stars = { texture = SPARKLE, size = 0.55, rate = 12, life = 1.6, speed = 2.5, spread = 180, light = 1 },
-	fire = {
-		texture = "rbxasset://textures/particles/fire_main.dds",
-		size = 1.3,
-		rate = 22,
-		life = 0.7,
-		speed = 4,
-		spread = 15,
-		light = 0.8,
-		rise = 4,
+	sparkle = { texture = "star", size = 0.45, rate = 8, life = 1.2, speed = 1.5, spread = 180, light = 1 },
+	stars = { texture = "star", size = 0.55, rate = 12, life = 1.6, speed = 2.5, spread = 180, light = 1 },
+	glint = {
+		texture = "star",
+		size = 0.6,
+		rate = 5,
+		life = 0.8,
+		speed = 3.5,
+		spread = 180,
+		light = 1,
+		drag = 6,
+		form = "twinkle",
 	},
-	embers = { texture = SPARKLE, size = 0.25, rate = 10, life = 1.6, speed = 2, spread = 180, light = 1, rise = 3 },
-	wisp = {
-		texture = "rbxasset://textures/particles/smoke_main.dds",
-		size = 1.6,
-		rate = 6,
-		life = 2,
-		speed = 0.8,
-		spread = 60,
-		light = 0.6,
-		rise = -0.5,
+	burst = { texture = "star", size = 0.7, rate = 5, life = 1.1, speed = 8, spread = 180, light = 1, drag = 4 },
+	fire = { texture = FIRE, size = 1.3, rate = 22, life = 0.7, speed = 4, spread = 15, light = 0.8, rise = 4 },
+	jet = { texture = FIRE, size = 0.9, rate = 30, life = 0.35, speed = 9, spread = 8, light = 0.9, down = true },
+	embers = { texture = "star", size = 0.25, rate = 10, life = 1.6, speed = 2, spread = 180, light = 1, rise = 3 },
+	wisp = { texture = SMOKE, size = 1.6, rate = 6, life = 2, speed = 0.8, spread = 60, light = 0.6, rise = -0.5 },
+	smoke = {
+		texture = SMOKE,
+		size = 1.2,
+		rate = 4,
+		life = 1.8,
+		speed = 1.5,
+		spread = 25,
+		light = 0,
+		rise = 1.5,
+		alpha = 0.5,
 	},
-	vortex = { texture = SPARKLE, size = 0.5, rate = 16, life = 1, speed = 6, spread = 180, light = 1, drag = 5 },
-	aura = { texture = SPARKLE, size = 6, rate = 3, life = 1.5, speed = 0, spread = 0, light = 1, faint = true },
+	vortex = { texture = "star", size = 0.5, rate = 16, life = 1, speed = 6, spread = 180, light = 1, drag = 5 },
+	aura = {
+		texture = "glow",
+		size = 6,
+		rate = 3,
+		life = 1.5,
+		speed = 0,
+		spread = 0,
+		light = 1,
+		form = "faint",
+		locked = true,
+	},
+	motes = { texture = "glow", size = 0.4, rate = 10, life = 2.2, speed = 2.4, spread = 35, light = 1, rise = 0.4 },
+	bubbles = { texture = "bubble", size = 0.45, rate = 4, life = 2.2, speed = 1.8, spread = 25, light = 0.3, rise = 1 },
+	snow = { texture = "flake", size = 0.45, rate = 6, life = 2.6, speed = 1.4, spread = 180, light = 0.6, rise = -1.2 },
+	notes = { texture = "note", size = 0.6, rate = 1.5, life = 2, speed = 1.6, spread = 35, light = 0.5, rise = 0.4 },
+	ring = {
+		texture = "ring",
+		size = 5,
+		rate = 0.8,
+		life = 1.6,
+		speed = 0,
+		spread = 0,
+		light = 1,
+		form = "grow",
+		flat = true,
+		locked = true,
+	},
+	pool = {
+		texture = "glow",
+		size = 5,
+		rate = 2,
+		life = 1.5,
+		speed = 0,
+		spread = 0,
+		light = 1,
+		form = "faint",
+		flat = true,
+		locked = true,
+	},
+	rays = {
+		texture = "rays",
+		size = 8,
+		rate = 0.8,
+		life = 3,
+		speed = 0,
+		spread = 0,
+		light = 1,
+		form = "faint",
+		locked = true,
+		back = true,
+		alpha = 0.45,
+		spin = 18,
+	},
 } :: { [string]: { [string]: any } }
+
+-- Cette méthode permet de donner la courbe de taille d'un émetteur (taille `size` en studs, forme du préréglage)
+-- lorsque l'on crée l'émetteur d'un effet.
+local function sizeCurve(form: string?, size: number): NumberSequence
+	if form == "faint" then
+		return NumberSequence.new(size * 0.8, size)
+	elseif form == "grow" then
+		return NumberSequence.new(size * 0.3, size)
+	elseif form == "twinkle" then
+		return NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0),
+			NumberSequenceKeypoint.new(0.25, size),
+			NumberSequenceKeypoint.new(0.5, size * 0.35),
+			NumberSequenceKeypoint.new(0.75, size * 0.8),
+			NumberSequenceKeypoint.new(1, 0),
+		})
+	end
+	return NumberSequence.new({
+		NumberSequenceKeypoint.new(0, size * 0.4),
+		NumberSequenceKeypoint.new(0.3, size),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+end
 
 -- Cette méthode permet de peindre une cible de crash-test (disque jaune à deux quartiers noirs) sur une face d'une
 -- pièce lorsque le mannequin est en blocs de repli (les maillages portent déjà leurs cibles).
@@ -242,8 +348,9 @@ local function attachAddon(accessory: BasePart, carrier: BasePart, offset: CFram
 	end
 end
 
--- Cette méthode permet de créer l'émetteur d'un effet de particules (préréglage de PARTICLES, deux couleurs, taille
--- à l'échelle) lorsque l'on pose les effets d'un mannequin ; nil pour un préréglage inconnu.
+-- Cette méthode permet de créer l'émetteur d'un effet de particules (préréglage de PARTICLES, deux couleurs, taille et
+-- débit multipliés par l'effet, taille et vitesses à l'échelle) lorsque l'on pose les effets d'un mannequin ; nil
+-- pour un préréglage inconnu.
 function DummyShape.makeEmitter(effect: DummyModels.Effect, scale: number): ParticleEmitter?
 	local preset = DummyShape.PARTICLES[effect.preset or ""]
 	if not preset then
@@ -251,31 +358,68 @@ function DummyShape.makeEmitter(effect: DummyModels.Effect, scale: number): Part
 	end
 	local emitter = Instance.new("ParticleEmitter")
 	emitter.Name = "Fx_" .. (effect.preset :: string)
-	emitter.Texture = preset.texture
+	emitter.Texture = DummyShape.fxTexture(preset.texture)
 	emitter.Color = ColorSequence.new(effect.color, effect.color2 or effect.color)
 	emitter.LightEmission = preset.light
-	local size = preset.size * scale
-	emitter.Size = if preset.faint
-		then NumberSequence.new(size * 0.8, size)
-		else NumberSequence.new({
-			NumberSequenceKeypoint.new(0, size * 0.4),
-			NumberSequenceKeypoint.new(0.3, size),
-			NumberSequenceKeypoint.new(1, 0),
-		})
-	emitter.Transparency = if preset.faint then NumberSequence.new(0.82, 1) else NumberSequence.new(0.1, 1)
+	emitter.LightInfluence = if preset.light > 0 then 0 else 1
+	emitter.Size = sizeCurve(preset.form, preset.size * (effect.size or 1) * scale)
+	local alpha = preset.alpha or (if preset.form == "faint" then 0.82 elseif preset.form == "grow" then 0.2 else 0.1)
+	emitter.Transparency = NumberSequence.new(alpha, 1)
 	emitter.Lifetime = NumberRange.new(preset.life * 0.7, preset.life * 1.3)
-	emitter.Rate = preset.rate
-	emitter.Speed = NumberRange.new(preset.speed * 0.6 * scale, preset.speed * scale)
+	emitter.Rate = preset.rate * (effect.rate or 1)
+	if preset.flat then
+		-- Couché face au ciel : orienté perpendiculairement à une vitesse verticale presque nulle
+		emitter.Orientation = Enum.ParticleOrientation.VelocityPerpendicular
+		emitter.Speed = NumberRange.new(0.01)
+	else
+		emitter.Speed = NumberRange.new(preset.speed * 0.6 * scale, preset.speed * scale)
+	end
+	emitter.EmissionDirection = if preset.down then Enum.NormalId.Bottom else Enum.NormalId.Top
 	emitter.SpreadAngle = Vector2.new(preset.spread, preset.spread)
 	emitter.Acceleration = Vector3.new(0, (preset.rise or 0) * scale, 0)
 	emitter.Drag = preset.drag or 0
-	emitter.RotSpeed = NumberRange.new(-90, 90)
-	emitter.LockedToPart = preset.faint == true
+	local spin = preset.spin or 90
+	emitter.RotSpeed = if preset.spin then NumberRange.new(spin) else NumberRange.new(-spin, spin)
+	emitter.Rotation = NumberRange.new(0, 360)
+	emitter.LockedToPart = preset.locked == true
+	emitter.ZOffset = if preset.back then -2 else 0
 	return emitter
 end
 
--- Cette méthode permet de poser les effets d'une déclinaison (particules et lumières sur des attachements des pièces
--- porteuses) lorsque l'on habille un mannequin de collection Legendary ou plus.
+-- Cette méthode permet de créer le faisceau d'un effet « beam » (colonne de lumière dressée de `height` studs au-dessus
+-- de l'attachement, face à la caméra, texture qui défile vers le haut) lorsque l'on pose les effets d'un mannequin ;
+-- renvoie le faisceau et l'attachement du haut.
+function DummyShape.makeBeam(effect: DummyModels.Effect, scale: number, bottom: Attachment): (Beam, Attachment)
+	local top = Instance.new("Attachment")
+	top.Name = bottom.Name .. "Top"
+	top.Position = bottom.Position + Vector3.new(0, (effect.height or 16) * scale, 0)
+	local beam = Instance.new("Beam")
+	beam.Name = "Fx_beam"
+	beam.Attachment0 = bottom
+	beam.Attachment1 = top
+	beam.Texture = DummyShape.fxTexture("beam")
+	beam.TextureMode = Enum.TextureMode.Stretch
+	beam.TextureLength = 1
+	beam.TextureSpeed = 0.5
+	beam.FaceCamera = true
+	beam.Segments = 1
+	local width = (effect.width or 3) * (effect.size or 1) * scale
+	beam.Width0 = width
+	beam.Width1 = width * 0.55
+	beam.LightEmission = 1
+	beam.LightInfluence = 0
+	beam.Brightness = 2
+	beam.Color = ColorSequence.new(effect.color, effect.color2 or effect.color)
+	beam.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.25),
+		NumberSequenceKeypoint.new(0.6, 0.6),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	return beam, top
+end
+
+-- Cette méthode permet de poser les effets d'une déclinaison (particules, lumières et faisceaux sur des attachements
+-- des pièces porteuses) lorsque l'on habille un mannequin de collection.
 function DummyShape.addEffects(parts: { [string]: BasePart }, scale: number, variant: Variant?)
 	if not variant or not variant.effects then
 		return
@@ -300,6 +444,10 @@ function DummyShape.addEffects(parts: { [string]: BasePart }, scale: number, var
 			if emitter then
 				emitter.Parent = attachment
 			end
+		elseif effect.kind == "beam" then
+			local beam, top = DummyShape.makeBeam(effect, scale, attachment)
+			top.Parent = carrier
+			beam.Parent = attachment
 		end
 		attachment.Parent = carrier
 	end

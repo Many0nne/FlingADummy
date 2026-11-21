@@ -137,6 +137,19 @@ Assets.DUMMY_MESHES = {
 -- Shared.DummySurface (SurfaceAppearance) : changer aussi son ColorMap (un test vérifie qu'ils concordent)
 Assets.DUMMY_TEXTURE = 84498910179411
 
+-- Textures des effets des mannequins de collection (assets/fx/export/<nom>.png, rendues par
+-- assets/fx/build_fx_textures.py). 0 = pas encore publiée : Shared.DummyShape se rabat sur une texture de Roblox
+Assets.FX_TEXTURES = {
+	star = 0,
+	glow = 0,
+	ring = 0,
+	bubble = 0,
+	flake = 0,
+	note = 0,
+	rays = 0,
+	beam = 0,
+} :: { [string]: number }
+
 -- Animations de l'avatar (assets/anim/export/<Nom>.rbxm)
 Assets.ANIMATIONS = {
 	Hold = 134156774546186,

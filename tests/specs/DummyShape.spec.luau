@@ -250,33 +250,58 @@ return function(T, Loader)
 				T.expect(type(id) == "number" and id > 0, dummy.id .. " a son icône")
 			end
 		end)
-		T.it("monte en spectacle avec la rareté (pièces ajoutées et effets, effets dès Legendary)", function()
+		T.it("monte en spectacle avec la rareté (pièces ajoutées, effets dès Uncommon, taille)", function()
 			local byRarity = {}
 			for _, dummy in Collection.DUMMIES do
 				local look = Models.LOOKS[dummy.id]
-				local stats = byRarity[dummy.rarity] or { parts = 0, count = 0, animated = 0 }
-				stats.parts += #look.accessories + #(look.effects or {})
+				local variant = Collection.variant({ id = dummy.id, size = 1 })
+				local stats = byRarity[dummy.rarity] or { parts = 0, effects = 0, count = 0, animated = 0 }
+				stats.parts += #look.accessories
+				stats.effects += #(variant.effects or {})
 				stats.count += 1
 				for _, name in look.accessories do
 					if Models.ADDONS[name].spin or Models.ADDONS[name].bob then
 						stats.animated += 1
 					end
 				end
-				if dummy.rarity >= 5 then
-					T.expect(look.effects and #look.effects > 0, dummy.id .. " a des effets")
+				if dummy.rarity >= 2 then
+					T.expect(variant.effects and #variant.effects > 0, dummy.id .. " a des effets")
+				end
+				for _, effect in variant.effects or {} do
+					T.expect(
+						effect.kind == "light" or effect.kind == "beam" or DummyShape.PARTICLES[effect.preset] ~= nil,
+						dummy.id .. " effet " .. tostring(effect.preset)
+					)
 				end
 				byRarity[dummy.rarity] = stats
 			end
 			for rarity = 2, 7 do
+				local now, before = byRarity[rarity], byRarity[rarity - 1]
 				T.expect(
-					byRarity[rarity].parts / byRarity[rarity].count
-						>= byRarity[rarity - 1].parts / byRarity[rarity - 1].count * 0.9,
-					"rareté " .. rarity
+					(now.parts + now.effects) / now.count >= (before.parts + before.effects) / before.count,
+					"pièces et effets, rareté " .. rarity
+				)
+				T.expect(now.effects / now.count > before.effects / before.count, "effets, rareté " .. rarity)
+				T.expect(
+					Collection.RARITY_SCALE[rarity] > Collection.RARITY_SCALE[rarity - 1],
+					"taille, rareté " .. rarity
 				)
 			end
 			for rarity = 5, 7 do
 				T.expect(byRarity[rarity].animated >= 3, "pièces animées en rareté " .. rarity)
 			end
+		end)
+		T.it("pose une colonne de lumière (faisceau) sur un mannequin Secret", function()
+			local model = DummyShape.buildVisual(1, Collection.variant({ id = "king", size = 1 }) :: any)
+			local beams = 0
+			for _, item in model:GetDescendants() do
+				if item:IsA("Beam") then
+					beams += 1
+					T.expect(item.Attachment0 ~= nil and item.Attachment1 ~= nil, "faisceau attaché")
+					T.expect(item.Attachment1.Position.Y - item.Attachment0.Position.Y > 10, "faisceau dressé")
+				end
+			end
+			T.expectEqual(beams, 1)
 		end)
 	end)
 
