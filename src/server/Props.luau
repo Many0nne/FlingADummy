@@ -502,6 +502,7 @@ end
 -- (étiquettes de Shared.CourseLayout, animées par Client.HubShops).
 
 local STALL_W = 16 -- largeur de l'échoppe (axe X local)
+local MERCHANT_STEP = 1.6 -- marche du marchand derrière le comptoir (studs)
 
 -- Cette méthode permet de poser un bloc lisse (sans tenons : plastique, néon, verre, métal) lorsque l'on assemble un
 -- détail qui ne doit pas porter la texture à briques.
@@ -562,8 +563,11 @@ local function stall(folder: Instance, at: CFrame, stripe: Color3)
 end
 
 -- Cette méthode permet de construire un marchand en blocs (jambes, corps `shirt`, bras, tête, casquette `cap`,
--- yeux) debout au repère `at`, face à -Z, lorsque l'on garnit un stand ; marqué MERCHANT_TAG pour être animé.
+-- yeux) debout au repère `at`, face à -Z, juché sur une marche de MERCHANT_STEP (le buste dépasse du comptoir, comme
+-- les vendeurs de 01) lorsque l'on garnit un stand ; marqué MERCHANT_TAG pour être animé.
 local function merchant(parent: Instance, at: CFrame, shirt: Color3, cap: Color3): Model
+	put(parent, at, Vector3.new(2.6, MERCHANT_STEP, 2), Vector3.new(0, MERCHANT_STEP / 2, 0), WOOD_DARK, true)
+	at *= CFrame.new(0, MERCHANT_STEP, 0)
 	local model = Instance.new("Model")
 	model.Name = "Merchant"
 	-- Atomique : le client l'anime d'un bloc (corps et bras arrivent ensemble, comme les pièges de Server.TrapProps)
@@ -843,7 +847,7 @@ function Props.shopStand(parent: Instance, at: CFrame, displayTag: string, count
 	CollectionService:AddTag(head, CourseLayout.SPIN_TAG)
 	head.Parent = folder
 	merchant(folder, at * CFrame.new(-4.5, 0.6, 0.5), blue, rgb(255, 210, 40))
-	bubble(folder, (at * CFrame.new(-4.5, 9.6, 0.5)).Position, "Better dummies here!")
+	bubble(folder, (at * CFrame.new(-4.5, 8.3 + MERCHANT_STEP, -1.5)).Position, "Better dummies here!")
 	ring(folder, at, blue)
 	folder.Parent = parent
 	return { prompt = (at * CFrame.new(0, 3, -6)).Position }
@@ -1002,7 +1006,7 @@ function Props.sellStand(parent: Instance, at: CFrame)
 	CollectionService:AddTag(coin, CourseLayout.SPIN_TAG)
 	coin.Parent = folder
 	merchant(folder, at * CFrame.new(0, 0.6, 0.5), rgb(80, 180, 80), rgb(40, 120, 50))
-	bubble(folder, (at * CFrame.new(0, 9.6, 0.5)).Position, "Sell your dummies!")
+	bubble(folder, (at * CFrame.new(0, 8.3 + MERCHANT_STEP, -1.5)).Position, "Sell your dummies!")
 	ring(folder, at, red)
 	-- Éclat de pièces : émetteur au-dessus du comptoir, déclenché par le client à chaque vente (attribut Sales)
 	local burst = Build.decor({

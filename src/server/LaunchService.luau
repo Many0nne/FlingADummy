@@ -580,20 +580,22 @@ local function publish(flight: Flight)
 end
 
 -- Cette méthode permet d'appliquer le comportement en vol du mannequin lancé (portance du planeur, poussée du
--- réacteur) à toutes ses pièces lorsque le vol avance d'une frame ; les vitesses de référence suivent (pas de choc).
-local function applyBehavior(flight: Flight, elapsed: number, dt: number)
-	local accel = ThrowDummies.flightAccel(
-		flight.thrown,
-		flight.torso.AssemblyLinearVelocity,
-		flight.forward,
-		elapsed,
-		Workspace.Gravity
-	)
-	if accel == Vector3.zero then
+-- réacteur, rebond du caoutchouc d'après la vitesse du torse `before` de la frame précédente) à toutes ses pièces
+-- lorsque le vol avance d'une frame ; les vitesses de référence suivent (pas de choc).
+local function applyBehavior(flight: Flight, elapsed: number, dt: number, before: Vector3?)
+	local velocity = flight.torso.AssemblyLinearVelocity
+	local change = ThrowDummies.flightAccel(flight.thrown, velocity, flight.forward, elapsed, Workspace.Gravity) * dt
+	if before and elapsed > GameConfig.IMPACT_GRACE_TIME then
+		local bounced = ThrowDummies.bounce(flight.thrown, before, velocity, flight.forward)
+		if bounced then
+			change += bounced - velocity
+		end
+	end
+	if change == Vector3.zero then
 		return
 	end
 	for _, p in flight.parts do
-		local v = p.AssemblyLinearVelocity + accel * dt
+		local v = p.AssemblyLinearVelocity + change
 		p.AssemblyLinearVelocity = v
 		flight.prevVelocity[p] = v
 	end
@@ -614,12 +616,13 @@ local function step(flight: Flight, dt: number)
 	end
 	local position = torso.Position
 	local previous = flight.prevPosition
+	local before = flight.prevVelocity[torso] -- vitesse du torse à la frame précédente (rebond du caoutchouc)
 	flight.prevPosition = position
 	checkGlass(flight, previous, position)
 	checkBones(flight, elapsed)
 	checkTraps(flight, previous, position)
 	flight.distance = math.max(flight.distance, position.Z)
-	applyBehavior(flight, elapsed, dt)
+	applyBehavior(flight, elapsed, dt, before)
 	publish(flight)
 	if #flight.impacts > 0 then
 		remotes.Impact:FireAllClients(flight.impacts)

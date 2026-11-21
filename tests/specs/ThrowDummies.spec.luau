@@ -45,6 +45,12 @@ return function(T, Loader)
 				if dummy.thrust > 0 then
 					own += 1
 				end
+				if (dummy.bounce or 0) > 0 then
+					own += 1
+				end
+				if i == 2 then
+					own -= 1 -- le caoutchouc : physique et rebond forment un seul comportement
+				end
 				T.expectEqual(own, if i == 1 then 0 else 1, dummy.id)
 			end
 		end)
@@ -173,6 +179,24 @@ return function(T, Loader)
 			T.expectNear(early.Z, rocket.thrust, 1e-3)
 			local late = ThrowDummies.flightAccel(rocket, Vector3.new(0, 20, 90), pitched, rocket.thrustTime + 0.1, 120)
 			T.expectEqual(late, Vector3.zero)
+		end)
+		T.it("le caoutchouc rebondit vers le haut en gardant son élan vers l'avant, seulement au sol", function()
+			local rubber = LIST[2]
+			T.expect((rubber.bounce or 0) > 0, "rebondissant")
+			local before = Vector3.new(0, -60, 80)
+			local stopped = Vector3.new(3, 0, 20)
+			local out = ThrowDummies.bounce(rubber, before, stopped, Vector3.zAxis) :: any
+			T.expect(out ~= nil, "rebond au sol")
+			T.expectNear(out.Y, 60 * rubber.bounce, 1e-3)
+			T.expectNear(out.Z, 80 * rubber.bounce, 1e-3)
+			T.expectNear(out.X, 3, 1e-3)
+			T.expectEqual(
+				ThrowDummies.bounce(rubber, Vector3.new(0, -10, 80), stopped, Vector3.zAxis),
+				nil,
+				"chute faible"
+			)
+			T.expectEqual(ThrowDummies.bounce(rubber, before, Vector3.new(0, -50, 80), Vector3.zAxis), nil, "en l'air")
+			T.expectEqual(ThrowDummies.bounce(LIST[1], before, stopped, Vector3.zAxis), nil, "pas rebondissant")
 		end)
 		T.it("le Crash Dummy n'a aucun comportement propre", function()
 			T.expectEqual(

@@ -44,6 +44,7 @@ export type Dummy = {
 	lift: number, -- part de la gravité compensée quand il redescend (planeur)
 	thrust: number, -- poussée vers l'avant au départ (studs/s²)
 	thrustTime: number, -- durée de la poussée (s)
+	bounce: number?, -- rebond : part de la vitesse de chute rendue vers le haut et de l'élan vers l'avant gardée au sol
 }
 
 -- Le mannequin de crash-test d'origine (Server.DummyFactory avant #14) : lourd, il garde son élan
@@ -51,6 +52,8 @@ local STANDARD: Physics = { density = 1.5, friction = 0.3, elasticity = 0.3, fri
 
 local rgb = Color3.fromRGB
 local GLIDE_MIN_FALL = 4 -- vitesse de chute (studs/s) au-delà de laquelle le planeur porte : pas au sol
+local BOUNCE_MIN_FALL = 20 -- chute (studs/s) arrêtée net en une frame qui compte comme un rebond au sol
+local BOUNCE_STOP = -2 -- vitesse verticale (studs/s) au-dessus de laquelle la chute est arrêtée
 
 -- Six mannequins, prix ×12 à ×25 entre niveaux et chance 1x → 3x (comme les graines de 09 : 1.0x, 1.25x, 1.5x, 2.0x,
 -- $1.2K, $15K, $300K) ; prix provisoires, recalés par #15 (économie)
@@ -92,12 +95,14 @@ ThrowDummies.LIST = {
 			},
 		},
 		card = rgb(255, 150, 205),
-		-- Caoutchouc : rebond maximal, presque sans frottement, il rebondit et glisse loin
-		physics = { density = 1.2, friction = 0.05, elasticity = 0.95, frictionWeight = 100, elasticityWeight = 100 },
+		-- Caoutchouc : presque sans frottement, et chaque rebond au sol rend 85 % de la chute vers le haut en gardant
+		-- 85 % de l'élan vers l'avant (le rebond physique seul le renvoyait n'importe où, sans gagner de distance)
+		physics = { density = 1.2, friction = 0.05, elasticity = 0.8, frictionWeight = 100, elasticityWeight = 100 },
 		boneFactor = 0.8,
 		lift = 0,
 		thrust = 0,
 		thrustTime = 0,
+		bounce = 0.85,
 	},
 	{
 		id = "glass",
@@ -189,8 +194,8 @@ ThrowDummies.LIST = {
 		card = rgb(130, 230, 110),
 		physics = STANDARD,
 		boneFactor = 1,
-		-- Plane : la moitié de la gravité compensée quand il redescend
-		lift = 0.5,
+		-- Plane : 70 % de la gravité compensée quand il redescend
+		lift = 0.7,
 		thrust = 0,
 		thrustTime = 0,
 	},
@@ -338,6 +343,21 @@ function ThrowDummies.flightAccel(
 		end
 	end
 	return accel
+end
+
+-- Cette méthode permet de donner la vitesse du torse après un rebond au sol d'un mannequin rebondissant (chute de plus
+-- de BOUNCE_MIN_FALL arrêtée en une frame : `before` → `after`) lorsque le serveur avance le vol ; nil sans rebond.
+function ThrowDummies.bounce(dummy: Dummy, before: Vector3, after: Vector3, forward: Vector3): Vector3?
+	local keep = dummy.bounce
+	local flat = Vector3.new(forward.X, 0, forward.Z)
+	if not keep or keep <= 0 or before.Y > -BOUNCE_MIN_FALL or after.Y < BOUNCE_STOP or flat.Magnitude < 1e-3 then
+		return nil
+	end
+	flat = flat.Unit
+	local ahead = Vector3.new(after.X, 0, after.Z):Dot(flat)
+	local lateral = Vector3.new(after.X, 0, after.Z) - flat * ahead
+	local kept = math.max(ahead, Vector3.new(before.X, 0, before.Z):Dot(flat) * keep)
+	return flat * kept + lateral + Vector3.new(0, math.max(after.Y, -before.Y * keep), 0)
 end
 
 -- Cette méthode permet de donner la déclinaison d'affichage du mannequin `index` (Shared.DummyShape.Variant : couleur,
