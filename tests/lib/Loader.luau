@@ -119,6 +119,10 @@ function Loader:require(target: any)
 			Vector2 = roblox.Vector2,
 			UDim = roblox.UDim,
 			UDim2 = roblox.UDim2,
+			ColorSequence = roblox.ColorSequence,
+			NumberSequence = roblox.NumberSequence,
+			NumberSequenceKeypoint = roblox.NumberSequenceKeypoint,
+			NumberRange = roblox.NumberRange,
 		}
 		for name, value in self.globals do
 			env[name] = value

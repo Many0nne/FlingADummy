@@ -1,11 +1,13 @@
--- Mannequins de collection : catalogue (rareté, revenu, cote, déclinaison du mannequin), tailles, tirage « 1 en N »
--- poussé par la CHANCE du lancer, probabilités affichables. Possession (stock, présentoirs, vente, Index) :
+-- Mannequins de collection : catalogue (rareté, revenu, cote ; modèles dans Shared.DummyModels), tailles, tirage
+-- « 1 en N » poussé par la CHANCE du lancer, probabilités affichables. Possession (stock, présentoirs, vente, Index) :
 -- Shared.Inventory.
 --
 -- Tirage : on essaie les mannequins du plus rare au plus courant ; chacun sort avec la probabilité min(1, chance / n)
 -- et le plus courant ramasse le reste. La chance multiplie donc les chances des raretés hautes, et les probabilités
 -- exactes se calculent (Collection.probabilities) pour l'affichage. La taille se tire de même, à chance ^ 0,5.
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local DummyAura = require(Shared:WaitForChild("DummyAura"))
+local DummyModels = require(Shared:WaitForChild("DummyModels"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 
 local Collection = {}
@@ -16,10 +18,6 @@ export type Dummy = {
 	rarity: number, -- indice dans Shared.Rarity (1 Common … 7 Secret)
 	income: number, -- $/s en taille Normal
 	n: number, -- « 1 en n » de base : probabilité min(1, chance / n) quand vient son tour
-	color: Color3,
-	material: Enum.Material?,
-	accessories: { string }?,
-	accessoryColor: Color3?,
 }
 
 export type Size = {
@@ -31,56 +29,37 @@ export type Size = {
 
 export type Entry = { id: string, size: number }
 
-local rgb = Color3.fromRGB
-local M = Enum.Material
 
 -- stylua: ignore
 Collection.DUMMIES = {
 	-- Common
-	{ id = "crash",    name = "Crash Dummy",    rarity = 1, income = 4,       n = 2,       color = rgb(255, 205, 40) },
-	{ id = "rookie",   name = "Rookie Dummy",   rarity = 1, income = 5,       n = 3,       color = rgb(240, 240, 240) },
-	{ id = "traffic",  name = "Traffic Dummy",  rarity = 1, income = 6,       n = 5,       color = rgb(255, 130, 30),
-	  accessories = { "Helmet" }, accessoryColor = rgb(255, 255, 255) },
+	{ id = "crash",    name = "Crash Dummy",    rarity = 1, income = 4,       n = 2 },
+	{ id = "rookie",   name = "Rookie Dummy",   rarity = 1, income = 5,       n = 3 },
+	{ id = "traffic",  name = "Traffic Dummy",  rarity = 1, income = 6,       n = 5 },
 	-- Uncommon
-	{ id = "mint",     name = "Mint Dummy",     rarity = 2, income = 15,      n = 10,      color = rgb(110, 235, 170) },
-	{ id = "biker",    name = "Biker Dummy",    rarity = 2, income = 22,      n = 15,      color = rgb(225, 50, 50),
-	  accessories = { "Helmet" }, accessoryColor = rgb(40, 40, 45) },
-	{ id = "nerd",     name = "Nerd Dummy",     rarity = 2, income = 30,      n = 25,      color = rgb(140, 200, 255),
-	  accessories = { "Glasses" }, accessoryColor = rgb(30, 30, 35) },
+	{ id = "mint",     name = "Mint Dummy",     rarity = 2, income = 15,      n = 10 },
+	{ id = "biker",    name = "Biker Dummy",    rarity = 2, income = 22,      n = 15 },
+	{ id = "nerd",     name = "Nerd Dummy",     rarity = 2, income = 30,      n = 25 },
 	-- Rare
-	{ id = "ocean",    name = "Ocean Dummy",    rarity = 3, income = 70,      n = 60,      color = rgb(40, 120, 255) },
-	{ id = "hero",     name = "Hero Dummy",     rarity = 3, income = 100,     n = 100,     color = rgb(230, 40, 40),
-	  accessories = { "Cape" }, accessoryColor = rgb(40, 90, 255) },
-	{ id = "pilot",    name = "Pilot Dummy",    rarity = 3, income = 150,     n = 150,     color = rgb(70, 165, 60),
-	  accessories = { "Helmet", "Glasses" }, accessoryColor = rgb(120, 80, 40) },
+	{ id = "ocean",    name = "Ocean Dummy",    rarity = 3, income = 70,      n = 60 },
+	{ id = "hero",     name = "Hero Dummy",     rarity = 3, income = 100,     n = 100 },
+	{ id = "pilot",    name = "Pilot Dummy",    rarity = 3, income = 150,     n = 150 },
 	-- Epic
-	{ id = "ice",      name = "Ice Dummy",      rarity = 4, income = 400,     n = 500,     color = rgb(160, 225, 255),
-	  material = M.Ice },
-	{ id = "toxic",    name = "Toxic Dummy",    rarity = 4, income = 550,     n = 800,     color = rgb(110, 255, 60),
-	  material = M.Neon },
-	{ id = "royal",    name = "Royal Dummy",    rarity = 4, income = 700,     n = 1200,    color = rgb(150, 70, 230),
-	  accessories = { "Cape" }, accessoryColor = rgb(255, 200, 40) },
+	{ id = "ice",      name = "Ice Dummy",      rarity = 4, income = 400,     n = 500 },
+	{ id = "toxic",    name = "Toxic Dummy",    rarity = 4, income = 550,     n = 800 },
+	{ id = "royal",    name = "Royal Dummy",    rarity = 4, income = 700,     n = 1200 },
 	-- Legendary
-	{ id = "gold",     name = "Gold Dummy",     rarity = 5, income = 2500,    n = 4000,    color = rgb(255, 195, 40),
-	  material = M.Foil },
-	{ id = "lava",     name = "Lava Dummy",     rarity = 5, income = 3500,    n = 7000,    color = rgb(255, 90, 30),
-	  material = M.CrackedLava },
-	{ id = "diamond",  name = "Diamond Dummy",  rarity = 5, income = 5000,    n = 10000,   color = rgb(120, 230, 255),
-	  material = M.Glass, accessories = { "Glasses" }, accessoryColor = rgb(255, 255, 255) },
+	{ id = "gold",     name = "Gold Dummy",     rarity = 5, income = 2500,    n = 4000 },
+	{ id = "lava",     name = "Lava Dummy",     rarity = 5, income = 3500,    n = 7000 },
+	{ id = "diamond",  name = "Diamond Dummy",  rarity = 5, income = 5000,    n = 10000 },
 	-- Mythic
-	{ id = "galaxy",   name = "Galaxy Dummy",   rarity = 6, income = 20000,   n = 40000,   color = rgb(120, 60, 255),
-	  material = M.Neon, accessories = { "Cape" }, accessoryColor = rgb(30, 20, 60) },
-	{ id = "ghost",    name = "Ghost Dummy",    rarity = 6, income = 30000,   n = 70000,   color = rgb(235, 245, 255),
-	  material = M.ForceField },
-	{ id = "neon",     name = "Neon Dummy",     rarity = 6, income = 40000,   n = 100000,  color = rgb(255, 60, 200),
-	  material = M.Neon, accessories = { "Glasses" }, accessoryColor = rgb(60, 255, 255) },
+	{ id = "galaxy",   name = "Galaxy Dummy",   rarity = 6, income = 20000,   n = 40000 },
+	{ id = "ghost",    name = "Ghost Dummy",    rarity = 6, income = 30000,   n = 70000 },
+	{ id = "neon",     name = "Neon Dummy",     rarity = 6, income = 40000,   n = 100000 },
 	-- Secret
-	{ id = "king",     name = "Crash King",     rarity = 7, income = 150000,  n = 500000,  color = rgb(255, 200, 40),
-	  material = M.Foil, accessories = { "Helmet", "Cape" }, accessoryColor = rgb(230, 30, 50) },
-	{ id = "void",     name = "Void Dummy",     rarity = 7, income = 200000,  n = 1000000, color = rgb(20, 18, 30),
-	  accessories = { "Glasses", "Cape" }, accessoryColor = rgb(170, 60, 255) },
-	{ id = "cosmic",   name = "Cosmic Dummy",   rarity = 7, income = 300000,  n = 2000000, color = rgb(190, 120, 255),
-	  material = M.ForceField, accessories = { "Helmet" }, accessoryColor = rgb(110, 255, 225) },
+	{ id = "king",     name = "Crash King",     rarity = 7, income = 150000,  n = 500000 },
+	{ id = "void",     name = "Void Dummy",     rarity = 7, income = 200000,  n = 1000000 },
+	{ id = "cosmic",   name = "Cosmic Dummy",   rarity = 7, income = 300000,  n = 2000000 },
 } :: { Dummy }
 
 -- stylua: ignore
@@ -90,6 +69,13 @@ Collection.SIZES = {
 	{ name = "Huge",  income = 3,   scale = 1.7,  n = 60 },
 	{ name = "Giant", income = 8,   scale = 2.3,  n = 500 },
 } :: { Size }
+
+-- Échelle du modèle par rareté (indice de Shared.Rarity), multipliée par celle de la taille : plus rare, plus grand
+-- (comme les arbres de plus en plus grands de la référence 09)
+Collection.RARITY_SCALE = { 1, 1.1, 1.2, 1.32, 1.46, 1.62, 1.8 }
+-- Échelle maximale sur un présentoir de la base (un Giant Secret, ×4,1, déborderait sur ses voisins) ; le tirage et
+-- la main gardent l'échelle entière
+Collection.DISPLAY_SCALE_MAX = 2.5
 
 Collection.STARTER = "crash" -- premier mannequin, garanti au premier lancer
 Collection.PROMPT_TAG = "DisplayPrompt" -- invites « Place » des présentoirs (attributs Slot, Display)
@@ -219,15 +205,44 @@ function Collection.label(entry: Entry): string
 	return if size and size.name ~= "" then size.name .. " " .. name else name
 end
 
--- Cette méthode permet de donner la déclinaison du mannequin (couleur, matériau, accessoires) d'une entrée lorsque
--- l'on construit son modèle (Shared.DummyShape).
-function Collection.variant(entry: Entry): { [string]: any }
+-- Cette méthode permet de donner l'échelle du modèle d'une entrée (taille × rareté) lorsque l'on le construit
+-- (présentoir, en main, tirage).
+function Collection.scale(entry: Entry): number
+	local dummy = byId[entry.id]
+	local size = Collection.SIZES[entry.size]
+	local rarity = if dummy then Collection.RARITY_SCALE[dummy.rarity] else nil
+	return (if size then size.scale else 1) * (rarity or 1)
+end
+
+-- Cette méthode permet de donner l'échelle d'une entrée posée sur un présentoir de la base (celle de Collection.scale,
+-- plafonnée à DISPLAY_SCALE_MAX : les présentoirs sont à 9 studs les uns des autres) lorsque la base est rendue.
+function Collection.displayScale(entry: Entry): number
+	return math.min(Collection.scale(entry), Collection.DISPLAY_SCALE_MAX)
+end
+
+-- Cette méthode permet de donner la déclinaison du modèle d'une entrée (couleur du corps et par pièce, matériau,
+-- pièces masquées, pièces ajoutées, effets du modèle : Shared.DummyModels, puis thème et aura de rareté :
+-- Shared.DummyAura) lorsque l'on construit son modèle (Shared.DummyShape) ; `carried` (porté en main) écarte les
+-- effets de l'aura posés au sol.
+function Collection.variant(entry: Entry, carried: boolean?): { [string]: any }
 	local dummy = byId[entry.id] or byId[Collection.STARTER]
+	local look = DummyModels.LOOKS[dummy.id]
+	local effects = {}
+	for _, effect in look.effects or {} do
+		if not (carried and DummyAura.isGrounded(effect)) then
+			table.insert(effects, effect)
+		end
+	end
+	for _, effect in DummyAura.effects(dummy.id, dummy.rarity, carried) do
+		table.insert(effects, effect)
+	end
 	return {
-		color = dummy.color,
-		material = dummy.material,
-		accessories = dummy.accessories,
-		accessoryColor = dummy.accessoryColor,
+		color = look.color,
+		material = look.material,
+		pieceColors = look.pieceColors,
+		hidden = look.hidden,
+		accessories = look.accessories,
+		effects = if #effects > 0 then effects else nil,
 	}
 end
 

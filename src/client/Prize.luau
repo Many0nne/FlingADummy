@@ -130,10 +130,10 @@ end
 -- Cette méthode permet de construire le mannequin du tirage (en silhouette noire ou en couleurs) debout sur `ground`,
 -- tourné vers la caméra (arrière de la piste), lorsque le tirage commence ou se révèle.
 local function buildStanding(entry: Collection.Entry, ground: Vector3, silhouette: boolean): Model
-	local scale = Collection.SIZES[entry.size].scale
+	local scale = Collection.scale(entry)
 	local variant: any = Collection.variant(entry)
 	if silhouette then
-		variant = { color = BLACK, accessories = variant.accessories, accessoryColor = BLACK }
+		variant = { color = BLACK, accessories = variant.accessories, accessoryColor = BLACK, hidden = variant.hidden }
 	end
 	local model = DummyShape.buildVisual(scale, variant)
 	if silhouette then
@@ -354,7 +354,7 @@ end
 -- dernière cote de la silhouette est passée.
 local function showReveal(prize: any, entry: Collection.Entry, ground: Vector3, current: number)
 	local size = Collection.SIZES[entry.size]
-	local scale = size.scale
+	local scale = Collection.scale(entry)
 	if worldModel then
 		worldModel:Destroy()
 	end
@@ -424,7 +424,7 @@ function Prize.play(result: any)
 	end
 	showing = true
 	player:SetAttribute("PrizePhase", "Tease")
-	local finalScale = Collection.SIZES[entry.size].scale
+	local finalScale = Collection.scale(entry :: Collection.Entry)
 	local ground = groundAt(result.landing)
 	FlightCamera.showcase(ground + Vector3.new(0, HEIGHT * finalScale / 2, 0), HEIGHT * finalScale)
 	local sequence = Collection.teaseSequence(entry :: Collection.Entry)
@@ -443,7 +443,7 @@ function Prize.play(result: any)
 				return
 			end
 			shown = step.odds
-			local scale = Collection.SIZES[step.size].scale
+			local scale = Collection.scale({ id = step.id, size = step.size })
 			if index > 1 then
 				showSilhouette(step, ground)
 			end
@@ -702,7 +702,8 @@ local function refreshPanel()
 		}, candidate)
 	placeAuto.Visible = free and target ~= nil and near and not firstPlace
 	if visible and entry then
-		local key = Inventory.key(entry)
+		-- L'étape des maillages fait partie de la clé : le rendu est refait quand les pièces ajoutées arrivent
+		local key = Inventory.key(entry) .. ":" .. DummyShape.meshStage()
 		if key ~= placeKey then
 			placeKey = key
 			local dummy = Collection.get(entry.id) :: Collection.Dummy

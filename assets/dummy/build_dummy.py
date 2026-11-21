@@ -457,4 +457,6 @@ def main():
     print("[dummy] termine, gabarit " + ("respecte" if ok else "NON respecte"))
 
 
-main()
+# Importable par build_collection.py (memes pieces et materiaux) sans relancer la construction
+if __name__ == "__main__":
+    main()

@@ -55,9 +55,8 @@ local rng = Random.new()
 -- Cette méthode permet de construire le mannequin posé sur un présentoir (pièces ancrées sans collision, regard vers
 -- l'entrée de la base, nom coloré et revenu au-dessus) lorsque la base est rendue.
 local function buildDisplayed(entry: Collection.Entry, top: BasePart, facing: number): Model
-	local size = Collection.SIZES[entry.size]
 	local dummy = Collection.get(entry.id) :: Collection.Dummy
-	local scale = size.scale
+	local scale = Collection.displayScale(entry)
 	local model = Instance.new("Model")
 	model.Name = "Displayed_" .. entry.id
 	local variant = Collection.variant(entry) :: DummyShape.Variant
@@ -446,6 +445,8 @@ local function watchTemplates()
 	end
 	local function watch(folder: Instance)
 		folder:GetAttributeChangedSignal("Ready"):Connect(rerender)
+		-- Pièces ajoutées des modèles de collection chargées après le corps : les mannequins posés sans elles sont refaits
+		folder:GetAttributeChangedSignal(DummyShape.COMPLETE):Connect(rerender)
 		if folder:GetAttribute("Ready") then
 			rerender()
 		end

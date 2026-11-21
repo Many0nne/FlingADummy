@@ -377,7 +377,7 @@ def render_icon(name):
     return outline(path)
 
 
-def write_sheet(tiles):
+def write_sheet(tiles, name="sheet.png"):
     """Cette methode permet d'assembler les icones sur fond vert (controle visuel) lorsque toutes sont rendues."""
     n = SIZE
     sheet = np.zeros((n, n * len(tiles), 4), dtype=np.float32)
@@ -388,7 +388,7 @@ def write_sheet(tiles):
         sheet[:, i * n : (i + 1) * n, :3] = region * (1 - a) + tile[:, :, :3] * a
     img = bpy.data.images.new("sheet", n * len(tiles), n, alpha=True)
     img.pixels = sheet.ravel()
-    img.filepath_raw = os.path.join(EXPORT, "sheet.png")
+    img.filepath_raw = os.path.join(EXPORT, name)
     img.file_format = "PNG"
     img.save()
 
@@ -403,4 +403,6 @@ def main():
         write_sheet(tiles)
 
 
-main()
+# Importable (assets/icons/dummy_icons.py reprend outline et write_sheet) : rendu seulement si lance directement
+if __name__ == "__main__":
+    main()
