@@ -6,6 +6,7 @@
 #   python -I tools/planches.py shots [planche...]        liste des prises, dans l'ordre ou les capturer
 #   python -I tools/planches.py grab <prise>              derniere capture MCP -> <prise>.png (reprise d'une prise)
 #   python -I tools/planches.py collect [planche...]      les N dernieres captures MCP -> prises des planches, dans l'ordre
+#                                                         (exactement les planches photographiees pendant la seance)
 #   python -I tools/planches.py build [planche...]        assemble les planches (toutes par defaut)
 # Options : --captures <dossier> (captures MCP, defaut %LOCALAPPDATA%\Roblox\tmp-capture-storage),
 #           --work <dossier> (prises rangees, defaut %TEMP%\fad-planches)
@@ -105,7 +106,8 @@ def cmd_grab(args, folder, work):
 
 def cmd_collect(args, folder, work):
     """Cette methode permet de ranger les N dernieres captures MCP sous les noms des N prises des planches demandees,
-    dans l'ordre, lorsque la seance Studio est finie."""
+    dans l'ordre, lorsque la seance Studio est finie : les planches demandees sont celles photographiees pendant la
+    seance, sans reprise (une prise ratee se refait apres, avec grab)."""
     _, sheets = load_manifest()
     shots = [shot["name"] for name in selected(args, sheets) for shot in sheets[name]["shots"]]
     files = captures(folder)
@@ -148,10 +150,17 @@ def centered(draw, x, width, y, text, fnt, fill):
     draw.text((x + (width - tw) / 2, y), text, font=fnt, fill=fill)
 
 
-def header(draw, title, count):
-    """Cette methode permet d'ecrire le titre d'une planche (nombre d'elements, date) lorsque l'on l'assemble."""
+def captured_on(sheet, work):
+    """Cette methode permet de donner la date de la capture la plus recente d'une planche lorsque l'on l'assemble."""
+    newest = max(os.path.getmtime(os.path.join(work, shot["name"] + ".png")) for shot in sheet["shots"])
+    return datetime.date.fromtimestamp(newest).isoformat()
+
+
+def header(draw, title, count, date):
+    """Cette methode permet d'ecrire le titre d'une planche (nombre d'elements, date des captures) lorsque l'on
+    l'assemble."""
     draw.text((PAD + 4, 14), f"Fling a Dummy : {title} ({count})", font=font(32), fill="white")
-    stamp = f"captures Studio du {datetime.date.today().isoformat()} - docs/planches/README.md"
+    stamp = f"captures Studio du {date} - docs/planches/README.md"
     fs = font(15, bold=False)
     draw.text((WIDTH - PAD - 4 - draw.textlength(stamp, font=fs), 26), stamp, font=fs, fill=MUTED)
     return 64
@@ -178,7 +187,7 @@ def build_rows(sheet, data, work):
     out = Image.new("RGB", (WIDTH, height), BG)
     draw = ImageDraw.Draw(out)
     count = sum(len(shot["items"]) for shot in sheet["shots"])
-    header(draw, sheet["title"], count)
+    header(draw, sheet["title"], count, captured_on(sheet, work))
     for r, shot in enumerate(sheet["shots"]):
         y = top + PAD + r * (row_h + PAD)
         color = hex_rgb(shot["group"]["color"]) if shot.get("group") else (120, 130, 150)
@@ -223,7 +232,7 @@ def build_frames(sheet, work):
     rows = (len(images) + cols - 1) // cols
     out = Image.new("RGB", (WIDTH, top + rows * (tile_h + text_h + PAD) + PAD), BG)
     draw = ImageDraw.Draw(out)
-    header(draw, sheet["title"], len(images))
+    header(draw, sheet["title"], len(images), captured_on(sheet, work))
     for i, (shot, image) in enumerate(zip(sheet["shots"], images)):
         item = shot["items"][0]
         x = PAD + (i % cols) * (tile_w + PAD)
@@ -242,6 +251,7 @@ def save(image, path):
         image.save(path, "JPEG", quality=quality, optimize=True, progressive=True)
         if os.path.getsize(path) <= MAX_BYTES:
             return quality
+    print(f"ATTENTION : {path} depasse {MAX_BYTES // 1000} Ko meme en qualite {quality} (reduire la planche)")
     return quality
 
 

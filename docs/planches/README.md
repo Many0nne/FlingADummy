@@ -31,14 +31,20 @@ Une seule réservation Studio, pour toutes les planches ou une seule. Chaîne : 
      « [planches] <prise> prête », celle du client « caméra sur <prise> ») ;
    - `screen_capture` (sans position de caméra) : l'image arrive dans `%LOCALAPPDATA%\Roblox\tmp-capture-storage`.
 
-   Une prise ratée se refait tout de suite (même prise, nouvelle capture) puis `python -I tools/planches.py grab <prise>`
-   à la place de `collect` pour cette prise.
-4. Fin : `workspace:SetAttribute("PhotoShot", nil)` (scène retirée, place libre rendue vide), Stop, puis
-   `.\scripts\fad-worktree.ps1 <branche> -ReleaseStudio`. La séance ne touche pas à la sauvegarde du joueur : base et
-   appareil photographiés sur une place libre.
-5. Assemblage (hors Studio) :
+   Une seule capture par prise : `collect` range les N dernières captures dans l'ordre, une capture en trop décalerait
+   toutes les suivantes. Une prise ratée se refait à l'étape 4.
+4. Rangement, Studio encore ouvert :
    ```bash
    python -I tools/planches.py collect [planche...]  # les N dernières captures -> prises, dans l'ordre (%TEMP%\fad-planches)
+   ```
+   Donner exactement les planches photographiées pendant la séance (toutes par défaut). Reprise d'une prise ratée :
+   `PhotoShot` à `nil` puis à `<prise>` (reposer la même valeur ne déclenche rien), `screen_capture`, puis
+   `python -I tools/planches.py grab <prise>`.
+5. Fin : `workspace:SetAttribute("PhotoShot", nil)` (scène retirée, place libre rendue vide), Stop, puis
+   `.\scripts\fad-worktree.ps1 <branche> -ReleaseStudio`. La séance ne touche pas à la sauvegarde du joueur : base et
+   appareil photographiés sur une place libre.
+6. Assemblage (hors Studio) :
+   ```bash
    python -I tools/planches.py build [planche...]    # docs/planches/<planche>.jpg (1 600 px, < 1 Mo)
    ```
    Regarder chaque planche avant de committer, et joindre l'avant / après à la PR.

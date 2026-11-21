@@ -38,9 +38,8 @@ local slots: { Slot } = {}
 local scene: Folder? = nil
 local staged: Slot? = nil -- place libre habillée par la prise en cours
 
--- Cette méthode permet de choisir la place sans joueur à photographier (la dernière libre) lorsqu'une prise de base
--- ou d'appareil commence ; nil si le lobby est plein.
-local function freeSlot(): Slot?
+-- Cette méthode permet de donner les places occupées par un joueur lorsque l'on choisit ou rend la place photographiée.
+local function takenSlots(): { [number]: boolean }
 	local taken = {}
 	for _, player in Players:GetPlayers() do
 		local index = player:GetAttribute("Slot")
@@ -48,6 +47,13 @@ local function freeSlot(): Slot?
 			taken[index] = true
 		end
 	end
+	return taken
+end
+
+-- Cette méthode permet de choisir la place sans joueur à photographier (la dernière libre) lorsqu'une prise de base
+-- ou d'appareil commence ; nil si le lobby est plein.
+local function freeSlot(): Slot?
+	local taken = takenSlots()
 	for index = #slots, 1, -1 do
 		if not taken[index] then
 			return slots[index]
@@ -59,11 +65,17 @@ end
 -- Cette méthode permet de rendre la place habillée à son état vide (palier 1, présentoirs de départ) lorsque la
 -- prise change ou que la séance se termine.
 local function restoreSlot()
-	if staged then
+	if not staged then
+		return
+	end
+	if takenSlots()[staged.index] then
+		-- Un joueur a pris la place pendant la séance : sa base n'est pas vidée (playtest à relancer pour la revoir)
+		warn("[planches] place " .. staged.index .. " prise pendant la séance : relancer le playtest")
+	else
 		BaseService.showcase(staged, nil)
 		CourseBuilder.styleStation(staged, 1)
-		staged = nil
 	end
+	staged = nil
 end
 
 -- Cette méthode permet de poser la pièce invisible de cadrage (position = point visé, LookVector = sens de la vue,
@@ -172,7 +184,7 @@ local function stage(name: string?)
 		return
 	end
 	if DummyShape.meshStage() < 2 then
-		warn("[planches] maillages des mannequins pas tous chargés : attendre puis reposer la prise")
+		warn("[planches] maillages des mannequins pas tous chargés : attendre, retirer PhotoShot (nil) puis reposer la prise")
 	end
 	local folder = Instance.new("Folder")
 	folder.Name = "PhotoStudio"

@@ -66,10 +66,11 @@ return function(T, Loader, Lib)
 		end)
 
 		T.it("retrouve une prise par son nom, rien pour un nom inconnu", function()
-			T.expect(PlanchePlan.find("base-5").items[1].key == 5, "base-5")
-			T.expect(PlanchePlan.find("entrainement-12").framing == "station", "entrainement-12")
+			local lastBase, gears = #BaseLook.BASE_TIERS, #Training.GEARS
+			T.expect(PlanchePlan.find("base-" .. lastBase).items[1].key == lastBase, "dernier palier de base")
+			T.expect(PlanchePlan.find("entrainement-" .. gears).framing == "station", "dernier palier d'appareil")
 			T.expect(PlanchePlan.find("a-lancer-1").items[1].key == 1, "a-lancer-1")
-			T.expect(PlanchePlan.find("base-6") == nil, "base-6")
+			T.expect(PlanchePlan.find("base-" .. lastBase + 1) == nil, "palier de base au-delà du dernier")
 			T.expect(PlanchePlan.find("decor-1") == nil, "decor-1")
 			T.expect(PlanchePlan.find("collection") == nil, "sans numéro")
 		end)
@@ -94,7 +95,9 @@ return function(T, Loader, Lib)
 			end
 			for _, sheet in fresh.sheets do
 				local old = savedSheets[sheet.name]
-				T.expect(old ~= nil, sheet.name .. " absente du manifeste")
+				if old == nil then
+					error(sheet.name .. " absente du manifeste")
+				end
 				local before = {}
 				for _, shot in old.shots do
 					for _, item in shot.items do

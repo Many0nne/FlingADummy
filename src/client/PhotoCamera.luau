@@ -40,14 +40,15 @@ local function hideScene(hidden: boolean)
 		coreSaved = nil
 		pcall(StarterGui.SetCore, StarterGui, "TopbarEnabled", true)
 	end
-	if hidden and #hiddenGuis == 0 then
+	if hidden then
+		-- Rescannée à chaque prise : une fenêtre ouverte pendant la séance (annonce, popup) est cachée aussi
 		for _, gui in player:WaitForChild("PlayerGui"):GetChildren() do
-			if gui:IsA("ScreenGui") and gui.Enabled then
+			if gui:IsA("ScreenGui") and gui.Enabled and not table.find(hiddenGuis, gui) then
 				gui.Enabled = false
 				table.insert(hiddenGuis, gui)
 			end
 		end
-	elseif not hidden then
+	else
 		for _, gui in hiddenGuis do
 			gui.Enabled = true
 		end
