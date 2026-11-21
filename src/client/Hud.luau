@@ -120,13 +120,16 @@ end
 local function toggle(name: string)
 	local target = windows[name]
 	local open = not UIKit.isWindowOpen(target) and player:GetAttribute("Action") ~= "Holding"
+	-- Cible ouverte avant de fermer les autres : jamais d'instant sans fenêtre, où l'offre surgirait (Visible → refresh)
+	if open then
+		UIKit.openWindow(target)
+	end
 	for _, window in windows do
 		if window ~= target or not open then
 			UIKit.closeWindow(window, window ~= target)
 		end
 	end
 	if open then
-		UIKit.openWindow(target)
 		-- Boutiques longues (#94) : ouvertes sur le prochain achat
 		if name == "Shop" and gearRow then
 			UIKit.scrollToCard(gearRow, math.min(stat("GearTier", 1) + 1, #Training.GEARS))
