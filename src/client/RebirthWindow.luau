@@ -18,7 +18,7 @@ local UIKit = require(script.Parent.UIKit)
 local C = UIKit.COLORS
 local VIOLET = Color3.fromRGB(150, 70, 255)
 local PINK = Color3.fromRGB(255, 80, 200)
-local STAR = Color3.fromRGB(210, 140, 255) -- violet des étoiles (aussi celui du compteur de la base, Shared.BaseLook)
+local STAR = Color3.fromHex(Rebirth.COLOR_HEX) -- violet des étoiles (aussi celui du compteur de la base, du bandeau)
 local CONFIRM_TIME = 3 -- s pendant lesquelles le second clic confirme
 local CELEBRATE_TIME = 3.4 -- s d'écran plein à la renaissance, fondu compris
 

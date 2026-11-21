@@ -148,7 +148,7 @@ return function(T, Loader)
 				T.expectEqual(BaseLook.label("Bob", 0, 1234, 0).power, "💪 1.23K")
 				T.expectEqual(
 					BaseLook.label("Bob", 0, 1234, 3).power,
-					'💪 1.23K  <font color="#' .. BaseLook.REBIRTH_HEX .. '">🌟 3</font>'
+					'💪 1.23K  <font color="#' .. loader:require("src/shared/Rebirth").COLOR_HEX .. '">🌟 3</font>'
 				)
 				T.expectEqual(BaseLook.label("Bob", 0, nil, 3).power, "", "rien avant le chargement")
 				T.expectEqual(BaseLook.label(nil, 0, 10, 3).power, "", "base vide")

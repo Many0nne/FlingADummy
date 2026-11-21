@@ -15,6 +15,7 @@ Rebirth.PRICE_GROWTH = 4 -- prix × 4 à chaque renaissance
 Rebirth.LUCK_STEP = 2 -- CHANCE × 2 par renaissance, pour toujours
 Rebirth.REQUIRED_GEAR = #Training.GEARS -- dernier équipement d'entraînement (Infinite)
 Rebirth.MAX = 60 -- borne de lecture d'une sauvegarde (2^60 : bien au-delà de toute partie)
+Rebirth.COLOR_HEX = "D28CFF" -- violet des renaissances (étoiles violettes de la référence 05) : base, bandeau, fenêtre
 
 -- Attributs du joueur remis à leur valeur de départ (ceux d'un nouveau joueur) par une renaissance
 Rebirth.RESET = {

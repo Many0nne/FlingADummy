@@ -6,6 +6,7 @@
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Format = require(Shared:WaitForChild("Format"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
+local Rebirth = require(Shared:WaitForChild("Rebirth"))
 local Training = require(Shared:WaitForChild("Training"))
 
 local BaseLook = {}
@@ -163,8 +164,6 @@ end
 -- Texte flottant au-dessus d'une base : nom (« MANYONNE'S BASE »), revenu (« $223/s ») et Throw Power (« 💪 1.2K »)
 export type Label = { title: string, income: string, power: string }
 
-BaseLook.REBIRTH_HEX = "D28CFF" -- violet des renaissances (étoiles violettes de la référence 05), en RichText
-
 -- Cette méthode permet de donner les trois lignes du texte flottant d'une base lorsque son propriétaire ou ses
 -- valeurs changent ; `owner` nil : base vide ; `power` nil (données pas chargées) : ligne vide ; `rebirths` > 0 :
 -- compteur violet « 🌟 3 » à côté de la Throw Power (ligne en RichText).
@@ -174,7 +173,7 @@ function BaseLook.label(owner: string?, income: number?, power: number?, rebirth
 	end
 	local powerText = if power then "💪 " .. Format.short(math.max(0, power)) else ""
 	if power and rebirths and rebirths >= 1 then
-		powerText ..= string.format('  <font color="#%s">🌟 %d</font>', BaseLook.REBIRTH_HEX, math.floor(rebirths))
+		powerText ..= string.format('  <font color="#%s">🌟 %d</font>', Rebirth.COLOR_HEX, math.floor(rebirths))
 	end
 	return {
 		title = string.upper(owner) .. "'S BASE",

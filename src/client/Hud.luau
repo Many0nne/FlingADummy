@@ -1041,8 +1041,9 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 			return math.max(0, stat("Money", 0) - counters.Money.pending)
 		end,
 		screenFree = function()
+			local lane = player:GetAttribute("LaneState")
 			return seeded
-				and player:GetAttribute("LaneState") == "Ready"
+				and (lane == nil or lane == "Ready")
 				and player:GetAttribute("Action") ~= "Holding"
 				and Overlay.offer({ windowOpen = Hud.isWindowOpen(), bannerShown = os.clock() < bannerEndsAt })
 		end,
@@ -1061,8 +1062,8 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 	for _, attribute in { "GearTier", "Income", "ThrowTier", "Draws" } do
 		player:GetAttributeChangedSignal(attribute):Connect(Hud.refresh)
 	end
-	-- Renaissance, ou DebugWipe (tirages revenus à 0) : progression remise à zéro, les paliers suivants s'annoncent de
-	-- nouveau et les offres fermées reviennent
+	-- Cette méthode permet de réarmer les annonces de palier et les offres fermées lorsque la progression est remise à
+	-- zéro (renaissance, ou DebugWipe : tirages revenus à 0).
 	local function onProgressReset()
 		if seeded then
 			knownLevel = math.min(knownLevel, stat("TrainLevel", 1))

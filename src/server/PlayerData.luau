@@ -289,7 +289,14 @@ end
 -- collection, tutoriel et records compris) lorsque l'on teste dans Studio (attribut DebugWipe, #95) ; la sauvegarde
 -- vide est écrite à son départ comme d'habitude.
 function PlayerData.wipe(player: Player)
-	if player:GetAttribute("DataReady") ~= true then
+	local state = player:GetAttribute("LaneState")
+	if
+		player:GetAttribute("DataReady") ~= true
+		or (state ~= nil and state ~= "Ready")
+		or player:GetAttribute("Action") == "Holding"
+	then
+		-- En vol, en tirage ou jauge ouverte, le lancer en cours créditerait la sauvegarde vide
+		print("[PlayerData] DebugWipe refusé : revenir au hub d'abord (LaneState = " .. tostring(state) .. ")")
 		return
 	end
 	for key, value in DEFAULTS do

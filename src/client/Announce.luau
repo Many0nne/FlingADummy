@@ -21,7 +21,7 @@ local SHOW_TIME = 4.5 -- s d'affichage d'un bandeau, entrée et sortie comprises
 local SLIDE = 0.35 -- s de l'entrée et de la sortie du bandeau
 local WAIT_STEP = 0.25 -- s entre deux vérifications pendant que le tirage local occupe l'écran
 local QUEUE_MAX = 5 -- annonces en attente au plus (les plus anciennes sautent)
-local REBIRTH_COLOR = Color3.fromRGB(210, 140, 255) -- violet des renaissances (Shared.BaseLook.REBIRTH_HEX)
+local REBIRTH_COLOR = Color3.fromHex(Rebirth.COLOR_HEX) -- violet des renaissances
 
 -- Annonce prête à afficher : texte (RichText) et couleur du bandeau
 type Entry = { text: string, color: Color3 }
