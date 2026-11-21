@@ -1157,6 +1157,8 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 		refreshTraining()
 	end)
 	player:GetAttributeChangedSignal("GearTier"):Connect(function()
+		-- L'EXP d'un niveau dépend de l'équipement (plafond de répétitions, Training.expForLevel)
+		refreshTraining()
 		local tier = stat("GearTier", 1)
 		if tier <= knownTier then
 			-- Équipement remis à zéro (renaissance) : les achats suivants s'annoncent de nouveau

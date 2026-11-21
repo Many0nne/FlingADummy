@@ -113,9 +113,8 @@ end
 -- `exp` : EXP accumulée dans le niveau en cours (barre « x / y »)
 export type Progress = { level: number, exp: number }
 
--- Cette méthode permet de donner l'EXP qui remplit le niveau `level` avec l'équipement du palier `tier` lorsque la barre
--- est affichée ou le niveau franchi : × LEVEL_EXP_GROWTH par niveau, plafonnée à LEVEL_MAX_REPS répétitions de
--- l'équipement (#15 : un niveau ne dure jamais plus de quelques secondes, comme les 3-5 répétitions de 01 et 09).
+-- Cette méthode permet de donner l'EXP du niveau `level` avec l'équipement `tier` (× LEVEL_EXP_GROWTH par niveau,
+-- plafonnée à LEVEL_MAX_REPS répétitions, #15) lorsque la barre est affichée ou le niveau franchi.
 function Training.expForLevel(level: number, tier: number?): number
 	local needed = math.ceil(GameConfig.LEVEL_BASE_EXP * GameConfig.LEVEL_EXP_GROWTH ^ (level - 1))
 	return math.min(needed, GameConfig.LEVEL_MAX_REPS * Training.gear(tier or 1).gain)

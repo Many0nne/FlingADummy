@@ -106,9 +106,8 @@ function DummyFamilies.nice(x: number, integer: boolean?): number
 	return math.floor(x / magnitude + 0.5) * magnitude
 end
 
--- Cette méthode permet de donner le revenu de la règle ($/s, taille normale) du `rank`-ième mannequin (par cote
--- croissante) des `count` de la rareté `rarity` lorsque l'on génère un mannequin : progression géométrique dans la
--- plage de revenu de la rareté (Shared.Rarity), du plus courant au plus rare.
+-- Cette méthode permet de donner le revenu ($/s, taille normale) du `rank`-ième des `count` mannequins de la rareté
+-- `rarity` (cote croissante) lorsque l'on génère le catalogue : géométrique dans la plage de Shared.Rarity.
 function DummyFamilies.bandIncome(rarity: number, rank: number, count: number): number
 	local band = Rarity.get(rarity).income
 	local t = if count > 1 then (rank - 1) / (count - 1) else 0

@@ -26,6 +26,15 @@ return function(T, Loader, Lib)
 		T.it("achète tout le catalogue avant la première renaissance, dans le même ordre pour tous", function()
 			local catalog = (#m.Training.GEARS - 1) + (#m.ThrowDummies.LIST - 1) + #m.GameConfig.DISPLAY_PRICES
 			T.expectEqual(#steps, catalog)
+			for _, run in runs do
+				for k, step in steps do
+					local purchase = run.purchases[k]
+					T.expect(
+						purchase ~= nil and purchase.kind == step.kind and purchase.index == step.index,
+						string.format("achat %d : %s %d attendu", k, step.kind, step.index)
+					)
+				end
+			end
 		end)
 		T.it("pas de mur : le ratio « prix suivant / revenu » ne fait jamais de saut de plus de × 2", function()
 			for k, step in steps do

@@ -310,9 +310,8 @@ export type Step = {
 	jump: number, -- ratio de cet achat / ratio de l'achat précédent (planchers à RATIO_FLOOR)
 }
 
--- Cette méthode permet de résumer les achats des joueurs simulés achat par achat (l'ordre « le moins cher d'abord »
--- est le même pour tous jusqu'à la première renaissance) lorsque l'on cherche un mur : instant et ratio médians,
--- saut du ratio d'un achat au suivant.
+-- Cette méthode permet de résumer les joueurs simulés achat par achat jusqu'à la première renaissance (instant et
+-- ratio médians, saut du ratio) lorsque l'on cherche un mur ; l'ordre « le moins cher d'abord » est le même pour tous.
 function ProgressionSim.steps(runs: { Run }): { Step }
 	local result: { Step } = {}
 	local count = 0
