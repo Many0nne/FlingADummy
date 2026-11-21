@@ -40,6 +40,7 @@ Assets.ICONS = {
 	power = 131493315088212,
 	cash = 137592441201082,
 	arrow = 75483474828645,
+	music = 120854274168520,
 } :: { [string]: number }
 
 -- Cette méthode permet de donner l'URI d'un asset publié lorsque l'on le charge ; nil s'il n'est pas publié.

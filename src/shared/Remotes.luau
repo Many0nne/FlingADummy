@@ -12,6 +12,7 @@ local NAMES = {
 	"LaunchStarted",
 	"LaunchResult",
 	"Impact",
+	"SetMusic",
 }
 
 export type Remotes = {
@@ -27,6 +28,7 @@ export type Remotes = {
 	LaunchStarted: RemoteEvent, -- serveur → client : modèle du mannequin lancé
 	LaunchResult: RemoteEvent, -- serveur → client : gains, blessures, cause
 	Impact: RemoteEvent, -- serveur → tous les clients : liste de chocs de la frame (effets, sons, popups)
+	SetMusic: RemoteEvent, -- client → serveur : true = musique coupée (bouton du HUD), sauvegardé avec les données
 }
 
 local Remotes = {}

@@ -1,5 +1,6 @@
 -- Amorçage du client : HUD, objectif, poses des avatars, lancer, caméra et écran de vol (CHANCE finale à l'arrêt),
--- effets des crashs, tirage du mannequin de collection et pose dans la base, branchés sur les remotes du serveur.
+-- effets des crashs, tirage du mannequin de collection et pose dans la base, musique de fond, branchés sur les remotes
+-- du serveur.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -11,6 +12,7 @@ local Effects = require(script.Effects)
 local FlightCamera = require(script.FlightCamera)
 local FlightView = require(script.FlightView)
 local Hud = require(script.Hud)
+local Music = require(script.Music)
 local Objective = require(script.Objective)
 local Prize = require(script.Prize)
 local ThrowCinematic = require(script.ThrowCinematic)
@@ -29,6 +31,8 @@ end
 Hud.onBuy = function(kind: string)
 	remotes.BuyUpgrade:FireServer(kind)
 end
+Hud.onMusicToggle = Music.toggle
+Music.onChanged = Hud.setMusicOff
 Hud.init(player, stopTraining, remotes)
 local gui = Hud.screen()
 Objective.init(player, gui)
@@ -38,6 +42,7 @@ CharacterPoser.init()
 ThrowController.init(player, remotes, gui)
 FlightCamera.init(player)
 Effects.init(player, remotes.Impact)
+Music.init(player, remotes)
 UserInputService.JumpRequest:Connect(stopTraining)
 
 local prizeToken = 0 -- invalide un tirage programmé si le couloir redevient prêt ou qu'un autre vol part

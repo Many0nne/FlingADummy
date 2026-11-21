@@ -48,6 +48,7 @@ local EMOJI = {
 	power = "💪",
 	cash = "💵",
 	arrow = "🔻",
+	music = "🎵",
 }
 
 local SHINE_PERIOD = 3.5 -- s entre deux passages du reflet sur les boutons importants

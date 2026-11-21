@@ -1,7 +1,7 @@
--- Données du joueur : argent, Throw Power, équipement, niveaux et record, portés par des attributs du Player (répliqués au
--- client), recopiés dans les leaderstats ; collection (stock, présentoirs de la base et présentoirs achetés, Index :
--- Shared.Inventory) gardée côté serveur. Le tout est sauvegardé en DataStore (migration des sauvegardes de #13 par
--- Inventory.read).
+-- Données du joueur : argent, Throw Power, équipement, niveaux, record et muet musique, portés par des attributs du
+-- Player (répliqués au client), recopiés dans les leaderstats ; collection (stock, présentoirs de la base et
+-- présentoirs achetés, Index : Shared.Inventory) gardée côté serveur. Le tout est sauvegardé en DataStore (migration
+-- des sauvegardes de #13 par Inventory.read).
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -24,6 +24,7 @@ local DEFAULTS = {
 	BestDistance = 0,
 	Tutorial = 0, -- étapes du tutoriel faites (drapeaux, Shared.Tutorial)
 	Draws = 0, -- mannequins de collection gagnés (le premier est garanti : Collection.STARTER)
+	MusicOff = false, -- musique de fond coupée (bouton du HUD, Client.Music)
 }
 
 -- Collection d'un joueur : stock, présentoirs, Index (Shared.Inventory)
@@ -77,8 +78,8 @@ local function load(player: Player)
 			warn("[PlayerData] lecture impossible pour " .. player.Name .. " : " .. tostring(data))
 		else
 			if type(data) == "table" then
-				for key in DEFAULTS do
-					if type(data[key]) == "number" then
+				for key, default in DEFAULTS do
+					if type(data[key]) == type(default) then
 						player:SetAttribute(key, data[key])
 					end
 				end
@@ -165,6 +166,14 @@ function PlayerData.tutorialStep(player: Player, event: string)
 	local updated = Tutorial.complete(flags, event)
 	if updated ~= flags then
 		player:SetAttribute("Tutorial", updated)
+	end
+end
+
+-- Cette méthode permet de noter le choix du bouton musique (true = coupée) lorsque le client l'envoie ; sauvegardé
+-- avec les données du joueur, ignoré si la valeur n'est pas un booléen.
+function PlayerData.setMusicOff(player: Player, off: any)
+	if type(off) == "boolean" then
+		player:SetAttribute("MusicOff", off)
 	end
 end
 

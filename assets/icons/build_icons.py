@@ -1,6 +1,6 @@
 # Icones d'interface dessinees en couleur (style des jeux de reference : objet 3D sature, contour noir epais) :
 # boutique (cadeau), index (livre), mannequins (buste du mannequin de crash-test), puissance (biceps), argent (liasse),
-# fleche d'objectif (triangle jaune).
+# fleche d'objectif (triangle jaune), musique (double croche violette).
 # Rend chaque icone sur fond transparent puis ajoute le contour noir par dilatation de l'alpha.
 # Usage : blender -b --factory-startup --python assets/icons/build_icons.py [-- nom1 nom2]
 # Sortie : assets/icons/export/<nom>.png (256 x 256) et assets/icons/export/sheet.png (planche de controle).
@@ -218,6 +218,27 @@ def build_arrow():
     obj.rotation_euler = (math.radians(-12), 0, 0)
 
 
+def build_music():
+    """Cette methode permet de modeliser la double croche violette du bouton musique (deux tetes ovales penchees,
+    hampes et barre) lorsque l'icone musique est rendue."""
+    purple = material("Note", "#A24BFF", roughness=0.3)
+    objs = []
+    for x in (-0.55, 0.65):
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.4, location=(x, 0, -0.85), segments=32, ring_count=16)
+        head = bpy.context.active_object
+        head.scale = (1.25, 0.6, 0.9)
+        head.rotation_euler = (0, math.radians(25), 0)
+        bpy.ops.object.transform_apply(scale=True, rotation=True)
+        head.data.materials.append(purple)
+        for poly in head.data.polygons:
+            poly.use_smooth = True
+        objs.append(head)
+    objs.append(box((0.18, 0.3, 1.75), (-0.17, 0, 0.0), purple, 0.06))
+    objs.append(box((0.18, 0.3, 1.75), (1.03, 0, 0.18), purple, 0.06))
+    objs.append(box((1.38, 0.3, 0.36), (0.43, 0, 0.92), purple, 0.08, rotation=(0, math.radians(-8.5), 0)))
+    parent_all(objs, (0, 0, math.radians(-10)))
+
+
 ICONS = {
     "shop": build_gift,
     "index": build_book,
@@ -225,6 +246,7 @@ ICONS = {
     "power": build_biceps,
     "cash": build_cash,
     "arrow": build_arrow,
+    "music": build_music,
 }
 
 
