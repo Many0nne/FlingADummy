@@ -611,14 +611,15 @@ local function onRepProgress()
 	end
 end
 
--- Cette méthode permet d'afficher la barre d'entraînement et de masquer le HUD en vol lorsque l'action du joueur ou
--- l'état du couloir changent.
+-- Cette méthode permet d'afficher la barre d'entraînement et de masquer le HUD en vol et pendant le tirage lorsque
+-- l'action du joueur ou l'état du couloir changent.
 local function refreshState()
 	local action = player:GetAttribute("Action")
 	local state = player:GetAttribute("LaneState")
 	trainBar.Visible = action == "Training"
-	root.Visible = state ~= "Flying"
-	if state == "Flying" or action == "Holding" then
+	-- Écran dégagé pendant le vol, l'atterrissage, la silhouette et la révélation, jusqu'au GO BACK (#60, comme 09 et 01)
+	root.Visible = state ~= "Flying" and state ~= "Result"
+	if state == "Flying" or state == "Result" or action == "Holding" then
 		for _, window in windows do
 			UIKit.closeWindow(window, true)
 		end
@@ -818,6 +819,12 @@ end
 -- l'annonce.
 function Hud.popup(options: UIKit.PopupOptions)
 	showPopup(options)
+end
+
+-- Cette méthode permet de réserver le haut de l'écran pendant `duration` s (l'objectif se tait) lorsque un bandeau
+-- d'annonce de tirage s'y affiche.
+function Hud.reserveTop(duration: number)
+	popupEndsAt = math.max(popupEndsAt, os.clock() + duration)
 end
 
 -- Cette méthode permet de savoir si un popup de palier occupe le haut de l'écran lorsque l'objectif s'affiche.

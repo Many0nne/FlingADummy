@@ -14,6 +14,7 @@ local Economy = require(Shared.Economy)
 local GameConfig = require(Shared.GameConfig)
 local Gauge = require(Shared.Gauge)
 local Remotes = require(Shared.Remotes)
+local RevealPlan = require(Shared.RevealPlan)
 local Traps = require(Shared.Traps)
 local Zones = require(Shared.Zones)
 
@@ -448,7 +449,7 @@ local function checkSmashed(list: { Flight })
 end
 
 -- Cette méthode permet de rendre la main au joueur (retour au hub derrière la bande) lorsque son résultat et son
--- tirage sont finis (GO BACK du client, ou RESULT_MAX_TIME) ; sans effet si ce résultat est déjà clos.
+-- tirage sont finis (GO BACK du client, ou délai RevealPlan.resultTime dépassé) ; sans effet si ce résultat est déjà clos.
 local function closeResult(player: Player, flight: Flight)
 	if results[player] ~= flight then
 		return
@@ -490,7 +491,18 @@ local function finish(flight: Flight, elapsed: number)
 		player:SetAttribute("LaneState", "Result")
 		results[player] = flight
 		remotes.LaunchResult:FireClient(player, result)
-		task.delay(GameConfig.RESULT_MAX_TIME, closeResult, player, flight)
+		-- Bandeau pour tous à partir de Legendary (#67) ; le client du gagnant l'affiche après son propre tirage
+		local prize = result.prize
+		if prize and RevealPlan.announces(prize.rarity) then
+			remotes.Announce:FireAllClients({
+				player = player.DisplayName,
+				name = prize.name,
+				rarity = prize.rarity,
+				odds = prize.odds,
+			})
+		end
+		-- Fin forcée sans GO BACK : plus tard pour une mise en scène plus longue (secret ≈ 30 s)
+		task.delay(RevealPlan.resultTime(prize and prize.rarity), closeResult, player, flight)
 	end
 	if RunService:IsStudio() then
 		print(

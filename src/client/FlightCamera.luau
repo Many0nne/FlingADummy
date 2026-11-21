@@ -135,6 +135,25 @@ function FlightCamera.showcase(focus: Vector3, height: number)
 	end)
 end
 
+-- Cette méthode permet de faire glisser la caméra de `from` à `to` en `duration` s (départ et arrivée en douceur,
+-- secousses comprises) lorsque la séquence du secret longe le tapis rouge de son décor ; stop ou showcase reprennent.
+function FlightCamera.dolly(from: CFrame, to: CFrame, duration: number)
+	FlightCamera.stop()
+	following = true
+	shake = 0
+	local camera = Workspace.CurrentCamera
+	camera.CameraType = Enum.CameraType.Scriptable
+	camera.FieldOfView = BASE_FOV
+	local start = os.clock()
+	RunService:BindToRenderStep(BIND_NAME, Enum.RenderPriority.Camera.Value + 1, function(dt)
+		local k = math.clamp((os.clock() - start) / math.max(duration, 0.01), 0, 1)
+		local eased = k * k * (3 - 2 * k)
+		shake *= math.exp(-SHAKE_DECAY * dt)
+		local jitter = Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * shake
+		camera.CFrame = from:Lerp(to, eased) + jitter
+	end)
+end
+
 -- Cette méthode permet de brancher la caméra de vol sur l'état du couloir lorsque le client démarre.
 function FlightCamera.init(localPlayer: Player)
 	player = localPlayer

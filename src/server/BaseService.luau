@@ -19,6 +19,7 @@ local Format = require(Shared.Format)
 local GameConfig = require(Shared.GameConfig)
 local Inventory = require(Shared.Inventory)
 local Rarity = require(Shared.Rarity)
+local RevealPlan = require(Shared.RevealPlan)
 local Tutorial = require(Shared.Tutorial)
 
 local CourseBuilder = require(script.Parent.CourseBuilder)
@@ -227,11 +228,18 @@ function BaseService.award(player: Player, luck: number): Prize?
 		return nil
 	end
 	local draws = (player:GetAttribute("Draws") :: number?) or 0
-	local entry = if draws == 0
-		then { id = Collection.STARTER, size = 1 }
-		else Collection.draw(luck, function()
-			return rng:NextNumber()
-		end)
+	local roll = function()
+		return rng:NextNumber()
+	end
+	-- Studio : DebugPrize impose le prochain tirage (rareté 1-7 ou son nom, ou « id:taille »), puis s'efface
+	local forced = if RunService:IsStudio() then RevealPlan.debugEntry(player:GetAttribute("DebugPrize"), roll) else nil
+	if forced then
+		player:SetAttribute("DebugPrize", nil)
+	end
+	local entry = if forced
+		then forced
+		elseif draws == 0 then { id = Collection.STARTER, size = 1 }
+		else Collection.draw(luck, roll)
 	player:SetAttribute("Draws", draws + 1)
 	local isNew = receive(player, data, entry)
 	local dummy = Collection.get(entry.id) :: Collection.Dummy
@@ -470,7 +478,8 @@ end
 -- autre valeur avec AUTO sans condition ;
 -- DebugGive = « id:taille » ajoute ce mannequin comme s'il venait d'être gagné ; DebugEquip = « id:taille » équipe
 -- son outil du Backpack (« » déséquipe) ; DebugInventory = « Action » ou
--- « Action|argument » (actions de BaseService.act).
+-- « Action|argument » (actions de BaseService.act). DebugPrize (lu par BaseService.award au prochain tirage, pas
+-- ici) : rareté 1-7 ou son nom (« Secret ») ou « id:taille », impose le mannequin gagné par le prochain lancer.
 local function bindDebug(player: Player)
 	player:GetAttributeChangedSignal("DebugPlace"):Connect(function()
 		local value = player:GetAttribute("DebugPlace")

@@ -4,7 +4,11 @@
 -- palier marqué d'un éclair blanc, d'étincelles, d'un anneau, d'une secousse et d'une exclamation colorée en haut
 -- (« Lucky! 1 IN 10 » → « Super lucky! 1 IN 150 »), puis roulement (la silhouette tremble) et révélation : éclair
 -- plein écran, mannequin en couleurs qui grossit, rayons ; rareté, nom, « NEW! », $/s et cote une seule fois, en haut
--- au centre (comme 09) ; bouton GO BACK. De retour au hub, panneau « Place your … » en bas au centre : la première
+-- au centre (comme 09) ; bouton GO BACK. La mise en scène monte avec la rareté (#67, paliers : Shared.RevealPlan,
+-- effets : Client.RevealFx) : révélation vive en Common ; silhouette qui hésite entre 2 ou 3 formes et confettis dès
+-- Rare ; ciel qui s'assombrit, rayons, cote qui grimpe longtemps, explosion et forte secousse dès Legendary ; séquence
+-- complète du secret (écran noir et phrase, décor dédié, portail, pièces, « SECRET!! »). Passable au clic après la
+-- première seconde. De retour au hub, panneau « Place your … » en bas au centre : la première
 -- pose se fait à la main (tutoriel : flèche vers un présentoir libre, invite « Place »). Ensuite la pose s'appuie sur
 -- la barre d'outils (#54) : mannequin équipé près d'un présentoir libre → invite « Place » ; le bouton AUTO, dans sa
 -- base ou tout près, pose le mannequin tenu, sinon le dernier gagné. La barre d'outils n'apparaît qu'au hub, libre.
@@ -13,6 +17,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local StarterGui = game:GetService("StarterGui")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -24,39 +29,53 @@ local Format = require(Shared:WaitForChild("Format"))
 local Inventory = require(Shared:WaitForChild("Inventory"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local RevealPlan = require(Shared:WaitForChild("RevealPlan"))
 local Tutorial = require(Shared:WaitForChild("Tutorial"))
 
 local FlightCamera = require(script.Parent.FlightCamera)
+local RevealFx = require(script.Parent.RevealFx)
 local UIKit = require(script.Parent.UIKit)
 
 local C = UIKit.COLORS
 local FEET = 3.82 -- du centre du torse au bas des pieds, échelle 1 (Shared.DummyShape)
 local HEIGHT = 6.7 -- hauteur du mannequin debout, échelle 1 (studs)
-local TEASE_FIRST = 0.45 -- silhouette seule avant le premier palier (s)
-local TEASE_PAUSE = 0.45 -- arrêt sur chaque palier atteint (éclair, exclamation) avant que la cote reparte (s)
 local TICK_GAP = 0.045 -- écart minimal entre deux tics du compteur de cote (s)
-local DRUMROLL = 1.1 -- roulement avant la révélation : la silhouette tremble de plus en plus (s)
-local AUTO_CLOSE = 5 -- GO BACK automatique après la révélation (s)
 local PROMPT_REFRESH = 0.25 -- s entre deux mises à jour des invites « Place »
 local AUTO_BOTTOM = 96 -- marge du bouton AUTO au bas de l'écran (px) : au-dessus de la barre d'outils Roblox
 local BLACK = Color3.fromRGB(12, 12, 16)
+local STORM = Color3.fromRGB(120, 90, 200) -- teinte du ciel assombri pendant le suspense (neutre : ne trahit pas la rareté)
 -- Exclamation de chaque palier selon la rareté du candidat (« Super chanceux ! », « Chance incroyable ! » de 01)
 local EXCLAIM =
 	{ "Hmm…", "Lucky!", "Super lucky!", "Incredible luck!", "LEGENDARY LUCK!", "MYTHIC LUCK!", "SECRET!!!" }
 
 local Prize = {}
 
+-- Tirage à l'écran : mannequin gagné, suite du suspense, sol du point d'atterrissage, palier de mise en scène
+type Active = {
+	prize: any,
+	entry: Collection.Entry,
+	sequence: { Collection.TeaseStep },
+	ground: Vector3,
+	plan: RevealPlan.Tier,
+	startedAt: number,
+	textsShown: boolean, -- rareté, nom et GO BACK affichés : plus rien à passer
+}
+
 local player: Player
 local remotes: Remotes.Remotes
 local gui: ScreenGui
 local token = 0
 local showing = false -- tirage à l'écran (GO BACK pas encore envoyé)
+local active: Active? = nil
 local worldModel: Model? = nil
 local glow: Highlight? = nil -- contour de la silhouette, à la couleur du palier
+local forms: { [number]: Model } = {} -- silhouettes construites, par indice dans la suite du suspense
+local bases: { [Model]: CFrame } = setmetatable({}, { __mode = "k" }) :: any -- position de repos (le roulement secoue autour)
 -- Suspense (haut de l'écran) : exclamation et cote du palier
 local tease: Frame
 local exclaimLabel: TextLabel
 local teaseOdds: TextLabel
+local skipHint: TextLabel
 local flash: Frame -- éclair blanc plein écran de la révélation
 -- Révélation (haut de l'écran)
 local reveal: Frame
@@ -128,8 +147,9 @@ local function groundAt(position: Vector3): Vector3
 end
 
 -- Cette méthode permet de construire le mannequin du tirage (en silhouette noire ou en couleurs) debout sur `ground`,
--- tourné vers la caméra (arrière de la piste), lorsque le tirage commence ou se révèle.
-local function buildStanding(entry: Collection.Entry, ground: Vector3, silhouette: boolean): Model
+-- tourné vers la caméra (arrière de la piste), lorsque le tirage commence ou se révèle ; `parent` nil le garde hors du
+-- monde (silhouette préparée pour l'hésitation).
+local function buildStanding(entry: Collection.Entry, ground: Vector3, silhouette: boolean, parent: Instance?): Model
 	local scale = Collection.scale(entry)
 	local variant: any = Collection.variant(entry)
 	if silhouette then
@@ -149,7 +169,8 @@ local function buildStanding(entry: Collection.Entry, ground: Vector3, silhouett
 	local position = ground + Vector3.new(0, FEET * scale, 0)
 	model:PivotTo(CFrame.lookAt(position, position - Vector3.zAxis));
 	(model.PrimaryPart :: BasePart).Anchored = true
-	model.Parent = Workspace
+	bases[model] = model:GetPivot()
+	model.Parent = parent
 	return model
 end
 
@@ -203,8 +224,9 @@ local function ring(ground: Vector3, scale: number)
 end
 
 -- Cette méthode permet de faire éclater un palier du suspense au centre `center` (éclair blanc qui gonfle et
--- s'efface, gerbe d'étincelles, contour de la silhouette qui flashe) lorsque la silhouette change de candidat.
-local function burst(center: Vector3, scale: number, color: Color3)
+-- s'efface, gerbe de `count` étincelles, contour de la silhouette qui flashe) lorsque la silhouette change de
+-- candidat ou que le mannequin se révèle.
+local function burst(center: Vector3, scale: number, color: Color3, count: number?)
 	local ball = UIKit.create("Part", {
 		Name = "TeaseBurst",
 		Shape = Enum.PartType.Ball,
@@ -237,7 +259,7 @@ local function burst(center: Vector3, scale: number, color: Color3)
 		Enabled = false,
 		Parent = holder,
 	})
-	sparks:Emit(28)
+	sparks:Emit(count or 28)
 	if glow then
 		glow.OutlineColor = color
 		glow.FillTransparency = 0.1
@@ -249,36 +271,85 @@ local function burst(center: Vector3, scale: number, color: Color3)
 	end)
 end
 
--- Cette méthode permet de remplacer la silhouette du tirage par celle d'un candidat (`step`), contour lumineux à la
--- couleur de sa rareté, lorsque le suspense passe au palier suivant.
-local function showSilhouette(step: Collection.TeaseStep, ground: Vector3)
-	if worldModel then
-		worldModel:Destroy()
+-- Cette méthode permet de retirer les silhouettes construites (suspense, hésitation) lorsque le mannequin se révèle
+-- ou que le tirage se termine.
+local function clearForms()
+	for _, model in forms do
+		bases[model] = nil
+		model:Destroy()
 	end
-	local model = buildStanding({ id = step.id, size = step.size }, ground, true)
-	worldModel = model
-	glow = UIKit.create("Highlight", {
+	forms = {}
+	if worldModel and not worldModel.Parent then
+		worldModel = nil
+	end
+end
+
+-- Cette méthode permet de construire (une seule fois) la silhouette du palier `index` de la suite, contour lumineux à
+-- la couleur de sa rareté, et dès Legendary les rayons et la colonne de lumière (Shared.RevealPlan.teaseEffects)
+-- lorsque le suspense ou l'hésitation en a besoin ; hors du monde tant qu'elle n'est pas montrée.
+local function formOf(index: number): Model
+	local existing = forms[index]
+	if existing then
+		return existing
+	end
+	local a = active :: Active
+	local step = a.sequence[index]
+	local entry = { id = step.id, size = step.size }
+	local model = buildStanding(entry, a.ground, true, nil)
+	local color = Rarity.get(step.rarity).color
+	UIKit.create("Highlight", {
 		DepthMode = Enum.HighlightDepthMode.Occluded,
 		FillColor = Color3.new(1, 1, 1),
 		FillTransparency = 1,
-		OutlineColor = Rarity.get(step.rarity).color,
+		OutlineColor = color,
 		OutlineTransparency = 0,
 		Parent = model,
 	})
-	growIn(model, 0.8)
+	local effects = RevealPlan.teaseEffects(a.prize.rarity, color)
+	if #effects > 0 then
+		DummyShape.addEffects(
+			{ Torso = model.PrimaryPart :: BasePart },
+			Collection.scale(entry),
+			{ effects = effects } :: any
+		)
+	end
+	forms[index] = model
+	return model
 end
 
--- Cette méthode permet de faire trembler la silhouette de plus en plus fort pendant `duration` s (roulement avant la
--- révélation) lorsque le dernier palier est affiché ; s'arrête si le tirage est interrompu (`current` périmé).
-local function drumroll(model: Model, scale: number, duration: number, current: number)
-	local base = model:GetPivot()
+-- Cette méthode permet de montrer la silhouette du palier `index` à la place de la précédente (remise à sa place de
+-- repos, sortie du monde) lorsque le suspense passe au palier suivant ou que la silhouette hésite.
+local function showForm(index: number, from: number?)
+	local model = formOf(index)
+	if worldModel and worldModel ~= model then
+		local previous = worldModel :: Model
+		local base = bases[previous]
+		if base then
+			previous:PivotTo(base)
+			previous.Parent = nil
+		else
+			previous:Destroy()
+		end
+	end
+	worldModel = model
+	model.Parent = Workspace
+	glow = model:FindFirstChildOfClass("Highlight")
+	growIn(model, from or 0.8)
+end
+
+-- Cette méthode permet de faire trembler la silhouette affichée de plus en plus fort pendant `duration` s (roulement
+-- avant la révélation) lorsque le dernier palier est affiché ; suit la silhouette du moment (hésitation) et s'arrête si
+-- le tirage est interrompu (`current` périmé).
+local function drumroll(scale: number, duration: number, current: number)
 	local start = os.clock()
 	local connection
 	connection = RunService.RenderStepped:Connect(function()
+		local model = worldModel
+		local base = model and bases[model]
 		local k = (os.clock() - start) / duration
-		if k >= 1 or current ~= token or not model.Parent then
+		if k >= 1 or current ~= token or not model or not base then
 			connection:Disconnect()
-			if model.Parent then
+			if model and base and model.Parent then
 				model:PivotTo(base)
 			end
 			return
@@ -290,11 +361,36 @@ local function drumroll(model: Model, scale: number, duration: number, current: 
 	end)
 end
 
--- Cette méthode permet de faire défiler la cote affichée de `from` à `to` (vite puis de plus en plus lentement, un
--- tic à chaque chiffre, de plus en plus aigu) lorsque le suspense monte vers le palier `index` ; cède jusqu'à la fin
--- et renvoie false si le tirage a été interrompu.
-local function climb(from: number, to: number, index: number, current: number): boolean
-	local duration = Collection.climbTime(from, to)
+-- Cette méthode permet de planifier l'hésitation de la silhouette entre ses dernières formes (Shared.RevealPlan) pendant
+-- le roulement lorsque le palier de mise en scène hésite (Rare et plus).
+local function hesitate(current: number)
+	local a = active :: Active
+	local list = RevealPlan.forms(a.prize.rarity, a.sequence)
+	if #list < 2 then
+		return
+	end
+	for _, index in list do
+		formOf(index) -- préparées d'avance : un changement ne reconstruit rien
+	end
+	for _, swap in RevealPlan.hesitation(#list, a.plan.drumroll) do
+		task.delay(swap.at, function()
+			if current ~= token then
+				return
+			end
+			local index = list[swap.form]
+			showForm(index, 0.92)
+			local step = a.sequence[index]
+			teaseOdds.Text = "1 IN " .. Format.short(step.odds)
+			teaseOdds.TextColor3 = Rarity.get(step.rarity).color:Lerp(Color3.new(1, 1, 1), 0.5)
+			UIKit.playSound("Click", 1.1 + 0.15 * swap.form)
+		end)
+	end
+end
+
+-- Cette méthode permet de faire défiler la cote affichée de `from` à `to` en `duration` s (vite puis de plus en plus
+-- lentement, un tic à chaque chiffre, de plus en plus aigu) lorsque le suspense monte vers le palier `index` ; cède
+-- jusqu'à la fin et renvoie false si le tirage a été interrompu.
+local function climb(from: number, to: number, duration: number, index: number, current: number): boolean
 	local start = os.clock()
 	local last = from
 	local lastTick = 0
@@ -320,12 +416,14 @@ local function climb(from: number, to: number, index: number, current: number): 
 	end
 end
 
--- Cette méthode permet de retirer le mannequin du tirage, le suspense, l'écran de révélation et les rayons lorsque le
--- tirage se termine (GO BACK, fin forcée par le serveur, nouveau lancer).
+-- Cette méthode permet de retirer le mannequin du tirage, le suspense, l'écran de révélation, les rayons et les effets
+-- du palier (ciel, décor du secret) lorsque le tirage se termine (GO BACK, fin forcée par le serveur, nouveau lancer).
 local function cleanup()
 	token += 1
 	showing = false
+	active = nil
 	player:SetAttribute("PrizePhase", nil) -- phase du tirage, locale (Client.Music)
+	clearForms()
 	if worldModel then
 		worldModel:Destroy()
 		worldModel = nil
@@ -335,9 +433,11 @@ local function cleanup()
 		rays:Destroy()
 		rays = nil
 	end
+	RevealFx.clear()
 	UIKit.closeWindow(tease, true)
 	UIKit.closeWindow(reveal, true)
 	goBack.Visible = false
+	skipHint.Visible = false
 end
 
 -- Cette méthode permet de clore le tirage et de rendre la main (le serveur ramène l'avatar au hub) lorsque le
@@ -350,30 +450,51 @@ local function finish()
 	remotes.ResultDone:FireServer()
 end
 
--- Cette méthode permet d'afficher la révélation (mannequin en couleurs, anneau, rayons et textes, GO BACK) lorsque la
--- dernière cote de la silhouette est passée.
-local function showReveal(prize: any, entry: Collection.Entry, ground: Vector3, current: number)
-	local size = Collection.SIZES[entry.size]
-	local scale = Collection.scale(entry)
+-- Cette méthode permet de faire apparaître le mannequin gagné en couleurs sur `ground` (anneaux, éclat, éclair plein
+-- écran, secousse, sons ; confettis dès Rare, explosion dès Legendary) lorsque le suspense se termine, que le secret
+-- sort du portail ou que le tirage est passé.
+local function revealModel(a: Active, ground: Vector3)
+	local scale = Collection.scale(a.entry)
+	local plan = a.plan
+	local color = Rarity.get(a.prize.rarity).color
+	clearForms()
 	if worldModel then
 		worldModel:Destroy()
 	end
 	glow = nil
-	local model = buildStanding(entry, ground, false)
+	local model = buildStanding(a.entry, ground, false, Workspace)
 	worldModel = model
-	player:SetAttribute("PrizePhase", if prize.isNew then "RevealNew" else "Reveal") -- fanfare : nouveau seulement
+	player:SetAttribute("PrizePhase", if a.prize.isNew then "RevealNew" else "Reveal") -- fanfare : nouveau seulement
 	growIn(model)
+	local center = ground + Vector3.new(0, HEIGHT * scale / 2, 0)
+	-- Révélation vive dès Common : double anneau, gerbe fournie, éclair franc, trois sons
 	ring(ground, scale)
-	burst(ground + Vector3.new(0, HEIGHT * scale / 2, 0), scale, Rarity.get(prize.rarity).color)
-	FlightCamera.shake(0.6)
-	-- Éclair blanc plein écran, comme le flash de révélation des références
-	flash.BackgroundTransparency = 0.15
+	task.delay(0.12, ring, ground, scale * 1.4)
+	burst(center, scale, color, 45)
+	FlightCamera.shake(plan.shake)
+	flash.BackgroundTransparency = 0.05
 	flash.Visible = true
-	local fade = TweenService:Create(flash, TweenInfo.new(0.45), { BackgroundTransparency = 1 })
+	local fade = TweenService:Create(flash, TweenInfo.new(0.5), { BackgroundTransparency = 1 })
 	fade.Completed:Once(function()
 		flash.Visible = false
 	end)
 	fade:Play()
+	UIKit.playSound("Whoosh", 1.5)
+	UIKit.playSound("Cash", 1.3)
+	RevealFx.confetti(color, plan.confetti)
+	if plan.explosion then
+		RevealFx.explosion(center, ground, scale, color)
+		UIKit.playSound("Crowd", 1)
+	end
+end
+
+-- Cette méthode permet d'afficher en haut au centre la rareté, le nom, « NEW! », le revenu et la cote du mannequin
+-- gagné, les rayons et le bouton GO BACK (automatique après le délai du palier) lorsque le mannequin vient de se révéler.
+local function revealTexts(a: Active, current: number)
+	a.textsShown = true
+	skipHint.Visible = false
+	local prize = a.prize
+	local size = Collection.SIZES[a.entry.size]
 	UIKit.closeWindow(tease, true)
 	local tier = Rarity.get(prize.rarity)
 	-- « BIG · RARE » comme « Grand et rare » de 09 (taille seulement si elle n'est pas normale)
@@ -391,10 +512,13 @@ local function showReveal(prize: any, entry: Collection.Entry, ground: Vector3, 
 	if prize.isNew then
 		UIKit.pop(newTag, 2)
 	end
+	if rays then
+		rays:Destroy()
+	end
 	rays = UIKit.rays(gui, {
 		position = UDim2.new(0.5, 0, 0, 110),
 		size = 360,
-		duration = AUTO_CLOSE,
+		duration = a.plan.autoClose,
 		color = tier.color,
 		count = 12,
 		zIndex = 0,
@@ -403,15 +527,148 @@ local function showReveal(prize: any, entry: Collection.Entry, ground: Vector3, 
 	UIKit.playSound("LevelUp")
 	goBack.Visible = true
 	UIKit.pop(goBack, 1.3)
-	task.delay(AUTO_CLOSE, function()
+	task.delay(a.plan.autoClose, function()
 		if current == token then
 			finish()
 		end
 	end)
 end
 
--- Cette méthode permet de jouer le tirage (silhouette, cotes qui grimpent, révélation) lorsque le résultat du lancer
--- a fini de compter ; sans mannequin gagné (données pas prêtes), rend la main tout de suite.
+-- Cette méthode permet de jouer la séquence du secret après le roulement (Shared.RevealPlan.CINEMATIC : écran noir et
+-- phrase lettre à lettre, décor dédié et caméra le long du tapis rouge, portail, sortie du mannequin et pluie de
+-- pièces, « SECRET!! » et cote complète) puis la révélation habituelle ; cède jusqu'à la fin.
+local function playSecret(a: Active, current: number)
+	local durations: { [string]: number } = {}
+	for _, step in RevealPlan.CINEMATIC do
+		durations[step.name] = step.duration
+	end
+	local scale = Collection.scale(a.entry)
+	local height = HEIGHT * scale
+	local color = Rarity.get(a.prize.rarity).color
+	local origin = RevealFx.stageOrigin(a.ground)
+	local focus = origin + Vector3.new(0, height / 2, 0)
+	local push = math.max(height, 5) * 2.2 + 4
+	local near = CFrame.lookAt(focus + Vector3.new(push * 0.25, height * 0.35 + 1.5, -push), focus)
+	local far = CFrame.lookAt(origin + Vector3.new(0, 5, -RevealFx.CARPET_LENGTH + 6), focus)
+	UIKit.closeWindow(tease, true)
+	UIKit.playSound("Thud", 0.6)
+	-- Écran noir : sous le noir, la silhouette laisse place au décor dédié, de nuit, caméra au bout du tapis
+	RevealFx.blackout(RevealPlan.secretLine(a.entry.id), durations.Blackout, function()
+		clearForms()
+		if worldModel then
+			worldModel:Destroy()
+			worldModel = nil
+		end
+		RevealFx.buildStage(origin)
+		RevealFx.darkenSky(color, true, 0.2)
+		FlightCamera.dolly(far, far, 0.01)
+	end)
+	task.wait(durations.Blackout)
+	if current ~= token then
+		return
+	end
+	FlightCamera.dolly(far, near, durations.Stage)
+	task.wait(durations.Stage)
+	if current ~= token then
+		return
+	end
+	FlightCamera.showcase(focus, height)
+	local open = RevealFx.portal(focus, math.max(height * 1.15, 8))
+	task.wait(durations.Portal)
+	if current ~= token then
+		return
+	end
+	open()
+	revealModel(a, origin)
+	RevealFx.coinRain(36)
+	task.wait(durations.Coins)
+	if current ~= token then
+		return
+	end
+	RevealFx.banner("SECRET!!", a.prize.odds, color, durations.Banner)
+	RevealFx.confetti(color, a.plan.confetti)
+	task.wait(durations.Banner)
+	if current == token then
+		revealTexts(a, current)
+	end
+end
+
+-- Cette méthode permet de passer le suspense et la séquence (au clic, après RevealPlan.SKIP_AFTER s) jusqu'à la
+-- révélation sur la piste lorsque le joueur clique pendant le tirage ; sans effet une fois les textes affichés.
+local function skip()
+	local a = active
+	if not a or not showing or a.textsShown or os.clock() - a.startedAt < RevealPlan.SKIP_AFTER then
+		return
+	end
+	token += 1
+	local current = token
+	-- Décor du secret retiré, ciel gardé (assombri dès Legendary) ; retour au point d'atterrissage
+	RevealFx.clear(true)
+	local height = HEIGHT * Collection.scale(a.entry)
+	FlightCamera.showcase(a.ground + Vector3.new(0, height / 2, 0), height)
+	revealModel(a, a.ground)
+	revealTexts(a, current)
+end
+
+-- Cette méthode permet de jouer le suspense (silhouette, cotes qui grimpent, roulement et hésitation) puis la
+-- révélation du palier de mise en scène lorsque le tirage commence ; cède jusqu'à la fin.
+local function playTease(a: Active, current: number)
+	task.wait(RevealPlan.TEASE_FIRST)
+	if current ~= token then
+		return
+	end
+	-- La cote défile en continu depuis 1 ; chaque palier atteint change la silhouette en son candidat et éclate
+	exclaimLabel.Text = ""
+	teaseOdds.Text = "1 IN 1"
+	teaseOdds.TextColor3 = Color3.new(1, 1, 1)
+	UIKit.openWindow(tease, false)
+	local rarity = a.prize.rarity
+	local shown = 1
+	for index, step in a.sequence do
+		if not climb(shown, step.odds, RevealPlan.climbTime(rarity, shown, step.odds), index, current) then
+			return
+		end
+		shown = step.odds
+		local scale = Collection.scale({ id = step.id, size = step.size })
+		if index > 1 then
+			showForm(index)
+		end
+		local tier = Rarity.get(step.rarity)
+		burst(a.ground + Vector3.new(0, HEIGHT * scale / 2, 0), scale, tier.color)
+		ring(a.ground, scale)
+		FlightCamera.shake(0.25 + 0.2 * index)
+		exclaimLabel.Text = EXCLAIM[math.clamp(step.rarity, 1, #EXCLAIM)]
+		exclaimLabel.TextColor3 = tier.color
+		teaseOdds.TextColor3 = tier.color:Lerp(Color3.new(1, 1, 1), 0.5)
+		UIKit.pop(exclaimLabel, 1.6)
+		UIKit.pop(teaseOdds, 1.4)
+		UIKit.playSound("Whoosh", 1.2 + index * 0.15)
+		task.wait(a.plan.pause)
+		if current ~= token then
+			return
+		end
+	end
+	if not worldModel then
+		return
+	end
+	-- Roulement : la silhouette tremble de plus en plus (et hésite entre ses dernières formes dès Rare)
+	drumroll(Collection.scale(a.entry), a.plan.drumroll, current)
+	hesitate(current)
+	UIKit.playSound("Crowd", 1.1)
+	task.wait(a.plan.drumroll)
+	if current ~= token then
+		return
+	end
+	if a.plan.cinematic then
+		playSecret(a, current)
+	else
+		revealModel(a, a.ground)
+		revealTexts(a, current)
+	end
+end
+
+-- Cette méthode permet de jouer le tirage (silhouette, cotes qui grimpent, révélation selon la rareté) lorsque le
+-- résultat du lancer a fini de compter ; sans mannequin gagné (données pas prêtes), rend la main tout de suite.
 function Prize.play(result: any)
 	cleanup()
 	local current = token
@@ -424,56 +681,35 @@ function Prize.play(result: any)
 	end
 	showing = true
 	player:SetAttribute("PrizePhase", "Tease")
-	local finalScale = Collection.scale(entry :: Collection.Entry)
-	local ground = groundAt(result.landing)
-	FlightCamera.showcase(ground + Vector3.new(0, HEIGHT * finalScale / 2, 0), HEIGHT * finalScale)
-	local sequence = Collection.teaseSequence(entry :: Collection.Entry)
+	local valid = entry :: Collection.Entry
+	local plan = RevealPlan.get(prize.rarity)
+	local a: Active = {
+		prize = prize,
+		entry = valid,
+		sequence = Collection.teaseSequence(valid),
+		ground = groundAt(result.landing),
+		plan = plan,
+		startedAt = os.clock(),
+		textsShown = false,
+	}
+	active = a
+	local finalScale = Collection.scale(valid)
+	FlightCamera.showcase(a.ground + Vector3.new(0, HEIGHT * finalScale / 2, 0), HEIGHT * finalScale)
+	if plan.darkSky then
+		RevealFx.darkenSky(STORM, false, 1.5)
+	end
 	-- Silhouette du premier candidat, seule un instant, avant le premier palier
-	showSilhouette(sequence[1], ground)
-	task.spawn(function()
-		task.wait(TEASE_FIRST)
-		-- La cote défile en continu depuis 1 ; chaque palier atteint change la silhouette en son candidat et éclate
-		exclaimLabel.Text = ""
-		teaseOdds.Text = "1 IN 1"
-		teaseOdds.TextColor3 = Color3.new(1, 1, 1)
-		UIKit.openWindow(tease, false)
-		local shown = 1
-		for index, step in sequence do
-			if not climb(shown, step.odds, index, current) then
-				return
-			end
-			shown = step.odds
-			local scale = Collection.scale({ id = step.id, size = step.size })
-			if index > 1 then
-				showSilhouette(step, ground)
-			end
-			local tier = Rarity.get(step.rarity)
-			burst(ground + Vector3.new(0, HEIGHT * scale / 2, 0), scale, tier.color)
-			ring(ground, scale)
-			FlightCamera.shake(0.25 + 0.2 * index)
-			exclaimLabel.Text = EXCLAIM[math.clamp(step.rarity, 1, #EXCLAIM)]
-			exclaimLabel.TextColor3 = tier.color
-			teaseOdds.TextColor3 = tier.color:Lerp(Color3.new(1, 1, 1), 0.5)
-			UIKit.pop(exclaimLabel, 1.6)
-			UIKit.pop(teaseOdds, 1.4)
-			UIKit.playSound("Whoosh", 1.2 + index * 0.15)
-			task.wait(TEASE_PAUSE)
-		end
-		if current ~= token or not worldModel then
-			return
-		end
-		-- Roulement : la dernière silhouette tremble de plus en plus, puis éclate en couleurs
-		drumroll(worldModel :: Model, finalScale, DRUMROLL, current)
-		UIKit.playSound("Crowd", 1.1)
-		task.wait(DRUMROLL)
-		if current == token then
-			showReveal(prize, entry :: Collection.Entry, ground, current)
+	showForm(1)
+	task.delay(RevealPlan.SKIP_AFTER, function()
+		if current == token and not a.textsShown then
+			skipHint.Visible = true
 		end
 	end)
+	task.spawn(playTease, a, current)
 end
 
 -- Cette méthode permet de construire l'écran de révélation (suspense puis révélation, haut au centre), l'éclair
--- plein écran et le bouton GO BACK lorsque le client démarre.
+-- plein écran, l'invite « Click to skip » et le bouton GO BACK lorsque le client démarre.
 local function buildReveal()
 	tease = UIKit.create("Frame", {
 		Name = "PrizeTease",
@@ -500,6 +736,21 @@ local function buildReveal()
 		StrokeThickness = 4,
 		ZIndex = 21,
 		Parent = tease,
+	})
+	skipHint = UIKit.text({
+		Name = "SkipHint",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -24),
+		Size = UDim2.fromOffset(300, 24),
+		Text = if UserInputService.TouchEnabled and not UserInputService.MouseEnabled
+			then "Tap to skip"
+			else "Click to skip",
+		TextSize = 20,
+		TextTransparency = 0.25,
+		TextColor3 = Color3.fromRGB(220, 224, 235),
+		Visible = false,
+		ZIndex = 21,
+		Parent = gui,
 	})
 	flash = UIKit.create("Frame", {
 		Name = "RevealFlash",
@@ -781,6 +1032,7 @@ function Prize.init(localPlayer: Player, createdRemotes: Remotes.Remotes, screen
 	player = localPlayer
 	remotes = createdRemotes
 	gui = screen
+	RevealFx.init()
 	buildReveal()
 	buildPlacePanel()
 	for _, prompt in CollectionService:GetTagged(Collection.PROMPT_TAG) do
@@ -800,6 +1052,21 @@ function Prize.init(localPlayer: Player, createdRemotes: Remotes.Remotes, screen
 		end
 	end)
 	RunService.Heartbeat:Connect(refreshPrompts)
+	-- Clic, toucher, Espace ou A de la manette : passe le tirage (après la première seconde)
+	UserInputService.InputBegan:Connect(function(input, processed)
+		local kind = input.UserInputType
+		if
+			not processed
+			and (
+				kind == Enum.UserInputType.MouseButton1
+				or kind == Enum.UserInputType.Touch
+				or input.KeyCode == Enum.KeyCode.Space
+				or input.KeyCode == Enum.KeyCode.ButtonA
+			)
+		then
+			skip()
+		end
+	end)
 end
 
 return Prize
