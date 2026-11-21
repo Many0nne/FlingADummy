@@ -5,7 +5,7 @@ local GameConfig = {
 	SLOT_COUNT          = 4,      -- places par serveur (MaxPlayers du projet Rojo) : base, appareil, colonne d'obstacles
 	SLOT_SPACING        = 14,     -- largeur d'une colonne d'obstacles (points de lancer de test), axe X (studs)
 	TRACK_WIDTH         = 80,     -- largeur du fond du canyon (studs)
-	COURSE_LENGTH       = 2400,   -- longueur de la piste, axe +Z (studs = mètres affichés)
+	COURSE_LENGTH       = 6000,   -- longueur de la piste, axe +Z (studs = mètres affichés ; 2 400 avant #97)
 	SIDE_WALL_HEIGHT    = 260,    -- paroi invisible au-dessus des gradins : garde les mannequins dans le canyon
 	HUB_WIDTH           = 180,    -- hub (bases et leurs appareils) derrière la zone de lancer, axe X
 	HUB_DEPTH           = 130,    -- profondeur du hub, axe -Z, depuis l'arrière de la zone de lancer
@@ -66,7 +66,7 @@ local GameConfig = {
 	-- Fin de vol
 	REST_SPEED          = 3,      -- vitesse du torse en dessous de laquelle le mannequin est arrêté
 	REST_TIME           = 1.0,    -- durée d'arrêt avant de compter le résultat (s)
-	MAX_FLIGHT_TIME     = 16,
+	MAX_FLIGHT_TIME     = 22,     -- garde-fou (s) : un vol de 4,4 B met 14 à 16 s pour glisser jusqu'au bout des 6 km (#97)
 	KILL_Y              = -40,    -- mannequin tombé du parcours
 	RESULT_MAX_TIME     = 20,     -- résultat et tirage : fin forcée si le client ne signale pas GO BACK (s, minimum ; plus long selon la rareté : Shared.RevealPlan.resultTime)
 	RESULT_CLEAR_TIME   = 4.5,    -- mannequin d'un joueur parti pendant son résultat retiré après ce délai (s)

@@ -53,10 +53,33 @@ return function(T, Loader)
 		end)
 
 		T.it("ventilateur, vague, tremplin, canon et propulseur poussent vers l'avant", function()
-			for _, kind in { "Fan", "Wave", "SkiJump", "Cannon", "Booster" } do
+			for _, kind in { "Fan", "Wave", "SkiJump", "Cannon", "Booster", "Rainbow", "Wormhole" } do
 				T.expect(Traps.react(kind, sliding, Vector3.zero).Z >= sliding.Z + 25, kind)
 			end
 		end)
+
+		T.it("geyser, cristal et fantôme renvoient vers le haut ; le laser freine (#97)", function()
+			T.expect(Traps.react("Geyser", sliding, Vector3.zero).Y >= 90, "geyser")
+			T.expect(Traps.react("Bumper", falling, Vector3.zero).Y >= 50, "cristal")
+			T.expect(Traps.react("Ghost", sliding, Vector3.zero).Y >= 60, "fantôme")
+			local laser = Traps.react("Laser", Vector3.new(0, 0, 200), Vector3.zero)
+			T.expect(laser.Z < 200, "laser : freine (" .. laser.Z .. ")")
+		end)
+
+		T.it(
+			"n'arrête pas la glissade des vols à pleine puissance après 3,6 km (≥ 80 % de l'élan gardé)",
+			function()
+				-- Mesuré en Studio (#97) : un vol de 4,4 B atterrit vers 3,7 km puis glisse jusqu'au bout à 200-450 studs/s
+				local Zones = loader:require("src/shared/Zones")
+				local fast = Vector3.new(0, 0, 300)
+				for _, zone in Zones.LIST do
+					if zone.start >= 3600 then
+						local after = Traps.react(zone.trap, fast, Vector3.zero)
+						T.expect(after.Z >= 0.8 * fast.Z, zone.trap .. " : " .. after.Z .. " studs/s gardés")
+					end
+				end
+			end
+		)
 
 		T.it("le rondin pousse dans l'axe de la piste, dans le sens de sa poussée", function()
 			local ahead = Traps.react("SwingLog", sliding, Vector3.zAxis)
@@ -156,10 +179,34 @@ return function(T, Loader)
 		end)
 
 		T.it("les pièges sans cycle agissent toujours", function()
-			for _, kind in { "Trampoline", "Fan", "Booster", "Lava" } do
+			for _, kind in { "Trampoline", "Fan", "Booster", "Lava", "Bumper", "Rainbow", "Wormhole" } do
 				T.expect(Traps.active(kind, 12.34, 0.5), kind)
 			end
 		end)
+
+		T.it("le fantôme n'emporte que sorti de sa tombe à plus de la moitié de sa course (#97)", function()
+			local cycle = Traps.CYCLES.Ghost
+			for phase = 0, 0.995, 0.005 do
+				local out = animated("Ghost", "Press", phase, 1)
+				if Traps.active("Ghost", phase * cycle.period, 0) then
+					T.expect(out >= 0.5, string.format("phase %.3f : sorti à %.0f %%", phase, out * 100))
+				elseif out >= 0.6 then
+					T.expect(false, string.format("phase %.3f : sorti à %.0f %% mais inactif", phase, out * 100))
+				end
+			end
+		end)
+
+		T.it(
+			"geyser et laser n'agissent que pendant leur phase allumée, éteints une bonne partie du cycle",
+			function()
+				for _, kind in { "Geyser", "Laser" } do
+					local cycle = Traps.CYCLES[kind]
+					T.expect(Traps.active(kind, (cycle.from + 0.01) * cycle.period, 0), kind .. " allumé")
+					T.expect(not Traps.active(kind, (cycle.to + 0.05) * cycle.period, 0), kind .. " éteint")
+					T.expect(cycle.to - cycle.from <= 0.5, kind .. " : éteint au moins la moitié du cycle")
+				end
+			end
+		)
 
 		T.it("le rondin ne frappe que lorsqu'il passe dans la boîte, en bas de son balancement", function()
 			local period = Traps.CYCLES.SwingLog.period

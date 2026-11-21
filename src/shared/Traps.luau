@@ -68,6 +68,28 @@ Traps.KINDS = {
 	Booster    = { label = "BOOST!",    sound = "Rocket", burst = "Sparks",   height = 89,  depth = 6,
 	               bottom = 81, width = 8,
 	               keep = 1,    forward = 70,  side = 0,  up = 25,  restitution = 0,   spin = 0,  bones = 1 },
+	-- Piste prolongée (#97) ----------------------------------------------------------------------------------------
+	-- Mars : geyser de poussière, projette à la verticale pendant son éruption (Traps.CYCLES)
+	Geyser     = { label = "ERUPTION!", sound = "Gust",   burst = "Dust",     height = 30,  depth = 8,
+	               keep = 0.85, forward = 20,  side = 0,  up = 95,  restitution = 0,   spin = 2,  bones = 1 },
+	-- Grotte de cristal : rebond sur un massif de cristaux, renvoie haut en gardant l'élan
+	Bumper     = { label = "PING!",     sound = "Clang",  burst = "Stars",    height = 8,   depth = 10,
+	               keep = 0.9,  forward = 15,  side = 0,  up = 55,  restitution = 0.6, spin = 8,  bones = 2 },
+	-- Ville néon : portique laser qui grille pendant sa phase allumée et freine un peu. Les vols à pleine puissance
+	-- atterrissent vers 3,7 km et glissent jusqu'au bout : à 55 % d'élan gardé, deux lasers arrêtaient un vol de 4,4 B à
+	-- 4,1 km (mesuré en Studio, #97), la fin de piste devenait un pile ou face
+	Laser      = { label = "ZAP!",      sound = "Sizzle", burst = "Sparks",   height = 14,  depth = 4,
+	               keep = 0.85, forward = 0,   side = 0,  up = 30,  restitution = 0,   spin = 12, bones = 2 },
+	-- Royaume des nuages : toboggan arc-en-ciel, relance vers l'avant et vers le haut
+	Rainbow    = { label = "WHEEE!",    sound = "Whoosh", burst = "Confetti", height = 10,  depth = 14,
+	               keep = 1,    forward = 40,  side = 0,  up = 40,  restitution = 0,   spin = 0,  bones = 1 },
+	-- Château hanté : fantôme qui jaillit de sa tombe et emporte le mannequin en tournoyant (sur la glissade des vols à
+	-- pleine puissance, comme le laser : il freine peu)
+	Ghost      = { label = "BOO!",      sound = "Spring", burst = "Wind",     height = 12,  depth = 8,
+	               keep = 0.85, forward = 20,  side = 0,  up = 70,  restitution = 0,   spin = 9,  bones = 2 },
+	-- Galaxie : portail de trou de ver dressé sur la piste (pas suspendu, contrairement à l'anneau propulseur)
+	Wormhole   = { label = "WARP!",     sound = "Rocket", burst = "Sparks",   height = 14,  depth = 4,
+	               keep = 1,    forward = 55,  side = 0,  up = 45,  restitution = 0,   spin = 12, bones = 1 },
 } :: { [string]: Kind }
 
 Traps.MOTION_TAG = "TrapMotion" -- pièce mobile d'un piège (pale, rondin, presse…), animée par chaque client
@@ -82,6 +104,9 @@ Traps.CYCLES = {
 	JackBox  = { period = 1.8, from = 0.11, to = 0.65 }, -- diable sorti à plus de la moitié de sa course
 	Magnet   = { period = 3,   from = 0,    to = 0.4  }, -- électroaimant allumé (plaque lumineuse, étincelles)
 	SwingLog = { period = 2.2, from = 0,    to = 1    }, -- voir `swingHits`
+	Geyser   = { period = 3,   from = 0,    to = 0.35 }, -- éruption (bouche et panache allumés)
+	Laser    = { period = 2,   from = 0,    to = 0.5  }, -- faisceaux allumés
+	Ghost    = { period = 2.4, from = 0.11, to = 0.65 }, -- fantôme sorti à plus de la moitié de sa course (comme le diable)
 } :: { [string]: { period: number, from: number, to: number } }
 
 -- Rondin : balance de ±SWING_AMPLITUDE degrés au bout d'un bras de SWING_ARM studs, pivot (poutre) à SWING_PIVOT studs
@@ -95,6 +120,9 @@ Traps.SWING_HIT = 4
 
 Traps.POWER_PART = "Power" -- pièce d'une pièce mobile allumée seulement pendant la phase active (plaque de l'aimant)
 Traps.POWER_OFF = Color3.fromRGB(55, 60, 70) -- pièce `POWER_PART` éteinte ; allumée : attribut PowerColor, néon
+-- Attribut d'une pièce `POWER_PART` qui disparaît éteinte (faisceau laser, panache) : sa transparence allumée ; éteinte,
+-- elle est invisible
+Traps.POWER_FADE = "PowerTransparency"
 
 -- Cette méthode permet de donner le décalage de phase d'un piège posé en (`x`, `z`) lorsque le client l'anime ou que
 -- le serveur vérifie s'il agit : deux pièges voisins ne battent pas en même temps, et tous voient la même phase.

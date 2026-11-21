@@ -291,7 +291,14 @@ local function build(gui: ScreenGui)
 	})
 	UIKit.corner(zoneBanner, 21)
 	UIKit.outline(zoneBanner, 3)
-	zoneLabel = UIKit.text({ Size = UDim2.fromScale(1, 1), TextSize = 28, Parent = zoneBanner })
+	-- Texte réduit seulement s'il ne tient pas (« HAUNTED CASTLE », #97) ; 28 px pour les autres noms
+	zoneLabel = UIKit.text({
+		Size = UDim2.new(1, -20, 1, -4),
+		Position = UDim2.fromOffset(10, 2),
+		TextScaled = true,
+		Parent = zoneBanner,
+	})
+	UIKit.create("UITextSizeConstraint", { MaxTextSize = 28, Parent = zoneLabel })
 	local stats = UIKit.create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 206),

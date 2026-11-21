@@ -2,7 +2,8 @@
 -- bouger lui-même les modèles étiquetés Traps.MOTION_TAG par Server.TrapProps (mouvement : Shared.Traps.motion), et
 -- seulement ceux proches de sa caméra. Rien ne se réplique à chaque image. Horloge et phase sont celles que le serveur
 -- prend pour déclencher le piège (Shared.Traps.active) : la pièce frappe quand elle agit. Les pièces nommées
--- Traps.POWER_PART (plaque de l'aimant) ne s'allument que pendant la phase active.
+-- Traps.POWER_PART (plaque de l'aimant, bouche du geyser, faisceaux laser) ne s'allument que pendant la phase active ;
+-- celles qui portent l'attribut Traps.POWER_FADE disparaissent éteintes.
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -23,6 +24,7 @@ type Mover = {
 	kind: string?, -- piège (Shared.Traps.KINDS) de la pièce mobile
 	power: { BasePart }, -- pièces allumées pendant la phase active
 	lit: boolean?, -- état affiché des pièces `power`
+	parked: boolean?, -- remise au repos depuis qu'elle est hors de portée de la caméra
 }
 
 local movers: { [Model]: Mover } = {}
@@ -71,6 +73,11 @@ local function setPower(mover: Mover, lit: boolean)
 		part.Material = if lit then Enum.Material.Neon else Enum.Material.Metal -- éteinte : état construit par le serveur
 		local on = part:GetAttribute("PowerColor")
 		part.Color = if lit and typeof(on) == "Color3" then on else Traps.POWER_OFF
+		-- Faisceau, panache : invisibles éteints (Traps.POWER_FADE)
+		local fade = part:GetAttribute(Traps.POWER_FADE)
+		if type(fade) == "number" then
+			part.Transparency = if lit then fade else 1
+		end
 		for _, emitter in part:GetChildren() do
 			if emitter:IsA("ParticleEmitter") then
 				emitter.Enabled = lit
@@ -96,8 +103,14 @@ local function step()
 			setPower(mover, Traps.active(mover.kind, now, mover.offset))
 		end
 		if (mover.home.Position - eye).Magnitude > Traps.MOTION_RANGE then
+			-- Hors de portée : pièce remise une fois au repos (fantôme rentré sous terre), pas figée en plein mouvement
+			if not mover.parked then
+				model:PivotTo(mover.home)
+				mover.parked = true
+			end
 			continue
 		end
+		mover.parked = false
 		local t = now + mover.offset * mover.period
 		model:PivotTo(mover.home * Traps.motion(mover.motion, t, mover.axis, mover.amplitude, mover.period))
 	end

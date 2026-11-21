@@ -172,6 +172,12 @@ local function simulate(seed: number, seconds: number): { [string]: number }
 				mark("power:" .. Format.short(threshold))
 			end
 		end
+		-- Repères de la piste prolongée (#97) : fin de la Moon Base, Neon City, Haunted Castle, bout de piste
+		for _, meters in { 2400, 3600, 4800 } do
+			if distanceFor(power) >= meters then
+				mark(string.format("track:%.1fkm", meters / 1000))
+			end
+		end
 		if distanceFor(power) >= GameConfig.COURSE_LENGTH then
 			mark("trackEnd")
 		end
@@ -314,6 +320,9 @@ for _, key in
 		"power:100M",
 		"power:1B",
 		"power:10B",
+		"track:2.4km",
+		"track:3.6km",
+		"track:4.8km",
 		"trackEnd",
 		"income:100",
 		"income:1K",

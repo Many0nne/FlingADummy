@@ -470,6 +470,227 @@ builders.teddy = function(parent, at, rng, solid)
 	put(parent, at, Vector3.new(2.4, 1, 1) * s, Vector3.new(0, 4.9 * s, -1.9 * s), rgb(235, 50, 60), false)
 end
 
+-- Piste prolongée (#97) : décor des six thèmes de 2,4 à 6 km, peu de blocs par élément (la piste fait 6 km)
+
+-- Cette méthode permet de construire un rocher rouille de Mars lorsque l'on habille une zone.
+builders.marsrock = function(parent, at, rng, solid)
+	boulder(parent, at, rng, solid, rgb(185, 80, 45))
+end
+
+-- Cette méthode permet de construire un cratère martien (couronne de blocs rouille autour d'un fond sombre) lorsque
+-- l'on habille une zone.
+builders.marscrater = function(parent, at, rng)
+	local rim = rgb(205, 100, 60)
+	put(parent, at, Vector3.new(6, 0.3, 6), Vector3.new(0, 0.15, 0), rgb(120, 50, 35), false)
+	for i = 0, 5 do
+		local angle = i * math.pi / 3 + rng:NextNumber(-0.2, 0.2)
+		put(
+			parent,
+			at,
+			Vector3.new(3, 1.4, 3),
+			Vector3.new(math.cos(angle) * 4.5, 0.7, math.sin(angle) * 4.5),
+			rim,
+			false
+		)
+	end
+end
+
+-- Cette méthode permet de dresser une antenne radar (mât gris, parabole blanche inclinée, pointe rouge) lorsque l'on
+-- habille Mars.
+builders.radar = function(parent, at, _rng, solid)
+	put(parent, at, Vector3.new(3, 1, 3), Vector3.new(0, 0.5, 0), rgb(120, 120, 135), solid)
+	put(parent, at, Vector3.new(0.8, 6, 0.8), Vector3.new(0, 4, 0), rgb(150, 150, 165), solid)
+	local dish = at * CFrame.new(0, 7.4, 0) * CFrame.Angles(math.rad(-35), 0, 0)
+	Build.block(parent, Vector3.new(6, 0.6, 6), dish, WHITE, solid)
+	Build.block(parent, Vector3.new(0.6, 0.6, 0.6), dish * CFrame.new(0, 2, 0), rgb(235, 50, 50), false)
+end
+
+-- Cette méthode permet de dresser un grand cristal lumineux entouré de deux petits lorsque l'on habille la grotte de
+-- cristal.
+builders.bigcrystal = function(parent, at, rng, solid)
+	local colors = { rgb(120, 230, 255), rgb(200, 120, 255), rgb(255, 120, 220) }
+	local h = snap(rng, 9, 16, 1)
+	for i, size in { Vector3.new(2.8, h, 2.8), Vector3.new(1.6, h * 0.45, 1.6), Vector3.new(1.4, h * 0.35, 1.4) } do
+		local offset = Vector3.new(if i == 1 then 0 else (i - 2.5) * 5, size.Y / 2, if i == 1 then 0 else 1)
+		local tilt = Vector3.new(rng:NextNumber(-12, 12), 0, rng:NextNumber(-12, 12))
+		local crystal = put(parent, at, size, offset, colors[rng:NextInteger(1, #colors)], i == 1 and solid, tilt)
+		crystal.Material = Enum.Material.Neon
+		crystal.Transparency = 0.2
+	end
+end
+
+-- Cette méthode permet d'empiler une stalagmite de roche violette (trois blocs de plus en plus fins) lorsque l'on
+-- habille la grotte de cristal.
+builders.stalagmite = function(parent, at, rng, solid)
+	local s = snap(rng, 0.8, 1.4, 0.2)
+	local rock = rgb(95, 70, 150)
+	put(parent, at, Vector3.new(4, 3, 4) * s, Vector3.new(0, 1.5 * s, 0), rock, solid)
+	put(parent, at, Vector3.new(2.6, 3, 2.6) * s, Vector3.new(0, 4.5 * s, 0), Build.shade(rock, 1.15), solid)
+	put(parent, at, Vector3.new(1.4, 2.6, 1.4) * s, Vector3.new(0, 7.3 * s, 0), Build.shade(rock, 1.3), solid)
+end
+
+-- Cette méthode permet de construire un immeuble de la ville néon (tour sombre, trois ceintures lumineuses, antenne)
+-- lorsque l'on habille une zone.
+builders.skyscraper = function(parent, at, rng, solid)
+	local bodies = { rgb(50, 45, 95), rgb(35, 50, 90), rgb(70, 40, 100) }
+	local neons = { rgb(255, 60, 200), rgb(60, 230, 255), rgb(255, 230, 60), rgb(120, 255, 120) }
+	local w = snap(rng, 6, 9, 1)
+	local h = snap(rng, 14, 30, 2)
+	put(parent, at, Vector3.new(w, h, w), Vector3.new(0, h / 2, 0), bodies[rng:NextInteger(1, #bodies)], solid)
+	local neon = neons[rng:NextInteger(1, #neons)]
+	for k = 1, 3 do
+		-- Ceinture un peu plus large que la tour : aucune face confondue avec la sienne
+		local band = put(parent, at, Vector3.new(w + 0.3, 0.6, w + 0.3), Vector3.new(0, h * k / 4, 0), neon, false)
+		band.Material = Enum.Material.Neon
+	end
+	put(parent, at, Vector3.new(0.5, 4, 0.5), Vector3.new(0, h + 2, 0), rgb(200, 200, 210), false)
+end
+
+-- Cette méthode permet de planter une enseigne néon (poteau, panneau noir, cadre lumineux) lorsque l'on habille la
+-- ville néon.
+builders.neonsign = function(parent, at, rng, solid)
+	local neons = { rgb(255, 60, 200), rgb(60, 230, 255), rgb(255, 230, 60) }
+	put(parent, at, Vector3.new(0.8, 8, 0.8), Vector3.new(0, 4, 0), rgb(60, 60, 70), solid)
+	local frame =
+		put(parent, at, Vector3.new(7, 4, 0.6), Vector3.new(0, 9.5, 0), neons[rng:NextInteger(1, #neons)], false)
+	frame.Material = Enum.Material.Neon
+	put(parent, at, Vector3.new(6, 3, 0.8), Vector3.new(0, 9.5, 0), rgb(25, 25, 35), false)
+end
+
+-- Cette méthode permet de planter un lampadaire (mât, bras, lanterne lumineuse) lorsque l'on habille la ville néon.
+builders.streetlamp = function(parent, at, _rng, solid)
+	local metal = rgb(70, 70, 85)
+	put(parent, at, Vector3.new(0.8, 10, 0.8), Vector3.new(0, 5, 0), metal, solid)
+	put(parent, at, Vector3.new(3, 0.6, 0.6), Vector3.new(1.1, 10, 0), metal, false)
+	local lamp = put(parent, at, Vector3.new(1.4, 0.8, 1.4), Vector3.new(2.2, 9.5, 0), rgb(255, 235, 150), false)
+	lamp.Material = Enum.Material.Neon
+end
+
+-- Cette méthode permet de faire flotter un nuage en cubes blancs lorsque l'on habille le royaume des nuages.
+builders.cloud = function(parent, at, rng)
+	local y = snap(rng, 6, 14, 1)
+	local count = rng:NextInteger(3, 4)
+	for i = 1, count do
+		local size = snap(rng, 3, 5, 0.5)
+		-- Cubes centrés sur le repère, quel que soit leur nombre
+		local offset = Vector3.new((i - (count + 1) / 2) * 2.6, y + rng:NextNumber(-0.6, 0.6), rng:NextNumber(-1, 1))
+		put(parent, at, Vector3.one * size, offset, if i % 2 == 0 then WHITE else rgb(230, 242, 255), false)
+	end
+end
+
+-- Cette méthode permet de dresser un arc-en-ciel en blocs (trois bandes en arc, pieds dans deux nuages) lorsque l'on
+-- habille le royaume des nuages.
+builders.rainbow = function(parent, at)
+	local bands = { rgb(255, 70, 70), rgb(255, 220, 50), rgb(70, 170, 255) }
+	for b, color in bands do
+		local radius = 9 - (b - 1) * 1.4
+		for k = 0, 4 do
+			local angle = math.pi * (k + 0.5) / 5
+			local cframe = at
+				* CFrame.new(math.cos(angle) * radius, math.sin(angle) * radius, 0)
+				* CFrame.Angles(0, 0, angle - math.pi / 2)
+			Build.block(parent, Vector3.new(2 * radius * math.sin(math.pi / 10) + 0.4, 1.4, 1.2), cframe, color, false)
+		end
+	end
+	for _, side in { -1, 1 } do
+		put(parent, at, Vector3.new(4, 2.4, 3), Vector3.new(side * 7.6, 1.2, 0), WHITE, false)
+	end
+end
+
+-- Cette méthode permet de faire flotter une petite île (roche en pointe, herbe, arbre) lorsque l'on habille le royaume
+-- des nuages.
+builders.floatisland = function(parent, at, rng)
+	local y = snap(rng, 7, 13, 1)
+	put(parent, at, Vector3.new(7, 1.4, 7), Vector3.new(0, y, 0), rgb(115, 230, 85), false)
+	put(parent, at, Vector3.new(6, 2, 6), Vector3.new(0, y - 1.7, 0), rgb(150, 105, 70), false)
+	put(parent, at, Vector3.new(3, 2, 3), Vector3.new(0, y - 3.7, 0), rgb(125, 85, 55), false)
+	put(parent, at, Vector3.new(1, 3, 1), Vector3.new(1, y + 2.2, 0), TRUNK, false)
+	put(parent, at, Vector3.new(3.4, 3, 3.4), Vector3.new(1, y + 5, 0), LEAF, false)
+end
+
+-- Cette méthode permet de poser une citrouille-lanterne (yeux et bouche lumineux, queue verte) lorsque l'on habille le
+-- château hanté.
+builders.pumpkin = function(parent, at, rng, solid)
+	local s = snap(rng, 0.8, 1.6, 0.2)
+	local glowing = rgb(255, 200, 60)
+	put(parent, at, Vector3.new(4, 3.2, 4) * s, Vector3.new(0, 1.6 * s, 0), rgb(255, 125, 20), solid)
+	put(parent, at, Vector3.new(0.8, 1, 0.8) * s, Vector3.new(0, 3.7 * s, 0), rgb(70, 150, 50), false)
+	for _, side in { -1, 1 } do
+		local eye =
+			put(parent, at, Vector3.new(0.8, 0.8, 0.3) * s, Vector3.new(side * 0.9, 2.2, -2.05) * s, glowing, false)
+		eye.Material = Enum.Material.Neon
+	end
+	local mouth = put(parent, at, Vector3.new(2.4, 0.6, 0.3) * s, Vector3.new(0, 1.1, -2.05) * s, glowing, false)
+	mouth.Material = Enum.Material.Neon
+end
+
+-- Cette méthode permet de planter une pierre tombale (stèle arrondie en blocs, croix gravée, terre) lorsque l'on habille
+-- le château hanté.
+builders.gravestone = function(parent, at, _rng, solid)
+	local stone = rgb(150, 145, 160)
+	put(parent, at, Vector3.new(4, 0.4, 5), Vector3.new(0, 0.2, 1.5), rgb(85, 60, 45), false)
+	put(parent, at, Vector3.new(3, 4, 1), Vector3.new(0, 2, 0), stone, solid)
+	put(parent, at, Vector3.new(2, 0.8, 1), Vector3.new(0, 4.4, 0), stone, solid)
+	put(parent, at, Vector3.new(0.4, 1.8, 0.2), Vector3.new(0, 2.6, -0.6), rgb(90, 85, 100), false)
+end
+
+-- Cette méthode permet de tendre une toile d'araignée (fils blancs en croix et en losange, araignée noire) lorsque
+-- l'on habille le château hanté.
+builders.spiderweb = function(parent, at)
+	local silk = rgb(235, 235, 245)
+	local center = Vector3.new(0, 7, 0)
+	for _, angle in { 0, 45, 90, 135 } do
+		put(parent, at, Vector3.new(10, 0.15, 0.15), center, silk, false, Vector3.new(0, 0, angle))
+	end
+	for _, r in { 2, 4 } do
+		for k = 0, 3 do
+			local a = math.rad(k * 90 + 45)
+			local offset = center + Vector3.new(math.cos(a) * r * 0.707, math.sin(a) * r * 0.707, 0)
+			put(parent, at, Vector3.new(r * 1.41, 0.15, 0.15), offset, silk, false, Vector3.new(0, 0, k * 90 - 45))
+		end
+	end
+	put(parent, at, Vector3.new(1, 1, 1), center + Vector3.new(1.5, -1.5, -0.3), rgb(30, 30, 35), false)
+end
+
+-- Cette méthode permet de faire flotter une planète (sphère colorée, anneau) dans le ciel de la galaxie lorsque l'on
+-- habille une zone.
+builders.planet = function(parent, at, rng)
+	local colors = { rgb(255, 140, 60), rgb(90, 200, 255), rgb(255, 90, 160), rgb(140, 230, 120) }
+	local size = snap(rng, 5, 10, 1)
+	local center = Vector3.new(0, snap(rng, 14, 26, 2), 0)
+	local planet = put(parent, at, Vector3.one * size, center, colors[rng:NextInteger(1, #colors)], false)
+	planet.Shape = Enum.PartType.Ball
+	-- Anneau : disque (cylindre plat, axe X redressé presque à la verticale), incliné
+	local ring = put(
+		parent,
+		at,
+		Vector3.new(0.3, size * 1.8, size * 1.8),
+		center,
+		rgb(240, 220, 160),
+		false,
+		Vector3.new(18, 0, 100)
+	)
+	ring.Shape = Enum.PartType.Cylinder
+end
+
+-- Cette méthode permet d'accrocher une étoile lumineuse (croix de blocs néon) haut dans le ciel de la galaxie lorsque
+-- l'on habille une zone.
+builders.star = function(parent, at, rng)
+	local colors = { rgb(255, 240, 120), WHITE, rgb(150, 220, 255) }
+	local color = colors[rng:NextInteger(1, #colors)]
+	local center = Vector3.new(rng:NextNumber(-4, 4), snap(rng, 18, 45, 1), 0)
+	local s = snap(rng, 0.8, 1.6, 0.2)
+	for _, size in { Vector3.new(3, 0.8, 0.8), Vector3.new(0.8, 3, 0.8) } do
+		local arm = put(parent, at, size * s, center, color, false)
+		arm.Material = Enum.Material.Neon
+	end
+end
+
+-- Cette méthode permet de poser un astéroïde gris violacé à cratère lumineux lorsque l'on habille la galaxie.
+builders.asteroid = function(parent, at, rng, solid)
+	boulder(parent, at, rng, solid, rgb(115, 105, 140), rgb(170, 110, 255))
+end
+
 -- Cette méthode permet de construire l'élément de décor `kind` au repère `at` lorsque l'on habille une zone ;
 -- `solid` = faux pour un élément que le mannequin traverse (pied des parois).
 function Props.build(kind: string, parent: Instance, at: CFrame, rng: Random, solid: boolean)

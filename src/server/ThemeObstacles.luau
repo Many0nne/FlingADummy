@@ -704,6 +704,276 @@ builders.Rover = function(kit, z)
 	end)
 end
 
+-- Mars (#97) --------------------------------------------------------------------------------------------------------
+
+-- Cette méthode permet d'empiler des rochers rouille en pyramide (3, 2, 1, tailles variées) dans chaque colonne
+-- lorsque le site est construit.
+builders.MarsRocks = function(kit, z)
+	local colors = { rgb(190, 85, 50), rgb(160, 70, 45), rgb(215, 115, 70) }
+	eachColumn(kit, function(add, x, column)
+		local size = Vector3.new(3.8, 3.2, 4.4)
+		for row = 0, 2 do
+			for i = 0, 2 - row do
+				local position =
+					Vector3.new(x + (i - (2 - row) / 2) * (size.X + GAP), size.Y / 2 + row * (size.Y + GAP), z)
+				block(add, "Rock", size, position, colors[(i + row + column) % #colors + 1], BRICK, "Brick")
+			end
+		end
+	end)
+end
+
+-- Cette méthode permet de poser un atterrisseur martien (quatre pieds, socle, module doré, mât et parabole blanche) dans
+-- chaque colonne lorsque le site est construit.
+builders.Lander = function(kit, z)
+	local gold, grey = rgb(240, 190, 60), rgb(120, 120, 135)
+	eachColumn(kit, function(add, x)
+		for _, corner in { Vector2.new(-1, -1), Vector2.new(1, -1), Vector2.new(-1, 1), Vector2.new(1, 1) } do
+			block(
+				add,
+				"Leg",
+				Vector3.new(1, 2, 1),
+				Vector3.new(x + corner.X * 3, 1, z + corner.Y * 1.6),
+				grey,
+				BRICK,
+				"Brick"
+			)
+		end
+		block(add, "Deck", Vector3.new(8, 0.8, 5), Vector3.new(x, 2 + GAP + 0.4, z), WHITE, BRICK, "Brick")
+		local floor = 2.8 + 2 * GAP
+		block(add, "Module", Vector3.new(5, 3.6, 4), Vector3.new(x, floor + 1.8, z), gold, LIGHT, "Brick")
+		local roof = floor + 3.6 + GAP
+		block(add, "Mast", Vector3.new(0.6, 2.4, 0.6), Vector3.new(x - 1.6, roof + 1.2, z), grey, LIGHT, "Brick")
+		block(add, "Dish", Vector3.new(3, 0.6, 3), Vector3.new(x + 1, roof + 0.3, z), WHITE, LIGHT, "Brick")
+	end)
+end
+
+-- Grotte de cristal (#97) -------------------------------------------------------------------------------------------
+
+-- Cette méthode permet de dresser un massif de cristaux (socle de roche violette, trois colonnes de cristal de hauteurs
+-- différentes) dans chaque colonne lorsque le site est construit.
+builders.CrystalClusters = function(kit, z)
+	local colors = { rgb(120, 235, 255), rgb(200, 120, 255), rgb(255, 130, 220) }
+	eachColumn(kit, function(add, x, column)
+		block(add, "Rock", Vector3.new(11, 1.6, 4.6), Vector3.new(x, 0.8, z), rgb(80, 60, 140), BRICK, "Brick")
+		for i, height in { 5, 8, 6 } do
+			block(
+				add,
+				"Crystal",
+				Vector3.new(2.6, height, 2.6),
+				Vector3.new(x + (i - 2) * 3.4, 1.6 + GAP + height / 2, z),
+				colors[(i + column) % #colors + 1],
+				BRICK,
+				"Brick",
+				nil,
+				{ Transparency = 0.15, Reflectance = 0.1 }
+			)
+		end
+	end)
+end
+
+-- Cette méthode permet de monter un mur d'améthyste (blocs violets, lavande et cyan, 3 rangées) sur toute la largeur des
+-- colonnes lorsque le site est construit.
+builders.AmethystWall = function(kit, z)
+	local colors = { rgb(150, 80, 230), rgb(200, 160, 255), rgb(110, 220, 245) }
+	staggeredWall(kit, z, Vector3.new(4.4, 3.4, 3), 3, colors, BRICK, "Brick")
+end
+
+-- Ville néon (#97) --------------------------------------------------------------------------------------------------
+
+-- Cette méthode permet de garer un taxi jaune (roues, caisse, bande noire, cabine, enseigne blanche) en travers de
+-- chaque colonne lorsque le site est construit.
+builders.Taxis = function(kit, z)
+	eachColumn(kit, function(add, x)
+		for _, wx in { -3.4, 3.4 } do
+			block(add, "Wheel", Vector3.new(2.4, 2.4, 5.2), Vector3.new(x + wx, 1.2, z), BLACK, HEAVY, "Brick")
+		end
+		block(add, "Chassis", Vector3.new(11, 2.2, 5), Vector3.new(x, 2.4 + GAP + 1.1, z), YELLOW, HEAVY, "Brick")
+		local deck = 4.6 + 2 * GAP
+		block(add, "Stripe", Vector3.new(6, 0.6, 4.6), Vector3.new(x - 0.5, deck + 0.3, z), BLACK, HEAVY, "Brick")
+		block(
+			add,
+			"Cabin",
+			Vector3.new(6, 2.4, 4.6),
+			Vector3.new(x - 0.5, deck + 0.6 + GAP + 1.2, z),
+			rgb(255, 225, 90),
+			HEAVY,
+			"Brick"
+		)
+		local roof = deck + 3 + 2 * GAP
+		block(add, "TaxiSign", Vector3.new(2.6, 1, 1.4), Vector3.new(x - 0.5, roof + 0.5, z), WHITE, LIGHT, "Brick")
+	end)
+end
+
+-- Cette méthode permet d'aligner deux bornes d'arcade (caisse colorée, écran lumineux, fronton) dans chaque colonne
+-- lorsque le site est construit.
+builders.ArcadeCabinets = function(kit, z)
+	local bodies = { rgb(235, 50, 140), rgb(60, 110, 255), rgb(130, 60, 230) }
+	local screens = { rgb(90, 255, 200), rgb(255, 230, 80), rgb(120, 220, 255) }
+	eachColumn(kit, function(add, x, column)
+		for i, side in { -1, 1 } do
+			local cx = x + side * 3
+			local k = (column + i) % #bodies + 1
+			-- Caisse, écran puis fronton empilés : aucune pièce en porte-à-faux
+			block(add, "Cabinet", Vector3.new(4, 3.6, 3.4), Vector3.new(cx, 1.8, z), bodies[k], LIGHT, "Crate")
+			block(
+				add,
+				"Screen",
+				Vector3.new(4, 2.4, 3.4),
+				Vector3.new(cx, 3.6 + GAP + 1.2, z),
+				screens[k],
+				LIGHT,
+				"Crate"
+			)
+			local top = 6 + 2 * GAP
+			block(add, "Marquee", Vector3.new(4.4, 1.2, 3.8), Vector3.new(cx, top + 0.6, z), BLACK, LIGHT, "Crate")
+		end
+	end)
+end
+
+-- Royaume des nuages (#97) ------------------------------------------------------------------------------------------
+
+-- Cette méthode permet d'empiler des nuages en cubes blancs et bleu pâle (3, 2, 1) dans chaque colonne lorsque le site
+-- est construit.
+builders.CloudPuffs = function(kit, z)
+	local colors = { WHITE, rgb(220, 240, 255) }
+	local size = 4
+	eachColumn(kit, function(add, x)
+		for row = 0, 2 do
+			for i = 0, 2 - row do
+				local position = Vector3.new(x + (i - (2 - row) / 2) * (size + GAP), size / 2 + row * (size + GAP), z)
+				block(add, "Cloud", Vector3.one * size, position, colors[(i + row) % 2 + 1], LIGHT, "Crate")
+			end
+		end
+	end)
+end
+
+-- Cette méthode permet de poser une montgolfière (nacelle en osier, brûleur, ballon rayé en trois étages) dans chaque
+-- colonne lorsque le site est construit ; le ballon repose sur un brûleur large et centré (des cordes fines plieraient).
+builders.HotAirBalloons = function(kit, z)
+	local stripes = { rgb(255, 80, 80), rgb(255, 210, 50), rgb(80, 170, 255), rgb(120, 220, 110) }
+	eachColumn(kit, function(add, x, column)
+		local color = stripes[(column - 1) % #stripes + 1]
+		block(add, "Basket", Vector3.new(4, 3, 4), Vector3.new(x, 1.5, z), rgb(170, 115, 60), LIGHT, "Crate")
+		local top = 3 + GAP
+		block(add, "Burner", Vector3.new(3, 3, 3), Vector3.new(x, top + 1.5, z), rgb(235, 215, 165), LIGHT, "Crate")
+		local y = top + 3 + GAP
+		block(add, "Envelope", Vector3.new(5, 2, 5), Vector3.new(x, y + 1, z), color, LIGHT, "Crate")
+		block(add, "Envelope", Vector3.new(7, 4, 7), Vector3.new(x, y + 2 + GAP + 2, z), WHITE, LIGHT, "Crate")
+		block(add, "Envelope", Vector3.new(5, 2, 5), Vector3.new(x, y + 6 + 2 * GAP + 1, z), color, LIGHT, "Crate")
+	end)
+end
+
+-- Château hanté (#97) -----------------------------------------------------------------------------------------------
+
+-- Cette méthode permet d'empiler des citrouilles (pyramide 3, 2, 1, queue verte sur celle du haut) dans chaque colonne
+-- lorsque le site est construit.
+builders.Pumpkins = function(kit, z)
+	local colors = { rgb(255, 130, 20), rgb(235, 105, 15) }
+	local size = Vector3.new(3.8, 3.2, 3.8)
+	eachColumn(kit, function(add, x)
+		for row = 0, 2 do
+			for i = 0, 2 - row do
+				local position =
+					Vector3.new(x + (i - (2 - row) / 2) * (size.X + GAP), size.Y / 2 + row * (size.Y + GAP), z)
+				block(add, "Pumpkin", size, position, colors[(i + row) % 2 + 1], LIGHT, "Crate")
+			end
+		end
+		local top = 3 * size.Y + 3 * GAP
+		block(add, "Stem", Vector3.new(0.8, 1, 0.8), Vector3.new(x, top + 0.5, z), rgb(70, 150, 50), LIGHT, "Crate")
+	end)
+end
+
+-- Cette méthode permet de dresser trois cercueils debout, coiffés d'une dalle de pierre, dans chaque colonne lorsque le
+-- site est construit.
+builders.Coffins = function(kit, z)
+	local wood, lining = rgb(90, 55, 45), rgb(140, 60, 160)
+	eachColumn(kit, function(add, x)
+		for i = -1, 1 do
+			local color = if i == 0 then lining else wood
+			block(add, "Coffin", Vector3.new(3.2, 6.4, 2), Vector3.new(x + i * 3.6, 3.2, z), color, BRICK, "Brick")
+		end
+		block(
+			add,
+			"Slab",
+			Vector3.new(11, 0.8, 2.4),
+			Vector3.new(x, 6.4 + GAP + 0.4, z),
+			rgb(130, 125, 140),
+			BRICK,
+			"Brick"
+		)
+	end)
+end
+
+-- Galaxie (#97) -----------------------------------------------------------------------------------------------------
+
+-- Cette méthode permet de poser des astéroïdes (gros blocs gris violacé, le plus petit au sommet) dans chaque colonne
+-- lorsque le site est construit.
+builders.Asteroids = function(kit, z)
+	local colors = { rgb(120, 110, 140), rgb(95, 85, 115), rgb(150, 140, 170) }
+	eachColumn(kit, function(add, x, column)
+		block(
+			add,
+			"Asteroid",
+			Vector3.new(5, 4.4, 5),
+			Vector3.new(x - 2.6, 2.2, z),
+			colors[column % 3 + 1],
+			BRICK,
+			"Brick"
+		)
+		block(
+			add,
+			"Asteroid",
+			Vector3.new(4.4, 3.6, 4.4),
+			Vector3.new(x + 2.8, 1.8, z),
+			colors[(column + 1) % 3 + 1],
+			BRICK,
+			"Brick"
+		)
+		block(
+			add,
+			"Asteroid",
+			Vector3.new(3.4, 3, 3.4),
+			Vector3.new(x - 2.6, 4.4 + GAP + 1.5, z),
+			colors[(column + 2) % 3 + 1],
+			BRICK,
+			"Brick"
+		)
+	end)
+end
+
+-- Cette méthode permet de poser une soucoupe volante (quatre pieds, disque argenté à hublots, dôme cyan) dans chaque
+-- colonne lorsque le site est construit.
+builders.UFOs = function(kit, z)
+	local silver = rgb(200, 205, 220)
+	eachColumn(kit, function(add, x)
+		for _, corner in { Vector2.new(-1, -1), Vector2.new(1, -1), Vector2.new(-1, 1), Vector2.new(1, 1) } do
+			block(
+				add,
+				"Leg",
+				Vector3.new(0.8, 2, 0.8),
+				Vector3.new(x + corner.X * 3, 1, z + corner.Y * 2.4),
+				BLACK,
+				HEAVY,
+				"Brick"
+			)
+		end
+		block(add, "Disc", Vector3.new(11, 1.4, 6.4), Vector3.new(x, 2 + GAP + 0.7, z), silver, HEAVY, "Brick")
+		local deck = 3.4 + 2 * GAP
+		block(add, "Ring", Vector3.new(7, 0.8, 4.6), Vector3.new(x, deck + 0.4, z), rgb(120, 255, 140), LIGHT, "Brick")
+		block(
+			add,
+			"Dome",
+			Vector3.new(4.4, 2.4, 3.6),
+			Vector3.new(x, deck + 0.8 + GAP + 1.2, z),
+			rgb(110, 220, 255),
+			LIGHT,
+			"Brick",
+			nil,
+			{ Transparency = 0.2 }
+		)
+	end)
+end
+
 -- Cette méthode permet de construire l'obstacle `name` du thème `zone` au site `z` lorsque la piste est construite ;
 -- `kit` fournit les groupes de pièces (Server.Obstacles).
 function ThemeObstacles.build(name: string, kit: Kit, z: number, zone: Zone)
