@@ -8,9 +8,23 @@ Dépôt : `Many0nne/FlingADummy` (privé).
 
 ## Rôles
 Claude est **responsable du projet et du code** : il tranche le design, le game feel, le périmètre et la technique, signale
-chaque choix en une ligne, crée les issues et merge les PR. L'utilisateur est **testeur** : on lui fournit un protocole
-(où se connecter, quoi faire, quoi observer) et on attend son retour. Une action destructive ou hors du dépôt se confirme
-toujours avec lui.
+chaque choix en une ligne, crée les issues et merge les PR. L'utilisateur est **testeur**, mais seulement en **sprint
+review** (section « Sprints ») : jamais de demande de test tâche par tâche. Une action destructive ou hors du dépôt se
+confirme toujours avec lui.
+
+## Sprints
+- On produit en continu : chaque tâche est vérifiée par Claude (tests, `check.sh`, Studio via MCP, mesures), puis mergée
+  dès que la CI est verte, **sans attendre l'avis de l'utilisateur**. Un doute de rendu ou de game feel se tranche (choix
+  signalé en une ligne) et part dans la review.
+- Questions : une vraie décision de design peut être posée dans le thread de la tâche, sans bloquer le reste (avancer
+  sur une autre tâche en attendant). Pas de question « est-ce que ça te va en jeu ? » : c'est pour la review.
+- Sprint review : quand plusieurs issues sont mergées depuis la dernière review (repère : tag `review/<n>`) et qu'un avis
+  de jeu est utile, Claude demande à l'utilisateur de jouer, sur le checkout principal à jour (`main`, port 34900, verrou
+  `main -AcquireStudio`), avec **la liste des changements** depuis la review précédente : par issue, ce qui change pour
+  le joueur, comment le voir, quoi observer. Liste construite à partir de `git log review/<n>..main --merges` et des
+  sections « Pour la sprint review » des comptes rendus.
+- Retours de la review : chacun devient une issue (ou rouvre la tâche), puis tag `review/<n+1>` sur le `main` testé.
+- Tout compte rendu de tâche (délégué ou non) se termine par une section « Pour la sprint review » (3 à 5 lignes).
 
 ## Jeux de référence
 Le style, l'interface et la boucle se calent **franchement** sur les jeux disséqués (vault, `04 - Jeux disséqués/` 01, 02,
@@ -66,14 +80,13 @@ rejetée pour un style inventé.
    git), créé ou repris par `.\scripts\fad-worktree.ps1 <branche>` (section « Worktrees »).
 2. Implémenter, puis `bash tools/check.sh` dans le worktree ; vérifier en jeu via le MCP Studio si le changement le demande,
    sous le verrou Studio (section « Studio et Blender partagés »).
-3. Besoin de l'avis de l'utilisateur (gameplay, rendu, UI) : protocole de test (connexion Studio, étapes, quoi observer),
-   puis attendre son retour.
-4. Fonctionnement vérifié (et validé par l'utilisateur si l'étape 3 s'appliquait) : commit, push, PR vers `main` avec
-   `Closes #<n>`.
+3. Pas de test par l'utilisateur à ce stade (section « Sprints ») : noter dans le compte rendu la section « Pour la
+   sprint review ».
+4. Fonctionnement vérifié : commit, push, PR vers `main` avec `Closes #<n>`.
 5. **Merger soi-même**, sans attendre d'ordre (règle propre à ce dépôt, elle remplace le « pas de merge sans ordre
-   explicite » des consignes globales) : CI verte, puis `gh pr merge <n> --merge --delete-branch`. Si l'étape 3
-   s'appliquait, seulement après le retour positif de l'utilisateur. CI rouge : corriger, ne pas merger. Puis fermer le
-   thread (settle) : le nettoyage automatique supprime alors le worktree et la branche locale (section « Worktrees »).
+   explicite » des consignes globales) : CI verte, puis `gh pr merge <n> --merge --delete-branch`. CI rouge : corriger,
+   ne pas merger. Puis fermer le thread (settle) : le nettoyage automatique supprime alors le worktree et la branche
+   locale (section « Worktrees »).
 - Push : le dépôt local utilise `gh auth git-credential` (config git locale) ; ne pas la retirer.
 - **Rubrique « Trouvé »** : chaque point qui mérite une suite (bug, amélioration, dette, outillage) devient une issue,
   créée sans demander, avec ses labels (chercher d'abord une issue ouverte qui le couvre). Le compte rendu donne les
@@ -150,7 +163,8 @@ vérification :
 - Un verrou est repris d'office si son détenteur n'a plus de worktree, plus de Rojo ou plus de thread T3 actif (threads
   settled, archivés ou supprimés ; un thread inconnu de T3 ne compte pas comme fini) : un agent qui s'arrête sans
   libérer ne bloque pas les autres.
-- Une tâche qui attend l'avis de l'utilisateur garde le verrou jusqu'à son retour : regrouper ces demandes.
+- Aucune tâche n'attend l'avis de l'utilisateur avec le verrou (section « Sprints ») ; pendant une sprint review, le
+  verrou est pris sur `main`.
 - Blender : la session avec interface (MCP `blender`) sert une tâche à la fois ; les traitements par script passent par
   `"/c/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b --factory-startup` (parallélisable).
 - Après chaque synchronisation Rojo, relancer le playtest : la copie en Play ne prend pas les modifications.
