@@ -6,6 +6,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
 local Damage = require(Shared.Damage)
@@ -306,17 +307,21 @@ local function triggerTrap(flight: Flight, box: TrackPlan.TrapBox, position: Vec
 	local before = flight.torso.AssemblyLinearVelocity
 	local outward = if position.X >= box.x then 1 else -1
 	local after = Traps.react(box.kind, before, outward)
+	-- Rotation du corps entier autour du torse (chaque membre suit), pas de chaque membre sur lui-même
 	local spin = Vector3.new(0, def.spin, 0)
+	local center = flight.torso.Position
 	for _, p in flight.parts do
-		p.AssemblyLinearVelocity = after
-		p.AssemblyAngularVelocity += spin
-		flight.prevVelocity[p] = after
+		local v = after + spin:Cross(p.Position - center)
+		p.AssemblyLinearVelocity = v
+		p.AssemblyAngularVelocity = spin
+		flight.prevVelocity[p] = v
 	end
 	local contact = Traps.contact(box.center, box.size, position)
 	breakNearest(flight, contact, def.bones)
 	local dv = (after - before).Magnitude
 	if not flight.worstImpact or dv > flight.worstImpact.dv then
-		flight.worstImpact = { kind = box.kind, dv = dv, speed = before.Magnitude }
+		-- Vitesse affichée : la plus forte (arrivée lente dans la lave : celle du rebond)
+		flight.worstImpact = { kind = box.kind, dv = dv, speed = math.max(before.Magnitude, after.Magnitude) }
 	end
 	flight.restTime = 0
 	addImpact(flight, "Trap", contact, dv, box.kind)
@@ -335,7 +340,7 @@ local function triggerTrap(flight: Flight, box: TrackPlan.TrapBox, position: Vec
 end
 
 -- Cette méthode permet de déclencher les pièges dont le torse a traversé la boîte entre deux frames lorsqu'il bouge
--- (passage à grande vitesse compris : le trajet est testé, pas seulement la position).
+-- (passage à grande vitesse compris : le trajet est testé, pas seulement la position) ; une presse levée laisse passer.
 local function checkTraps(flight: Flight, previous: Vector3, position: Vector3)
 	if os.clock() - flight.startTime <= GameConfig.IMPACT_GRACE_TIME then
 		return
@@ -348,9 +353,9 @@ local function checkTraps(flight: Flight, previous: Vector3, position: Vector3)
 			and box.z + half >= minZ
 			and box.z - half <= maxZ
 			and Traps.crosses(box.center, box.size, previous, position)
+			and (box.kind ~= "Press" or Traps.pressActive(Workspace:GetServerTimeNow(), box.x, box.z))
 		then
 			triggerTrap(flight, box, position)
-			return -- un piège par frame : la nouvelle vitesse vaut pour la frame suivante
 		end
 	end
 end

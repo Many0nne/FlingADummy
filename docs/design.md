@@ -187,7 +187,8 @@ Comme 01 et 09 : le lancer fait le lien entre les deux.
 Douze thèmes courts au début (un changement tous les 60 à 150 m sur le premier kilomètre, où vole un joueur débutant :
 un premier lancer à ≈ 145 m en traverse 3), plus longs ensuite. Chaque thème a son identité (couleur du sol, des parois,
 du dessus des gradins, décor), comme les zones de *Throw a Seed*, ses obstacles cassables et un piège signature
-(`Shared.Zones`). CHANCE à l'entrée calée sur l'ancienne courbe (même valeur à même distance) :
+(`Shared.Zones`). CHANCE à l'entrée de chaque thème calée sur l'ancienne courbe à la même distance (entre deux entrées,
+écart de +5 % au plus, vers 1,9 km) :
 | Zone | Début | CHANCE | Obstacles | Piège |
 |---|---|---|---|---|
 | Meadow | 0 m | ×1 | bottes de foin, tours de caisses | trampoline |
@@ -212,7 +213,8 @@ remplace la vitesse du mannequin (rebond, souffle, coup de côté, écrasement, 
 sur les membres les plus proches et écrit la cause du crash (« Squashed by a hydraulic press », gardée pour les os
 cassés dans les 0,8 s qui suivent). Chaque client joue son
 son, sa gerbe de particules et son popup (« BOING! ») ; les pièces mobiles (pales, rondin, presse, diable, vague) sont
-animées par chaque client (`Client.TrapMotion`).
+animées par chaque client (`Client.TrapMotion`) sur l'horloge du serveur : la presse n'écrase que pendant sa descente,
+plateau levé le mannequin passe dessous.
 
 ## Dégâts lisibles
 Chaque membre (10 pièces) suit les chocs : une variation brusque de vitesse au-delà d'un seuil casse un os (2 au-delà d'un

@@ -18,8 +18,9 @@ export type Zone = {
 	trap: string, -- piège signature (Shared.Traps.KINDS)
 }
 
--- Chance à l'entrée de chaque zone : celle de l'ancienne courbe (8 zones, v0.3) à la même distance, arrondie, pour
--- que l'économie (#15) ne bouge pas : ≈ 1.4X au premier lancer (145 m), ×5 à 1 km, 18 au bout de la piste.
+-- Chance à l'entrée de chaque zone : celle de l'ancienne courbe (8 zones, v0.3) à la même distance, arrondie ; entre
+-- deux entrées la courbe reste linéaire, d'où de petits écarts (+5 % au plus vers 1,9 km) : ≈ 1.4X au premier lancer
+-- (145 m), ×5 à 1 km, 18 au bout de la piste.
 -- stylua: ignore
 Zones.LIST = {
 	{ start = 0,    name = "Meadow",       chance = 1,    color = Color3.fromRGB(95, 215, 50),

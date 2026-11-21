@@ -101,6 +101,22 @@ return function(T, Loader)
 		end)
 	end)
 
+	T.describe("Traps.pressActive", function()
+		T.it("écrase pendant la descente seulement, au rythme de l'animation", function()
+			local offset = Traps.phaseOffset(0, 0)
+			T.expectEqual(offset, 0)
+			local period = Traps.PRESS_PERIOD
+			T.expect(Traps.pressActive(0.2 * period, 0, 0), "plateau en bas")
+			T.expect(not Traps.pressActive(0.8 * period, 0, 0), "plateau en remontée haute")
+			T.expect(not Traps.pressActive(0.01 * period, 0, 0), "plateau encore en haut")
+			-- Animation : plateau à plus de 70 % de sa descente pendant toute la fenêtre active
+			for phase = Traps.PRESS_ACTIVE[1], Traps.PRESS_ACTIVE[2], 0.01 do
+				local down = -Traps.motion("Press", phase * period, Vector3.yAxis, -1, period).Position.Y
+				T.expect(down >= 0.7, string.format("phase %.2f : plateau à %.0f %%", phase, down * 100))
+			end
+		end)
+	end)
+
 	T.describe("Traps.contact", function()
 		T.it("ramène un point sur la boîte", function()
 			local c = Traps.contact(Vector3.new(0, 4, 100), Vector3.new(12, 10, 8), Vector3.new(20, 4, 90))

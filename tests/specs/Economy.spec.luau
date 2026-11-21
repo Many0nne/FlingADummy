@@ -52,7 +52,7 @@ return function(T, Loader)
 				local c = Economy.chance({ distance = 145, bones = 0, smashed = 0 })
 				T.expect(c.total > 1.15 and c.total < 1.45, "chance " .. c.total)
 				T.expectEqual(c.distance, 145)
-				T.expect(c.zone >= 3, "un premier lancer traverse au moins 3 thèmes (#33) : " .. c.zone)
+				T.expectEqual(c.zone, 3) -- Forest : un premier lancer traverse 3 thèmes (#33)
 			end
 		)
 		T.it("os et casse ajoutent un bonus proportionnel", function()

@@ -66,6 +66,24 @@ Traps.KINDS = {
 Traps.MOTION_TAG = "TrapMotion" -- pièce mobile d'un piège (pale, rondin, presse…), animée par chaque client
 Traps.MOTION_RANGE = 500 -- un client n'anime que les pièges à moins de 500 studs de sa caméra
 
+-- Presse : cycle commun à l'animation (clients) et au déclenchement (serveur), horloge du serveur partagée
+-- (workspace:GetServerTimeNow) ; elle n'écrase que pendant la descente et tant que le plateau est encore bas.
+Traps.PRESS_PERIOD = 2.4
+Traps.PRESS_ACTIVE = { 0.13, 0.5 } -- part du cycle où la presse écrase (plateau à plus de 70 % de sa descente)
+
+-- Cette méthode permet de donner le décalage de phase d'un piège posé en (`x`, `z`) lorsque le client l'anime ou que
+-- le serveur vérifie s'il écrase : deux pièges voisins ne battent pas en même temps, et tous voient la même phase.
+function Traps.phaseOffset(x: number, z: number): number
+	return (x * 0.13 + z * 0.071) % 1
+end
+
+-- Cette méthode permet de savoir si la presse posée en (`x`, `z`) écrase à l'instant `now` (horloge du serveur)
+-- lorsqu'un mannequin entre dans sa boîte ; plateau en haut, il passe dessous.
+function Traps.pressActive(now: number, x: number, z: number): boolean
+	local phase = (now / Traps.PRESS_PERIOD + Traps.phaseOffset(x, z)) % 1
+	return phase >= Traps.PRESS_ACTIVE[1] and phase <= Traps.PRESS_ACTIVE[2]
+end
+
 -- Cette méthode permet de donner le décalage d'une pièce mobile de piège (repère de son pivot au repos) à l'instant `t`
 -- lorsque le client l'anime : "Spin" tourne autour de `axis`, "Swing" balance de ±`amplitude` degrés, "Bob" monte et
 -- descend de `amplitude` studs, "Press" descend d'un coup puis remonte lentement ; `period` en secondes.

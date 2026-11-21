@@ -40,7 +40,7 @@ local function track(model: Instance)
 		axis = axis,
 		amplitude = tonumber(model:GetAttribute("Amplitude")) or 0,
 		period = math.max(tonumber(model:GetAttribute("Period")) or 1, 0.05),
-		offset = (home.Position.X * 0.13 + home.Position.Z * 0.071) % 1,
+		offset = Traps.phaseOffset(home.Position.X, home.Position.Z),
 	}
 end
 
@@ -51,7 +51,7 @@ local function step()
 		return
 	end
 	local eye = camera.CFrame.Position
-	local now = os.clock()
+	local now = Workspace:GetServerTimeNow() -- horloge partagée : la presse écrase quand le serveur la fait écraser
 	for model, mover in movers do
 		if not model.Parent or not model.PrimaryPart then
 			continue
