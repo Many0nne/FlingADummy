@@ -658,7 +658,17 @@ builders.planet = function(parent, at, rng)
 	local center = Vector3.new(0, snap(rng, 14, 26, 2), 0)
 	local planet = put(parent, at, Vector3.one * size, center, colors[rng:NextInteger(1, #colors)], false)
 	planet.Shape = Enum.PartType.Ball
-	put(parent, at, Vector3.new(size * 1.8, 0.3, size * 1.8), center, rgb(240, 220, 160), false, Vector3.new(18, 0, 10))
+	-- Anneau : disque (cylindre plat, axe X redressé presque à la verticale), incliné
+	local ring = put(
+		parent,
+		at,
+		Vector3.new(0.3, size * 1.8, size * 1.8),
+		center,
+		rgb(240, 220, 160),
+		false,
+		Vector3.new(18, 0, 100)
+	)
+	ring.Shape = Enum.PartType.Cylinder
 end
 
 -- Cette méthode permet d'accrocher une étoile lumineuse (croix de blocs néon) haut dans le ciel de la galaxie lorsque

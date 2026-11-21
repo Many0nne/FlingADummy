@@ -106,7 +106,8 @@ Comme 01 et 09 : le lancer fait le lien entre les deux.
 ## CHANCE et tirage (`Shared.Economy`, `Shared.Collection`)
 - CHANCE = chance des zones × (1 + 2 % par os cassé + 1 % par objet détruit) × multiplicateur du mannequin lancé
   (section suivante), arrondie au centième. La chance des zones
-  vaut celle de la zone à son entrée et monte en continu jusqu'à celle de la suivante (18 au bout de la piste) : un
+  vaut celle de la zone à son entrée et monte en continu jusqu'à celle de la suivante (18 à 2,4 km, 60 au bout de la
+  piste de 6 km) : un
   premier lancer (≈ 145 m) donne ≈ 1.4X, comme le 1.36X de 09.
 - Tirage : les mannequins sont essayés du plus rare au plus courant, chacun sort avec la probabilité min(1, CHANCE / n)
   (le plus courant ramasse le reste) ; la taille se tire de même à CHANCE^0,5. Probabilités exactes affichables
@@ -190,7 +191,8 @@ du jeu (tirage, entraînement, CHANCE des zones, prix), une boucle = un lancer (
 d'entraînement, achats dès que possible (le moins cher d'abord), mannequins hors présentoirs vendus aussitôt. Distance
 ≈ 0,012 × vitesse² (vols mesurés de #14 : 145-168 m à la puissance 10, ≈ 1 150 m à 10,5 K), os et objets ≈ +30 % de
 CHANCE au départ, +55 % à 10,5 K. Modèle non mesuré en jeu : les pièges, les comportements des mannequins à lancer et
-le temps réel d'une boucle le décaleront.
+le temps réel d'une boucle le décaleront. Depuis #97, la piste fait 6 km (temps ci-dessous rejoués avec elle) ; les
+vols mesurés au-delà de 2,4 km s'écartent du modèle (tableau « Fin de piste » plus bas).
 
 **Grands nombres** (`Shared.Format`) : K, M, B, T, Qa, Qi, Sx, Sp, Oc, No, Dc (10^33), puis notation scientifique ;
 3 chiffres significatifs tronqués ; cote « 1 IN 300Qa » (`Format.odds`), cote complète du secret avec séparateurs
@@ -216,9 +218,9 @@ Règles de cote et de revenu :
 | Rare | 6 | 1 IN 62 à 372 | 70 à 310 | 4 min |
 | Epic | 6 | 1 IN 502 à 3K | 400 à 1.8K | 8 min |
 | Legendary | 6 | 1 IN 4K à 28K | 2.5K à 14K | 23 min |
-| Mythic | 6 | 1 IN 40K à 330K | 20K à 110K | 86 min |
-| Secret | 6 | 1 IN 500K à 4M | 150K à 410K | 5,7 h |
-| Divine | 6 | 1 IN 5M à 100M | 450K à 1.7M | 12,3 h |
+| Mythic | 6 | 1 IN 40K à 330K | 20K à 110K | 89 min |
+| Secret | 6 | 1 IN 500K à 4M | 150K à 410K | 3,8 h (5,7 h avec la piste de 2,4 km) |
+| Divine | 6 | 1 IN 5M à 100M | 450K à 1.7M | 7,1 h (12,3 h avec la piste de 2,4 km) |
 | Celestial | 6 | 1 IN 500M à 10B | 3.6M à 14M | renaissance (≈ 7) |
 | Ethereal | 6 | 1 IN 50B à 1T | 29M à 110M | renaissance (≈ 14) |
 | Infinity | 6 | 1 IN 5T à 100T | 230M à 870M | renaissance (≈ 20) |
@@ -233,20 +235,20 @@ dans la barre d'outils (icône de rareté jusqu'à Secret, nom au-delà).
 | Mannequin | Chance | Prix | Atteint (simulé) |
 |---|---|---|---|
 | Crash / Rubber / Glass / Steel / Glider / Rocket | 1.0x à 3.0x | $0 à $50M | départ à 57 min |
-| Ruby Rubber | 4.0x | $84M | 74 min |
-| Emerald Glass | 5.0x | $130M | 101 min |
-| Sapphire Steel | 6.5x | $200M | 2,0 h |
-| Amber Glider | 8.0x | $290M | 2,4 h |
-| Golden Rocket | 10x | $440M | 2,9 h |
-| Frost Rubber | 13x | $700M | 3,4 h |
-| Magma Glass | 17x | $1.1B | 4,3 h |
-| Shadow Steel | 22x | $1.8B | 4,8 h |
-| Radiant Glider | 30x | $3.2B | 5,7 h |
-| Starlight Rocket | 40x | $5.3B | 7,1 h |
-| Nebula Rubber | 55x | $9.4B | 7,9 h |
-| Plasma Glass | 75x | $16B | 9,8 h |
-| Quantum Glider | 100x | $28B | 11,3 h |
-| Infinite Rocket | 135x | $47B | 12,9 h |
+| Ruby Rubber | 4.0x | $84M | 73 min |
+| Emerald Glass | 5.0x | $130M | 100 min |
+| Sapphire Steel | 6.5x | $200M | 116 min |
+| Amber Glider | 8.0x | $290M | 2,2 h |
+| Golden Rocket | 10x | $440M | 2,6 h |
+| Frost Rubber | 13x | $700M | 2,9 h |
+| Magma Glass | 17x | $1.1B | 3,6 h |
+| Shadow Steel | 22x | $1.8B | 3,9 h |
+| Radiant Glider | 30x | $3.2B | 4,5 h |
+| Starlight Rocket | 40x | $5.3B | 5,3 h |
+| Nebula Rubber | 55x | $9.4B | 6,0 h |
+| Plasma Glass | 75x | $16B | 7,2 h |
+| Quantum Glider | 100x | $28B | 7,9 h |
+| Infinite Rocket | 135x | $47B | 8,9 h (12,9 h avec la piste de 2,4 km) |
 
 Prix = Rocket × (chance / 3)^1,8 : sans renaissance, le revenu ne monte qu'avec le nombre de tirages × la CHANCE
 (polynomial), des prix × 6 à chaque niveau (essai : × 12-25 comme les graines de 09) rendaient la suite hors d'atteinte
@@ -256,16 +258,18 @@ Prix = Rocket × (chance / 3)^1,8 : sans renaissance, le revenu ne monte qu'avec
 | Équipement | EXP / rép. | Prix | Atteint (simulé) |
 |---|---|---|---|
 | Wooden → Cosmic | +1 à +3K | $0 à $25M | départ à 41 min |
-| Ruby | +12K | $88M | 87 min |
-| Emerald | +48K | $310M | 2,6 h |
-| Plasma | +190K | $1.1B | 4,0 h |
-| Omega | +760K | $3.9B | 6,3 h |
-| Infinite | +3M | $14B | 8,9 h |
+| Ruby | +12K | $88M | 88 min |
+| Emerald | +48K | $310M | 2,5 h |
+| Plasma | +190K | $1.1B | 3,3 h |
+| Omega | +760K | $3.9B | 4,9 h |
+| Infinite | +3M | $14B | 6,6 h |
 
-Puissance : 1 K à 5 min, 100 K à 20 min, 1 M à 45 min, 100 M à 3,4 h, 10 B à 9,8 h. **Limite actuelle** : la piste de
-2,4 km est au bout dès ≈ 760 K de puissance (43 min simulées) ; au-delà, la puissance n'ajoute que des os et des objets
-cassés (bonus de CHANCE). Les paliers prolongés prennent tout leur sens avec la piste prolongée (proposition
-ci-dessous, 6 km à ≈ 4,4 B de puissance, ≈ 8,5 h).
+Puissance : 1 K à 5 min, 100 K à 20 min, 1 M à 45 min, 100 M à 3,2 h, 10 B à 7,8 h. Avec la piste de 2,4 km, le bout
+était atteint dès ≈ 760 K de puissance (43 min simulées) et la puissance n'ajoutait ensuite que des os et des objets ;
+la piste de 6 km (#97) donne un but aux paliers prolongés (tableau « Fin de piste » ci-dessous).
+**Effet de bord** : la CHANCE plus haute fait sortir des raretés plus rentables plus tôt, et tout le catalogue d'achats
+est fini à ≈ 9 h simulées au lieu de 13 h (revenu 10 M/s à 7,8 h au lieu de 13,7 h) : la cible « une douzaine
+d'heures » se recale avec la renaissance (#108) et l'économie (#15).
 
 ### Repères comparés aux références
 | Repère | Fling a Dummy (simulé) | 09 *Throw a Seed* | 01 *Throw Food For Animals* |
@@ -274,8 +278,8 @@ ci-dessous, 6 km à ≈ 4,4 B de puissance, ≈ 8,5 h).
 | Premier équipement | 45 s ($100) | 1:45 ($500) | 0:42 ($1) |
 | Deuxième projectile | 105 s (1.25x, $1.2K) | 1:42 (1.25x, $1.2K) | 1:27 (pomme) |
 | Puissance | 1K à 5 min, 100K à 20 min | 1.34K à 4 min, 114K à 11 min | 503 à 17 min |
-| Revenu | 1K/s à 7 min, 100K/s à 81 min | 2.19K/s à 3:36 | 1.08K/s vers 9 min, 391K/s à 17 min |
-| Projectile le plus fort | 135x à 12,9 h | 135x (durée inconnue) | non observé |
+| Revenu | 1K/s à 7 min, 100K/s à 83 min | 2.19K/s à 3:36 | 1.08K/s vers 9 min, 391K/s à 17 min |
+| Projectile le plus fort | 135x à 8,9 h | 135x (durée inconnue) | non observé |
 | Cote la plus haute | 1 IN 100T (50Qa en Giant) | 1 IN 300Qa | non observé |
 | Collection | 64 mannequins, 11 raretés | 110 plantes, 10 raretés + Royal | non observé |
 
@@ -283,19 +287,22 @@ ci-dessous, 6 km à ≈ 4,4 B de puissance, ≈ 8,5 h).
 l'entraînement, revenus des premières raretés) ; la collection reste plus petite que celle de 09 (familles et palettes
 à ajouter sans dessin).
 
-### Proposition : piste prolongée et renaissance (conception, issue #97)
-Deux leviers, à coder après les tâches en cours sur la piste (#88) et la base (#91) :
-1. **Piste prolongée à 6 km** : six thèmes de plus après Moon Base (un tous les 600 m), CHANCE des zones de × 18 à
-   × 60 ; distance atteinte selon le modèle ci-dessus :
-   | Fin de piste | Vitesse | Puissance | Atteinte (simulé) | CHANCE des zones |
-   |---|---|---|---|---|
-   | 2,4 km (actuelle) | 447 | 760 K | 43 min | × 18 |
-   | 3,6 km | 548 | 22 M | ≈ 2 h | × 27 |
-   | 4,8 km | 632 | 360 M | ≈ 4,5 h | × 40 |
-   | 6 km | 707 | 4,4 B | ≈ 8,5 h | × 60 |
-   Effet (estimé, non simulé) : CHANCE finale × 3,3 en fin de courbe (≈ 17 K au lieu de 5,1 K), Divine bien avant
-   12 h ; rend
-   utiles les équipements prolongés.
+### Piste prolongée (#97, fait) et renaissance (proposition)
+1. **Piste prolongée à 6 km** (#97) : six thèmes de plus après Moon Base, un tous les 600 m (section « Zones de la
+   piste »), CHANCE des zones de × 18 à × 60. Joueur simulé rejoué (60 joueurs, 24 h) et vols mesurés en Studio
+   (Crash Dummy, jauge pleine, `DebugLaunch`) :
+   | Fin de piste | Vitesse | Puissance | Atteinte (simulé) | CHANCE des zones | Vols mesurés à cette puissance |
+   |---|---|---|---|---|---|
+   | 2,4 km (fin de Moon Base) | 447 | 760 K | 43 min | × 18 | (#14, #33) |
+   | 3,6 km (Neon City) | 548 | 22 M | 2,1 h | × 27 | 3 811 m (48.6X), 2 994 m (42.8X, geyser déclenché) |
+   | 4,8 km (Haunted Castle) | 632 | 360 M | 4,0 h | × 40 | 3 591 m (47.4X), 3 139 m (39.6X) |
+   | 6 km (bout) | 707 | 4,4 B | 6,8 h | × 60 | 6 037 m (96.6X), 5 903 m, 4 860 m, 4 343 m, 4 090 m |
+   **Mesures comparées au modèle** : jusqu'à 22 M le modèle tient (± 10 %) ; au-delà, il est optimiste. Les vols
+   montent très haut (≈ 590 studs à 4,4 B), atterrissent tous vers 3,6-3,9 km puis **glissent** : la distance finale
+   dépend de la glissade (obstacles traversés en diagonale, pièges), d'où 4,1 à 6,0 km à 4,4 B (bout atteint 1 fois
+   sur 5, frôlé une fois : 5 903 m coupé par l'ancienne limite de vol de 16 s, portée à 22 s) et 3,1-3,6 km à 360 M.
+   Le bout de piste est donc plutôt atteint vers 10-50 B de puissance (≈ 8 à 10 h simulées, non mesuré). Effet
+   simulé : CHANCE finale × 3,3 (17 K au lieu de 5,1 K à 24 h), Divine à 7,1 h au lieu de 12,3 h.
 2. **Renaissance** (après Infinite Rocket, ≈ 13 h ; prix $50B × 4^k) : remet à zéro argent, puissance, équipement et
    mannequins à lancer, garde la collection (base, stock, Index) et les présentoirs ; chaque renaissance multiplie la
    CHANCE par 2 (définitif). Avec la collection gardée, une renaissance se refait en ≈ 1 à 2 h. Celestial (1 IN 500M)
@@ -390,8 +397,15 @@ Deux leviers, à coder après les tâches en cours sur la piste (#88) et la base
 - **Piste fermée aux avatars** : barrière invisible juste derrière le liseré (groupe `AvatarBarrier`, qui ne
   collisionne qu'avec `Characters`), et pièces d'obstacles dans le groupe `Obstacles`, que les avatars traversent : un
   joueur ne descend pas sur la piste et ne bouscule pas les obstacles des autres.
-- **Piste partagée** (80 studs de large, 2,4 km) au fond d'un canyon en 3 gradins : parois en briques, herbe (ou neige,
-  sable…) voxel qui déborde de chaque marche, décor voxel sur les terre-pleins et au pied des parois (traversable).
+- **Piste partagée** (80 studs de large, 6 km depuis #97) au fond d'un canyon en 3 gradins : parois en briques, herbe
+  (ou neige, sable…) voxel qui déborde de chaque marche, décor voxel sur les terre-pleins et au pied des parois
+  (traversable). **Arche d'arrivée** à 6 km (ligne et bandeau à damier, panneau « FINISH 6 KM »), traversable : le
+  mannequin passe dessous et s'arrête contre la paroi en gradins du bout (6 040 m ; vol mesuré à 6 037 m). Limite d'un
+  vol portée de 16 à 22 s (`MAX_FLIGHT_TIME`) : un vol de 4,4 B met 14 à 16 s pour glisser jusqu'au bout.
+- **Coût du décor généré** (#97, mesuré en Studio, journal `[Course]` du serveur) : 25 160 instances construites en
+  307-485 ms (hub 11-20 ms, piste 100-196 ms, obstacles 91-124 ms) ; les 12 premiers thèmes et le hub en font ≈ 12 600,
+  les six thèmes de 2,4 à 6 km ≈ 12 900 (× 2 environ). `StreamingEnabled` est coupé : chaque client reçoit tout (client
+  Studio : 60 FPS, 119 Mo pour les instances).
 - **Obstacles partagés** (`Server.Obstacles`, plan dans `Shared.TrackPlan`) : dans chaque thème, les 2 ou 3 obstacles cassables du thème à
   tour de rôle (un site de plus que le minimum : il a remplacé la rangée de vitres retirée par #90) (`Server.ThemeObstacles`, un par colonne ou d'un seul tenant sur la largeur des colonnes) et son piège
   signature (section « Zones de la piste », un second piège dans les thèmes longs), sites espacés régulièrement
@@ -400,9 +414,10 @@ Deux leviers, à coder après les tâches en cours sur la piste (#88) et la base
   (0,05 s d'écart), en grossissant depuis son centre ; jamais sur un mannequin posé dedans. Un objet projeté est compté
   pour le mannequin le plus proche (règles dans `Shared.ObstacleRules`).
 
-## Zones de la piste (2,4 km, #33)
+## Zones de la piste (6 km, #33, #97)
 Douze thèmes courts au début (un changement tous les 60 à 150 m sur le premier kilomètre, où vole un joueur débutant :
-un premier lancer à ≈ 145 m en traverse 3), plus longs ensuite. Chaque thème a son identité (couleur du sol, des parois,
+un premier lancer à ≈ 145 m en traverse 3), plus longs ensuite, puis six thèmes de 600 m de 2,4 à 6 km (#97, rien n'a
+bougé avant 2,4 km). Chaque thème a son identité (couleur du sol, des parois,
 du dessus des gradins, décor), comme les zones de *Throw a Seed*, ses obstacles cassables et un piège signature
 (`Shared.Zones`). CHANCE à l'entrée de chaque thème calée sur l'ancienne courbe à la même distance (entre deux entrées,
 écart de +5 % au plus, vers 1,9 km) :
@@ -420,6 +435,19 @@ du dessus des gradins, décor), comme les zones de *Throw a Seed*, ses obstacles
 | Candy Land | 950 m | ×4,7 | sucres d'orge, mur de guimauves | canon à confettis |
 | Toy Town | 1,25 km | ×7 | cubes de jouet, soldats de plomb | diable en boîte |
 | Moon Base | 1,65 km | ×10 | satellites, rover | anneau propulseur |
+| Mars | 2,4 km | ×18 | rochers rouille, atterrisseurs | geyser de poussière |
+| Crystal Cave | 3 km | ×22 | massifs de cristaux, mur d'améthyste | massif de cristaux rebondissant |
+| Neon City | 3,6 km | ×27 | taxis, bornes d'arcade | portique laser |
+| Sky Kingdom | 4,2 km | ×33 | nuages en cubes, montgolfières | toboggan arc-en-ciel |
+| Haunted Castle | 4,8 km | ×40 | citrouilles, cercueils | fantôme qui jaillit de sa tombe |
+| Galaxy | 5,4 km | ×49 (×60 au bout) | astéroïdes, soucoupes volantes | portail de trou de ver |
+
+CHANCE de 2,4 à 6 km : progression géométrique (× 1,22 par thème), × 27 à 3,6 km, × 40 à 4,8 km, × 60 au bout.
+Décor : rochers, cratères et radars (Mars), grands cristaux et stalagmites (Crystal Cave), tours à ceintures néon,
+enseignes et lampadaires (Neon City), nuages, arcs-en-ciel et îles flottantes (Sky Kingdom), citrouilles-lanternes,
+tombes, toiles d'araignée et arbres morts (Haunted Castle), planètes à anneau, étoiles et astéroïdes (Galaxy). Dans la
+Galaxy, la nuit tombe chez le joueur dont la caméra y entre (`Client.ZoneSky`, ciel étoilé, jour rendu au retour).
+Planche comparée à la référence 09 : `docs/captures/themes/piste-6km-vs-ref.jpg`.
 
 Panneaux d'entrée de zone : « FOREST x1.35 CHANCE ».
 
@@ -437,6 +465,14 @@ touche, en passant en bas de son balancement, et pousse le mannequin dans l'axe 
 Hors de cette phase, le mannequin passe sans rien. L'anneau propulseur est un cerceau néon suspendu (centre à 85 studs : hauteur
 d'un vol de 32° qui retomberait ≈ 150 m plus loin, aux sites de la Moon Base) ; seule son ouverture déclenche (boîte
 carrée de 8 studs, #85), ni colonne ni pad au sol.
+Pièges de la piste prolongée (#97) : le **geyser** (Mars) projette à la verticale pendant son éruption (bouche et
+panache allumés, 35 % d'un cycle de 3 s) ; le **massif de cristaux** (Crystal Cave) renvoie haut en gardant l'élan ;
+le **portique laser** (Neon City) grille pendant sa phase allumée (faisceaux visibles la moitié d'un cycle de 2 s) et
+freine un peu ; le **toboggan arc-en-ciel** (Sky Kingdom) relance vers l'avant et le haut ; le **fantôme** (Haunted
+Castle) jaillit de sa tombe comme le diable en boîte et emporte le mannequin en tournoyant ; le **trou de ver**
+(Galaxy) est un portail dressé sur la piste qui propulse vers l'avant. Les vols à pleine puissance atterrissent vers
+3,7 km puis glissent : après 3,6 km, aucun piège ne garde moins de 80 % d'un élan de 300 studs/s (un laser à 55 %
+arrêtait un vol de 4,4 B à 4,1 km, mesuré).
 
 ## Dégâts lisibles
 Chaque membre (10 pièces) suit les chocs : une variation brusque de vitesse au-delà d'un seuil casse un os (2 au-delà d'un

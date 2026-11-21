@@ -1,7 +1,7 @@
 -- Amorçage du client : HUD, objectif, poses des avatars, lancer, caméra et écran de vol (CHANCE finale à l'arrêt),
 -- effets des crashs, pièces mobiles des pièges, tirage du mannequin de collection (et annonces des tirages rares)
 -- et pose dans la base, animation des mannequins de collection, stands du hub (boutique des mannequins à lancer),
--- musique de fond, branchés sur les remotes du serveur.
+-- musique de fond, ciel de nuit de la Galaxy, branchés sur les remotes du serveur.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -22,6 +22,7 @@ local Prize = require(script.Prize)
 local ThrowCinematic = require(script.ThrowCinematic)
 local ThrowController = require(script.ThrowController)
 local TrapMotion = require(script.TrapMotion)
+local ZoneSky = require(script.ZoneSky)
 
 local player = Players.LocalPlayer
 local remotes = Remotes.wait()
@@ -56,6 +57,7 @@ ThrowController.init(player, remotes, gui)
 FlightCamera.init(player)
 Effects.init(player, remotes.Impact)
 TrapMotion.init()
+ZoneSky.init()
 Music.init(player, remotes)
 UserInputService.JumpRequest:Connect(stopTraining)
 

@@ -16,6 +16,7 @@ export type Zone = {
 	props: { string }, -- décor posé sur les gradins et au pied des parois (Server.Props)
 	obstacles: { string }, -- obstacles cassables de la zone, posés à tour de rôle (Server.ThemeObstacles)
 	trap: string, -- piège signature (Shared.Traps.KINDS)
+	night: boolean?, -- ciel de nuit étoilé quand la caméra y est (Client.ZoneSky) : la Galaxy (#97)
 }
 
 -- Chance à l'entrée de chaque zone : celle de l'ancienne courbe (8 zones, v0.3) à la même distance, arrondie ; entre
@@ -96,7 +97,7 @@ Zones.LIST = {
 	{ start = 5400, name = "Galaxy",         chance = 49, color = Color3.fromRGB(120, 80, 255),
 	  ground = Color3.fromRGB(45, 40, 120),   wall = Color3.fromRGB(30, 25, 70),    top = Color3.fromRGB(160, 100, 255),
 	  props = { "planet", "star", "star", "asteroid" },
-	  obstacles = { "Asteroids", "UFOs" },                   trap = "Wormhole" },
+	  obstacles = { "Asteroids", "UFOs" },                   trap = "Wormhole",  night = true },
 } :: { Zone }
 
 Zones.FINAL_CHANCE = 60 -- CHANCE au bout de la piste (6 km)
@@ -115,6 +116,14 @@ end
 -- Cette méthode permet de donner la zone atteinte lorsque le mannequin est à `distance` mètres.
 function Zones.at(distance: number): Zone
 	return Zones.LIST[Zones.indexAt(distance)]
+end
+
+Zones.NIGHT_LEAD = 120 -- la nuit tombe un peu avant l'entrée d'une zone de nuit (m) : on la voit arriver
+
+-- Cette méthode permet de savoir si le ciel doit être de nuit lorsque la caméra est à `distance` mètres sur la piste
+-- (zone de nuit atteinte, ou à moins de NIGHT_LEAD de son entrée).
+function Zones.isNight(distance: number): boolean
+	return Zones.at(distance + Zones.NIGHT_LEAD).night == true
 end
 
 -- Cette méthode permet de donner où finit la zone `index` (début de la suivante, ou `courseLength` pour la dernière)

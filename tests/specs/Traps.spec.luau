@@ -58,13 +58,28 @@ return function(T, Loader)
 			end
 		end)
 
-		T.it("geyser, cristal et fantôme renvoient vers le haut ; le laser coupe l'élan (#97)", function()
+		T.it("geyser, cristal et fantôme renvoient vers le haut ; le laser freine (#97)", function()
 			T.expect(Traps.react("Geyser", sliding, Vector3.zero).Y >= 90, "geyser")
 			T.expect(Traps.react("Bumper", falling, Vector3.zero).Y >= 50, "cristal")
 			T.expect(Traps.react("Ghost", sliding, Vector3.zero).Y >= 60, "fantôme")
 			local laser = Traps.react("Laser", Vector3.new(0, 0, 200), Vector3.zero)
-			T.expect(laser.Z <= 0.6 * 200, "laser : élan coupé (" .. laser.Z .. ")")
+			T.expect(laser.Z < 200, "laser : freine (" .. laser.Z .. ")")
 		end)
+
+		T.it(
+			"n'arrête pas la glissade des vols à pleine puissance après 3,6 km (≥ 80 % de l'élan gardé)",
+			function()
+				-- Mesuré en Studio (#97) : un vol de 4,4 B atterrit vers 3,7 km puis glisse jusqu'au bout à 200-450 studs/s
+				local Zones = loader:require("src/shared/Zones")
+				local fast = Vector3.new(0, 0, 300)
+				for _, zone in Zones.LIST do
+					if zone.start >= 3600 then
+						local after = Traps.react(zone.trap, fast, Vector3.zero)
+						T.expect(after.Z >= 0.8 * fast.Z, zone.trap .. " : " .. after.Z .. " studs/s gardés")
+					end
+				end
+			end
+		)
 
 		T.it("le rondin pousse dans l'axe de la piste, dans le sens de sa poussée", function()
 			local ahead = Traps.react("SwingLog", sliding, Vector3.zAxis)

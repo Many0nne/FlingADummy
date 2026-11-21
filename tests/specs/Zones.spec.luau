@@ -120,6 +120,21 @@ return function(T, Loader)
 		end)
 	end)
 
+	T.describe("Zones.isNight", function()
+		T.it("fait tomber la nuit sur la Galaxy seulement, un peu avant son entrée (#97)", function()
+			local galaxy = Zones.LIST[#Zones.LIST]
+			T.expectEqual(galaxy.name, "Galaxy")
+			T.expect(not Zones.isNight(-100), "hub")
+			T.expect(not Zones.isNight(galaxy.start - Zones.NIGHT_LEAD - 1), "avant la Galaxy")
+			T.expect(Zones.isNight(galaxy.start - Zones.NIGHT_LEAD + 1), "à l'approche")
+			T.expect(Zones.isNight(galaxy.start + 300), "dans la Galaxy")
+			T.expect(Zones.isNight(GameConfig.COURSE_LENGTH + 40), "au bout")
+			for i = 1, #Zones.LIST - 1 do
+				T.expect(not Zones.LIST[i].night, Zones.LIST[i].name .. " de jour")
+			end
+		end)
+	end)
+
 	T.describe("Zones.indexAt", function()
 		T.it("donne la zone d'une distance, la première avant le départ", function()
 			T.expectEqual(Zones.indexAt(-5), 1)

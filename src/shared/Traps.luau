@@ -75,15 +75,18 @@ Traps.KINDS = {
 	-- Grotte de cristal : rebond sur un massif de cristaux, renvoie haut en gardant l'élan
 	Bumper     = { label = "PING!",     sound = "Clang",  burst = "Stars",    height = 8,   depth = 10,
 	               keep = 0.9,  forward = 15,  side = 0,  up = 55,  restitution = 0.6, spin = 8,  bones = 2 },
-	-- Ville néon : portique laser qui grille pendant sa phase allumée, coupe l'élan
+	-- Ville néon : portique laser qui grille pendant sa phase allumée et freine un peu. Les vols à pleine puissance
+	-- atterrissent vers 3,7 km et glissent jusqu'au bout : à 55 % d'élan gardé, deux lasers arrêtaient un vol de 4,4 B à
+	-- 4,1 km (mesuré en Studio, #97), la fin de piste devenait un pile ou face
 	Laser      = { label = "ZAP!",      sound = "Sizzle", burst = "Sparks",   height = 14,  depth = 4,
-	               keep = 0.55, forward = 0,   side = 0,  up = 30,  restitution = 0,   spin = 12, bones = 2 },
+	               keep = 0.85, forward = 0,   side = 0,  up = 30,  restitution = 0,   spin = 12, bones = 2 },
 	-- Royaume des nuages : toboggan arc-en-ciel, relance vers l'avant et vers le haut
 	Rainbow    = { label = "WHEEE!",    sound = "Whoosh", burst = "Confetti", height = 10,  depth = 14,
 	               keep = 1,    forward = 40,  side = 0,  up = 40,  restitution = 0,   spin = 0,  bones = 1 },
-	-- Château hanté : fantôme qui jaillit de sa tombe et emporte le mannequin en tournoyant
+	-- Château hanté : fantôme qui jaillit de sa tombe et emporte le mannequin en tournoyant (sur la glissade des vols à
+	-- pleine puissance, comme le laser : il freine peu)
 	Ghost      = { label = "BOO!",      sound = "Spring", burst = "Wind",     height = 12,  depth = 8,
-	               keep = 0.6,  forward = 20,  side = 0,  up = 70,  restitution = 0,   spin = 9,  bones = 2 },
+	               keep = 0.85, forward = 20,  side = 0,  up = 70,  restitution = 0,   spin = 9,  bones = 2 },
 	-- Galaxie : portail de trou de ver dressé sur la piste (pas suspendu, contrairement à l'anneau propulseur)
 	Wormhole   = { label = "WARP!",     sound = "Rocket", burst = "Sparks",   height = 14,  depth = 4,
 	               keep = 1,    forward = 55,  side = 0,  up = 45,  restitution = 0,   spin = 12, bones = 1 },
