@@ -3,7 +3,8 @@
 -- clips construits à la volée (animations).
 local Assets = {}
 
--- Maillages du mannequin (assets/dummy/export/dummy.fbx) : une MeshPart par pièce du gabarit et par accessoire
+-- Maillages du mannequin : une MeshPart par pièce du gabarit (assets/dummy/export/dummy.fbx) et par pièce ajoutée des
+-- modèles de collection (assets/dummy/export/collection.fbx, noms de Shared.DummyModels.ADDONS)
 Assets.DUMMY_MESHES = {
 	Torso = 133613233785754,
 	Head = 86063091423662,
@@ -15,9 +16,6 @@ Assets.DUMMY_MESHES = {
 	LeftLowerLeg = 119226912137255,
 	RightUpperLeg = 88314334717160,
 	RightLowerLeg = 80862197937671,
-	Helmet = 122532958398710,
-	Glasses = 74011413853472,
-	Cape = 104540158359045,
 } :: { [string]: number }
 
 -- Atlas (assets/dummy/export/dummy_atlas.png) : zones transparentes = couleur de la pièce, noir, cibles. Posé par
