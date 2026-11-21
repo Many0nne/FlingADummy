@@ -196,7 +196,7 @@ def build_rows(sheet, data, work):
             draw.rounded_rectangle((x - 3, y - 3, x + card_w + 3, y + row_h + 3), 12, fill=CARD, outline=color,
                                    width=3)
             out.paste(crop.resize((card_w, img_h), Image.LANCZOS), (x, y))
-            centered(draw, x, card_w, y + img_h + 8, item["title"], font(19), "white")
+            centered(draw, x, card_w, y + img_h + 8, item["title"], font(17), "white")
             centered(draw, x, card_w, y + img_h + 35, "   ".join(item["lines"]), font(16, False), MUTED)
     return out
 

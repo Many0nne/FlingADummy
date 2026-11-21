@@ -25,14 +25,14 @@ type Slot = CourseBuilder.Slot
 local PhotoStudio = {}
 
 local ORIGIN = Vector3.new(0, 300, -260) -- sol de la scène : au-dessus du hub (ciel de jour, chargé avec le hub)
-local BACKDROP = Color3.fromRGB(132, 140, 156) -- fond neutre : ni les mannequins sombres ni les néons ne s'y perdent
-local BACK_GAP = 6 -- du plan des mannequins au fond (studs)
+local BACKDROP = Color3.fromRGB(70, 75, 90) -- fond neutre sombre : les auras et néons ne le délavent pas
+local BACK_GAP = 16 -- du plan des mannequins au fond (studs) : hors de portée des lumières des auras
 local FEET = 3.82 -- du centre du torse au bas des pieds, échelle 1 (Shared.DummyShape)
--- Cadrage de la base : vue plongeante de 3/4 depuis le côté de l'entrée (appareil et pad compris)
-local BASE_VIEW = { aim = Vector3.new(9, 2, 0), from = Vector3.new(1, 0.95, 0.55), width = 74 }
+-- Cadrage de la base : vue plongeante face à l'entrée, appareil et pad de part et d'autre (ils ne la masquent pas)
+local BASE_VIEW = { aim = Vector3.new(4, 0, 0), from = Vector3.new(1, 1.2, 0), width = 92 }
 -- Cadrage de l'appareil d'entraînement : de face, un peu au-dessus (podium, râtelier et ses trois mannequins) ;
 -- tools/planches.py en garde le centre en 4:3
-local STATION_VIEW = { aim = Vector3.new(0, 4.2, 0), from = Vector3.new(1, 0.45, 0.4), width = 30 }
+local STATION_VIEW = { aim = Vector3.new(0, 4.5, 0), from = Vector3.new(1, 0.5, 0.35), width = 44 }
 
 local slots: { Slot } = {}
 local scene: Folder? = nil
