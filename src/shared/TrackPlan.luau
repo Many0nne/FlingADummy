@@ -1,7 +1,6 @@
--- Plan des obstacles de la piste (logique pure, testée) : dans chaque zone, une rangée de vitres (repère de distance,
--- cadre aux couleurs du thème), ses obstacles cassables à tour de rôle et son piège signature, répartis à intervalles
--- réguliers ; puis les boîtes de déclenchement des pièges (une par colonne d'obstacles). Construit par
--- Server.Obstacles, lu par Server.LaunchService.
+-- Plan des obstacles de la piste (logique pure, testée) : dans chaque zone, ses obstacles cassables à tour de rôle et
+-- son piège signature, répartis à intervalles réguliers ; puis les boîtes de déclenchement des pièges (une par colonne
+-- d'obstacles). Construit par Server.Obstacles, lu par Server.LaunchService.
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local CourseLayout = require(Shared:WaitForChild("CourseLayout"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
@@ -12,8 +11,8 @@ local TrackPlan = {}
 
 export type Site = {
 	zone: number, -- indice de la zone (Shared.Zones)
-	kind: string, -- "Glass" | "Obstacle" | "Trap"
-	name: string, -- obstacle (Server.ThemeObstacles) ou piège (Shared.Traps) ; "Glass" pour les vitres
+	kind: string, -- "Obstacle" | "Trap"
+	name: string, -- obstacle (Server.ThemeObstacles) ou piège (Shared.Traps)
 	z: number, -- distance du site sur la piste (m)
 }
 
@@ -36,15 +35,11 @@ TrackPlan.SPACING = 35 -- écart visé entre deux sites (m)
 TrackPlan.MIN_SITES = 3 -- obstacles et pièges d'une zone, au moins…
 TrackPlan.MAX_SITES = 8 -- … et au plus (zones longues : sites plus espacés)
 TrackPlan.TRAP_EVERY = 150 -- un piège de plus par tranche de 150 m (zones longues), au plus un site sur trois
-TrackPlan.GLASS_SITE = 2 -- les vitres prennent le 2e site de chaque zone
+-- Un obstacle de plus que le minimum par zone : il remplace l'ancienne rangée de vitres (#90), pour garder les objets
+-- à casser (CHANCE, compteur SMASHED)
+TrackPlan.EXTRA_OBSTACLES = 1
 
--- Cette méthode permet de donner la hauteur d'une rangée de vitres (ou d'un piège en colonne) à `z` lorsque l'on la
--- construit : plus elle est loin, plus elle est haute, pour rester sur la trajectoire des lancers puissants.
-function TrackPlan.glassHeight(z: number): number
-	return math.clamp(30 + z * 0.15, 30, 320)
-end
-
--- Cette méthode permet de répartir les sites d'une zone (vitres, obstacles à tour de rôle, pièges espacés) lorsque
+-- Cette méthode permet de répartir les sites d'une zone (obstacles à tour de rôle, pièges espacés) lorsque
 -- l'on construit la piste ; `courseLength` borne la dernière zone.
 function TrackPlan.zoneSites(index: number, courseLength: number): { Site }
 	local zone = Zones.LIST[index]
@@ -55,17 +50,16 @@ function TrackPlan.zoneSites(index: number, courseLength: number): { Site }
 	local base = math.clamp(math.floor(length / TrackPlan.SPACING + 0.5), TrackPlan.MIN_SITES, TrackPlan.MAX_SITES)
 	local trapCount = math.max(1, math.min(math.floor(length / TrackPlan.TRAP_EVERY), math.floor(base / 3)))
 	-- Assez de sites pour poser chaque obstacle du thème au moins une fois
-	local count = math.max(base, #zone.obstacles + trapCount) + 1 -- + la rangée de vitres
-	local glassAt = math.min(TrackPlan.GLASS_SITE, count)
+	local count = math.max(base, #zone.obstacles + trapCount) + TrackPlan.EXTRA_OBSTACLES
 	local trapAt: { [number]: boolean } = {}
 	for j = 1, trapCount do
-		-- Place visée, sinon la plus proche libre (ni vitres, ni autre piège), d'un côté ou de l'autre
+		-- Place visée, sinon la plus proche libre (pas d'autre piège), d'un côté ou de l'autre
 		local wanted = math.clamp(math.floor(j * (count + 1) / (trapCount + 1) + 0.5), 1, count)
 		for shift = 0, count do
 			local candidates = { wanted + shift, wanted - shift }
 			local placed = false
 			for _, at in candidates do
-				if at >= 1 and at <= count and at ~= glassAt and not trapAt[at] then
+				if at >= 1 and at <= count and not trapAt[at] then
 					trapAt[at] = true
 					placed = true
 					break
@@ -81,9 +75,7 @@ function TrackPlan.zoneSites(index: number, courseLength: number): { Site }
 	for k = 1, count do
 		local z = low + (high - low) * (k - 1) / math.max(count - 1, 1)
 		z = math.floor(z * 2 + 0.5) / 2 -- au demi-mètre : positions lisibles et reproductibles
-		if k == glassAt then
-			table.insert(sites, { zone = index, kind = "Glass", name = "Glass", z = z })
-		elseif trapAt[k] then
+		if trapAt[k] then
 			table.insert(sites, { zone = index, kind = "Trap", name = zone.trap, z = z })
 		else
 			local name = zone.obstacles[(nextObstacle - 1) % #zone.obstacles + 1]
@@ -106,12 +98,13 @@ function TrackPlan.sites(courseLength: number): { Site }
 end
 
 -- Cette méthode permet de donner la boîte de déclenchement du piège `kind` de la colonne centrée sur `x` à `z`
--- lorsque l'on pose le piège ou que l'on suit un vol : largeur de colonne, du sol à sa hauteur (ou à celle des vitres).
+-- lorsque l'on pose le piège ou que l'on suit un vol : largeur de colonne (ou du piège), du sol (ou de son bas, anneau
+-- suspendu) à sa hauteur.
 function TrackPlan.trapBox(kind: string, x: number, z: number): (Vector3, Vector3)
 	local def = Traps.KINDS[kind]
-	local height = def.height or TrackPlan.glassHeight(z)
-	local size = Vector3.new(Traps.WIDTH, height - Traps.FLOOR, def.depth)
-	return Vector3.new(x, Traps.FLOOR + size.Y / 2, z), size
+	local bottom = def.bottom or Traps.FLOOR
+	local size = Vector3.new(def.width or Traps.WIDTH, def.height - bottom, def.depth)
+	return Vector3.new(x, bottom + size.Y / 2, z), size
 end
 
 -- Cette méthode permet de donner les boîtes de tous les pièges de la piste (une par colonne d'obstacles), numérotées,

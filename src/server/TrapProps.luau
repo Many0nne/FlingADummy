@@ -406,15 +406,15 @@ builders.JackBox = function(model, at)
 	put(jack, at, Vector3.new(3.2, 1, 3.2), Vector3.new(0, 5.6, 0), rgb(120, 220, 110))
 end
 
--- Cette méthode permet de dresser un anneau propulseur (cerceau géant à 12 pans en blocs lunaires blancs et violets,
--- néon cyan qui tourne à l'intérieur, flux de particules vers l'avant) en haut de la colonne, sur la ligne de vol des
--- vitres, avec un pad au sol ; entre les deux, la colonne n'est que suggérée (halo translucide, étincelles qui montent).
+-- Cette méthode permet de suspendre un anneau propulseur (cerceau géant à 12 pans en blocs lunaires blancs et violets,
+-- néon cyan qui tourne à l'intérieur, flux de particules vers l'avant) autour de sa boîte lorsque la piste est
+-- construite ; seule son ouverture déclenche (#85) : ni pad au sol, ni colonne.
 builders.Booster = function(model, at, box)
 	local cyan = rgb(90, 230, 255)
 	local sides = 12
+	-- Cerceau de la largeur d'une colonne ; la boîte (carré de 8 studs) tient dans son ouverture, coins sur les pans
 	local radius = Traps.WIDTH / 2 - 0.4
-	local ringY = math.max(box.size.Y - radius - 2, radius + 4)
-	local hub = at * CFrame.new(0, ringY, 0) -- plan du cerceau : XY, face à la piste (+Z)
+	local hub = at * CFrame.new(0, box.center.Y, 0) -- plan du cerceau : XY, face à la piste (+Z)
 	local chord = 2 * radius * math.sin(math.pi / sides) + 0.3
 	for i = 0, sides - 1 do
 		local angle = CFrame.Angles(0, 0, 2 * math.pi * i / sides)
@@ -452,36 +452,10 @@ builders.Booster = function(model, at, box)
 		SpreadAngle = Vector2.new(5, 5),
 		EmissionDirection = Enum.NormalId.Back, -- +Z local : vers l'avant de la piste
 	})
-	-- Pad au sol : rampe sombre à chevrons de néon, pour un mannequin qui arrive en roulant
-	put(model, at, Vector3.new(11.6, 0.4, box.size.Z), Vector3.new(0, 0.2, 0), rgb(60, 55, 80))
-	for _, dz in { -1.5, 1 } do
-		for _, side in { -1, 1 } do
-			glow(
-				model,
-				at,
-				Vector3.new(4.4, 0.2, 0.8),
-				Vector3.new(side * 1.9, 0.45, dz + 0.9),
-				cyan,
-				Vector3.new(0, side * 35, 0)
-			)
-		end
-	end
-	-- Colonne suggérée : halo translucide du pad au cerceau, étincelles qui montent
-	local halo =
-		glow(model, at, Vector3.new(radius * 1.4, ringY - radius, 0.4), Vector3.new(0, (ringY - radius) / 2, 0), cyan)
-	halo.Transparency = 0.9
+	-- Halo translucide dans l'ouverture : l'anneau se lit de loin, de face comme d'en haut
+	local halo = glow(model, hub, Vector3.new(radius * 1.5, radius * 1.5, 0.3), Vector3.zero, cyan)
+	halo.Transparency = 0.85
 	halo.CastShadow = false
-	particles(halo, {
-		Texture = "rbxasset://textures/particles/sparkles_main.dds",
-		Color = ColorSequence.new(cyan),
-		LightEmission = 1,
-		Transparency = NumberSequence.new(0.2, 1),
-		Size = NumberSequence.new(0.8, 0.2),
-		Lifetime = NumberRange.new(1.5, 2.5),
-		Rate = 6,
-		Speed = NumberRange.new(10, 20),
-		EmissionDirection = Enum.NormalId.Top,
-	})
 end
 
 -- Cette méthode permet d'habiller le piège d'une boîte (TrackPlan.trapBox) sous `parent` lorsque la piste est

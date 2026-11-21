@@ -8,7 +8,7 @@ Ragdoll*, 06 *BloxNG*, 12 *Net a Fish!*).
 ## Le jeu en une phrase
 Dans un lobby de 4 joueurs, on s'entraîne en soulevant un mannequin pour devenir plus fort, puis on lance un mannequin de
 crash-test à bout de bras dans un canyon de briques à tenons, sur une piste partagée en douze thèmes, chacun avec ses
-vitres, ses obstacles cassables et son piège signature (trampoline, ventilateur, presse, lave…). Le lancer ne rapporte pas d'argent : sa **CHANCE** (zones traversées,
+obstacles cassables et son piège signature (trampoline, ventilateur, presse, lave…). Le lancer ne rapporte pas d'argent : sa **CHANCE** (zones traversées,
 os cassés, objets détruits) pousse un tirage « 1 en N » qui fait gagner un **mannequin de collection** ; posé dans sa
 base, il rapporte des $/s, seule source d'argent.
 
@@ -35,7 +35,9 @@ base, il rapporte des $/s, seule source d'argent.
    clic estimé depuis l'arrivée de `Launch` (lâcher de l'animation et latence déduits, lâcher en retard de
    `GAUGE_RELEASE_SLACK` = 0,25 s au plus, constante partagée avec le lâcher de secours du client).
 3. **Élan** : l'avatar se penche en arrière puis projette le mannequin (0,35 s).
-4. **Vol** : bandes noires, caméra qui suit, bannière **CHANCE** (« 1.36X / CHANCE / 🍀 MEADOW ») qui monte pendant le
+4. **Vol** : bandes noires, caméra qui suit (derrière et un peu sur le côté au ras du sol ; plus le mannequin monte,
+   plus elle plonge vers la piste et se recale dans son axe, distance bornée selon la vitesse : `Shared.FlightFraming`,
+   #88, comme la caméra de suivi de 01 et 09), bannière **CHANCE** (« 1.36X / CHANCE / 🍀 MEADOW ») qui monte pendant le
    vol, compteurs (distance, os, objets), radio du mannequin ; chaque choc a son son, ses particules et son popup
    (« +1 BONE », « SMASH x6 », combos).
 5. **Atterrissage** (≈ 1 s, #53) : dès que le mannequin s'arrête (détecté par le client), trèfle et CHANCE finale
@@ -234,9 +236,8 @@ L'équivalent des aliments de 01 et des graines de 09 : le mannequin qu'on lance
   joueur ne descend pas sur la piste et ne bouscule pas les obstacles des autres.
 - **Piste partagée** (80 studs de large, 2,4 km) au fond d'un canyon en 3 gradins : parois en briques, herbe (ou neige,
   sable…) voxel qui déborde de chaque marche, décor voxel sur les terre-pleins et au pied des parois (traversable).
-- **Obstacles partagés** (`Server.Obstacles`, plan dans `Shared.TrackPlan`) : dans chaque thème, une rangée de 4 vitres
-  (une par colonne, repère de distance, cadre à la couleur du thème), puis les 2 ou 3 obstacles cassables du thème à
-  tour de rôle (`Server.ThemeObstacles`, un par colonne ou d'un seul tenant sur la largeur des colonnes) et son piège
+- **Obstacles partagés** (`Server.Obstacles`, plan dans `Shared.TrackPlan`) : dans chaque thème, les 2 ou 3 obstacles cassables du thème à
+  tour de rôle (un site de plus que le minimum : il a remplacé la rangée de vitres retirée par #90) (`Server.ThemeObstacles`, un par colonne ou d'un seul tenant sur la largeur des colonnes) et son piège
   signature (section « Zones de la piste », un second piège dans les thèmes longs), sites espacés régulièrement
   (≈ 35 m, 3 à 8 par thème).
   Une pièce déplacée réapparaît à sa place **5 s après le dernier choc** subi par son obstacle, une par une de bas en haut
@@ -277,8 +278,9 @@ animées par chaque client (`Client.TrapMotion`) sur l'horloge du serveur, avec 
 décider si le piège agit (`Traps.CYCLES`, `Traps.active`, #79) : la presse n'écrase que pendant sa descente, le diable
 n'éjecte que sorti, l'aimant n'arrache que plaque allumée (néon et étincelles), le rondin ne frappe que le torse qu'il
 touche, en passant en bas de son balancement, et pousse le mannequin dans l'axe de la piste, dans le sens où il va (vers l'avant ou en arrière).
-Hors de cette phase, le mannequin passe sans rien. L'anneau propulseur est un cerceau néon en haut de la colonne, sur la
-ligne de vol des vitres, avec un pad au sol ; entre les deux, un halo et des étincelles.
+Hors de cette phase, le mannequin passe sans rien. L'anneau propulseur est un cerceau néon suspendu (centre à 85 studs : hauteur
+d'un vol de 32° qui retomberait ≈ 150 m plus loin, aux sites de la Moon Base) ; seule son ouverture déclenche (boîte
+carrée de 8 studs, #85), ni colonne ni pad au sol.
 
 ## Dégâts lisibles
 Chaque membre (10 pièces) suit les chocs : une variation brusque de vitesse au-delà d'un seuil casse un os (2 au-delà d'un

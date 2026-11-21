@@ -1,16 +1,13 @@
--- Obstacles partagés de la piste unique, posés aux sites de Shared.TrackPlan : dans chaque thème une rangée de vitres
--- (une par colonne, cadre à la couleur du thème), ses obstacles cassables (Server.ThemeObstacles) en pièces légères
--- simulées par le serveur, et son piège signature (Server.TrapProps, déclenché par Server.LaunchService). Les
+-- Obstacles partagés de la piste unique, posés aux sites de Shared.TrackPlan : dans chaque thème ses obstacles
+-- cassables (Server.ThemeObstacles) en pièces légères simulées par le serveur, et son piège signature (Server.TrapProps, déclenché par Server.LaunchService). Les
 -- mannequins de tous les joueurs cassent les obstacles ; une pièce déplacée réapparaît à sa place RESPAWN_DELAY après le dernier choc subi par son obstacle, une par une, de bas en
 -- haut, avec un petit effet d'apparition (Shared.ObstacleRules).
-local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
-local CourseLayout = require(ReplicatedStorage.Shared.CourseLayout)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local ObstacleRules = require(ReplicatedStorage.Shared.ObstacleRules)
 local TrackPlan = require(ReplicatedStorage.Shared.TrackPlan)
@@ -20,18 +17,12 @@ local CollisionGroups = require(script.Parent.CollisionGroups)
 local ThemeObstacles = require(script.Parent.ThemeObstacles)
 local TrapProps = require(script.Parent.TrapProps)
 
-local SHARD_COUNT = 12
-local SHARD_LIFETIME = 4
 local SCAN_PERIOD = 0.2 -- surveillance des pièces (s)
 local SETTLE_SPEED = 2 -- une pièce déplacée qui bouge encore repousse la réapparition
 local POP_TIME = 0.25
 local OCCUPIED_SCALE = 0.9 -- emplacement vérifié avant réapparition (pièces voisines qui se touchent tolérées)
 local OCCUPIED_RETRY = 0.2 -- une pièce dont l'emplacement est occupé attend (s)…
 local OCCUPIED_TRIES = 40 -- … au plus 8 s (un mannequin posé disparaît RESULT_CLEAR_TIME après la fin de son vol)
-
-local GLASS_COLOR = Color3.fromRGB(170, 225, 255)
-
-export type Glass = { part: BasePart?, z: number, top: number, minX: number, maxX: number, brokenAt: number? }
 
 -- `kind` : ce qu'un choc dans la pièce raconte (cause du crash) ; `material` : son joué quand elle est projetée
 export type Piece = {
@@ -50,7 +41,6 @@ export type Group = { pieces: { Piece }, lastHit: number?, respawning: boolean }
 local Obstacles = {}
 
 local folder: Folder
-local glasses: { Glass } = {}
 local trapBoxes: { TrackPlan.TrapBox } = {}
 local pieces: { Piece } = {}
 local groups: { Group } = {}
@@ -95,59 +85,6 @@ local function newGroup(): Group
 	return group
 end
 
--- Cette méthode permet de créer la vitre de la colonne `column` à `z` lorsque la piste est construite ou que la
--- vitre réapparaît ; plus elle est loin, plus elle est haute, pour rester sur la trajectoire des lancers puissants.
-local function makeGlass(glass: Glass)
-	local width = glass.maxX - glass.minX
-	local center = (glass.minX + glass.maxX) / 2
-	glass.part = Build.part({
-		Name = "Glass",
-		Size = Vector3.new(width - 0.4, glass.top, 0.4),
-		Position = Vector3.new(center, glass.top / 2, glass.z),
-		Color = GLASS_COLOR,
-		Material = Enum.Material.Glass,
-		Transparency = 0.45,
-		Reflectance = 0.15,
-		-- Traversée détectée par LaunchService (franchissement de z), pas par collision
-		CanCollide = false,
-		CanTouch = false,
-		Parent = folder,
-	})
-end
-
--- Cette méthode permet de poser une rangée de vitres (une par colonne, cadre à la couleur du thème `color`) à `z`
--- lorsque la piste est construite.
-local function buildGlassRow(z: number, color: Color3)
-	local height = TrackPlan.glassHeight(z)
-	local half = GameConfig.SLOT_SPACING / 2
-	for index = 1, GameConfig.SLOT_COUNT do
-		local x = CourseLayout.slotX(index)
-		local glass: Glass = { part = nil, z = z, top = height, minX = x - half, maxX = x + half, brokenAt = nil }
-		makeGlass(glass)
-		table.insert(glasses, glass)
-	end
-	-- Cadre : montants entre les colonnes et traverse en haut (décor)
-	local span = GameConfig.SLOT_COUNT * GameConfig.SLOT_SPACING
-	for index = 0, GameConfig.SLOT_COUNT do
-		Build.decor({
-			Name = "GlassPost",
-			Size = Vector3.new(0.8, height, 0.8),
-			Position = Vector3.new(-span / 2 + index * GameConfig.SLOT_SPACING, height / 2, z),
-			Color = color,
-			Variant = Build.BRICK,
-			Parent = folder,
-		})
-	end
-	Build.decor({
-		Name = "GlassFrame",
-		Size = Vector3.new(span + 0.8, 1.2, 1),
-		Position = Vector3.new(0, height, z),
-		Color = color,
-		Variant = Build.BRICK,
-		Parent = folder,
-	})
-end
-
 -- Cette méthode permet de donner à Server.ThemeObstacles de quoi monter l'obstacle `kind` (un groupe de pièces par
 -- appel à `group`) lorsque l'on construit un site.
 local function kitFor(kind: string): ThemeObstacles.Kit
@@ -161,7 +98,7 @@ local function kitFor(kind: string): ThemeObstacles.Kit
 	}
 end
 
--- Cette méthode permet de construire tous les obstacles de la piste (vitres, obstacles des thèmes, pièges) sous
+-- Cette méthode permet de construire tous les obstacles de la piste (obstacles des thèmes, pièges) sous
 -- `parent` lorsque le serveur démarre.
 function Obstacles.build(parent: Instance)
 	folder = Instance.new("Folder")
@@ -170,9 +107,7 @@ function Obstacles.build(parent: Instance)
 	local sites = TrackPlan.sites(GameConfig.COURSE_LENGTH)
 	for _, site in sites do
 		local zone = Zones.LIST[site.zone]
-		if site.kind == "Glass" then
-			buildGlassRow(site.z, zone.color)
-		elseif site.kind == "Obstacle" then
+		if site.kind == "Obstacle" then
 			ThemeObstacles.build(site.name, kitFor(site.name), site.z, zone)
 		end
 	end
@@ -218,25 +153,6 @@ function Obstacles.nearest(position: Vector3, radius: number): Piece?
 	return best
 end
 
--- Cette méthode permet de donner les vitres intactes franchies entre `previous` et `position` (franchissement de z,
--- dans les bornes en x et en hauteur de la vitre), avec le point de passage, lorsque le mannequin avance.
-function Obstacles.crossedGlass(previous: Vector3, position: Vector3): { { glass: Glass, crossing: Vector3 } }
-	local crossed = {}
-	if position.Z <= previous.Z then
-		return crossed
-	end
-	for _, glass in glasses do
-		if glass.part and previous.Z < glass.z and position.Z >= glass.z then
-			local crossing = previous:Lerp(position, (glass.z - previous.Z) / (position.Z - previous.Z))
-			-- Borne droite exclue : un passage pile entre deux colonnes ne brise qu'une vitre
-			if crossing.Y <= glass.top and crossing.X >= glass.minX and crossing.X < glass.maxX then
-				table.insert(crossed, { glass = glass, crossing = crossing })
-			end
-		end
-	end
-	return crossed
-end
-
 -- Cette méthode permet de faire apparaître une pièce avec un petit effet (elle grossit depuis son centre) lorsqu'elle
 -- réapparaît.
 local function pop(p: BasePart)
@@ -245,39 +161,6 @@ local function pop(p: BasePart)
 	-- Sans dépassement : la pièce ancrée ne doit pas bousculer ses voisines
 	TweenService:Create(p, TweenInfo.new(POP_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = size })
 		:Play()
-end
-
--- Cette méthode permet de briser une vitre en éclats lorsqu'un mannequin la traverse au point `impact`.
-function Obstacles.shatter(glass: Glass, impact: Vector3, velocity: Vector3)
-	local part = glass.part
-	if not part then
-		return
-	end
-	glass.part = nil
-	glass.brokenAt = os.clock()
-	part:Destroy()
-	for _ = 1, SHARD_COUNT do
-		local offset = Vector3.new(math.random() * 8 - 4, math.random() * 10 - 5, 0)
-		local position = Vector3.new(impact.X, math.clamp(impact.Y, 1, glass.top - 1), glass.z) + offset
-		local shard = Build.part({
-			Name = "Shard",
-			Size = Vector3.new(0.6 + math.random() * 1.8, 0.6 + math.random() * 1.8, 0.15),
-			CFrame = CFrame.new(position) * CFrame.Angles(math.random() * 6, math.random() * 6, math.random() * 6),
-			Color = GLASS_COLOR,
-			Material = Enum.Material.Glass,
-			Transparency = 0.3,
-			Reflectance = 0.3,
-			Anchored = false,
-			CanQuery = false,
-			CanTouch = false,
-			CollisionGroup = CollisionGroups.DEBRIS,
-			Parent = folder,
-		})
-		local spread = Vector3.new(math.random() * 40 - 20, math.random() * 30, math.random() * 10)
-		shard.AssemblyLinearVelocity = velocity * 0.5 + spread
-		shard:SetNetworkOwner(nil)
-		Debris:AddItem(shard, SHARD_LIFETIME)
-	end
 end
 
 -- Cette méthode permet d'inspecter l'emplacement d'une pièce lorsqu'elle va réapparaître : renvoie s'il est occupé par
@@ -384,7 +267,7 @@ local function respawn(group: Group, debris: { Piece })
 end
 
 -- Cette méthode permet de relever les pièces déplacées, de noter le dernier choc de chaque obstacle, et de lancer
--- les réapparitions dues (obstacles et vitres) lorsque la surveillance périodique tourne.
+-- les réapparitions dues lorsque la surveillance périodique tourne.
 function Obstacles.scan(now: number)
 	for _, group in groups do
 		if group.respawning then
@@ -411,13 +294,6 @@ function Obstacles.scan(now: number)
 			else
 				group.lastHit = now
 			end
-		end
-	end
-	for _, glass in glasses do
-		if not glass.part and ObstacleRules.isDue(glass.brokenAt, now) then
-			glass.brokenAt = nil
-			makeGlass(glass)
-			pop(glass.part :: BasePart)
 		end
 	end
 end

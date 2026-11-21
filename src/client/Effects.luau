@@ -132,14 +132,6 @@ local function onImpact(impact: any)
 			FlightCamera.punch()
 			combo = 0
 		end
-	elseif impact.kind == "Glass" then
-		playAt("Glass", position)
-		burst("Glass", position, 40)
-		popup(position, "GLASS!", C.glass)
-		if mine then
-			FlightCamera.shake(0.6)
-			bumpCombo(position)
-		end
 	elseif impact.kind == "Bone" then
 		local bones = impact.value or 1
 		playAt("Bone", position, 0.85 + math.random() * 0.3)
@@ -206,16 +198,6 @@ function Effects.init(localPlayer: Player, impactRemote: RemoteEvent)
 		Parent = folder,
 	})
 	emitterAnchor = UIKit.create("Attachment", { Parent = holder })
-	emitter("Glass", {
-		Texture = "rbxasset://textures/particles/sparkles_main.dds",
-		Color = ColorSequence.new(Color3.fromRGB(200, 240, 255)),
-		LightEmission = 1,
-		Size = NumberSequence.new(1.2, 0),
-		Lifetime = NumberRange.new(0.4, 0.9),
-		Speed = NumberRange.new(20, 45),
-		SpreadAngle = Vector2.new(180, 180),
-		Drag = 3,
-	})
 	emitter("Bone", {
 		Texture = "rbxasset://textures/particles/sparkles_main.dds",
 		Color = ColorSequence.new(Color3.fromRGB(255, 80, 60), Color3.fromRGB(255, 255, 255)),

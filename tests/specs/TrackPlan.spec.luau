@@ -1,4 +1,4 @@
--- Plan des obstacles : vitres dans chaque zone, obstacles du thème à tour de rôle, piège signature, boîtes des pièges.
+-- Plan des obstacles : obstacles du thème à tour de rôle (plus de vitres, #90), piège signature, boîtes des pièges.
 return function(T, Loader)
 	local loader = Loader.new()
 	local TrackPlan = loader:require("src/shared/TrackPlan")
@@ -11,14 +11,12 @@ return function(T, Loader)
 	local sites = TrackPlan.sites(LENGTH)
 
 	T.describe("TrackPlan.zoneSites", function()
-		T.it("pose dans chaque zone une rangée de vitres, chaque obstacle du thème et son piège", function()
+		T.it("pose dans chaque zone chaque obstacle du thème et son piège, sans vitres", function()
 			for index, zone in Zones.LIST do
-				local glass, traps, obstacles = 0, 0, {}
+				local traps, obstacles = 0, {}
 				for _, site in TrackPlan.zoneSites(index, LENGTH) do
 					T.expectEqual(site.zone, index)
-					if site.kind == "Glass" then
-						glass += 1
-					elseif site.kind == "Trap" then
+					if site.kind == "Trap" then
 						traps += 1
 						T.expectEqual(site.name, zone.trap)
 					else
@@ -26,7 +24,6 @@ return function(T, Loader)
 						obstacles[site.name] = true
 					end
 				end
-				T.expectEqual(glass, 1)
 				T.expect(traps >= 1, zone.name .. " : piège")
 				for _, name in zone.obstacles do
 					T.expect(obstacles[name], zone.name .. " : obstacle absent " .. name)
@@ -78,7 +75,7 @@ return function(T, Loader)
 	end)
 
 	T.describe("TrackPlan.zoneSites (pièges)", function()
-		T.it("pose tous les pièges prévus sans en perdre, ni sur les vitres", function()
+		T.it("pose tous les pièges prévus sans en perdre", function()
 			for index, zone in Zones.LIST do
 				local length = Zones.finish(index, LENGTH) - zone.start
 				local zoneSites = TrackPlan.zoneSites(index, LENGTH)
@@ -120,24 +117,52 @@ return function(T, Loader)
 			T.expectEqual(#boxes, #columnsBySite * GameConfig.SLOT_COUNT)
 		end)
 
-		T.it("part sous le sol (mannequin couché) et monte à la hauteur du piège ou des vitres", function()
-			for _, box in boxes do
-				local bottom = box.center.Y - box.size.Y / 2
-				T.expectNear(bottom, Traps.FLOOR, 1e-9)
-				local def = Traps.KINDS[box.kind]
-				local top = box.center.Y + box.size.Y / 2
-				T.expectNear(top, def.height or TrackPlan.glassHeight(box.z), 1e-3)
-				T.expectEqual(box.size.X, Traps.WIDTH)
-				T.expect(Traps.WIDTH < GameConfig.SLOT_SPACING, "un passage entre deux colonnes")
+		T.it(
+			"part sous le sol (mannequin couché), ou du bas du piège suspendu, et monte à la hauteur du piège",
+			function()
+				for _, box in boxes do
+					local def = Traps.KINDS[box.kind]
+					local bottom = box.center.Y - box.size.Y / 2
+					T.expectNear(bottom, def.bottom or Traps.FLOOR, 1e-9)
+					local top = box.center.Y + box.size.Y / 2
+					T.expectNear(top, def.height, 1e-9)
+					T.expectEqual(box.size.X, def.width or Traps.WIDTH)
+					T.expect(box.size.X <= Traps.WIDTH, box.kind .. " : dans sa colonne")
+					T.expect(Traps.WIDTH < GameConfig.SLOT_SPACING, "un passage entre deux colonnes")
+				end
 			end
-		end)
+		)
 	end)
 
-	T.describe("TrackPlan.glassHeight", function()
-		T.it("monte avec la distance, entre 30 et 320 studs", function()
-			T.expectEqual(TrackPlan.glassHeight(0), 30)
-			T.expect(TrackPlan.glassHeight(1000) > TrackPlan.glassHeight(500), "croissante")
-			T.expectEqual(TrackPlan.glassHeight(1e6), 320)
+	T.describe("TrackPlan.trapBox (anneau propulseur, #85)", function()
+		local center, size = TrackPlan.trapBox("Booster", 7, 1900)
+		local def = Traps.KINDS.Booster
+
+		T.it("ne couvre que l'ouverture du cerceau, suspendue au-dessus de la piste", function()
+			T.expect(def.bottom ~= nil and def.bottom > 40, "anneau suspendu")
+			T.expectNear(center.Y, (def.bottom + def.height) / 2, 1e-9)
+			T.expect(size.X <= 9.8 and size.Y <= 9.8, "pas plus grand que l'ouverture du cerceau (9,8 studs)")
+			T.expectNear(center.X, 7, 1e-9)
+			T.expectNear(center.Z, 1900, 1e-9)
+		end)
+
+		T.it("déclenche en passant dans l'anneau, pas sur la colonne en dessous ni à côté", function()
+			local through = Traps.crosses(center, size, center - Vector3.new(0, 0, 8), center + Vector3.new(0, 0, 8))
+			T.expect(through, "passage par le centre")
+			local y = center.Y
+			-- Ancienne colonne : à mi-hauteur (y 60, vérifié en Studio sur #85) et au ras du sol (pad)
+			for _, height in { 60, 30, 1 } do
+				local a, b = Vector3.new(7, height, 1890), Vector3.new(7, height, 1910)
+				T.expect(not Traps.crosses(center, size, a, b), "sous l'anneau à " .. height .. " studs")
+			end
+			T.expect(
+				not Traps.crosses(center, size, Vector3.new(14, y, 1890), Vector3.new(14, y, 1910)),
+				"à côté de l'anneau (colonne voisine)"
+			)
+			T.expect(
+				not Traps.crosses(center, size, Vector3.new(7, y + 8, 1890), Vector3.new(7, y + 8, 1910)),
+				"au-dessus de l'anneau"
+			)
 		end)
 	end)
 end

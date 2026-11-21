@@ -15,7 +15,7 @@ return function(T, Loader)
 				T.expect(Sounds[def.sound] ~= nil, kind .. " : son inconnu " .. def.sound)
 				T.expect(def.bones >= 1 and def.bones <= 3, kind .. " : os")
 				T.expect(def.depth > 0, kind .. " : profondeur")
-				T.expect(def.height == nil or def.height > 0, kind .. " : hauteur")
+				T.expect(def.height > (def.bottom or Traps.FLOOR), kind .. " : hauteur")
 				local cause = Damage.cause(kind, 20)
 				T.expect(not string.find(cause, "Hit the ground", 1, true), kind .. " : cause de crash")
 			end

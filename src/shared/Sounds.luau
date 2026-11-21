@@ -1,7 +1,6 @@
 -- Sons du jeu (Creator Store, gratuits) : un identifiant par événement, joué côté client.
 local Sounds = {
 	Whoosh = { id = "rbxassetid://9120972321", volume = 0.9 },
-	Glass = { id = "rbxassetid://9114592103", volume = 0.8 },
 	Bone = { id = "rbxassetid://9113542363", volume = 0.9 },
 	Thud = { id = "rbxassetid://9113475819", volume = 0.8 },
 	Crate = { id = "rbxassetid://117158373103667", volume = 0.7 },

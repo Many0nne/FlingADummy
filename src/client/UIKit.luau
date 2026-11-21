@@ -37,7 +37,6 @@ UIKit.COLORS = {
 	locked = Color3.fromRGB(110, 114, 126),
 	bone = Color3.fromRGB(255, 120, 90),
 	smash = Color3.fromRGB(255, 170, 60),
-	glass = Color3.fromRGB(150, 225, 255),
 }
 
 -- Repli des icônes tant qu'elles ne sont pas publiées (Shared.Assets.ICONS à 0)
