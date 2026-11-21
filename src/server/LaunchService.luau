@@ -142,6 +142,8 @@ local function startFlight(
 	dummy:SetAttribute("Zone", 1)
 	dummy:SetAttribute("Speed", math.floor(speed))
 	dummy:SetAttribute("Luck", thrown.luck) -- bannière CHANCE : multiplicateur du mannequin lancé
+	-- CHANCE de départ déjà multipliée : la bannière ne montre pas « 1X » avant la première frame
+	dummy:SetAttribute("Chance", Economy.chance({ distance = 0, bones = 0, smashed = 0, luck = thrown.luck }).total)
 	dummy:SetAttribute("Thrown", thrown.name)
 
 	local torso = dummy.PrimaryPart :: BasePart

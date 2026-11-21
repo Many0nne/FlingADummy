@@ -195,7 +195,8 @@ end
 -- Cette méthode permet de donner au joueur les `index` premiers mannequins à lancer et d'équiper le dernier lorsque
 -- l'on mesure dans Studio (attribut DebugThrowDummy, contexte Server) : rien n'est payé.
 function PlayerData.debugThrowDummy(player: Player, index: any)
-	if not ThrowDummies.isIndex(index) then
+	-- Pas avant le chargement : la sauvegarde lue écraserait le don
+	if not ThrowDummies.isIndex(index) or player:GetAttribute("DataReady") ~= true then
 		return
 	end
 	local owned = ThrowDummies.sanitize(player:GetAttribute("ThrowTier"), nil)

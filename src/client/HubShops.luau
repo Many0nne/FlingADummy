@@ -146,6 +146,11 @@ local function step()
 			continue
 		end
 		if still then
+			-- Mouvement réduit : marchand remis au repos (pas figé bras levé)
+			model:PivotTo(merchant.base)
+			if merchant.arm and merchant.shoulder then
+				merchant.arm.CFrame = merchant.base * merchant.shoulder * CFrame.new(0, -merchant.armHalf, 0)
+			end
 			continue
 		end
 		local bob = math.abs(math.sin(now * 2 + merchant.phase)) * 0.15

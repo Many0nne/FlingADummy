@@ -47,7 +47,8 @@ local function onAction(index: number)
 		UIKit.playSound("Click", 1.1)
 	elseif state == "Buy" then
 		local dummy = ThrowDummies.LIST[index]
-		if hooks.money() >= dummy.cost then
+		-- Solde du serveur (l'argent encore en vol vers le compteur compte déjà) : le serveur tranche
+		if ((player:GetAttribute("Money") :: number?) or 0) >= dummy.cost then
 			remotes.ThrowDummy:FireServer("Buy", index)
 		else
 			hooks.popup({

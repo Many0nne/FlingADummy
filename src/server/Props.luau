@@ -745,6 +745,8 @@ function Props.shopStand(parent: Instance, at: CFrame, displayTag: string, count
 	stall(folder, at, blue)
 	-- Comptoir (les 3 premiers), étagère du fond (les suivants), vitrine (le dernier), chacun sur son plateau
 	put(folder, at, Vector3.new(STALL_W - 2, 0.5, 2), Vector3.new(0, 7.2, 3.1), WOOD, true)
+	-- Disposition prévue pour le catalogue de 5 ou 6 mannequins (3 au comptoir, 1 ou 2 sur l'étagère, 1 en vitrine)
+	assert(count >= 5 and count <= 6, "Props.shopStand : 5 ou 6 mannequins à exposer")
 	local shelved = count - 4
 	for i = 1, count - 1 do
 		local offset = if i <= 3
