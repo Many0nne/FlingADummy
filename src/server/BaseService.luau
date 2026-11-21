@@ -273,6 +273,12 @@ function BaseService.place(player: Player, display: any, force: boolean?): boole
 		return false
 	end
 	local held, heldKey = DummyTools.equipped(player)
+	local firstPlace = firstPlacePending(player)
+	if firstPlace then
+		held, heldKey = nil, nil -- première pose du tutoriel : le mannequin du panneau (dernier gagné)
+	elseif display ~= nil and not force and not (heldKey and Inventory.findStock(data, heldKey)) then
+		return false -- hors tutoriel, l'invite d'un présentoir pose seulement le mannequin tenu
+	end
 	local key = if heldKey and Inventory.findStock(data, heldKey)
 		then heldKey
 		elseif data.last then Inventory.key(data.last)

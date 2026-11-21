@@ -249,6 +249,7 @@ def rarity_builder(color):
     la couleur de la rarete) lorsque la table des icones est remplie."""
 
     def build():
+        """Cette methode permet de construire le buste teinte lorsque l'icone de la rarete est rendue."""
         build_dummy()
         tint = material("Rarity", color, roughness=0.35)
         for obj in bpy.context.scene.objects:

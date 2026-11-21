@@ -240,18 +240,8 @@ end
 -- Cette méthode permet de donner la clé « id:taille » du mannequin de collection que tient un personnage (outil du
 -- Backpack équipé) lorsque l'on pose le mannequin porté ; nil s'il n'en tient pas.
 local function carriedKey(character: Model?): string?
-	if not character then
-		return nil
-	end
-	for _, child in character:GetChildren() do
-		if child:IsA("Tool") then
-			local key = child:GetAttribute(BackpackPlan.TOOL_ATTRIBUTE)
-			if type(key) == "string" and Inventory.parseKey(key) then
-				return key
-			end
-		end
-	end
-	return nil
+	local _, key = BackpackPlan.held(character)
+	return key
 end
 
 -- Cette méthode permet de jouer les clips en boucle du joueur local selon son action et de clore son lancer

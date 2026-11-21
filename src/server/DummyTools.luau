@@ -2,7 +2,7 @@
 -- Shared.BackpackPlan (rareté décroissante, puis arrivée). Les outils ne portent que des données (nom, info-bulle,
 -- icône de rareté, attribut DummyKey) : le mannequin tenu est construit par chaque client (Client.CharacterPoser) d'après
 -- l'outil équipé. Le joueur ne tient un mannequin qu'au hub, libre : sur la bande, en vol, au résultat ou à
--- l'entraînement, il est déséquipé. Le Backpack, recréé à chaque réapparition, est resynchronisé depuis le stock.
+-- l'entraînement (et pendant la première pose du tutoriel), il est déséquipé. Le Backpack, recréé à chaque réapparition, est resynchronisé depuis le stock.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
@@ -11,6 +11,7 @@ local BackpackPlan = require(Shared.BackpackPlan)
 local Collection = require(Shared.Collection)
 local Format = require(Shared.Format)
 local Rarity = require(Shared.Rarity)
+local Tutorial = require(Shared.Tutorial)
 
 local ATTRIBUTE = BackpackPlan.TOOL_ATTRIBUTE
 
@@ -20,10 +21,12 @@ local DummyTools = {}
 type State = { backpack: Instance?, sequence: { Tool } }
 local states: { [Player]: State } = {}
 
--- Cette méthode permet de savoir si le joueur peut tenir un mannequin (au hub, ni sur la bande ni à l'entraînement)
--- lorsqu'il en équipe un ou que son état change.
+-- Cette méthode permet de savoir si le joueur peut tenir un mannequin (au hub, ni sur la bande ni à l'entraînement, ni
+-- pendant la première pose du tutoriel, qui pose le mannequin du panneau) lorsqu'il en équipe un ou que son état change.
 local function canHold(player: Player): boolean
-	return player:GetAttribute("LaneState") == "Ready" and player:GetAttribute("Action") == nil
+	return player:GetAttribute("LaneState") == "Ready"
+		and player:GetAttribute("Action") == nil
+		and Tutorial.current((player:GetAttribute("Tutorial") :: number?) or 0) ~= "Place"
 end
 
 -- Cette méthode permet de créer l'outil d'un mannequin (nom, info-bulle avec rareté et $/s, icône de rareté, sans
@@ -49,17 +52,7 @@ end
 -- Cette méthode permet de donner l'outil de mannequin équipé par le joueur (et sa clé) lorsque le serveur pose le
 -- mannequin tenu ; nil s'il n'en tient pas.
 function DummyTools.equipped(player: Player): (Tool?, string?)
-	local character = player.Character
-	if not character then
-		return nil, nil
-	end
-	for _, child in character:GetChildren() do
-		local key = child:GetAttribute(ATTRIBUTE)
-		if child:IsA("Tool") and type(key) == "string" then
-			return child, key
-		end
-	end
-	return nil, nil
+	return BackpackPlan.held(player.Character)
 end
 
 -- Cette méthode permet de déséquiper le mannequin tenu lorsque le joueur ne peut plus le tenir (lancer, entraînement).
@@ -86,7 +79,7 @@ function DummyTools.sync(player: Player, stock: { Collection.Entry })
 	-- Outils rangés, dans l'ordre où le serveur les a mis (un outil rendu au Backpack après un réordonnancement, tenu
 	-- pendant celui-ci, vient en dernier), puis celui que le joueur tient
 	local tools: { Tool } = {}
-	local described: { BackpackPlan.Tool } = {}
+	local described: { BackpackPlan.ToolInfo } = {}
 	local seen: { [Tool]: boolean } = {}
 	local stored: { Tool } = {}
 	for _, tool in state.sequence do
@@ -134,7 +127,8 @@ function DummyTools.sync(player: Player, stock: { Collection.Entry })
 		pool[key] = pool[key] or {}
 		table.insert(pool[key], makeTool(entry))
 	end
-	-- La barre d'outils range les outils dans l'ordre où ils arrivent dans le Backpack : retirer puis remettre
+	-- La barre d'outils range les outils dans l'ordre où ils arrivent dans le Backpack : retirer puis remettre ceux qui
+	-- suivent la partie déjà en ordre (un nouveau mannequin courant ne touche qu'à la fin de la barre)
 	local ordered: { Tool } = {}
 	for _, key in plan.sequence do
 		local tool = table.remove(pool[key], 1)
@@ -142,13 +136,17 @@ function DummyTools.sync(player: Player, stock: { Collection.Entry })
 			table.insert(ordered, tool)
 		end
 	end
-	for _, tool in ordered do
-		if tool.Parent == backpack then
-			tool.Parent = nil
+	local kept = 0
+	while kept < #current and current[kept + 1] == plan.sequence[kept + 1] do
+		kept += 1
+	end
+	for index = kept + 1, #ordered do
+		if ordered[index].Parent == backpack then
+			ordered[index].Parent = nil
 		end
 	end
-	for _, tool in ordered do
-		tool.Parent = backpack
+	for index = kept + 1, #ordered do
+		ordered[index].Parent = backpack
 	end
 	state.sequence = ordered
 end
@@ -185,7 +183,7 @@ function DummyTools.track(player: Player, stock: () -> { Collection.Entry }?)
 	if player.Character then
 		watchCharacter(player, player.Character)
 	end
-	for _, attribute in { "LaneState", "Action" } do
+	for _, attribute in { "LaneState", "Action", "Tutorial" } do
 		player:GetAttributeChangedSignal(attribute):Connect(function()
 			if not canHold(player) then
 				DummyTools.unequip(player)

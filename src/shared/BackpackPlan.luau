@@ -4,6 +4,7 @@
 -- sont interchangeables : un outil se reconnaît à sa clé « id:taille » (attribut TOOL_ATTRIBUTE).
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Collection = require(Shared:WaitForChild("Collection"))
+local Inventory = require(Shared:WaitForChild("Inventory"))
 
 type Entry = Collection.Entry
 
@@ -12,7 +13,7 @@ local BackpackPlan = {}
 BackpackPlan.TOOL_ATTRIBUTE = "DummyKey" -- clé « id:taille » portée par chaque Tool de mannequin
 
 -- Outil existant, tel que le serveur le décrit : clé, et s'il est équipé (dans le personnage)
-export type Tool = { key: string, equipped: boolean }
+export type ToolInfo = { key: string, equipped: boolean }
 
 -- Ce que le serveur doit faire : outils à détruire (indices dans la liste reçue), entrées à créer, et ordre voulu
 -- des clés dans le Backpack (outils non équipés seulement)
@@ -47,7 +48,7 @@ end
 -- Cette méthode permet de comparer les outils existants au stock lorsque la collection change : les outils en trop
 -- sont retirés (un outil équipé n'est retiré que s'il n'en reste aucun de sa clé), les manquants créés, et l'ordre
 -- voulu des outils rangés dans le Backpack (l'outil équipé y garde sa place hors de la liste).
-function BackpackPlan.plan(stock: { Entry }, tools: { Tool }): Plan
+function BackpackPlan.plan(stock: { Entry }, tools: { ToolInfo }): Plan
 	local wanted: { [string]: number } = {}
 	local ordered = BackpackPlan.order(stock)
 	for _, entry in ordered do
@@ -95,6 +96,23 @@ function BackpackPlan.plan(stock: { Entry }, tools: { Tool }): Plan
 		end
 	end
 	return { remove = remove, add = add, sequence = sequence }
+end
+
+-- Cette méthode permet de donner l'outil de mannequin équipé par un personnage et sa clé (valide) lorsque le serveur
+-- pose le mannequin tenu ou qu'un client le dessine ; nil s'il n'en tient pas.
+function BackpackPlan.held(character: Instance?): (Tool?, string?)
+	if not character then
+		return nil, nil
+	end
+	for _, child in character:GetChildren() do
+		if child:IsA("Tool") then
+			local key = child:GetAttribute(BackpackPlan.TOOL_ATTRIBUTE)
+			if Inventory.parseKey(key) then
+				return child, key :: string
+			end
+		end
+	end
+	return nil, nil
 end
 
 -- Cette méthode permet de savoir si deux listes de clés sont identiques (même ordre) lorsque le serveur décide s'il

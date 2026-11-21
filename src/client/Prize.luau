@@ -38,6 +38,7 @@ local TICK_GAP = 0.045 -- écart minimal entre deux tics du compteur de cote (s)
 local DRUMROLL = 1.1 -- roulement avant la révélation : la silhouette tremble de plus en plus (s)
 local AUTO_CLOSE = 5 -- GO BACK automatique après la révélation (s)
 local PROMPT_REFRESH = 0.25 -- s entre deux mises à jour des invites « Place »
+local AUTO_BOTTOM = 96 -- marge du bouton AUTO au bas de l'écran (px) : au-dessus de la barre d'outils Roblox
 local BLACK = Color3.fromRGB(12, 12, 16)
 -- Exclamation de chaque palier selon la rareté du candidat (« Super chanceux ! », « Chance incroyable ! » de 01)
 local EXCLAIM =
@@ -86,19 +87,8 @@ end
 -- Cette méthode permet de donner le mannequin que le joueur tient (outil du Backpack équipé) lorsque les invites
 -- « Place » et le bouton AUTO se mettent à jour ; nil s'il n'en tient pas.
 local function heldEntry(): Collection.Entry?
-	local character = player.Character
-	if not character then
-		return nil
-	end
-	for _, child in character:GetChildren() do
-		if child:IsA("Tool") then
-			local entry = Inventory.parseKey(child:GetAttribute(BackpackPlan.TOOL_ATTRIBUTE))
-			if entry then
-				return entry
-			end
-		end
-	end
-	return nil
+	local _, key = BackpackPlan.held(player.Character)
+	return Inventory.parseKey(key)
 end
 
 -- Cette méthode permet de savoir si la première pose du tutoriel reste à faire (panneau « Place your … », pose à la
@@ -110,7 +100,7 @@ end
 -- Cette méthode permet de donner le mannequin que l'invite « Place » et AUTO poseraient lorsque l'on les met à jour :
 -- celui que le joueur tient, sinon le dernier gagné (AUTO, et invite pendant la première pose du tutoriel).
 local function toPlace(): (Collection.Entry?, boolean)
-	local held = heldEntry()
+	local held = if firstPlacePending() then nil else heldEntry()
 	if held then
 		return held, true
 	end
@@ -644,11 +634,11 @@ local function buildPlacePanel()
 		ZIndex = 10,
 		Parent = placePanel,
 	})
-	-- Bouton AUTO compact, hors panneau : seul à l'écran une fois le tutoriel fini
+	-- Bouton AUTO compact, hors panneau : seul à l'écran une fois le tutoriel fini, au-dessus de la barre d'outils
 	placeAuto = UIKit.button({
 		Name = "Auto",
 		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -24),
+		Position = UDim2.new(0.5, 0, 1, -AUTO_BOTTOM),
 		Size = UDim2.fromOffset(130, 44),
 		Text = "AUTO",
 		TextSize = 28,
@@ -684,14 +674,16 @@ end
 -- près de sa base ensuite, lorsque le mannequin en main ou l'état du joueur changent.
 local function refreshPanel()
 	local free = canPlace()
-	-- Barre d'outils (Backpack) seulement au hub, libre : ni pendant la jauge, le vol, le tirage ou l'entraînement
-	if free ~= backpackShown then
-		backpackShown = free
-		pcall(StarterGui.SetCoreGuiEnabled, StarterGui, Enum.CoreGuiType.Backpack, free)
+	local firstPlace = firstPlacePending()
+	-- Barre d'outils (Backpack) seulement au hub, libre : ni pendant la jauge, le vol, le tirage ou l'entraînement, ni
+	-- pendant la première pose du tutoriel (le panneau « Place your … » occupe sa place)
+	local showBar = free and not firstPlace
+	if showBar ~= backpackShown then
+		backpackShown = showBar
+		pcall(StarterGui.SetCoreGuiEnabled, StarterGui, Enum.CoreGuiType.Backpack, showBar)
 	end
 	local entry = pendingEntry()
 	local ready = entry ~= nil and free
-	local firstPlace = firstPlacePending()
 	local visible = ready and firstPlace
 	-- Hors tutoriel : seul le bouton AUTO compact, dans sa base ou tout près
 	local character = player.Character
