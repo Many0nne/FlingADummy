@@ -334,9 +334,8 @@ local function celebrate(rebirths: number)
 	end)
 end
 
--- Cette méthode permet d'annoncer « REBIRTH READY! » une fois par renaissance (comme « Renaissance prête ! » de 12)
--- lorsque la condition est remplie après le chargement, écran libre (au hub, hors vol, tirage, jauge et bandeau) ;
--- fenêtre REBIRTH déjà ouverte : le joueur le voit, pas de popup.
+-- Cette méthode permet d'annoncer « REBIRTH READY! » une fois par renaissance (« Renaissance prête ! » de 12) lorsque
+-- la condition est remplie, écran libre ; fenêtre REBIRTH déjà ouverte : pas de popup.
 function RebirthWindow.checkReady()
 	if knownRebirths == math.huge or not RebirthWindow.isReady() then
 		return

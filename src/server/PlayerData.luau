@@ -246,10 +246,8 @@ function PlayerData.setMusicOff(player: Player, off: any)
 	end
 end
 
--- Cette méthode permet de faire renaître le joueur lorsque le client le demande (fenêtre REBIRTH) : le serveur
--- valide le chargement, l'état (au hub, ni en vol ni jauge ouverte) et la condition (Shared.Rebirth.missing), puis
--- remet la progression à zéro et compte la renaissance ; `onAccepted` est appelé juste avant (arrêt de l'entraînement).
--- Renvoie le nouveau nombre de renaissances, nil si refusée.
+-- Cette méthode permet de faire renaître le joueur (remise à zéro, compteur + 1) lorsque le client le demande et que le
+-- serveur valide état et condition ; `onAccepted` passe juste avant. Renvoie le compteur, nil si refusée.
 function PlayerData.rebirth(player: Player, onAccepted: (() -> ())?): number?
 	if player:GetAttribute("DataReady") ~= true then
 		return nil
@@ -285,9 +283,8 @@ function PlayerData.onReset(listener: (Player) -> ())
 	table.insert(resetListeners, listener)
 end
 
--- Cette méthode permet de remettre toute la sauvegarde d'un joueur à l'état d'un nouveau joueur (renaissances,
--- collection, tutoriel et records compris) lorsque l'on teste dans Studio (attribut DebugWipe, #95) ; la sauvegarde
--- vide est écrite à son départ comme d'habitude.
+-- Cette méthode permet de remettre toute la sauvegarde d'un joueur à l'état d'un nouveau joueur lorsque l'on teste
+-- dans Studio (attribut DebugWipe, #95, au hub seulement) ; elle est écrite à son départ comme d'habitude.
 function PlayerData.wipe(player: Player)
 	local state = player:GetAttribute("LaneState")
 	if

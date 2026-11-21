@@ -65,6 +65,8 @@ local gearCards: { UIKit.Card } = {}
 local gearRow: ScrollingFrame? -- rangée des cartes d'équipement (défile jusqu'au prochain achat à l'ouverture)
 local modelsMeshed: boolean? = nil -- forme (maillée ou blocs) des rendus 3D des cartes déjà construits
 local trainBar: Frame
+local leftColumn: Frame -- colonne Index / Shop / Rebirth, centrée verticalement
+local BUTTON_GAP = 22 -- écart vertical entre deux boutons de la colonne de gauche
 local trainLevel: TextLabel
 local trainFill: Frame
 local trainCount: TextLabel
@@ -213,15 +215,16 @@ end
 -- Dummies à droite avec reflet) lorsque le HUD est construit ; ancrés au centre, ils grossissent sur place au survol.
 -- Rebirth n'apparaît qu'après le premier lancer (Hud.refresh), comme le bouton Renaissance de la référence 12.
 local function buildButtons()
-	local gap = 22
+	local gap = BUTTON_GAP
 	local left = UIKit.create("Frame", {
 		Name = "Buttons",
 		AnchorPoint = Vector2.new(0, 0.5),
 		Position = UDim2.new(0, 14, 0.5, 0),
-		Size = UDim2.fromOffset(BUTTON_SIZE, BUTTON_SIZE * 3 + gap * 2),
+		Size = UDim2.fromOffset(BUTTON_SIZE, BUTTON_SIZE * 2 + gap),
 		BackgroundTransparency = 1,
 		Parent = root,
 	})
+	leftColumn = left
 	anchors.Index = UIKit.iconButton("index", "Index", BUTTON_SIZE, {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.new(0.5, 0, 0, BUTTON_SIZE / 2),
@@ -646,9 +649,13 @@ function Hud.refresh()
 	refreshOffer(money, gearCost)
 	ThrowShop.refresh()
 	-- Bouton Rebirth dès le premier lancer (objectif visible tôt), pastille quand la renaissance est possible
-	anchors.Rebirth.Visible = stat("Draws", 0) > 0 or stat("Rebirths", 0) > 0
+	local rebirthShown = stat("Draws", 0) > 0 or stat("Rebirths", 0) > 0
+	anchors.Rebirth.Visible = rebirthShown
+	local buttons = if rebirthShown then 3 else 2
+	leftColumn.Size = UDim2.fromOffset(BUTTON_SIZE, BUTTON_SIZE * buttons + BUTTON_GAP * (buttons - 1))
 	UIKit.setBadge(anchors.Rebirth, if RebirthWindow.isReady() then "!" else nil)
 	RebirthWindow.checkReady()
+	RebirthWindow.refresh() -- argent affiché : un gain en vol qui arrive ne change aucun attribut
 end
 
 -- Cette méthode permet de faire s'envoler « +N EXP » (EXP de l'équipement) au-dessus de la barre d'entraînement lorsque
@@ -924,7 +931,7 @@ end
 -- Cette méthode permet de réserver le haut de l'écran pour `duration` s à partir de maintenant (0 : libéré ;
 -- l'objectif se tait, les popups passent dessous) lorsque un bandeau d'annonce s'affiche ou s'en va.
 function Hud.reserveTop(duration: number)
-	bannerEndsAt = os.clock() + duration
+	bannerEndsAt = math.max(bannerEndsAt, os.clock() + duration) -- prolongée, jamais raccourcie (fête et bandeau)
 	Hud.refresh() -- l'offre « NEW GEAR! » s'efface sous le bandeau, puis revient
 	task.delay(duration + 0.05, Hud.refresh)
 end
@@ -1046,6 +1053,7 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 			return seeded
 				and (lane == nil or lane == "Ready")
 				and player:GetAttribute("Action") ~= "Holding"
+				and not Hud.isPopupShown()
 				and Overlay.offer({ windowOpen = Hud.isWindowOpen(), bannerShown = os.clock() < bannerEndsAt })
 		end,
 	}, function()
