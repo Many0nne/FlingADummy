@@ -1,10 +1,12 @@
 -- Progression visible depuis le hub (#61, #91, #92), comme les jardins et barres de 01 / 09 : la base change d'aspect à
 -- chaque présentoir acheté (clôture bois → pierre → métal doré, sol, décor), l'appareil d'entraînement s'habille aux
--- couleurs du Training Gear acheté, et un texte flottant au-dessus de la base donne nom, revenu et Throw Power.
+-- couleurs du Training Gear acheté, et un texte flottant au-dessus de la base donne nom, revenu, Throw Power et
+-- renaissances.
 -- Logique pure (testée) : Server.CourseBuilder construit d'après ces paliers.
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Format = require(Shared:WaitForChild("Format"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
+local Rebirth = require(Shared:WaitForChild("Rebirth"))
 local Training = require(Shared:WaitForChild("Training"))
 
 local BaseLook = {}
@@ -163,15 +165,20 @@ end
 export type Label = { title: string, income: string, power: string }
 
 -- Cette méthode permet de donner les trois lignes du texte flottant d'une base lorsque son propriétaire ou ses
--- valeurs changent ; `owner` nil : base vide ; `power` nil (données pas chargées) : ligne vide.
-function BaseLook.label(owner: string?, income: number?, power: number?): Label
+-- valeurs changent ; `owner` nil : base vide ; `power` nil (données pas chargées) : ligne vide ; `rebirths` > 0 :
+-- compteur violet « 🌟 3 » à côté de la Throw Power (ligne en RichText).
+function BaseLook.label(owner: string?, income: number?, power: number?, rebirths: number?): Label
 	if not owner then
 		return { title = "EMPTY BASE", income = "$0/s", power = "" }
+	end
+	local powerText = if power then "💪 " .. Format.short(math.max(0, power)) else ""
+	if power and rebirths and rebirths >= 1 then
+		powerText ..= string.format('  <font color="#%s">🌟 %d</font>', Rebirth.COLOR_HEX, math.floor(rebirths))
 	end
 	return {
 		title = string.upper(owner) .. "'S BASE",
 		income = Format.money(math.max(0, income or 0)) .. "/s",
-		power = if power then "💪 " .. Format.short(math.max(0, power)) else "",
+		power = powerText,
 	}
 end
 

@@ -148,7 +148,8 @@ local function updateLabel(slot: Slot, player: Player?)
 	local text = BaseLook.label(
 		if player then player.DisplayName else nil,
 		if ready and player then player:GetAttribute("Income") :: number? else 0,
-		if ready and player then player:GetAttribute("ThrowPower") :: number? else nil
+		if ready and player then player:GetAttribute("ThrowPower") :: number? else nil,
+		if ready and player then player:GetAttribute("Rebirths") :: number? else nil
 	)
 	local label = slot.base.label
 	label.title.Text = text.title
@@ -499,12 +500,14 @@ local function track(player: Player)
 	player:GetAttributeChangedSignal("DataReady"):Connect(function()
 		refresh(player)
 	end)
-	-- Throw Power en direct au-dessus de la base (entraînement)
-	player:GetAttributeChangedSignal("ThrowPower"):Connect(function()
-		if slotOf[player] == slot then
-			updateLabel(slot, player)
-		end
-	end)
+	-- Throw Power et renaissances en direct au-dessus de la base (entraînement, renaissance)
+	for _, attribute in { "ThrowPower", "Rebirths" } do
+		player:GetAttributeChangedSignal(attribute):Connect(function()
+			if slotOf[player] == slot then
+				updateLabel(slot, player)
+			end
+		end)
+	end
 end
 
 -- Cette méthode permet de reconstruire toutes les bases lorsque les maillages du mannequin arrivent (les bases
@@ -609,6 +612,10 @@ function BaseService.init(builtSlots: { Slot }, placeRemote: RemoteEvent, invent
 	for _, slot in slots do
 		render(slot, nil)
 	end
+	-- Collection remplacée (DebugWipe) : base, attributs publiés et Backpack reconstruits
+	PlayerData.onReset(function(player)
+		refresh(player, true)
+	end)
 	Players.PlayerAdded:Connect(function(player)
 		-- SlotService pose l'attribut Slot dans son propre PlayerAdded : attendu s'il n'est pas encore là
 		if player:GetAttribute("Slot") == nil then

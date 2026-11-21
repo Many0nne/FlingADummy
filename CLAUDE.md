@@ -23,6 +23,10 @@ confirme toujours avec lui.
   `main -AcquireStudio`), avec **la liste des changements** depuis la review précédente : par issue, ce qui change pour
   le joueur, comment le voir, quoi observer. Liste construite à partir de `git log review/<n>..main --merges` et des
   sections « Pour la sprint review » des comptes rendus.
+- Compte du testeur remis à zéro avant chaque review (#95), sauf demande contraire : verrou `main -AcquireStudio`,
+  Play, `DebugWipe = true` sur le joueur (contexte `Server`, attribut lu en Studio seulement : sauvegarde d'un nouveau
+  joueur, renaissances, collection et tutoriel compris), Stop (la sauvegarde vide est écrite au départ du joueur).
+  Le dire dans la liste des changements (« compte remis à zéro : le tutoriel recommence »).
 - Retours de la review : chacun devient une issue (ou rouvre la tâche), puis tag `review/<n+1>` sur le `main` testé.
 - Tout compte rendu de tâche (délégué ou non) se termine par une section « Pour la sprint review » (3 à 5 lignes).
 

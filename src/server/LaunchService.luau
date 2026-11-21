@@ -1,6 +1,6 @@
 -- Lancers : l'avatar projette le mannequin depuis ses mains, le serveur suit le vol (distance, zone, os cassés par
 -- membre, objets détruits sur la piste partagée, pièges des thèmes déclenchés), annonce chaque choc aux clients (effets) et calcule la
--- CHANCE qui pousse le tirage du mannequin de collection (pas d'argent). Toute la physique est simulée par le
+-- CHANCE qui pousse le tirage du mannequin de collection (pas d'argent ; × 2 par renaissance du lanceur). Toute la physique est simulée par le
 -- serveur (propriétaire réseau nil) ; plusieurs vols coexistent (un par joueur, plus les mannequins de test lancés
 -- dans Studio).
 local Players = game:GetService("Players")
@@ -13,6 +13,7 @@ local Damage = require(Shared.Damage)
 local Economy = require(Shared.Economy)
 local GameConfig = require(Shared.GameConfig)
 local Gauge = require(Shared.Gauge)
+local Rebirth = require(Shared.Rebirth)
 local Remotes = require(Shared.Remotes)
 local RevealPlan = require(Shared.RevealPlan)
 local ThrowDummies = require(Shared.ThrowDummies)
@@ -50,6 +51,7 @@ type Flight = {
 	key: any, -- clé dans `flights` : le joueur, ou un identifiant de mannequin de test
 	slot: Slot,
 	thrown: ThrowDummies.Dummy, -- mannequin à lancer équipé au départ : chance, os, portance, poussée
+	rebirth: number, -- multiplicateur de CHANCE des renaissances du lanceur au départ (Shared.Rebirth.luck)
 	forward: Vector3, -- direction du lancer (poussée du réacteur)
 	announce: any?, -- annonce du tirage (Legendary et plus), envoyée à tous quand le gagnant a vu sa révélation
 	dummy: Model,
@@ -105,14 +107,15 @@ end
 
 -- Cette méthode permet de lancer un mannequin neuf (le mannequin à lancer `thrownIndex` du catalogue, avec son modèle
 -- et sa physique) depuis la main du lanceur (ou sa place) et de commencer à suivre son vol lorsqu'un joueur, ou un
--- test, lance ; renvoie le mannequin, le point de départ et la vitesse.
+-- test, lance ; `rebirth` multiplie sa CHANCE (renaissances). Renvoie le mannequin, le point de départ et la vitesse.
 local function startFlight(
 	owner: Player?,
 	key: any,
 	slot: Slot,
 	power: number,
 	gauge: number,
-	thrownIndex: number
+	thrownIndex: number,
+	rebirth: number
 ): (Model, Vector3, number)
 	local speed = Economy.launchSpeed(power) * Gauge.launchFactor(gauge)
 	local dir = slot.direction
@@ -140,8 +143,12 @@ local function startFlight(
 	dummy:SetAttribute("Zone", 1)
 	dummy:SetAttribute("Speed", math.floor(speed))
 	dummy:SetAttribute("Luck", thrown.luck) -- bannière CHANCE : multiplicateur du mannequin lancé
+	dummy:SetAttribute("Rebirth", rebirth) -- bannière CHANCE : multiplicateur des renaissances
 	-- CHANCE de départ déjà multipliée : la bannière ne montre pas « 1X » avant la première frame
-	dummy:SetAttribute("Chance", Economy.chance({ distance = 0, bones = 0, smashed = 0, luck = thrown.luck }).total)
+	dummy:SetAttribute(
+		"Chance",
+		Economy.chance({ distance = 0, bones = 0, smashed = 0, luck = thrown.luck, rebirth = rebirth }).total
+	)
 	dummy:SetAttribute("Thrown", thrown.name)
 
 	local torso = dummy.PrimaryPart :: BasePart
@@ -150,6 +157,7 @@ local function startFlight(
 		key = key,
 		slot = slot,
 		thrown = thrown,
+		rebirth = rebirth,
 		forward = dir,
 		dummy = dummy,
 		torso = torso,
@@ -251,7 +259,8 @@ function LaunchService.launch(player: Player, gauge: any, force: boolean?)
 
 	local power = (player:GetAttribute("ThrowPower") :: number?) or GameConfig.START_POWER
 	local _, equipped = ThrowDummies.sanitize(player:GetAttribute("ThrowTier"), player:GetAttribute("ThrowEquipped"))
-	local dummy, origin, speed = startFlight(player, player, slot, power, gauge, equipped)
+	local rebirth = Rebirth.luck(Rebirth.read(player:GetAttribute("Rebirths")))
+	local dummy, origin, speed = startFlight(player, player, slot, power, gauge, equipped, rebirth)
 	remotes.LaunchStarted:FireClient(player, dummy)
 	remotes.Impact:FireAllClients({
 		{ kind = "Throw", position = origin, value = speed, userId = player.UserId },
@@ -519,6 +528,7 @@ local function finish(flight: Flight, elapsed: number)
 		bones = flight.totalBones,
 		smashed = flight.smashed,
 		luck = flight.thrown.luck,
+		rebirth = flight.rebirth,
 	})
 	result.bones = flight.totalBones
 	result.smashed = flight.smashed
@@ -554,9 +564,10 @@ local function finish(flight: Flight, elapsed: number)
 	if RunService:IsStudio() then
 		print(
 			string.format(
-				"[Launch] %s dummy=%s distance=%d zone=%d bones=%d smashed=%d chance=%.2f prize=%s gauge=%.2f time=%.1f | %s",
+				"[Launch] %s dummy=%s rebirth=x%g distance=%d zone=%d bones=%d smashed=%d chance=%.2f prize=%s gauge=%.2f time=%.1f | %s",
 				if player then player.Name else tostring(flight.key),
 				flight.thrown.id,
+				flight.rebirth,
 				result.distance,
 				result.zone,
 				flight.totalBones,
@@ -588,6 +599,7 @@ local function publish(flight: Flight)
 			bones = flight.totalBones,
 			smashed = flight.smashed,
 			luck = flight.thrown.luck,
+			rebirth = flight.rebirth,
 		}).total,
 	}
 	for name, value in values do
@@ -669,7 +681,7 @@ local function launchBots(player: Player, count: number)
 			break
 		end
 		botCount += 1
-		startFlight(nil, "Bot" .. botCount, slot, power, 1, 1)
+		startFlight(nil, "Bot" .. botCount, slot, power, 1, 1, 1)
 	end
 end
 
