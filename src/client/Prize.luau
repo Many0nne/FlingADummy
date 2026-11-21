@@ -18,7 +18,6 @@ local Collection = require(Shared:WaitForChild("Collection"))
 local CourseLayout = require(Shared:WaitForChild("CourseLayout"))
 local DummyShape = require(Shared:WaitForChild("DummyShape"))
 local Format = require(Shared:WaitForChild("Format"))
-local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Inventory = require(Shared:WaitForChild("Inventory"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -552,8 +551,8 @@ local function buildReveal()
 	}, finish)
 end
 
--- Cette méthode permet de construire le panneau « Place your … » (rendu 3D, titre, consigne, bouton AUTO) en bas au
--- centre lorsque le client démarre.
+-- Cette méthode permet de construire le panneau « Place your … » (rendu 3D, titre, consigne ; tutoriel seulement) et le
+-- bouton AUTO compact, en bas au centre, lorsque le client démarre.
 local function buildPlacePanel()
 	placePanel = UIKit.create("Frame", {
 		Name = "PlaceDummy",
@@ -604,16 +603,18 @@ local function buildPlacePanel()
 		ZIndex = 10,
 		Parent = placePanel,
 	})
+	-- Bouton AUTO compact, hors panneau : seul à l'écran une fois le tutoriel fini
 	placeAuto = UIKit.button({
 		Name = "Auto",
-		Position = UDim2.fromOffset(122, 68),
-		Size = UDim2.fromOffset(150, 44),
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -24),
+		Size = UDim2.fromOffset(130, 44),
 		Text = "AUTO",
 		TextSize = 28,
 		Shine = true,
 		Visible = false,
-		ZIndex = 10,
-		Parent = placePanel,
+		ZIndex = 8,
+		Parent = gui,
 	}, function()
 		remotes.PlaceDummy:FireServer(nil)
 	end)
@@ -638,11 +639,19 @@ local function canPlace(): boolean
 	return player:GetAttribute("LaneState") == "Ready" and player:GetAttribute("Action") == nil and not showing
 end
 
--- Cette méthode permet d'afficher ou de masquer le panneau « Place your … » (et son rendu 3D) lorsque le mannequin en
--- main ou l'état du joueur changent.
+-- Cette méthode permet d'afficher le panneau « Place your … » pendant l'étape « Place » du tutoriel, ou le bouton AUTO
+-- près de sa base ensuite, lorsque le mannequin en main ou l'état du joueur changent.
 local function refreshPanel()
 	local entry = pendingEntry()
-	local visible = entry ~= nil and canPlace()
+	local ready = entry ~= nil and canPlace()
+	local firstPlace = Tutorial.current((player:GetAttribute("Tutorial") :: number?) or 0) == "Place"
+	local visible = ready and firstPlace
+	-- Hors tutoriel : seul le bouton AUTO compact, dans sa base ou tout près
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local slot = player:GetAttribute("Slot")
+	local near = root ~= nil and typeof(slot) == "number" and CourseLayout.isNearBase(slot, root.Position)
+	placeAuto.Visible = ready and near and not firstPlace
 	if visible and entry then
 		local key = Inventory.key(entry)
 		if key ~= placeKey then
@@ -652,38 +661,8 @@ local function refreshPanel()
 			placeTitle.TextColor3 = Rarity.get(dummy.rarity).color
 			UIKit.showModel(placeViewport, DummyShape.buildVisual(1, Collection.variant(entry) :: any))
 		end
-		local free = 0
-		for _, prompt in myPrompts() do
-			local display = prompt.Parent :: Instance
-			if not display:GetAttribute("Occupied") and not display:GetAttribute("Locked") then
-				free += 1
-			end
-		end
-		-- Première pose (tutoriel) à la main ; ensuite AUTO, seulement dans sa base ou tout près
-		local firstPlace = Tutorial.current((player:GetAttribute("Tutorial") :: number?) or 0) == "Place"
-		local character = player.Character
-		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-		local slot = player:GetAttribute("Slot")
-		local near = root ~= nil and typeof(slot) == "number" and CourseLayout.isNearBase(slot, root.Position)
-		placeAuto.Visible = near and not firstPlace
-		if firstPlace then
-			placeHint.Text = "Walk to a glowing display in your base!"
-		elseif not near then
-			placeHint.Text = "Go to your base to place it"
-		elseif free > 0 then
-			placeHint.Text = "Press E on a display, or AUTO"
-		else
-			-- Base pleine : AUTO échange avec le moins rentable s'il rapporte moins, sinon le garde au stock
-			local data = {
-				base = Inventory.decodeBase(player:GetAttribute("BaseDummies")),
-				displays = (player:GetAttribute("Displays") :: number?) or GameConfig.DISPLAY_START,
-				stock = {},
-				index = {},
-			}
-			placeHint.Text = if Inventory.autoTarget(data, entry)
-				then "Base full: AUTO swaps your worst dummy"
-				else "Base full: AUTO keeps it in your inventory"
-		end
+		-- Tutoriel : pose à la main sur un présentoir libre
+		placeHint.Text = "Walk to a glowing display in your base!"
 	end
 	if visible and not placePanel.Visible then
 		UIKit.openWindow(placePanel, false)
@@ -757,7 +736,7 @@ function Prize.init(localPlayer: Player, createdRemotes: Remotes.Remotes, screen
 		bindPrompt(prompt)
 	end
 	CollectionService:GetInstanceAddedSignal(Collection.PROMPT_TAG):Connect(bindPrompt)
-	for _, attribute in { "PendingDummy", "LaneState", "Action", "Slot" } do
+	for _, attribute in { "PendingDummy", "LaneState", "Action", "Slot", "Tutorial" } do
 		player:GetAttributeChangedSignal(attribute):Connect(function()
 			lastPromptRefresh = 0
 			refreshPrompts()

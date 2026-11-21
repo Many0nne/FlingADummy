@@ -109,7 +109,7 @@ Comme 01 et 09 : le lancer fait le lien entre les deux.
 - Revenu versé chaque seconde (attribut `Income`, compteur « +$N/s ») : **seule source d'argent**.
 - **Stock** (inventaire) : les mannequins possédés non posés, doublons compris, dans l'ordre d'arrivée ; tout mannequin
   gagné y entre. Plafond technique 200 (`INVENTORY_MAX`) : au-delà, le moins rentable du stock est vendu d'office.
-- **AUTO** (panneau de pose) : premier présentoir libre ; base pleine, le nouveau remplace le moins rentable s'il
+- **AUTO** (bouton compact, le panneau « Place your… » n'existe que pendant l'étape « Place » du tutoriel) : premier présentoir libre ; base pleine, le nouveau remplace le moins rentable s'il
   rapporte plus (l'ancien retourne au stock), sinon il reste au stock. Rien n'est jamais vendu sans clic.
 - **Fenêtre « My Dummies »** (bouton Dummies, panneau à droite comme « Mes plantes » de 09) : en haut « IN YOUR BASE
   n/N · INVENTORY n », total $/s et bouton orange **PLACE BEST** (remplit les présentoirs avec les plus rentables, posés
