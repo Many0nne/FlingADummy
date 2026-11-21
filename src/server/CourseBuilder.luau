@@ -1098,9 +1098,8 @@ local function buildHub(parent: Instance, slots: { Slot })
 	spawn.Parent = parent
 end
 
--- Cette méthode permet de dresser l'arche d'arrivée au bout de la piste (ligne à damier au sol, deux piliers, bandeau à
--- damier noir et blanc, panneau « FINISH » à la couleur du dernier thème) lorsque la piste est construite ; tout est
--- traversable : le mannequin passe sous l'arche et finit contre la paroi du bout (#97).
+-- Cette méthode permet de dresser l'arche d'arrivée traversable (ligne et bandeau à damier, piliers, panneau « FINISH »)
+-- au bout de la piste lorsqu'elle est construite : le mannequin passe dessous et finit contre la paroi du bout (#97).
 local function buildFinish(parent: Instance)
 	local half = GameConfig.TRACK_WIDTH / 2
 	local z = GameConfig.COURSE_LENGTH
@@ -1142,13 +1141,12 @@ local function buildFinish(parent: Instance)
 	end
 	local last = Zones.LIST[#Zones.LIST]
 	local board = Build.block(model, Vector3.new(30, 6, 1), CFrame.new(0, height - 6.4, z), last.color, false)
-	Build.surfaceText(board, Enum.NormalId.Front, string.format("FINISH  %d KM", GameConfig.COURSE_LENGTH / 1000))
+	Build.surfaceText(board, Enum.NormalId.Front, string.format("FINISH  %g KM", GameConfig.COURSE_LENGTH / 1000))
 	model.Parent = parent
 end
 
--- Cette méthode permet de construire la piste (sol de chaque zone, parois en gradins à ses couleurs, décor au pied des
--- parois, ligne et panneaux d'entrée de zone, arche d'arrivée, paroi de bout de piste) lorsque le serveur démarre ;
--- renvoie le temps de construction de chaque zone (ms), pour le journal.
+-- Cette méthode permet de construire la piste (sol, parois et décor de chaque zone, panneaux, arche d'arrivée, paroi du
+-- bout) lorsque le serveur démarre ; renvoie le temps de construction de chaque zone (ms), pour le journal.
 local function buildTrack(parent: Instance): { string }
 	local half = GameConfig.TRACK_WIDTH / 2
 	local length = GameConfig.COURSE_LENGTH
