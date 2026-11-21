@@ -32,7 +32,7 @@ local function canHold(player: Player): boolean
 		and Tutorial.current((player:GetAttribute("Tutorial") :: number?) or 0) ~= "Place"
 end
 
--- Cette méthode permet de créer l'outil d'un mannequin (nom, info-bulle avec rareté et $/s, icône de rareté, sans
+-- Cette méthode permet de créer l'outil d'un mannequin (nom, info-bulle avec rareté et $/s, icône du mannequin sinon de sa rareté, sans
 -- poignée ni lâcher) lorsque le Backpack doit en contenir un de plus.
 local function makeTool(entry: Collection.Entry): Tool
 	local dummy = Collection.get(entry.id) :: Collection.Dummy
@@ -44,7 +44,7 @@ local function makeTool(entry: Collection.Entry): Tool
 		Rarity.get(dummy.rarity).name,
 		Format.money(Collection.income(entry))
 	)
-	tool.TextureId = Assets.uri(Assets.RARITY_ICONS[dummy.rarity]) or ""
+	tool.TextureId = Assets.uri(Assets.DUMMY_ICONS[dummy.id] or Assets.RARITY_ICONS[dummy.rarity]) or ""
 	tool.RequiresHandle = false
 	tool.CanBeDropped = false
 	tool.ManualActivationOnly = true

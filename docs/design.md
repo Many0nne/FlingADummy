@@ -111,8 +111,9 @@ Comme 01 et 09 : le lancer fait le lien entre les deux.
 - **Stock** (inventaire) : les mannequins possédés non posés, doublons compris, dans l'ordre d'arrivée ; tout mannequin
   gagné y entre. Plafond technique 200 (`INVENTORY_MAX`) : au-delà, le moins rentable du stock est vendu d'office.
 - **Barre d'outils** (Backpack Roblox, `Server.DummyTools`, logique dans `Shared.BackpackPlan`) : un outil par mannequin
-  du stock, doublons compris, rareté décroissante puis ordre d'arrivée ; nom du mannequin, icône de rareté (buste du
-  mannequin à sa couleur, `Assets.RARITY_ICONS` ; nom affiché à la place tant qu'elle n'est pas publiée), info-bulle
+  du stock, doublons compris, rareté décroissante puis ordre d'arrivée ; nom du mannequin, icône du mannequin
+  (`Assets.DUMMY_ICONS`, rendus des modèles de #66), sinon de sa rareté (buste à sa couleur, `Assets.RARITY_ICONS` ;
+  nom affiché à la place tant qu'aucune n'est publiée), info-bulle
   « nom · rareté · $/s ». Équipé, l'avatar le porte debout devant la poitrine, à l'échelle de sa taille (0,42 × échelle
   de la taille), animation « Carry » du haut du corps (marche et saut libres) ; chaque client construit le modèle tenu
   (`DummyShape.buildVisual`) d'après l'outil équipé. Barre masquée et mannequin déséquipé hors du hub (bande, vol,

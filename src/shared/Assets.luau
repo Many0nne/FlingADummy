@@ -57,6 +57,10 @@ Assets.RARITY_ICONS = {
 	90361378631041,
 } :: { number }
 
+-- Icônes propres à chaque mannequin dans la barre d'outils (id de Shared.Collection → image), rendues avec ses
+-- modèles (#66). Absente : la barre se rabat sur l'icône de rareté
+Assets.DUMMY_ICONS = {} :: { [string]: number }
+
 -- Cette méthode permet de donner l'URI d'un asset publié lorsque l'on le charge ; nil s'il n'est pas publié.
 function Assets.uri(id: number?): string?
 	if not id or id == 0 then
