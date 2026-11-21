@@ -82,6 +82,7 @@ local EXPECT_TIME = 3 -- s : une vente que le serveur n'a pas créditée dans ce
 type Offer = { frame: Frame, button: TextButton, viewport: ViewportFrame, name: TextLabel, stat: TextLabel }
 local offer: Offer
 local offerTier: number? = nil
+local soundedOffer: number? = nil
 local dismissedOffers: { [number]: boolean } = {}
 
 -- Cette méthode permet de lire un attribut numérique du joueur (valeur par défaut si absent) lorsque le HUD se
@@ -524,6 +525,7 @@ local function refreshOffer(money: number, cost: number?)
 		and player:GetAttribute("LaneState") == "Ready"
 		and player:GetAttribute("Action") ~= "Holding"
 		and not UIKit.isWindowOpen(windows.Shop)
+		and os.clock() >= bannerEndsAt -- bandeau d'annonce au même endroit : l'offre revient après lui
 	local tier = if free then Tutorial.gearOffer(stat("GearTier", 1), cost, money, dismissedOffers) else nil
 	if tier == offerTier then
 		return
@@ -538,7 +540,10 @@ local function refreshOffer(money: number, cost: number?)
 	offer.stat.Text = Format.money(gear.cost) .. "  •  +" .. Format.short(gear.gain) .. " EXP / rep"
 	UIKit.showModel(offer.viewport, gearModel(tier))
 	UIKit.openWindow(offer.frame, false)
-	UIKit.playSound("LevelUp", 1.4)
+	if tier ~= soundedOffer then
+		soundedOffer = tier -- offre déjà annoncée : pas de nouveau son quand elle revient après un bandeau
+		UIKit.playSound("LevelUp", 1.4)
+	end
 end
 
 -- Cette méthode permet de rafraîchir compteurs, cartes et pastilles « ! » lorsque l'argent, la puissance,
@@ -830,6 +835,8 @@ end
 -- l'objectif se tait, les popups passent dessous) lorsque un bandeau d'annonce s'affiche ou s'en va.
 function Hud.reserveTop(duration: number)
 	bannerEndsAt = os.clock() + duration
+	Hud.refresh() -- l'offre « NEW GEAR! » s'efface sous le bandeau, puis revient
+	task.delay(duration + 0.05, Hud.refresh)
 end
 
 -- Cette méthode permet de savoir si un popup de palier occupe le haut de l'écran lorsque l'objectif s'affiche.

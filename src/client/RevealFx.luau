@@ -22,7 +22,7 @@ local STAGE_HEIGHT = 350 -- le décor du secret flotte à cette hauteur au-dessu
 local CARPET_LENGTH = 80
 local COLUMN_GAP = 12 -- studs entre deux paires de colonnes le long du tapis
 local COLUMN_X = 14
-local GOLD = Color3.fromRGB(230, 150, 45)
+local GOLD = Color3.fromRGB(205, 115, 35) -- orangé : la lumière dorée des lampes et le Bloom l'éclaircissent
 local CARPET = Color3.fromRGB(150, 12, 24)
 local PORTAL_RIM = Color3.fromRGB(255, 215, 200)
 local PORTAL_CORE = Color3.fromRGB(120, 0, 14)
@@ -357,7 +357,7 @@ function RevealFx.buildStage(origin: Vector3)
 				Position = foot + Vector3.new(-side * 2.3, 13, 0),
 				Parent = folder,
 			})
-			UIKit.create("PointLight", { Color = C.gold, Range = 18, Brightness = 2, Shadows = false, Parent = lamp })
+			UIKit.create("PointLight", { Color = C.gold, Range = 14, Brightness = 0.8, Shadows = false, Parent = lamp })
 		end
 		-- Piliers du portail
 		part({
