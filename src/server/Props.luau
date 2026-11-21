@@ -481,10 +481,8 @@ function Props.build(kind: string, parent: Instance, at: CFrame, rng: Random, so
 	end
 end
 
--- Cette méthode permet de poser une barrière en blocs (poteaux carrés, deux lisses, chapeaux si `style.cap`) de `from`
--- à `to` au sol lorsque l'on clôture une base ou le bord d'une zone ; sans `style`, en bois (Shared.BaseLook.FENCES).
--- `skipStart` : pas de poteau en `from` (coin déjà posé par le tronçon voisin : deux poteaux confondus scintillent).
--- Renvoie le haut de chaque poteau (lanternes, drapeaux).
+-- Cette méthode permet de poser une barrière en blocs au style `style` (bois par défaut) de `from` à `to` lorsque l'on
+-- clôture une base ; `skipStart` : coin déjà posé par le tronçon voisin. Renvoie le haut de chaque poteau.
 function Props.fence(
 	parent: Instance,
 	from: Vector3,
@@ -542,9 +540,8 @@ function Props.lantern(parent: Instance, top: Vector3)
 	Build.block(parent, Vector3.new(0.5, 0.3, 0.5), CFrame.new(top + Vector3.new(0, 1.75, 0)), LANTERN_FRAME, false)
 end
 
--- Cette méthode permet de poser un massif de fleurs (bande de terre, touffes vertes coiffées de fleurs aux couleurs
--- alternées, une tous les 3 studs) de `from` à `to`, posé sur un sol à la hauteur de ces points, lorsque l'on habille
--- l'intérieur d'une base.
+-- Cette méthode permet de poser un massif de fleurs (terre, touffes coiffées de fleurs colorées tous les 3 studs) de
+-- `from` à `to` lorsque l'on habille l'intérieur d'une base.
 function Props.flowerBed(parent: Instance, from: Vector3, to: Vector3)
 	local length = (to - from).Magnitude
 	local frame = CFrame.lookAt(from, to)
@@ -575,9 +572,8 @@ function Props.flag(parent: Instance, at: Vector3, side: Vector3, color: Color3)
 	put(parent, frame, Vector3.new(0.2, 2.6, 3.6), Vector3.new(0, height - 1.6, -2.15), color, false)
 end
 
--- Cette méthode permet de bâtir une arche d'entrée (deux piliers `color`, linteau doré, losange au sommet) entre deux
--- points au sol lorsque l'on habille le dernier palier d'une base ; renvoie le dessus du linteau au-dessus de chaque
--- pilier (lanternes).
+-- Cette méthode permet de bâtir une arche d'entrée (piliers `color`, linteau doré) entre deux points au sol lorsque
+-- l'on habille le dernier palier d'une base ; renvoie le dessus du linteau au-dessus de chaque pilier.
 function Props.arch(parent: Instance, a: Vector3, b: Vector3, color: Color3): (Vector3, Vector3)
 	local height = 10
 	local frame = CFrame.lookAt(a, b)

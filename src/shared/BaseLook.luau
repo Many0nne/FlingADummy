@@ -153,9 +153,8 @@ end
 -- Texte flottant au-dessus d'une base : nom (« MANYONNE'S BASE »), revenu (« $223/s ») et Throw Power (« 💪 1.2K »)
 export type Label = { title: string, income: string, power: string }
 
--- Cette méthode permet de donner les trois lignes du texte flottant de la base lorsque son propriétaire arrive, que
--- son revenu ou sa Throw Power change ; `owner` nil : base vide (« EMPTY BASE », « $0/s ») ; `power` nil (données pas
--- encore chargées) : ligne vide.
+-- Cette méthode permet de donner les trois lignes du texte flottant d'une base lorsque son propriétaire ou ses
+-- valeurs changent ; `owner` nil : base vide ; `power` nil (données pas chargées) : ligne vide.
 function BaseLook.label(owner: string?, income: number?, power: number?): Label
 	if not owner then
 		return { title = "EMPTY BASE", income = "$0/s", power = "" }

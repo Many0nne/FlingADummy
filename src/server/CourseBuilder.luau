@@ -554,9 +554,8 @@ function CourseBuilder.celebrate(burst: BasePart)
 	burst:SetAttribute("Upgrades", ((burst:GetAttribute("Upgrades") :: number?) or 0) + 1)
 end
 
--- Cette méthode permet de monter le podium de l'appareil (socle en pierre, bordure à la couleur de la place, planches
--- aux couleurs du Training Gear, coins boulonnés, marches, pastille jaune, disques de fonte, liseré néon des derniers
--- paliers) lorsque l'appareil est habillé.
+-- Cette méthode permet de monter le podium de l'appareil (socle, bordure de la place, planches et marches aux couleurs
+-- du Training Gear, liseré néon des derniers paliers) lorsque l'appareil est habillé.
 local function buildPodium(model: Model, floor: CFrame, color: Color3, look: BaseLook.StationLook)
 	local size = CourseLayout.STATION_SIZE
 	local h = STATION_HEIGHT
@@ -609,9 +608,8 @@ local function buildPodium(model: Model, floor: CFrame, color: Color3, look: Bas
 	})
 end
 
--- Cette méthode permet de monter le râtelier derrière l'avatar (montants à sangles de métal et chapeaux en gradins comme
--- la barre de la référence 09, traverse liée de corde, mannequins des trois derniers paliers possédés suspendus) aux
--- couleurs du Training Gear `tier` lorsque l'appareil est habillé ; `index` : place (repose les mannequins).
+-- Cette méthode permet de monter le râtelier (montants, traverse, mannequins des trois derniers paliers possédés) aux
+-- couleurs du Training Gear `tier` lorsque l'appareil de la place `index` est habillé.
 local function buildRack(
 	model: Model,
 	top: CFrame,
@@ -686,9 +684,8 @@ local function buildRack(
 	rackPlacers[index] = placeRack
 end
 
--- Cette méthode permet d'habiller l'appareil d'entraînement d'une place aux couleurs du Training Gear `tier` de son
--- propriétaire (podium, râtelier et ses mannequins refaits) lorsque le hub est construit, qu'il arrive, part ou
--- achète un équipement ; sans effet si l'appareil a déjà ce palier.
+-- Cette méthode permet d'habiller l'appareil d'une place au Training Gear `tier` de son propriétaire (podium et
+-- râtelier refaits) lorsqu'il arrive, part ou achète un équipement ; sans effet si l'appareil a déjà ce palier.
 function CourseBuilder.styleStation(slot: Slot, tier: number)
 	local trainer = slot.trainer
 	if trainer.tier == tier then
@@ -696,9 +693,14 @@ function CourseBuilder.styleStation(slot: Slot, tier: number)
 	end
 	trainer.tier = tier
 	local look = BaseLook.station(tier)
-	trainer.look:ClearAllChildren()
-	buildPodium(trainer.look, trainer.floor, slot.color, look)
-	buildRack(trainer.look, trainer.floor * CFrame.new(0, STATION_HEIGHT, 0), slot.color, look, tier, slot.index)
+	-- Nouvel habillage posé avant de retirer l'ancien : le podium ne manque jamais sous l'avatar
+	local fresh = Instance.new("Model")
+	fresh.Name = "Look"
+	buildPodium(fresh, trainer.floor, slot.color, look)
+	buildRack(fresh, trainer.floor * CFrame.new(0, STATION_HEIGHT, 0), slot.color, look, tier, slot.index)
+	fresh.Parent = trainer.model
+	trainer.look:Destroy()
+	trainer.look = fresh
 end
 
 -- Cette méthode permet de construire l'appareil d'entraînement d'une place à côté de l'entrée de sa base (podium,
@@ -712,12 +714,14 @@ local function buildStation(parent: Instance, slot: Slot)
 	look.Name = "Look"
 	look.Parent = model
 	local top = floor * CFrame.new(0, STATION_HEIGHT, 0)
+	-- Confettis au-dessus du râtelier
+	local burstAt = top * CFrame.new(0, RACK_HEIGHT + 1, CourseLayout.STATION_SIZE / 2 - 1.2)
 	slot.trainer = {
 		model = model,
 		look = look,
 		floor = floor,
 		tier = 0,
-		burst = upgradeBurst(model, (top * CFrame.new(0, RACK_HEIGHT + 1, 0)).Position, slot.color),
+		burst = upgradeBurst(model, burstAt.Position, slot.color),
 	}
 	CourseBuilder.styleStation(slot, 1)
 	model.Parent = parent
@@ -778,9 +782,8 @@ local function buildPad(parent: Instance, slot: Slot): Pad
 	return { title = title, price = price, prompt = prompt }
 end
 
--- Cette méthode permet de construire le texte flottant au-dessus d'une base (portrait du joueur, « NOM'S BASE »,
--- revenu en vert, Throw Power en cyan ; police et contour du HUD), lisible de près comme de loin (taille en studs plus
--- une marge en pixels), lorsque la base est construite ; les textes sont remplis par Server.BaseService.
+-- Cette méthode permet de construire le texte flottant d'une base (portrait, nom, revenu, Throw Power ; taille en
+-- studs plus une marge en pixels, lisible de loin) lorsque la base est construite ; rempli par Server.BaseService.
 local function baseLabel(parent: Instance, position: Vector3): BaseLabel
 	local anchor = Build.decor({
 		Name = "BaseLabel",
@@ -870,9 +873,8 @@ local function baseFence(folder: Instance, slot: Slot, fence: BaseLook.Fence): (
 	return gate, corners
 end
 
--- Cette méthode permet d'habiller la base d'une place au palier visuel `tier` (Shared.BaseLook : sol, clôture bois →
--- pierre → or, lanternes, massifs de fleurs, drapeaux, arche, étincelles) lorsque le hub est construit ou que le
--- propriétaire de la base change ou achète un présentoir ; sans effet si la base a déjà ce palier.
+-- Cette méthode permet d'habiller une base au palier visuel `tier` (Shared.BaseLook : sol, clôture, décor) lorsque son
+-- propriétaire change ou achète un présentoir ; sans effet si la base a déjà ce palier.
 function CourseBuilder.styleBase(slot: Slot, tier: number)
 	local base = slot.base
 	if base.tier == tier then
@@ -880,8 +882,11 @@ function CourseBuilder.styleBase(slot: Slot, tier: number)
 	end
 	base.tier = tier
 	local look, fence = BaseLook.base(tier)
-	local folder = base.look
-	folder:ClearAllChildren()
+	-- Nouvel habillage posé avant de retirer l'ancien : la clôture ne disparaît jamais
+	local folder = Instance.new("Folder")
+	folder.Name = "Look"
+	local old = base.look
+	base.look = folder
 	base.plot.Color = look.plot or Build.shade(slot.color, 0.6)
 	local center = CourseLayout.basePosition(slot.index)
 	local hx, hz = CourseLayout.BASE_SIZE.X / 2, CourseLayout.BASE_SIZE.Z / 2
@@ -941,11 +946,12 @@ function CourseBuilder.styleBase(slot: Slot, tier: number)
 			14
 		)
 	end
+	folder.Parent = base.model
+	old:Destroy()
 end
 
 -- Cette méthode permet de construire la base d'une place (terrain, présentoirs vides, texte flottant, confettis
--- d'achat ; clôture et décor du premier palier) lorsque le hub est construit ; les présentoirs attendent les
--- mannequins de collection.
+-- d'achat, habillage du premier palier) lorsque le hub est construit.
 local function buildBase(parent: Instance, slot: Slot)
 	local center = CourseLayout.basePosition(slot.index)
 	local size = CourseLayout.BASE_SIZE

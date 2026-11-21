@@ -99,36 +99,50 @@ local function watchDebugTrain(player: Player)
 	end)
 end
 
--- Cette méthode permet d'habiller l'appareil de la place du joueur à son palier de Training Gear (#92), avec les
--- confettis quand il en achète un (pas au chargement de ses données), lorsqu'il arrive puis à chaque achat ; son départ
--- rend à l'appareil le premier palier.
+-- Cette méthode permet d'habiller l'appareil de la place du joueur à son Training Gear (confettis à chaque achat, pas
+-- au chargement) dès que sa place est connue ; son départ rend à l'appareil le premier palier.
 local function dressStation(player: Player, slots: { CourseBuilder.Slot })
-	-- SlotService pose l'attribut Slot dans son propre PlayerAdded : attendu s'il n'est pas encore là
-	if player:GetAttribute("Slot") == nil then
-		player:GetAttributeChangedSignal("Slot"):Wait()
-	end
-	local index = player:GetAttribute("Slot")
-	local slot = if typeof(index) == "number" then slots[index] else nil
-	if not slot or not player.Parent then
-		return
-	end
-	local shown = (player:GetAttribute("GearTier") :: number?) or 1
-	CourseBuilder.styleStation(slot, shown)
-	player:GetAttributeChangedSignal("GearTier"):Connect(function()
-		local tier = (player:GetAttribute("GearTier") :: number?) or 1
-		if tier > shown and player:GetAttribute("DataReady") == true then
-			CourseBuilder.celebrate(slot.trainer.burst)
+	local connections: { RBXScriptConnection } = {}
+	local slot: CourseBuilder.Slot? = nil
+	-- Cette méthode permet de suivre le Training Gear du joueur lorsque SlotService lui a donné une place.
+	local function follow()
+		local index = player:GetAttribute("Slot")
+		if slot or typeof(index) ~= "number" or not slots[index] then
+			return
 		end
-		shown = tier
-		CourseBuilder.styleStation(slot, tier)
-	end)
-	local leaving
-	leaving = Players.PlayerRemoving:Connect(function(gone)
-		if gone == player then
-			leaving:Disconnect()
-			CourseBuilder.styleStation(slot, 1)
-		end
-	end)
+		local owned = slots[index]
+		slot = owned
+		local shown = (player:GetAttribute("GearTier") :: number?) or 1
+		CourseBuilder.styleStation(owned, shown)
+		table.insert(
+			connections,
+			player:GetAttributeChangedSignal("GearTier"):Connect(function()
+				local tier = (player:GetAttribute("GearTier") :: number?) or 1
+				if tier > shown and player:GetAttribute("DataReady") == true then
+					CourseBuilder.celebrate(owned.trainer.burst)
+				end
+				shown = tier
+				CourseBuilder.styleStation(owned, tier)
+			end)
+		)
+	end
+	-- SlotService pose l'attribut Slot dans son propre PlayerAdded : suivi sans attente bloquante (lobby plein : jamais)
+	table.insert(connections, player:GetAttributeChangedSignal("Slot"):Connect(follow))
+	follow()
+	table.insert(
+		connections,
+		Players.PlayerRemoving:Connect(function(gone)
+			if gone ~= player then
+				return
+			end
+			for _, connection in connections do
+				connection:Disconnect()
+			end
+			if slot then
+				CourseBuilder.styleStation(slot, 1)
+			end
+		end)
+	)
 end
 
 -- Cette méthode permet de brancher les invites des appareils (un par place), leur habillage au Training Gear du
@@ -138,7 +152,7 @@ function TrainingService.init(slots: { CourseBuilder.Slot }, stopRemote: RemoteE
 		dressStation(player, slots)
 	end)
 	for _, player in Players:GetPlayers() do
-		task.spawn(dressStation, player, slots)
+		dressStation(player, slots)
 	end
 	for _, slot in slots do
 		slot.prompt.Triggered:Connect(function(player)

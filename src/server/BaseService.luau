@@ -142,8 +142,7 @@ local function stylePad(slot: Slot, displays: number?)
 end
 
 -- Cette méthode permet d'afficher au-dessus de la base le portrait, le nom, le revenu et la Throw Power de son
--- propriétaire (« EMPTY BASE » sans lui ; revenu et puissance une fois ses données chargées) lorsque la base change,
--- qu'il arrive, part ou que sa Throw Power change.
+-- propriétaire (« EMPTY BASE » sans lui) lorsque la base change, qu'il arrive, part ou que sa puissance change.
 local function updateLabel(slot: Slot, player: Player?)
 	local ready = player ~= nil and player:GetAttribute("DataReady") == true
 	local text = BaseLook.label(
