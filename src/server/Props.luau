@@ -1,6 +1,10 @@
 -- Décor voxel au style des jeux de référence (01 / 09) : arbres et rochers en blocs à tenons, végétation et objets de
 -- chaque zone, barrières en blocs, stands à auvents rayés, panneaux. Chaque élément est posé au repère `at` (au sol,
 -- face avant vers -Z de `at`) et ne contient que des blocs ancrés.
+local CollectionService = game:GetService("CollectionService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local CourseLayout = require(ReplicatedStorage.Shared.CourseLayout)
 local Build = require(script.Parent.Build)
 
 local Props = {}
@@ -15,6 +19,7 @@ local STONE = rgb(160, 160, 170)
 local WHITE = rgb(250, 250, 250)
 local WOOD = rgb(230, 185, 120)
 local WOOD_DARK = rgb(185, 130, 75)
+local DUMMY_YELLOW = rgb(255, 205, 40)
 
 -- Cette méthode permet de poser un bloc à la position locale `offset` (repère `at`), avec une rotation locale en
 -- degrés, lorsque l'on assemble un élément voxel.
@@ -490,46 +495,536 @@ function Props.fence(parent: Instance, from: Vector3, to: Vector3)
 	end
 end
 
--- Cette méthode permet de construire un stand à auvent rayé (comptoir en bois, auvent `stripe` / blanc, enseigne)
--- au repère `at` (face avant vers -Z) lorsque l'on habille le hub ; renvoie l'enseigne.
-function Props.stand(parent: Instance, at: CFrame, title: string, stripe: Color3, signColor: Color3): BasePart
-	local folder = Instance.new("Model")
-	folder.Name = "Stand"
-	put(folder, at, Vector3.new(12, 4, 4), Vector3.new(0, 2, -2), WOOD, true)
-	put(folder, at, Vector3.new(12.4, 0.6, 4.4), Vector3.new(0, 4.3, -2), WOOD_DARK, true)
-	put(folder, at, Vector3.new(12, 8, 1), Vector3.new(0, 4, 3), WOOD_DARK, true)
-	for _, x in { -5.5, 5.5 } do
-		put(folder, at, Vector3.new(1, 10, 1), Vector3.new(x, 5, -3.5), WOOD_DARK, true)
+-- Stands du hub (#68), calés sur les stands de 01 et 09 : échoppe en bois à auvent rayé, comptoir garni, marchand
+-- derrière, enseigne. SHOP (bleu, haut : enseigne néon coiffée d'une tête de mannequin, vitrine, caisses) et SELL
+-- (rouge, large : caisse enregistreuse, balance, sacs et liasses, pancarte de prix, pièce géante) se reconnaissent de
+-- loin. Les pièces animées (marchand, mannequins exposés, pièce géante, éclat de pièces) sont marquées pour le client
+-- (étiquettes de Shared.CourseLayout, animées par Client.HubShops).
+
+local STALL_W = 16 -- largeur de l'échoppe (axe X local)
+
+-- Cette méthode permet de poser un bloc lisse (sans tenons : plastique, néon, verre, métal) lorsque l'on assemble un
+-- détail qui ne doit pas porter la texture à briques.
+local function smooth(
+	parent: Instance,
+	at: CFrame,
+	size: Vector3,
+	offset: Vector3,
+	color: Color3,
+	material: Enum.Material,
+	solid: boolean,
+	rotation: Vector3?
+): Part
+	local p = put(parent, at, size, offset, color, solid, rotation)
+	p.Material = material
+	p.MaterialVariant = ""
+	return p
+end
+
+-- Cette méthode permet de construire l'échoppe commune aux deux stands (plancher, comptoir, fond, poteaux, auvent
+-- `stripe` / blanc incliné avec lambrequin) au repère `at` lorsque l'on bâtit un stand du hub.
+local function stall(folder: Instance, at: CFrame, stripe: Color3)
+	put(folder, at, Vector3.new(STALL_W, 0.6, 10), Vector3.new(0, 0.3, 0), WOOD_DARK, true)
+	put(folder, at, Vector3.new(STALL_W - 2, 4, 3), Vector3.new(0, 2.6, -3), WOOD, true)
+	put(folder, at, Vector3.new(STALL_W - 1.4, 0.6, 3.6), Vector3.new(0, 4.9, -3), WOOD_DARK, true)
+	-- Bandeau du comptoir à la couleur du stand, liseré blanc
+	put(folder, at, Vector3.new(STALL_W - 1.8, 1.2, 0.3), Vector3.new(0, 3.4, -4.6), stripe, false)
+	put(folder, at, Vector3.new(STALL_W - 1.8, 0.3, 0.32), Vector3.new(0, 2.7, -4.6), WHITE, false)
+	put(folder, at, Vector3.new(STALL_W, 11, 1), Vector3.new(0, 6.1, 4.5), WOOD_DARK, true)
+	for _, x in { -(STALL_W / 2 - 0.5), STALL_W / 2 - 0.5 } do
+		put(folder, at, Vector3.new(1, 11.4, 1), Vector3.new(x, 6.3, -4.5), WOOD_DARK, true)
+		put(folder, at, Vector3.new(1.4, 0.6, 1.4), Vector3.new(x, 0.9, -4.5), WOOD, true)
 	end
-	-- Auvent : lattes alternées, inclinées vers l'avant
-	for i = 0, 6 do
-		local slat = put(
+	-- Auvent : lattes alternées, inclinées vers l'avant, puis festons sous le bord avant
+	local slats = STALL_W / 2
+	for i = 0, slats do
+		local x = -STALL_W / 2 + i * 2
+		smooth(
 			folder,
 			at,
-			Vector3.new(2, 0.6, 9),
-			Vector3.new(-6 + i * 2, 11, -0.5),
+			Vector3.new(2, 0.6, 11),
+			Vector3.new(x, 12.6, -0.6),
 			if i % 2 == 0 then stripe else WHITE,
+			Enum.Material.SmoothPlastic,
 			true,
 			Vector3.new(-14, 0, 0)
 		)
-		slat.Material = Enum.Material.SmoothPlastic
-		slat.MaterialVariant = ""
-	end
-	-- Lambrequin : festons sous le bord avant
-	for i = 0, 6 do
-		put(
+		smooth(
 			folder,
 			at,
-			Vector3.new(2, 1.2, 0.4),
-			Vector3.new(-6 + i * 2, 9.4, -5),
+			Vector3.new(2, 1.4, 0.4),
+			Vector3.new(x, 10.9, -6.2),
 			if i % 2 == 0 then stripe else WHITE,
+			Enum.Material.SmoothPlastic,
 			false
 		)
 	end
-	local sign = put(folder, at, Vector3.new(14, 3.6, 0.8), Vector3.new(0, 14.5, 2.5), signColor, true)
-	Build.surfaceText(sign, Enum.NormalId.Front, title)
+end
+
+-- Cette méthode permet de construire un marchand en blocs (jambes, corps `shirt`, bras, tête, casquette `cap`,
+-- yeux) debout au repère `at`, face à -Z, lorsque l'on garnit un stand ; marqué MERCHANT_TAG pour être animé.
+local function merchant(parent: Instance, at: CFrame, shirt: Color3, cap: Color3): Model
+	local model = Instance.new("Model")
+	model.Name = "Merchant"
+	local skin = rgb(255, 205, 150)
+	local pants = rgb(50, 60, 90)
+	put(model, at, Vector3.new(0.9, 2.4, 1), Vector3.new(-0.5, 1.2, 0), pants, false)
+	put(model, at, Vector3.new(0.9, 2.4, 1), Vector3.new(0.5, 1.2, 0), pants, false)
+	local torso = put(model, at, Vector3.new(2, 2.4, 1.1), Vector3.new(0, 3.6, 0), shirt, false)
+	put(model, at, Vector3.new(1.6, 1.8, 0.2), Vector3.new(0, 3.5, -0.6), WHITE, false) -- tablier
+	put(model, at, Vector3.new(0.8, 2.3, 0.9), Vector3.new(-1.45, 3.7, 0), shirt, false)
+	local arm = put(model, at, Vector3.new(0.8, 2.3, 0.9), Vector3.new(1.45, 3.7, 0), shirt, false)
+	arm.Name = "WaveArm"
+	put(model, at, Vector3.new(1.6, 1.6, 1.6), Vector3.new(0, 5.6, 0), skin, false)
+	for _, x in { -0.35, 0.35 } do
+		smooth(
+			model,
+			at,
+			Vector3.new(0.25, 0.35, 0.1),
+			Vector3.new(x, 5.75, -0.82),
+			rgb(25, 25, 30),
+			Enum.Material.SmoothPlastic,
+			false
+		)
+	end
+	smooth(
+		model,
+		at,
+		Vector3.new(0.7, 0.15, 0.1),
+		Vector3.new(0, 5.2, -0.82),
+		rgb(120, 40, 40),
+		Enum.Material.SmoothPlastic,
+		false
+	)
+	put(model, at, Vector3.new(1.8, 0.5, 1.8), Vector3.new(0, 6.6, 0), cap, false)
+	put(model, at, Vector3.new(1.6, 0.25, 0.9), Vector3.new(0, 6.45, -1.2), cap, false)
+	model.PrimaryPart = torso
+	CollectionService:AddTag(model, CourseLayout.MERCHANT_TAG)
+	model.Parent = parent
+	return model
+end
+
+-- Cette méthode permet d'afficher la bulle d'appel du marchand (texte noir sur bulle blanche, pointe en bas) au point
+-- `position` lorsque l'on garnit un stand.
+local function bubble(parent: Instance, position: Vector3, text: string)
+	local anchor =
+		Build.decor({ Name = "Bubble", Size = Vector3.one, Position = position, Transparency = 1, Parent = parent })
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromScale(9, 2.2)
+	gui.LightInfluence = 0
+	gui.MaxDistance = 70
+	gui.Parent = anchor
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.fromScale(1, 0.8)
+	frame.BackgroundColor3 = WHITE
+	frame.Parent = gui
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.35, 0)
+	corner.Parent = frame
+	local stroke = Instance.new("UIStroke")
+	stroke.Thickness = 3
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Parent = frame
+	local tip = Instance.new("Frame")
+	tip.AnchorPoint = Vector2.new(0.5, 0.5)
+	tip.Position = UDim2.fromScale(0.5, 0.82)
+	tip.Size = UDim2.fromScale(0.08, 0.3)
+	tip.SizeConstraint = Enum.SizeConstraint.RelativeYY
+	tip.Rotation = 45
+	tip.BackgroundColor3 = WHITE
+	tip.BorderSizePixel = 0
+	tip.ZIndex = 0
+	tip.Parent = gui
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.TextColor3 = rgb(20, 20, 26)
+	label.Text = text
+	label.Parent = frame
+	local padding = Instance.new("UIPadding")
+	padding.PaddingTop = UDim.new(0.14, 0)
+	padding.PaddingBottom = UDim.new(0.14, 0)
+	padding.PaddingLeft = UDim.new(0.06, 0)
+	padding.PaddingRight = UDim.new(0.06, 0)
+	padding.Parent = label
+end
+
+-- Cette méthode permet de tracer au sol, devant le comptoir, l'anneau de la couleur du stand (là où l'invite
+-- s'ouvre, comme le cercle rouge devant le stand de 01) lorsque l'on bâtit un stand du hub.
+local function ring(parent: Instance, at: CFrame, color: Color3)
+	for i = 0, 15 do
+		local angle = i * math.pi / 8
+		local piece = smooth(
+			parent,
+			at * CFrame.new(0, 0, -7.5) * CFrame.Angles(0, angle, 0),
+			Vector3.new(1.5, 0.12, 0.5),
+			Vector3.new(0, 0.07, 3.6),
+			color,
+			Enum.Material.Neon,
+			false
+		)
+		piece.CastShadow = false
+	end
+end
+
+-- Cette méthode permet de poser une caisse en bois (cadre foncé, planches claires) de côté `s` au repère `at`
+-- lorsque l'on garnit un stand.
+local function crate(parent: Instance, at: CFrame, s: number)
+	put(parent, at, Vector3.new(s, s, s), Vector3.new(0, s / 2, 0), WOOD, true)
+	for _, y in { 0.08, 0.92 } do
+		put(parent, at, Vector3.new(s + 0.1, 0.3, s + 0.1), Vector3.new(0, s * y, 0), WOOD_DARK, false)
+	end
+	put(
+		parent,
+		at,
+		Vector3.new(0.3, s * 0.84, s + 0.1),
+		Vector3.new(0, s / 2, 0),
+		WOOD_DARK,
+		false,
+		Vector3.new(0, 0, 40)
+	)
+end
+
+-- Cette méthode permet de poser un socle de vitrine (plateau tournant à liseré néon) dont le client fait tourner le
+-- mannequin à lancer `index` (attributs Index et Scale, tag Shared.ThrowDummies.DISPLAY_TAG) lorsque l'on garnit le
+-- stand SHOP.
+local function turntable(parent: Instance, at: CFrame, offset: Vector3, index: number, scale: number, tag: string)
+	local base = smooth(
+		parent,
+		at,
+		Vector3.new(0.4, 2.4, 2.4),
+		offset + Vector3.new(0, 0.2, 0),
+		rgb(60, 64, 76),
+		Enum.Material.SmoothPlastic,
+		false,
+		Vector3.new(0, 0, 90)
+	)
+	base.Shape = Enum.PartType.Cylinder
+	local glow = smooth(
+		parent,
+		at,
+		Vector3.new(0.12, 2.6, 2.6),
+		offset + Vector3.new(0, 0.06, 0),
+		rgb(80, 200, 255),
+		Enum.Material.Neon,
+		false,
+		Vector3.new(0, 0, 90)
+	)
+	glow.Shape = Enum.PartType.Cylinder
+	-- Point d'appui du mannequin exposé (pieds sur le plateau)
+	local socket = Build.decor({
+		Name = "Display" .. index,
+		Size = Vector3.new(0.2, 0.2, 0.2),
+		CFrame = at * CFrame.new(offset + Vector3.new(0, 0.4, 0)),
+		Transparency = 1,
+		Parent = parent,
+	})
+	socket:SetAttribute("Index", index)
+	socket:SetAttribute("Scale", scale)
+	CollectionService:AddTag(socket, tag)
+end
+
+export type ShopStand = { prompt: Vector3 }
+
+-- Cette méthode permet de construire le stand SHOP (boutique de mannequins à lancer, #14) au repère `at` (face avant
+-- vers -Z) : échoppe bleue, six mannequins à lancer sur plateaux tournants (comptoir et étagère), vitrine du plus
+-- cher, caisses empilées dont une ouverte, enseigne néon « DUMMY SHOP » coiffée d'une tête de mannequin, marchand
+-- et sa bulle, anneau au sol ; `displayTag` marque les plateaux. Renvoie la position de l'invite.
+function Props.shopStand(parent: Instance, at: CFrame, displayTag: string, count: number): ShopStand
+	local blue = rgb(50, 140, 255)
+	local folder = Instance.new("Model")
+	folder.Name = "ShopStand"
+	stall(folder, at, blue)
+	-- Comptoir (les 3 premiers), étagère du fond (les suivants), vitrine (le dernier), chacun sur son plateau
+	put(folder, at, Vector3.new(STALL_W - 2, 0.5, 2), Vector3.new(0, 7.2, 3.1), WOOD, true)
+	local shelved = count - 4
+	for i = 1, count - 1 do
+		local offset = if i <= 3
+			then Vector3.new((i - 2) * 4.4, 5.2, -3)
+			else Vector3.new((i - 4 - (shelved - 1) / 2) * 5, 7.45, 3.1)
+		turntable(folder, at, offset, i, if i <= 3 then 0.5 else 0.42, displayTag)
+	end
+	-- Vitrine du côté gauche : socle, montants, verre, mannequin le plus cher qui tourne
+	local case = at * CFrame.new(STALL_W / 2 + 3.5, 0, -1)
+	put(folder, case, Vector3.new(5, 1.6, 5), Vector3.new(0, 0.8, 0), rgb(40, 44, 56), true)
+	smooth(folder, case, Vector3.new(5.2, 0.3, 5.2), Vector3.new(0, 1.75, 0), blue, Enum.Material.Neon, false)
+	for _, corner in
+		{ Vector3.new(-2.3, 0, -2.3), Vector3.new(2.3, 0, -2.3), Vector3.new(-2.3, 0, 2.3), Vector3.new(2.3, 0, 2.3) }
+	do
+		put(folder, case, Vector3.new(0.5, 7, 0.5), corner + Vector3.new(0, 5.3, 0), rgb(240, 240, 245), true)
+	end
+	for _, side in { Vector3.new(0, 0, -2.3), Vector3.new(0, 0, 2.3), Vector3.new(-2.3, 0, 0), Vector3.new(2.3, 0, 0) } do
+		local size = if side.X == 0 then Vector3.new(4.2, 6.8, 0.15) else Vector3.new(0.15, 6.8, 4.2)
+		local glass =
+			smooth(folder, case, size, side + Vector3.new(0, 5.3, 0), rgb(200, 235, 255), Enum.Material.Glass, true)
+		glass.Transparency = 0.6
+	end
+	put(folder, case, Vector3.new(5.2, 0.6, 5.2), Vector3.new(0, 9, 0), rgb(240, 240, 245), true)
+	turntable(folder, case, Vector3.new(0, 1.9, 0), count, 0.75, displayTag)
+	-- Caisses empilées du côté droit, une ouverte d'où dépasse un bras de mannequin
+	local stack = at * CFrame.new(-(STALL_W / 2 + 3), 0, -2)
+	crate(folder, stack, 3)
+	crate(folder, stack * CFrame.new(3.2, 0, 0.4) * CFrame.Angles(0, math.rad(12), 0), 3)
+	crate(folder, stack * CFrame.new(1.4, 3, 0.2) * CFrame.Angles(0, math.rad(-8), 0), 2.6)
+	put(
+		folder,
+		stack,
+		Vector3.new(0.8, 2, 0.8),
+		Vector3.new(0.4, 3.6, -0.2),
+		DUMMY_YELLOW,
+		false,
+		Vector3.new(0, 0, -25)
+	)
+	put(
+		folder,
+		stack,
+		Vector3.new(0.8, 1, 0.8),
+		Vector3.new(0.8, 4.9, -0.2),
+		rgb(45, 47, 55),
+		false,
+		Vector3.new(0, 0, -25)
+	)
+	-- Enseigne néon au-dessus de l'auvent : panneau sombre, cadre lumineux, tête de mannequin à cibles qui tourne
+	local sign = put(folder, at, Vector3.new(STALL_W, 4.2, 0.8), Vector3.new(0, 16.6, 4.2), rgb(30, 40, 80), true)
+	Build.surfaceText(sign, Enum.NormalId.Front, "DUMMY SHOP", rgb(130, 220, 255))
+	for _, edge in
+		{
+			{ Vector3.new(STALL_W + 0.4, 0.35, 0.3), Vector3.new(0, 18.8, 3.7) },
+			{ Vector3.new(STALL_W + 0.4, 0.35, 0.3), Vector3.new(0, 14.4, 3.7) },
+			{ Vector3.new(0.35, 4.75, 0.3), Vector3.new(STALL_W / 2 + 0.03, 16.6, 3.7) },
+			{ Vector3.new(0.35, 4.75, 0.3), Vector3.new(-STALL_W / 2 - 0.03, 16.6, 3.7) },
+		}
+	do
+		smooth(folder, at, edge[1], edge[2], rgb(255, 220, 60), Enum.Material.Neon, false).CastShadow = false
+	end
+	local head = Instance.new("Model")
+	head.Name = "SignHead"
+	local skull = put(head, at, Vector3.new(4, 4, 4), Vector3.new(0, 21.4, 4.2), DUMMY_YELLOW, true)
+	for _, face in { -1, 1 } do
+		-- Cible de crash-test (disques noir et jaune) de chaque côté
+		local disc = smooth(
+			head,
+			at,
+			Vector3.new(0.1, 1.8, 1.8),
+			Vector3.new(face * 2.02, 21.6, 4.2),
+			rgb(25, 25, 30),
+			Enum.Material.SmoothPlastic,
+			false
+		)
+		disc.Shape = Enum.PartType.Cylinder
+		local dot = smooth(
+			head,
+			at,
+			Vector3.new(0.12, 0.8, 0.8),
+			Vector3.new(face * 2.04, 21.6, 4.2),
+			DUMMY_YELLOW,
+			Enum.Material.SmoothPlastic,
+			false
+		)
+		dot.Shape = Enum.PartType.Cylinder
+	end
+	for _, x in { -0.8, 0.8 } do
+		smooth(
+			head,
+			at,
+			Vector3.new(0.6, 0.8, 0.1),
+			Vector3.new(x, 22, 2.17),
+			rgb(25, 25, 30),
+			Enum.Material.SmoothPlastic,
+			false
+		)
+	end
+	head.PrimaryPart = skull
+	CollectionService:AddTag(head, CourseLayout.SPIN_TAG)
+	head.Parent = folder
+	merchant(folder, at * CFrame.new(-4.5, 0.6, 0.5), blue, rgb(255, 210, 40))
+	bubble(folder, (at * CFrame.new(-4.5, 9.6, 0.5)).Position, "Better dummies here!")
+	ring(folder, at, blue)
 	folder.Parent = parent
-	return sign
+	return { prompt = (at * CFrame.new(0, 3, -6)).Position }
+end
+
+-- Cette méthode permet de poser une liasse de billets (bloc vert, bande blanche) au repère `at` lorsque l'on garnit
+-- le stand SELL.
+local function bills(parent: Instance, at: CFrame, layers: number)
+	for i = 0, layers - 1 do
+		put(parent, at, Vector3.new(1.8, 0.35, 0.9), Vector3.new(0, 0.18 + i * 0.36, 0), rgb(90, 190, 80), false)
+	end
+	smooth(
+		parent,
+		at,
+		Vector3.new(0.35, layers * 0.36 + 0.04, 0.95),
+		Vector3.new(0, layers * 0.18, 0),
+		WHITE,
+		Enum.Material.SmoothPlastic,
+		false
+	)
+end
+
+-- Cette méthode permet de poser un sac d'argent (bloc toile, col noué, « $ » sur la face) de taille `s` au repère
+-- `at` lorsque l'on garnit le stand SELL.
+local function moneyBag(parent: Instance, at: CFrame, s: number)
+	local canvas = rgb(215, 180, 110)
+	local body = put(parent, at, Vector3.new(2.4, 2.2, 2.2) * s, Vector3.new(0, 1.1 * s, 0), canvas, true)
+	put(parent, at, Vector3.new(1.6, 0.6, 1.6) * s, Vector3.new(0, 2.5 * s, 0), Build.shade(canvas, 0.85), false)
+	put(parent, at, Vector3.new(1, 0.3, 1) * s, Vector3.new(0, 2.85 * s, 0), rgb(120, 70, 40), false)
+	put(parent, at, Vector3.new(1.2, 0.8, 1.2) * s, Vector3.new(0, 3.3 * s, 0), canvas, false)
+	Build.surfaceText(body, Enum.NormalId.Front, "$", rgb(60, 170, 60))
+end
+
+-- Cette méthode permet de construire le stand SELL (vente des mannequins de collection) au repère `at` (face avant vers
+-- -Z) : échoppe rouge, caisse enregistreuse, balance, liasses et sacs d'argent, pancarte du prix de vente, marchand et
+-- sa bulle, pièce géante qui tourne au-dessus de l'enseigne, émetteur de pièces (éclat à chaque vente), anneau au sol.
+function Props.sellStand(parent: Instance, at: CFrame)
+	local red = rgb(235, 45, 45)
+	local gold = rgb(255, 200, 40)
+	local folder = Instance.new("Model")
+	folder.Name = "SellStand"
+	stall(folder, at, red)
+	-- Caisse enregistreuse sur le comptoir (côté gauche) : corps, écran vert incliné, touches, tiroir
+	local till = at * CFrame.new(3.6, 5.2, -3)
+	put(folder, till, Vector3.new(3, 1.6, 2.2), Vector3.new(0, 0.8, 0), rgb(70, 75, 90), true)
+	put(folder, till, Vector3.new(3.2, 0.5, 2.4), Vector3.new(0, 0.25, -0.1), gold, false)
+	smooth(
+		folder,
+		till,
+		Vector3.new(2.4, 0.9, 0.2),
+		Vector3.new(0, 2, 0.6),
+		rgb(90, 230, 120),
+		Enum.Material.Neon,
+		false,
+		Vector3.new(-20, 0, 0)
+	)
+	for i = 0, 5 do
+		local x, z = (i % 3 - 1) * 0.7, math.floor(i / 3) * 0.5 - 0.5
+		put(
+			folder,
+			till,
+			Vector3.new(0.5, 0.2, 0.35),
+			Vector3.new(x, 1.7, z),
+			if i == 5 then rgb(80, 200, 80) else WHITE,
+			false
+		)
+	end
+	-- Balance dorée (côté droit) : pied, fléau, deux plateaux, l'un chargé de pièces
+	local scale = at * CFrame.new(-4, 5.2, -3)
+	put(folder, scale, Vector3.new(2, 0.4, 1.4), Vector3.new(0, 0.2, 0), gold, true)
+	put(folder, scale, Vector3.new(0.4, 2.6, 0.4), Vector3.new(0, 1.7, 0), gold, false)
+	put(folder, scale, Vector3.new(4, 0.3, 0.3), Vector3.new(0, 3, 0), gold, false, Vector3.new(0, 0, -8))
+	for _, side in { -1, 1 } do
+		local pan = smooth(
+			folder,
+			scale,
+			Vector3.new(0.2, 1.6, 1.6),
+			Vector3.new(side * 1.9, 2.1 + side * 0.25, 0),
+			gold,
+			Enum.Material.Metal,
+			false,
+			Vector3.new(0, 0, 90)
+		)
+		pan.Shape = Enum.PartType.Cylinder
+	end
+	for i = 0, 2 do
+		local coin = smooth(
+			folder,
+			scale,
+			Vector3.new(0.2, 0.7, 0.7),
+			Vector3.new(1.9 + (i - 1) * 0.35, 2.45 + i * 0.12, 0),
+			rgb(255, 225, 70),
+			Enum.Material.Metal,
+			false,
+			Vector3.new(0, 0, 90)
+		)
+		coin.Shape = Enum.PartType.Cylinder
+	end
+	-- Liasses sur le comptoir et piles au sol, sacs d'argent devant les poteaux
+	bills(folder, at * CFrame.new(0, 5.2, -2.6), 3)
+	bills(folder, at * CFrame.new(0.4, 5.2, -3.6) * CFrame.Angles(0, math.rad(20), 0), 2)
+	bills(folder, at * CFrame.new(5, 0.6, 2.2), 6)
+	bills(folder, at * CFrame.new(-5.5, 0.6, 2.4), 4)
+	moneyBag(folder, at * CFrame.new(STALL_W / 2 + 2.2, 0, -3) * CFrame.Angles(0, math.rad(-15), 0), 1.2)
+	moneyBag(folder, at * CFrame.new(STALL_W / 2 + 4.4, 0, -1.2) * CFrame.Angles(0, math.rad(20), 0), 0.9)
+	moneyBag(folder, at * CFrame.new(-(STALL_W / 2 + 2.4), 0, -2.4) * CFrame.Angles(0, math.rad(10), 0), 1)
+	-- Pancarte du prix de vente sur deux piquets, à droite du stand
+	local board = at * CFrame.new(-(STALL_W / 2 + 4.5), 0, 1) * CFrame.Angles(0, math.rad(15), 0)
+	for _, x in { -2.2, 2.2 } do
+		put(folder, board, Vector3.new(0.6, 5, 0.6), Vector3.new(x, 2.5, 0.2), WOOD_DARK, false)
+	end
+	local plank = put(folder, board, Vector3.new(6, 3.4, 0.5), Vector3.new(0, 4.8, 0), WOOD, true)
+	Build.surfaceText(plank, Enum.NormalId.Front, "SELL = 2 MIN\nOF INCOME", rgb(255, 235, 120))
+	-- Enseigne et pièce géante au-dessus (silhouette ronde dorée, opposée à la tête carrée du SHOP)
+	local sign = put(folder, at, Vector3.new(STALL_W, 4.2, 0.8), Vector3.new(0, 16.6, 4.2), red, true)
+	Build.surfaceText(sign, Enum.NormalId.Front, "SELL")
+	local coin = Instance.new("Model")
+	coin.Name = "GiantCoin"
+	local disc = smooth(
+		coin,
+		at,
+		Vector3.new(1, 6, 6),
+		Vector3.new(0, 22, 4.2),
+		gold,
+		Enum.Material.Metal,
+		true,
+		Vector3.new(0, 90, 0)
+	)
+	disc.Shape = Enum.PartType.Cylinder
+	local rim = smooth(
+		coin,
+		at,
+		Vector3.new(1.1, 4.6, 4.6),
+		Vector3.new(0, 22, 4.2),
+		rgb(255, 230, 110),
+		Enum.Material.Metal,
+		false,
+		Vector3.new(0, 90, 0)
+	)
+	rim.Shape = Enum.PartType.Cylinder
+	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
+		local front = smooth(
+			coin,
+			at,
+			Vector3.new(4, 4, 0.05),
+			Vector3.new(0, 22, 4.2 + (if face == Enum.NormalId.Front then -0.56 else 0.56)),
+			gold,
+			Enum.Material.Metal,
+			false
+		)
+		front.Transparency = 1
+		Build.surfaceText(front, face, "$", rgb(255, 250, 200))
+	end
+	coin.PrimaryPart = disc
+	CollectionService:AddTag(coin, CourseLayout.SPIN_TAG)
+	coin.Parent = folder
+	merchant(folder, at * CFrame.new(0, 0.6, 0.5), rgb(80, 180, 80), rgb(40, 120, 50))
+	bubble(folder, (at * CFrame.new(0, 9.6, 0.5)).Position, "Sell your dummies!")
+	ring(folder, at, red)
+	-- Éclat de pièces : émetteur au-dessus du comptoir, déclenché par le client à chaque vente (attribut Sales)
+	local burst = Build.decor({
+		Name = "SellBurst",
+		Size = Vector3.new(4, 0.5, 2),
+		CFrame = at * CFrame.new(0, 6, -3),
+		Transparency = 1,
+		Parent = folder,
+	})
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Name = "Coins"
+	emitter.Enabled = false
+	emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	emitter.Color = ColorSequence.new(rgb(255, 230, 80), rgb(255, 170, 30))
+	emitter.LightEmission = 0.6
+	emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.9), NumberSequenceKeypoint.new(1, 0.3) })
+	emitter.Lifetime = NumberRange.new(0.8, 1.3)
+	emitter.Speed = NumberRange.new(14, 24)
+	emitter.SpreadAngle = Vector2.new(35, 35)
+	emitter.Acceleration = Vector3.new(0, -50, 0)
+	emitter.Rotation = NumberRange.new(0, 360)
+	emitter.RotSpeed = NumberRange.new(-180, 180)
+	emitter.Parent = burst
+	burst:SetAttribute("Sales", 0)
+	CollectionService:AddTag(burst, CourseLayout.SELL_BURST_TAG)
+	folder.Parent = parent
 end
 
 -- Cette méthode permet de planter un panneau en bois (poteau, planche à texte) au repère `at` lorsque l'on annonce

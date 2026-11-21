@@ -28,7 +28,16 @@ local LEG = Vector3.new(0.95, 1.3, 0.95)
 export type Piece = { name: string, size: Vector3, position: Vector3, color: Color3 }
 
 -- Déclinaison (collection, boutique, équipement d'entraînement) : couleur des zones claires (et par pièce), matériau,
--- pièces masquées, pièces ajoutées (accessoires, couleur imposée pour la silhouette du tirage), effets
+-- pièces masquées, pièces ajoutées (accessoires, couleur imposée pour la silhouette du tirage), effets, blocs (pièces
+-- ajoutées sans maillage des mannequins à lancer, Shared.ThrowDummies : ailes, réacteur, lest)
+export type Block = {
+	piece: string,
+	size: Vector3,
+	offset: Vector3,
+	color: Color3,
+	material: Enum.Material?,
+}
+
 export type Variant = {
 	color: Color3?,
 	material: Enum.Material?,
@@ -37,6 +46,7 @@ export type Variant = {
 	accessories: { string }?,
 	accessoryColor: Color3?,
 	effects: { DummyModels.Effect }?,
+	blocks: { Block }?,
 }
 
 -- Tailles = boîtes des maillages (assets/dummy/build_dummy.py vérifie qu'ils les remplissent exactement)
@@ -504,6 +514,30 @@ end
 function DummyShape.addAccessories(model: Model, parts: { [string]: BasePart }, scale: number, variant: Variant?)
 	if not variant then
 		return
+	end
+	local blocks: { Block } = variant.blocks or {}
+	for _, block in blocks do
+		local carrier = parts[block.piece]
+		if carrier then
+			local p = Instance.new("Part")
+			p.Name = "Block"
+			p.Size = block.size * scale
+			p.CFrame = carrier.CFrame * CFrame.new(block.offset * scale)
+			p.Color = block.color
+			p.Material = block.material or Enum.Material.SmoothPlastic
+			p.TopSurface = Enum.SurfaceType.Smooth
+			p.BottomSurface = Enum.SurfaceType.Smooth
+			p.Massless = true
+			p.CanCollide = false
+			p.CanQuery = false
+			p.CanTouch = false
+			p:SetAttribute("Accessory", true)
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = carrier
+			weld.Part1 = p
+			weld.Parent = p
+			p.Parent = model
+		end
 	end
 	local names: { string } = variant.accessories or {}
 	for _, name in names do

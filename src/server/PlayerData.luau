@@ -10,6 +10,7 @@ local Workspace = game:GetService("Workspace")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local Inventory = require(ReplicatedStorage.Shared.Inventory)
+local ThrowDummies = require(ReplicatedStorage.Shared.ThrowDummies)
 local Training = require(ReplicatedStorage.Shared.Training)
 local Tutorial = require(ReplicatedStorage.Shared.Tutorial)
 
@@ -25,6 +26,8 @@ local DEFAULTS = {
 	Tutorial = 0, -- étapes du tutoriel faites (drapeaux, Shared.Tutorial)
 	Draws = 0, -- mannequins de collection gagnés (le premier est garanti : Collection.STARTER)
 	MusicOff = false, -- musique de fond coupée (bouton du HUD, Client.Music)
+	ThrowTier = 1, -- mannequins à lancer possédés : les ThrowTier premiers du catalogue (Shared.ThrowDummies)
+	ThrowEquipped = 1, -- mannequin à lancer équipé (tenu et lancé)
 }
 
 -- Collection d'un joueur : stock, présentoirs, Index (Shared.Inventory)
@@ -87,6 +90,10 @@ local function load(player: Player)
 						player:SetAttribute(key, data[key])
 					end
 				end
+				-- Mannequins à lancer : niveaux bornés au catalogue (sauvegarde ancienne ou catalogue raccourci)
+				local owned, equipped = ThrowDummies.sanitize(data.ThrowTier, data.ThrowEquipped)
+				player:SetAttribute("ThrowTier", owned)
+				player:SetAttribute("ThrowEquipped", equipped)
 				-- Sauvegarde antérieure au tutoriel : étapes déduites de la progression
 				if type(data.Tutorial) ~= "number" then
 					player:SetAttribute("Tutorial", Tutorial.infer(data))
@@ -161,6 +168,39 @@ function PlayerData.buyUpgrade(player: Player, kind: any): boolean
 	player:SetAttribute("GearTier", tier + 1)
 	PlayerData.tutorialStep(player, "BuyGear")
 	return true
+end
+
+-- Cette méthode permet d'acheter ou d'équiper un mannequin à lancer lorsque le client le demande depuis la boutique
+-- (`action` = "Buy" : le suivant seulement, avec l'argent, puis équipé ; "Equip" : un mannequin possédé). Le serveur
+-- valide l'action, l'indice, l'ordre, la possession et le solde ; renvoie true si quelque chose a changé.
+function PlayerData.throwDummy(player: Player, action: any, index: any): boolean
+	if player:GetAttribute("DataReady") ~= true then
+		return false
+	end
+	local owned, equipped =
+		ThrowDummies.sanitize(player:GetAttribute("ThrowTier"), player:GetAttribute("ThrowEquipped"))
+	local money = (player:GetAttribute("Money") :: number?) or 0
+	local result = ThrowDummies.act(owned, equipped, money, action, index)
+	if not result then
+		return false
+	end
+	if result.cost > 0 then
+		player:SetAttribute("Money", money - result.cost)
+	end
+	player:SetAttribute("ThrowTier", result.owned)
+	player:SetAttribute("ThrowEquipped", result.equipped)
+	return true
+end
+
+-- Cette méthode permet de donner au joueur les `index` premiers mannequins à lancer et d'équiper le dernier lorsque
+-- l'on mesure dans Studio (attribut DebugThrowDummy, contexte Server) : rien n'est payé.
+function PlayerData.debugThrowDummy(player: Player, index: any)
+	if not ThrowDummies.isIndex(index) then
+		return
+	end
+	local owned = ThrowDummies.sanitize(player:GetAttribute("ThrowTier"), nil)
+	player:SetAttribute("ThrowTier", math.max(owned, index))
+	player:SetAttribute("ThrowEquipped", index)
 end
 
 -- Cette méthode permet de noter une étape du tutoriel faite (« Throw », « Place », « Train », « BuyGear ») lorsque
