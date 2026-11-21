@@ -180,9 +180,10 @@ end
 
 -- Ferme -------------------------------------------------------------------------------------------------------------
 
--- Cette méthode permet de garer un tracteur rouge en blocs (grandes roues arrière, petites roues et moteur à l'avant,
--- châssis, capot, cabine jaune, pot d'échappement) en travers de chaque colonne lorsque le site est construit ; chaque
--- étage repose sur le précédent. Léger (début de piste) : il ne stoppe pas net un lancer de débutant.
+-- Tracteur léger (début de piste) : il ne stoppe pas net un lancer de débutant ; chaque étage repose sur le précédent.
+
+-- Cette méthode permet de garer un tracteur rouge en blocs (roues, moteur, châssis, capot, cabine jaune, échappement)
+-- en travers de chaque colonne lorsque le site est construit.
 builders.Tractor = function(kit, z)
 	local red, dark = rgb(225, 50, 40), rgb(60, 60, 65)
 	eachColumn(kit, function(add, x)

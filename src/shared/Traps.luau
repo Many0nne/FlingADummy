@@ -84,9 +84,11 @@ function Traps.pressActive(now: number, x: number, z: number): boolean
 	return phase >= Traps.PRESS_ACTIVE[1] and phase <= Traps.PRESS_ACTIVE[2]
 end
 
--- Cette méthode permet de donner le décalage d'une pièce mobile de piège (repère de son pivot au repos) à l'instant `t`
--- lorsque le client l'anime : "Spin" tourne autour de `axis`, "Swing" balance de ±`amplitude` degrés, "Bob" monte et
--- descend de `amplitude` studs, "Press" descend d'un coup puis remonte lentement ; `period` en secondes.
+-- Mouvements : "Spin" tourne autour de `axis`, "Swing" balance de ±`amplitude` degrés, "Bob" monte et descend de
+-- `amplitude` studs, "Press" descend d'un coup puis remonte lentement ; `period` en secondes.
+
+-- Cette méthode permet de donner le décalage d'une pièce mobile de piège (repère de son pivot au repos) à l'instant
+-- `t` lorsque le client l'anime.
 function Traps.motion(motion: string, t: number, axis: Vector3, amplitude: number, period: number): CFrame
 	local phase = (t / period) % 1
 	if motion == "Spin" then

@@ -297,9 +297,10 @@ local function breakNearest(flight: Flight, contact: Vector3, bones: number): nu
 	return broken
 end
 
--- Cette méthode permet de déclencher le piège `box` (une fois par vol) lorsque le torse traverse sa boîte : nouvelle
--- vitesse de tout le mannequin (Shared.Traps.react, recalée comme référence pour ne pas compter de choc), rotation,
--- os cassés, cause du crash et annonce aux clients.
+-- Effet d'un piège : nouvelle vitesse (Shared.Traps.react, recalée comme référence pour ne pas compter de choc),
+-- rotation du corps, os cassés, cause du crash et annonce aux clients.
+
+-- Cette méthode permet de déclencher le piège `box` (une fois par vol) lorsque le torse traverse sa boîte.
 local function triggerTrap(flight: Flight, box: TrackPlan.TrapBox, position: Vector3)
 	flight.traps[box.site] = true
 	flight.lastTrap = { kind = box.kind, at = os.clock() }
