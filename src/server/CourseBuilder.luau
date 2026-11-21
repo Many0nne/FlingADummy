@@ -564,8 +564,12 @@ local function buildPodium(model: Model, floor: CFrame, color: Color3, look: Bas
 	if look.glow then
 		-- Liseré néon sur la bordure, autour du socle (à 0,05 stud de ses faces : pas de faces coplanaires)
 		local ring = size / 2 + 0.2
+		glow(model, Vector3.new(size + 0.7, 0.2, 0.3), floor * CFrame.new(0, 0.6, ring), look.glow)
+		-- Devant : interrompu par les marches (4 studs de large)
+		local piece = size / 2 + 0.35 - 2.05
 		for _, side in { -1, 1 } do
-			glow(model, Vector3.new(size + 0.7, 0.2, 0.3), floor * CFrame.new(0, 0.6, side * ring), look.glow)
+			local x = side * (2.05 + piece / 2)
+			glow(model, Vector3.new(piece, 0.2, 0.3), floor * CFrame.new(x, 0.6, -ring), look.glow)
 			glow(model, Vector3.new(0.3, 0.2, size + 0.1), floor * CFrame.new(side * ring, 0.6, 0), look.glow)
 		end
 	end
@@ -608,7 +612,7 @@ local function buildPodium(model: Model, floor: CFrame, color: Color3, look: Bas
 	})
 end
 
--- Cette méthode permet de monter le râtelier (montants, traverse, mannequins des trois derniers paliers possédés) aux
+-- Cette méthode permet de monter le râtelier (montants, traverse, mannequins des trois derniers paliers, 1 à 3 au départ) aux
 -- couleurs du Training Gear `tier` lorsque l'appareil de la place `index` est habillé.
 local function buildRack(
 	model: Model,
@@ -658,7 +662,7 @@ local function buildRack(
 		)
 	end
 	local rack = BaseLook.rackTiers(tier)
-	-- Cette méthode permet de suspendre (ou resuspendre) les mannequins des trois derniers paliers possédés lorsque
+	-- Cette méthode permet de suspendre (ou resuspendre) les mannequins des trois derniers paliers lorsque
 	-- l'appareil est habillé puis quand les gabarits maillés arrivent (blocs du gabarit en attendant).
 	local function placeRack()
 		for _, child in model:GetChildren() do
@@ -691,7 +695,6 @@ function CourseBuilder.styleStation(slot: Slot, tier: number)
 	if trainer.tier == tier then
 		return
 	end
-	trainer.tier = tier
 	local look = BaseLook.station(tier)
 	-- Nouvel habillage posé avant de retirer l'ancien : le podium ne manque jamais sous l'avatar
 	local fresh = Instance.new("Model")
@@ -701,6 +704,7 @@ function CourseBuilder.styleStation(slot: Slot, tier: number)
 	fresh.Parent = trainer.model
 	trainer.look:Destroy()
 	trainer.look = fresh
+	trainer.tier = tier
 end
 
 -- Cette méthode permet de construire l'appareil d'entraînement d'une place à côté de l'entrée de sa base (podium,
@@ -880,13 +884,11 @@ function CourseBuilder.styleBase(slot: Slot, tier: number)
 	if base.tier == tier then
 		return
 	end
-	base.tier = tier
 	local look, fence = BaseLook.base(tier)
 	-- Nouvel habillage posé avant de retirer l'ancien : la clôture ne disparaît jamais
 	local folder = Instance.new("Folder")
 	folder.Name = "Look"
 	local old = base.look
-	base.look = folder
 	base.plot.Color = look.plot or Build.shade(slot.color, 0.6)
 	local center = CourseLayout.basePosition(slot.index)
 	local hx, hz = CourseLayout.BASE_SIZE.X / 2, CourseLayout.BASE_SIZE.Z / 2
@@ -947,6 +949,8 @@ function CourseBuilder.styleBase(slot: Slot, tier: number)
 	end
 	folder.Parent = base.model
 	old:Destroy()
+	base.look = folder
+	base.tier = tier
 end
 
 -- Cette méthode permet de construire la base d'une place (terrain, présentoirs vides, texte flottant, confettis

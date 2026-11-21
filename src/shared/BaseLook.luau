@@ -153,7 +153,7 @@ function BaseLook.station(tier: number): StationLook
 end
 
 -- Cette méthode permet de donner les paliers des trois mannequins suspendus au râtelier lorsque le propriétaire
--- possède le palier `tier` : les trois derniers possédés (1, 2, 3 au départ), le sien au bout.
+-- possède le palier `tier` : les trois derniers paliers (1, 2, 3 tant qu'il en possède moins de 3), le sien au bout.
 function BaseLook.rackTiers(tier: number): { number }
 	local last = math.clamp(math.max(tier, 3), 3, #Training.GEARS)
 	return { last - 2, last - 1, last }

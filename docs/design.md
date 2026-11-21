@@ -81,7 +81,7 @@ base, il rapporte des $/s, seule source d'argent.
   d'équipement, en boucle. Pendant la séance, l'invite est masquée et aucun objectif ne s'affiche : seul le bouton STOP.
 - **L'appareil s'habille au Training Gear acheté** (#92, `Shared.BaseLook.station`, comme les barres bois → pierre →
   fer → cyan de 01 / 09) : planches du podium, montants, traverse et marches à la couleur du mannequin du palier (bois,
-  pierre, fer, or, diamant, néon, cosmique) ; le râtelier montre les trois derniers mannequins possédés ; étincelles
+  pierre, fer, or, diamant, néon, cosmique) ; le râtelier montre les mannequins des trois derniers paliers jusqu'au sien (bois, pierre, fer tant qu'il en possède moins de trois) ; étincelles
   dès le Diamond, liseré néon (bordure du podium, sous la traverse) dès le Neon. Achat : confettis au-dessus du
   râtelier, vus de tous (en plus du popup du propriétaire). La bordure du podium reste à la couleur de la place.
 - Chaque répétition (0,8 s) donne l'**EXP de l'équipement** (« +N EXP », comme « +4 EXP / répétition » de 09) qui
