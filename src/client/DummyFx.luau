@@ -15,17 +15,17 @@ local DummyFx = {}
 
 local MAX_DISTANCE = 220 -- au-delà, une pièce du monde reste figée (studs)
 
--- Données d'animation d'une pièce, lues une fois (soudure, repos, rotation, flottement) ; false : pièce inanimable
+-- Données d'animation d'une pièce, lues une fois (soudure, repos, rotation, flottement) ; true : pas encore lues
 type Record = { weld: Weld, carrier: BasePart, base: CFrame, spin: Vector3?, bob: Vector2? }
-local animated: { [BasePart]: Record | false | true } = {}
+local animated: { [BasePart]: Record | true } = {}
 
--- Cette méthode permet de lire une fois les données d'animation d'une pièce étiquetée lorsque la boucle la rencontre
--- pour la première fois ; false si elle n'est pas animable (soudure ou repos absents).
-local function record(part: BasePart): Record | false
+-- Cette méthode permet de lire une fois les données d'animation d'une pièce étiquetée lorsque la boucle la rencontre ;
+-- true (réessayer plus tard) tant que sa soudure, sa pièce porteuse ou son repos ne sont pas arrivés (réplication).
+local function record(part: BasePart): Record | true
 	local weld = part:FindFirstChild(DummyShape.FX_WELD)
 	local base = part:GetAttribute("FxBase")
 	if not weld or not weld:IsA("Weld") or typeof(base) ~= "CFrame" or not weld.Part0 then
-		return false
+		return true
 	end
 	local spin = part:GetAttribute("FxSpin")
 	local bob = part:GetAttribute("FxBob")
@@ -46,7 +46,7 @@ local function step(part: BasePart, t: number, eye: Vector3)
 		data = record(part)
 		animated[part] = data
 	end
-	if not data then
+	if data == true or not data then
 		return
 	end
 	local weld, carrier = data.weld, data.carrier

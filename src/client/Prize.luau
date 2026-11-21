@@ -702,7 +702,8 @@ local function refreshPanel()
 		}, candidate)
 	placeAuto.Visible = free and target ~= nil and near and not firstPlace
 	if visible and entry then
-		local key = Inventory.key(entry)
+		-- L'étape des maillages fait partie de la clé : le rendu est refait quand les pièces ajoutées arrivent
+		local key = Inventory.key(entry) .. ":" .. DummyShape.meshStage()
 		if key ~= placeKey then
 			placeKey = key
 			local dummy = Collection.get(entry.id) :: Collection.Dummy

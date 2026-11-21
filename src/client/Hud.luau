@@ -461,6 +461,11 @@ local function watchTemplates()
 				CollectionWindows.refresh()
 			end)
 		end
+		-- Dossier répliqué déjà marqué (arrivé après le HUD) : aucun changement d'attribut ne viendra
+		if folder:GetAttribute("Ready") then
+			Hud.refresh()
+			CollectionWindows.refresh()
+		end
 	end
 	local folder = ReplicatedStorage:FindFirstChild(DummyShape.TEMPLATES)
 	if folder then
