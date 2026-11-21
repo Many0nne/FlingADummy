@@ -45,6 +45,7 @@ end
 -- (s) de chaque palier, par clé (« gear:3 », « throw:7 », « display:8 », « rarity:5 », « power:1M »…).
 local function simulate(seed: number, seconds: number): { [string]: number }
 	math.randomseed(seed)
+	-- Cette méthode permet de tirer un nombre dans [0, 1) lorsque le tirage du mannequin en demande un.
 	local roll = function()
 		return math.random()
 	end

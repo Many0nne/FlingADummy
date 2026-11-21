@@ -808,6 +808,7 @@ function UIKit.scrollToCard(row: ScrollingFrame, order: number)
 	local padding = row:FindFirstChildOfClass("UIPadding")
 	local left = if padding then padding.PaddingLeft.Offset else 0
 	local x = if order <= 2 then 0 else left + (order - 2) * (UIKit.CARD_WIDTH + UIKit.CARD_GAP)
+	-- Cette méthode permet de placer la rangée sur la carte visée lorsque la fenêtre s'affiche ou que la rangée s'élargit.
 	local function apply()
 		row.CanvasPosition = Vector2.new(x, 0)
 	end
@@ -817,8 +818,10 @@ function UIKit.scrollToCard(row: ScrollingFrame, order: number)
 	if row.AbsoluteCanvasSize.X <= row.AbsoluteWindowSize.X then
 		local connection: RBXScriptConnection
 		connection = row:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(function()
-			connection:Disconnect()
 			apply()
+			if row.AbsoluteCanvasSize.X > row.AbsoluteWindowSize.X then
+				connection:Disconnect()
+			end
 		end)
 		task.delay(1, function()
 			connection:Disconnect()

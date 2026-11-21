@@ -538,7 +538,9 @@ local function refreshGear(money: number)
 		local gear = Training.GEARS[tier]
 		local rarity = Rarity.get(tier)
 		card.title.Text = (string.gsub(gear.name, " Dummy$", ""))
+		-- Plus d'équipements que de raretés (#94) : les derniers « Infinity + », « Infinity ++ »…
 		card.rarity.Text = rarity.name
+			.. (if tier > #Rarity.LIST then " " .. string.rep("+", tier - #Rarity.LIST) else "")
 		card.rarity.TextColor3 = rarity.color
 		card.stat.Text = "+" .. Format.short(gear.gain) .. " EXP / rep"
 		local stroke = card.frame:FindFirstChildOfClass("UIStroke") :: UIStroke

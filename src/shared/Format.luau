@@ -37,7 +37,14 @@ function Format.short(n: number): string
 		return sign .. tostring(value)
 	end
 	if value == math.huge or value >= 1000 ^ (#SUFFIXES + 1) then
-		return sign .. (if value == math.huge then "inf" else (string.gsub(string.format("%.2g", value), "e%+", "e")))
+		if value == math.huge then
+			return sign .. "inf"
+		end
+		-- Notation scientifique tronquée comme le reste (9.99e36 s'écrit 9.9e36, jamais 1e37)
+		local exponent = math.floor(math.log10(value))
+		local mantissa = math.floor(value / 10 ^ (exponent - 1) * (1 + EPSILON)) / 10
+		local text = (string.gsub(string.format("%.1f", mantissa), "%.0$", ""))
+		return sign .. text .. "e" .. exponent
 	end
 	-- Rang par le logarithme, corrigé d'un cran si l'arrondi du logarithme tombe à côté (999.999… ou 1000.000…)
 	local tier = math.clamp(math.floor(math.log10(value) / 3), 1, #SUFFIXES)
