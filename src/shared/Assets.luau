@@ -140,14 +140,14 @@ Assets.DUMMY_TEXTURE = 84498910179411
 -- Textures des effets des mannequins de collection (assets/fx/export/<nom>.png, rendues par
 -- assets/fx/build_fx_textures.py). 0 = pas encore publiée : Shared.DummyShape se rabat sur une texture de Roblox
 Assets.FX_TEXTURES = {
-	star = 0,
-	glow = 0,
-	ring = 0,
-	bubble = 0,
-	flake = 0,
-	note = 0,
-	rays = 0,
-	beam = 0,
+	star = 102748021134715,
+	glow = 75435253009459,
+	ring = 121707294979859,
+	bubble = 133706282220246,
+	flake = 92082177064686,
+	note = 132436096833632,
+	rays = 114893117014880,
+	beam = 132792901333329,
 } :: { [string]: number }
 
 -- Animations de l'avatar (assets/anim/export/<Nom>.rbxm)

@@ -291,6 +291,15 @@ return function(T, Loader)
 				T.expect(byRarity[rarity].animated >= 3, "pièces animées en rareté " .. rarity)
 			end
 		end)
+		T.it("a une texture publiée pour chaque préréglage qui en utilise une du jeu (assets/fx)", function()
+			for name, preset in DummyShape.PARTICLES do
+				if not string.find(preset.texture, "rbxasset://", 1, true) then
+					local id = Assets.FX_TEXTURES[preset.texture]
+					T.expect(type(id) == "number" and id > 0, name .. " : texture " .. preset.texture .. " publiée")
+				end
+			end
+			T.expect((Assets.FX_TEXTURES.beam or 0) > 0, "faisceau publié")
+		end)
 		T.it("pose une colonne de lumière (faisceau) sur un mannequin Secret", function()
 			local model = DummyShape.buildVisual(1, Collection.variant({ id = "king", size = 1 }) :: any)
 			local beams = 0

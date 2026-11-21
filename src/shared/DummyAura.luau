@@ -62,7 +62,10 @@ function DummyAura.rarity(rarity: number, color: Color3): { Effect }
 		table.insert(effects, particles("motes", "Torso", GROUND, color, WHITE, { rate = motes }))
 	end
 	if rarity >= 6 then
-		table.insert(effects, particles("rays", "Torso", BACK, color, WHITE, { size = if rarity >= 7 then 1.3 else 1 }))
+		table.insert(
+			effects,
+			particles("rays", "Torso", BACK, color, WHITE, { size = if rarity >= 7 then 1.15 else 1 })
+		)
 	end
 	if rarity >= 7 then
 		table.insert(

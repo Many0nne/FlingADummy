@@ -128,54 +128,59 @@ DummyShape.PARTICLES = {
 	aura = {
 		texture = "glow",
 		size = 6,
-		rate = 3,
+		rate = 1.5,
 		life = 1.5,
 		speed = 0,
 		spread = 0,
-		light = 1,
+		light = 0.6,
 		form = "faint",
 		locked = true,
+		alpha = 0.88,
 	},
 	motes = { texture = "glow", size = 0.4, rate = 10, life = 2.2, speed = 2.4, spread = 35, light = 1, rise = 0.4 },
 	bubbles = { texture = "bubble", size = 0.45, rate = 4, life = 2.2, speed = 1.8, spread = 25, light = 0.3, rise = 1 },
 	snow = { texture = "flake", size = 0.45, rate = 6, life = 2.6, speed = 1.4, spread = 180, light = 0.6, rise = -1.2 },
 	notes = { texture = "note", size = 0.6, rate = 1.5, life = 2, speed = 1.6, spread = 35, light = 0.5, rise = 0.4 },
+	-- Grands effets (anneau, flaque, rayons) : peu de particules à la fois et pâles, sinon le Bloom de l'éclairage
+	-- blanchit toute la base
 	ring = {
 		texture = "ring",
-		size = 5,
-		rate = 0.8,
+		size = 4.5,
+		rate = 0.7,
 		life = 1.6,
 		speed = 0,
 		spread = 0,
-		light = 1,
+		light = 0.7,
 		form = "grow",
 		flat = true,
 		locked = true,
+		alpha = 0.4,
 	},
 	pool = {
 		texture = "glow",
-		size = 5,
-		rate = 2,
-		life = 1.5,
+		size = 3.5,
+		rate = 1,
+		life = 2,
 		speed = 0,
 		spread = 0,
-		light = 1,
+		light = 0.5,
 		form = "faint",
 		flat = true,
 		locked = true,
+		alpha = 0.8,
 	},
 	rays = {
 		texture = "rays",
-		size = 8,
-		rate = 0.8,
+		size = 6.5,
+		rate = 0.5,
 		life = 3,
 		speed = 0,
 		spread = 0,
-		light = 1,
+		light = 0.5,
 		form = "faint",
 		locked = true,
 		back = true,
-		alpha = 0.45,
+		alpha = 0.65,
 		spin = 18,
 	},
 } :: { [string]: { [string]: any } }
@@ -408,11 +413,11 @@ function DummyShape.makeBeam(effect: DummyModels.Effect, scale: number, bottom: 
 	beam.Width1 = width * 0.55
 	beam.LightEmission = 1
 	beam.LightInfluence = 0
-	beam.Brightness = 2
+	beam.Brightness = 1
 	beam.Color = ColorSequence.new(effect.color, effect.color2 or effect.color)
 	beam.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.25),
-		NumberSequenceKeypoint.new(0.6, 0.6),
+		NumberSequenceKeypoint.new(0, 0.45),
+		NumberSequenceKeypoint.new(0.6, 0.7),
 		NumberSequenceKeypoint.new(1, 1),
 	})
 	return beam, top
