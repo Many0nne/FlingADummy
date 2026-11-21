@@ -101,6 +101,9 @@ local offerTier: number? = nil
 local soundedOffer: string? = nil
 local dismissedOffers: { [string]: { [number]: boolean } } = { Gear = {}, Dummy = {} }
 local OFFER_SCALE = 0.8 -- échelle du popup d'offre (440 × 136 dessiné, 352 × 109 affiché à 720 px de haut)
+local OFFER_TOP = 40 -- px : haut du popup d'offre
+Hud.OFFER_SCALE = OFFER_SCALE -- la flèche du tutoriel posée sur l'offre compense cette échelle
+Hud.OFFER_BOTTOM = OFFER_TOP + math.round(136 * OFFER_SCALE) -- px : bas du popup d'offre (le texte de l'objectif passe dessous)
 local OFFER_COLORS = {
 	Gear = { Color3.fromRGB(150, 60, 230), Color3.fromRGB(255, 70, 170) },
 	Dummy = { Color3.fromRGB(255, 90, 150), Color3.fromRGB(215, 30, 95) },
@@ -274,7 +277,7 @@ local function buildGearOffer()
 	local holder = UIKit.create("Frame", {
 		Name = "GearOffer",
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 40),
+		Position = UDim2.new(0.5, 0, 0, OFFER_TOP),
 		Size = UDim2.fromOffset(math.round(440 * OFFER_SCALE), math.round(136 * OFFER_SCALE)),
 		BackgroundTransparency = 1,
 		Visible = false,
@@ -570,14 +573,14 @@ local function dressOffer(kind: string, tier: number)
 end
 
 -- Cette méthode permet d'afficher, de mettre à jour ou de masquer le popup d'offre lorsque l'argent affiché, les
--- achats ou l'état du joueur changent, écran libre (aucune fenêtre ni popup, Shared.Overlay) : l'équipement suivant
+-- achats ou l'état du joueur changent, écran libre (ni fenêtre ni bandeau, Shared.Overlay) : l'équipement suivant
 -- s'il est abordable (« NEW GEAR! », d'abord : étape du tutoriel), sinon le mannequin à lancer suivant
 -- (« NEW DUMMY! ») ; pas une offre fermée par le joueur. Revenue après une fenêtre ou un popup, elle ne resonne pas.
 local function refreshOffer(money: number, cost: number?)
 	local free = seeded
 		and player:GetAttribute("LaneState") == "Ready"
 		and player:GetAttribute("Action") ~= "Holding"
-		and Overlay.offer({ windowOpen = Hud.isWindowOpen(), popupShown = Hud.isPopupShown() })
+		and Overlay.offer({ windowOpen = Hud.isWindowOpen(), bannerShown = os.clock() < bannerEndsAt })
 	local kind, tier = nil, nil
 	if free then
 		tier = Tutorial.gearOffer(stat("GearTier", 1), cost, money, dismissedOffers.Gear)
@@ -758,9 +761,6 @@ local function showPopup(options: UIKit.PopupOptions)
 	end
 	local duration = UIKit.popup(gui, options)
 	popupEndsAt = math.max(popupEndsAt, os.clock() + duration)
-	-- Popup au même endroit que l'offre : elle s'efface pendant le popup, puis revient
-	Hud.refresh()
-	task.delay(duration + 0.05, Hud.refresh)
 end
 
 -- Cette méthode permet de faire voler un gain (« +N » et icônes) de `from` (pixels d'écran) au compteur `kind`,
@@ -930,6 +930,11 @@ end
 -- l'objectif, dessiné au même endroit, se demande s'il peut s'afficher.
 function Hud.isOfferShown(): boolean
 	return offerKind ~= nil and offerTier ~= nil
+end
+
+-- Cette méthode permet de savoir si un bandeau d'annonce occupe le haut de l'écran lorsque l'objectif se place.
+function Hud.isBannerShown(): boolean
+	return os.clock() < bannerEndsAt
 end
 
 -- Cette méthode permet de savoir si un popup de palier (hors bandeau d'annonce) est à l'écran lorsque un bandeau

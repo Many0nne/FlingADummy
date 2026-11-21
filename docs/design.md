@@ -470,12 +470,13 @@ Interface : section suivante.
   Rien pendant la jauge, le vol, le résultat et la séance d'entraînement. Cible du décor : triangle jaune au-dessus,
   chevrons jaunes au sol qui défilent vers elle. Logique dans `Shared.Tutorial` et `Shared.Objectives`.
 - **Popup « NEW GEAR! »** (comme « Nouvel équipement ! » de 09) : en haut au centre dès que l'équipement suivant est
-  abordable, écran libre (pas pendant la jauge, le vol, le résultat, ni fenêtre ou popup ouverts) : rendu 3D, nom, prix et gain,
+  abordable, écran libre (pas pendant la jauge, le vol, le résultat, ni fenêtre ou bandeau ouverts) : rendu 3D, nom, prix et gain,
   bouton vert UPGRADE qui achète en un clic, croix. Fermé, il ne revient pas pour ce palier, mais revient pour le
   suivant. Tout au long du jeu, pas seulement au tutoriel. Taille de celui de 09 (≈ un quart de la largeur).
-- **Superposition du haut de l'écran** (`Shared.Overlay`, #87, #62) : une fenêtre ouverte masque l'offre et le texte
-  de l'objectif ; un popup de palier ou un bandeau aussi ; l'offre masque le texte de l'objectif (la flèche reste).
-  Tout revient à la fermeture, sans rejouer le son.
+- **Superposition du haut de l'écran** (`Shared.Overlay`, #87, #62) : une fenêtre ouverte ou un bandeau d'annonce
+  masquent l'offre et le texte de l'objectif ; un popup de palier (« LEVEL UP! », fréquent pendant l'entraînement) ne
+  masque que le texte, l'offre reste cliquable ; l'offre affichée fait passer le texte sous elle (masqué si la flèche
+  désigne son bouton). Tout revient à la fermeture, sans rejouer le son.
 - **Cibles du décor** (point d'accroche pour la carte et la collection) : une `BasePart` avec le tag `ObjectiveTarget`
   et l'attribut `Objective` (`"Throw"`, `"Train"`…), plus `Slot` (place du lobby) ou `OwnerUserId` (joueur) si elle
   n'est pas partagée ; le joueur suit la plus proche de celles qui lui sont ouvertes. `Span` : cible allongée sur X,

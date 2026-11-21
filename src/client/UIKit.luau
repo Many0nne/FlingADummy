@@ -803,6 +803,7 @@ UIKit.CARD_HEIGHT = 300 -- hauteur d'une carte de boutique (px)
 UIKit.CARD_GAP = 10 -- écart entre deux cartes d'une grille qui défile
 local GRID_PAD = 4 -- marge haute et basse d'une grille de cartes (px)
 local GRID_PEEK = 20 -- px de la rangée précédente laissés visibles au-dessus de la carte visée
+local scrollTokens: { [ScrollingFrame]: {} } = {} -- placement automatique en cours, par grille
 
 -- Cette méthode permet de créer une grille de cartes à défilement vertical (`columns` cartes par rangée, centrées,
 -- comme les boutiques de 02 et 09) dans le corps d'une fenêtre lorsque une boutique est construite (#45).
@@ -843,16 +844,39 @@ function UIKit.scrollToCard(grid: ScrollingFrame, order: number)
 	local columns = (grid:GetAttribute("Columns") :: number?) or 1
 	local rank = math.floor((order - 1) / columns)
 	local y = if rank == 0 then 0 else GRID_PAD + rank * (UIKit.CARD_HEIGHT + UIKit.CARD_GAP) - GRID_PEEK
-	-- Cette méthode permet de placer la grille sur la carte visée lorsque la fenêtre s'affiche ou que la grille grandit ;
-	-- CanvasPosition est en pixels d'écran : la position est ramenée à l'échelle du HUD (UIScale, mobile).
+	-- CanvasPosition est en pixels d'écran : la position est ramenée à l'échelle du HUD (UIScale du ScreenGui, mobile)
+	local gui = grid:FindFirstAncestorOfClass("ScreenGui")
+	local hudScale = gui and gui:FindFirstChildOfClass("UIScale")
+	local token = {} -- placement en cours : un nouvel appel ou un défilement du joueur l'annulent
+	scrollTokens[grid] = token
+	local setting, expected = false, nil :: Vector2?
+	-- Cette méthode permet de placer la grille sur la carte visée lorsque la fenêtre s'affiche ou que la grille grandit,
+	-- tant que le joueur n'a pas défilé lui-même.
 	local function apply()
-		local card = grid:FindFirstChild("Card" .. order) :: GuiObject?
-		local scale = if card and card.AbsoluteSize.Y > 0 then card.AbsoluteSize.Y / UIKit.CARD_HEIGHT else 1
-		grid.CanvasPosition = Vector2.new(0, y * scale)
+		if scrollTokens[grid] ~= token then
+			return
+		end
+		setting = true
+		grid.CanvasPosition = Vector2.new(0, y * (if hudScale then hudScale.Scale else 1))
+		setting = false
+		expected = grid.CanvasPosition
 	end
+	local watch = grid:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+		if
+			not setting
+			and expected
+			and (grid.CanvasPosition - expected).Magnitude > 1
+			and scrollTokens[grid] == token
+		then
+			scrollTokens[grid] = nil -- le joueur a défilé : plus de recalage
+		end
+	end)
+	task.delay(1, function()
+		watch:Disconnect()
+	end)
 	-- Différé d'une image (fenêtre tout juste visible), puis repris quand la grille jamais affichée a calculé sa
-	-- hauteur : sinon la position serait bornée à 0 ; reprise enfin quand le pop d'ouverture (UIScale de la fenêtre,
-	-- UIMotion.WINDOW_OPEN) est fini, l'échelle lue pendant l'animation étant fausse
+	-- hauteur (sinon la position serait bornée à 0) et à la fin du pop d'ouverture (grille réduite pendant
+	-- UIMotion.WINDOW_OPEN : la position y était bornée plus bas)
 	task.defer(apply)
 	task.delay(UIMotion.WINDOW_OPEN[#UIMotion.WINDOW_OPEN].time + 0.05, apply)
 	if grid.AbsoluteCanvasSize.Y <= grid.AbsoluteWindowSize.Y then
