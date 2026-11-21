@@ -30,37 +30,37 @@ Traps.KINDS = {
 	               keep = 0.9,  forward = 10,  side = 0,  up = 75,  restitution = 0.9, spin = 0,  bones = 1 },
 	-- Ferme : ventilateur géant incliné, souffle vers l'avant et vers le haut
 	Fan        = { label = "WHOOSH!",   sound = "Gust",   burst = "Wind",     height = 26,  depth = 14,
-	               keep = 1,    forward = 45,  side = 0,  up = 40,  restitution = 0,   spin = 0,  bones = 1 },
+	               keep = 1,    forward = 25,  side = 0,  up = 30,  restitution = 0,   spin = 0,  bones = 1 },
 	-- Forêt : rondin qui balance entre deux troncs, frappe de côté et coupe l'élan
 	SwingLog   = { label = "WHACK!",    sound = "Whack",  burst = "Chips",    height = 16,  depth = 6,
-	               keep = 0.45, forward = 0,   side = 50, up = 30,  restitution = 0,   spin = 6,  bones = 2 },
+	               keep = 0.75, forward = 0,   side = 35, up = 25,  restitution = 0,   spin = 6,  bones = 2 },
 	-- Plage : vague qui emporte le mannequin au ras du sol
 	Wave       = { label = "SPLASH!",   sound = "Splash", burst = "Splash",   height = 9,   depth = 10,
-	               keep = 1,    forward = 55,  side = 0,  up = 18,  restitution = 0,   spin = 0,  bones = 1 },
+	               keep = 1,    forward = 30,  side = 0,  up = 18,  restitution = 0,   spin = 0,  bones = 1 },
 	-- Désert : tornade de sable, aspire vers le haut en tournoyant
 	Twister    = { label = "TWISTER!",  sound = "Gust",   burst = "Dust",     height = 45,  depth = 10,
-	               keep = 0.5,  forward = 15,  side = 0,  up = 85,  restitution = 0,   spin = 20, bones = 1 },
+	               keep = 0.7,  forward = 15,  side = 0,  up = 85,  restitution = 0,   spin = 20, bones = 1 },
 	-- Chantier : presse hydraulique, écrase au sol
 	Press      = { label = "SQUASH!",   sound = "Press",  burst = "Dust",     height = 11,  depth = 9,
 	               keep = 0.3,  forward = 0,   side = 0,  up = -80, restitution = 0,   spin = 0,  bones = 3 },
 	-- Casse : aimant de grue, arrache vers le haut et coupe net l'élan (le mannequin retombe sur place)
-	Magnet     = { label = "CLANG!",    sound = "Clang",  burst = "Sparks",   height = 34,  depth = 8,
-	               keep = 0.05, forward = 0,   side = 0,  up = 45,  restitution = 0,   spin = 4,  bones = 1 },
+	Magnet     = { label = "CLANG!",    sound = "Clang",  burst = "Sparks",   height = 22,  depth = 8,
+	               keep = 0.25, forward = 0,   side = 0,  up = 45,  restitution = 0,   spin = 4,  bones = 1 },
 	-- Neige : tremplin de saut à ski, projette loin vers l'avant
 	SkiJump    = { label = "AIR TIME!", sound = "Whoosh", burst = "Snow",     height = 7,   depth = 12,
-	               keep = 1,    forward = 50,  side = 0,  up = 60,  restitution = 0,   spin = 0,  bones = 1 },
+	               keep = 1,    forward = 30,  side = 0,  up = 60,  restitution = 0,   spin = 0,  bones = 1 },
 	-- Volcan : bassin de lave, rebond très haut (et brûlure)
 	Lava       = { label = "SIZZLE!",   sound = "Sizzle", burst = "Fire",     height = 4,   depth = 10,
 	               keep = 0.8,  forward = 0,   side = 0,  up = 90,  restitution = 1,   spin = 3,  bones = 2 },
 	-- Bonbons : canon à confettis, tir tendu vers l'avant
 	Cannon     = { label = "KABOOM!",   sound = "Cannon", burst = "Confetti", height = 9,   depth = 8,
-	               keep = 1,    forward = 90,  side = 0,  up = 30,  restitution = 0,   spin = 0,  bones = 1 },
+	               keep = 1,    forward = 50,  side = 0,  up = 30,  restitution = 0,   spin = 0,  bones = 1 },
 	-- Jouets : diable en boîte, éjecte à la verticale
 	JackBox    = { label = "POP!",      sound = "Spring", burst = "Confetti", height = 8,   depth = 8,
-	               keep = 0.5,  forward = 0,   side = 0,  up = 105, restitution = 0,   spin = 5,  bones = 1 },
+	               keep = 0.7,  forward = 0,   side = 0,  up = 105, restitution = 0,   spin = 5,  bones = 1 },
 	-- Base lunaire : anneau propulseur, énorme poussée vers l'avant
 	Booster    = { label = "BOOST!",    sound = "Rocket", burst = "Sparks",   height = nil, depth = 6,
-	               keep = 1,    forward = 140, side = 0,  up = 25,  restitution = 0,   spin = 0,  bones = 1 },
+	               keep = 1,    forward = 70, side = 0,  up = 25,  restitution = 0,   spin = 0,  bones = 1 },
 } :: { [string]: Kind }
 
 Traps.MOTION_TAG = "TrapMotion" -- pièce mobile d'un piège (pale, rondin, presse…), animée par chaque client
