@@ -8,6 +8,7 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local CrashTitle = require(Shared:WaitForChild("CrashTitle"))
 local Damage = require(Shared:WaitForChild("Damage"))
 local DummyShape = require(Shared:WaitForChild("DummyShape"))
 local Format = require(Shared:WaitForChild("Format"))
@@ -27,15 +28,6 @@ local RESUME_CONFIRM = 0.4 -- s au-dessus de REST_SPEED avant de reprendre le vo
 local TAG_MIN = 0.9 -- s minimum de « X1.36 » à l'écran avant le tirage
 local REPORT_TIME = 3 -- s de radio et bilan après le comptage (dans leur coin pendant le suspense du tirage)
 local TAG_OFFSET = 4.5 -- studs au-dessus du torse
-
--- Titre selon le score de crash (os + objets / 2), du plus faible au plus fort
-local TITLES = {
-	{ score = 0, text = "OUCH!", color = Color3.fromRGB(255, 255, 255) },
-	{ score = 4, text = "NICE CRASH!", color = Color3.fromRGB(120, 220, 255) },
-	{ score = 10, text = "BRUTAL!", color = Color3.fromRGB(255, 170, 60) },
-	{ score = 18, text = "DEVASTATING!", color = Color3.fromRGB(255, 90, 60) },
-	{ score = 28, text = "CATASTROPHIC!", color = Color3.fromRGB(230, 60, 255) },
-}
 
 local FlightView = {}
 
@@ -69,18 +61,6 @@ local landedAt: number? = nil -- os.clock() de l'affichage de la CHANCE finale
 local stoppedAt: number? = nil -- os.clock() de l'arrêt du mannequin (début de l'immobilité)
 local settled = false -- résultat du serveur reçu : l'arrêt est définitif
 local stopEstimated = false -- arrêt pas vu par le client, instant estimé (mesure approximative)
-
--- Cette méthode permet de choisir le titre du crash lorsque l'on connaît le nombre d'os et d'objets.
-local function titleFor(bones: number, smashed: number)
-	local score = bones + smashed / 2
-	local chosen = TITLES[1]
-	for _, entry in TITLES do
-		if score >= entry.score then
-			chosen = entry
-		end
-	end
-	return chosen
-end
 
 -- Cette méthode permet de construire le panneau radio (silhouette du mannequin) en bas à droite et le bilan à sa
 -- gauche lorsque l'écran de vol est construit.
@@ -322,7 +302,7 @@ end
 -- objets) lorsque le mannequin s'arrête ou que le résultat du serveur arrive.
 local function fillLanding(chance: number, distance: number, bones: number, smashed: number)
 	tagChance.Text = "🍀 " .. Format.multiplier(chance)
-	local title = titleFor(bones, smashed)
+	local title = CrashTitle.titleFor(bones, smashed)
 	tagTitle.Text = title.text
 	UIKit.gradientText(tagTitle, title.color:Lerp(Color3.new(1, 1, 1), 0.6), title.color)
 	reportStats.Text = Format.meters(distance) .. "   🦴 " .. bones .. "   💥 " .. smashed
