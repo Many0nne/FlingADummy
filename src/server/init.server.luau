@@ -38,8 +38,10 @@ remotes.ThrowDummy.OnServerEvent:Connect(function(player, action, index)
 end)
 -- Renaissance validée par le serveur (Shared.Rebirth), annoncée à tous les joueurs du serveur (bandeau et chat)
 remotes.Rebirth.OnServerEvent:Connect(function(player)
-	TrainingService.stop(player) -- séance arrêtée avant : l'équipement soulevé change
-	local rebirths = PlayerData.rebirth(player)
+	-- Renaissance acceptée : séance arrêtée avant la remise à zéro (l'équipement soulevé change)
+	local rebirths = PlayerData.rebirth(player, function()
+		TrainingService.stop(player)
+	end)
 	if rebirths then
 		remotes.Announce:FireAllClients({
 			kind = "Rebirth",

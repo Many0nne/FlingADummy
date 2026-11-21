@@ -248,8 +248,9 @@ end
 
 -- Cette méthode permet de faire renaître le joueur lorsque le client le demande (fenêtre REBIRTH) : le serveur
 -- valide le chargement, l'état (au hub, ni en vol ni jauge ouverte) et la condition (Shared.Rebirth.missing), puis
--- remet la progression à zéro et compte la renaissance. Renvoie le nouveau nombre de renaissances, nil si refusée.
-function PlayerData.rebirth(player: Player): number?
+-- remet la progression à zéro et compte la renaissance ; `onAccepted` est appelé juste avant (arrêt de l'entraînement).
+-- Renvoie le nouveau nombre de renaissances, nil si refusée.
+function PlayerData.rebirth(player: Player, onAccepted: (() -> ())?): number?
 	if player:GetAttribute("DataReady") ~= true then
 		return nil
 	end
@@ -264,6 +265,9 @@ function PlayerData.rebirth(player: Player): number?
 	})
 	if not result then
 		return nil
+	end
+	if onAccepted then
+		onAccepted()
 	end
 	-- Compteur en dernier : l'interface qui le suit lit des valeurs déjà remises à zéro
 	for key, value in result do

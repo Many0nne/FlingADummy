@@ -54,8 +54,12 @@ function Rebirth.luck(rebirths: number): number
 end
 
 -- Cette méthode permet de savoir si le joueur peut renaître lorsque le serveur valide la demande ou que la fenêtre
--- s'affiche ; renvoie la condition manquante (« Gear » d'abord, puis « Money »), nil si tout est rempli.
+-- s'affiche ; renvoie la condition manquante (« Max » au plafond, puis « Gear », puis « Money »), nil si tout est
+-- rempli.
 function Rebirth.missing(state: State): string?
+	if Rebirth.read(state.rebirths) >= Rebirth.MAX then
+		return "Max"
+	end
 	if state.gearTier < Rebirth.REQUIRED_GEAR then
 		return "Gear"
 	end

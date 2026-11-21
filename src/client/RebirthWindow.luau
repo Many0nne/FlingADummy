@@ -25,6 +25,7 @@ local CELEBRATE_TIME = 3.4 -- s d'écran plein à la renaissance, fondu compris
 export type Hooks = {
 	popup: (options: UIKit.PopupOptions) -> (), -- popup de palier (« REBIRTH READY! »)
 	money: () -> number, -- argent affiché (gains en vol pas encore arrivés exclus)
+	screenFree: () -> boolean, -- au hub, écran libre (ni vol, ni tirage, ni jauge, ni fenêtre, ni bandeau)
 }
 
 local RebirthWindow = {}
@@ -54,15 +55,13 @@ local function state(): Rebirth.State
 	}
 end
 
--- Cette méthode permet de savoir si la renaissance est possible avec l'argent du serveur (pastille, popup, bouton)
--- lorsque l'argent ou l'équipement changent.
+-- Cette méthode permet de savoir si la renaissance est possible avec l'argent affiché, comme le bouton de la fenêtre
+-- (pastille, popup) lorsque l'argent ou l'équipement changent.
 function RebirthWindow.isReady(): boolean
-	if not player or player:GetAttribute("DataReady") ~= true then
+	if not player or not hooks or player:GetAttribute("DataReady") ~= true then
 		return false
 	end
-	local current = state()
-	current.money = (player:GetAttribute("Money") :: number?) or 0
-	return Rebirth.missing(current) == nil
+	return Rebirth.missing(state()) == nil
 end
 
 -- Cette méthode permet de rafraîchir la fenêtre (gain, compteur, condition cochée ou non, prix vert ou rouge, bouton
@@ -89,7 +88,9 @@ function RebirthWindow.refresh()
 	gearLabel.TextColor3 = if hasGear then C.green else C.red
 	priceLabel.Text = (if current.money >= price then "✔ " else "✖ ") .. Format.money(price)
 	priceLabel.TextColor3 = if current.money >= price then C.green else C.red
-	if missing == "Gear" then
+	if missing == "Max" then
+		button.Text = "MAX"
+	elseif missing == "Gear" then
 		button.Text = "NEED "
 			.. string.upper((string.gsub(Training.gear(Rebirth.REQUIRED_GEAR).name, " Dummy$", "")))
 			.. " GEAR"
@@ -330,7 +331,8 @@ local function celebrate(rebirths: number)
 end
 
 -- Cette méthode permet d'annoncer « REBIRTH READY! » une fois par renaissance (comme « Renaissance prête ! » de 12)
--- lorsque la condition vient d'être remplie après le chargement.
+-- lorsque la condition est remplie après le chargement, écran libre (au hub, hors vol, tirage, jauge et bandeau) ;
+-- fenêtre REBIRTH déjà ouverte : le joueur le voit, pas de popup.
 function RebirthWindow.checkReady()
 	if knownRebirths == math.huge or not RebirthWindow.isReady() then
 		return
@@ -338,6 +340,13 @@ function RebirthWindow.checkReady()
 	local k = Rebirth.read(player:GetAttribute("Rebirths"))
 	if readyShown == k then
 		return
+	end
+	if frame.Visible then
+		readyShown = k
+		return
+	end
+	if not hooks.screenFree() then
+		return -- réessayé au prochain rafraîchissement du HUD (le revenu change l'argent chaque seconde)
 	end
 	readyShown = k
 	hooks.popup({
@@ -375,7 +384,18 @@ function RebirthWindow.init(
 	for _, attribute in { "GearTier", "Money", "Rebirths" } do
 		player:GetAttributeChangedSignal(attribute):Connect(RebirthWindow.refresh)
 	end
-	frame:GetPropertyChangedSignal("Visible"):Connect(RebirthWindow.refresh)
+	frame:GetPropertyChangedSignal("Visible"):Connect(function()
+		if not frame.Visible then
+			confirmUntil = 0 -- fenêtre rouverte : nouvelle confirmation demandée
+		end
+		RebirthWindow.refresh()
+	end)
+	-- Compte remis à zéro (DebugWipe) : « REBIRTH READY! » s'annoncera de nouveau
+	player:GetAttributeChangedSignal("Draws"):Connect(function()
+		if player:GetAttribute("Draws") == 0 then
+			readyShown = nil
+		end
+	end)
 	-- Cette méthode permet de retenir les renaissances au chargement lorsque les données du joueur sont prêtes (la
 	-- valeur sauvegardée ne se fête pas) ; une condition déjà remplie au chargement s'annonce.
 	local function seed()
@@ -393,6 +413,9 @@ function RebirthWindow.init(
 			celebrate(k)
 		end
 		if knownRebirths ~= math.huge then
+			if k < knownRebirths then
+				readyShown = nil -- compteur redescendu (DebugWipe)
+			end
 			knownRebirths = k
 		end
 	end)

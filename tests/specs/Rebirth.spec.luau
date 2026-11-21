@@ -37,6 +37,13 @@ return function(T, Loader)
 		T.it("signale l'équipement avant l'argent quand les deux manquent", function()
 			T.expectEqual(Rebirth.missing({ gearTier = 1, money = 0, rebirths = 0 }), "Gear")
 		end)
+		T.it("s'arrête au plafond : le compteur ne dépasse jamais ce que la sauvegarde relit", function()
+			local state = { gearTier = LAST, money = math.huge, rebirths = Rebirth.MAX }
+			T.expectEqual(Rebirth.missing(state), "Max")
+			T.expectEqual(Rebirth.apply(state), nil)
+			state.rebirths = Rebirth.MAX - 1
+			T.expectEqual((Rebirth.apply(state) :: any).Rebirths, Rebirth.MAX)
+		end)
 	end)
 
 	T.describe("Rebirth.apply (état après renaissance)", function()

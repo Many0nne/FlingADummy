@@ -1040,6 +1040,12 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 		money = function()
 			return math.max(0, stat("Money", 0) - counters.Money.pending)
 		end,
+		screenFree = function()
+			return seeded
+				and player:GetAttribute("LaneState") == "Ready"
+				and player:GetAttribute("Action") ~= "Holding"
+				and Overlay.offer({ windowOpen = Hud.isWindowOpen(), bannerShown = os.clock() < bannerEndsAt })
+		end,
 	}, function()
 		UIKit.closeWindow(windows.Rebirth)
 		Hud.refresh()
@@ -1055,15 +1061,21 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 	for _, attribute in { "GearTier", "Income", "ThrowTier", "Draws" } do
 		player:GetAttributeChangedSignal(attribute):Connect(Hud.refresh)
 	end
-	-- Renaissance (ou DebugWipe) : progression remise à zéro, les paliers suivants s'annoncent de nouveau et les offres
-	-- fermées reviennent
-	player:GetAttributeChangedSignal("Rebirths"):Connect(function()
+	-- Renaissance, ou DebugWipe (tirages revenus à 0) : progression remise à zéro, les paliers suivants s'annoncent de
+	-- nouveau et les offres fermées reviennent
+	local function onProgressReset()
 		if seeded then
 			knownLevel = math.min(knownLevel, stat("TrainLevel", 1))
 			knownTier = math.min(knownTier, stat("GearTier", 1))
 			dismissedOffers = { Gear = {}, Dummy = {} }
 		end
 		Hud.refresh()
+	end
+	player:GetAttributeChangedSignal("Rebirths"):Connect(onProgressReset)
+	player:GetAttributeChangedSignal("Draws"):Connect(function()
+		if stat("Draws", 0) == 0 then
+			onProgressReset()
+		end
 	end)
 	player:GetAttributeChangedSignal("Money"):Connect(function()
 		local money = stat("Money", 0)
