@@ -157,7 +157,7 @@ function ThrowShop.init(
 	player = localPlayer
 	remotes = createdRemotes
 	hooks = createdHooks
-	-- Quatre cartes visibles, la suite défile (comme les cinq graines de 09)
+	-- Quatre cartes par rangée, la suite défile vers le bas (rangées de 09, #45)
 	local window = UIKit.window(gui, {
 		name = "DummyShop",
 		title = "Dummy Shop",
@@ -166,26 +166,7 @@ function ThrowShop.init(
 		size = Vector2.new(880, 440),
 	}, onClose)
 	frame = window.frame
-	row = UIKit.create("ScrollingFrame", {
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		CanvasSize = UDim2.new(),
-		AutomaticCanvasSize = Enum.AutomaticSize.X,
-		ScrollingDirection = Enum.ScrollingDirection.X,
-		ScrollBarThickness = 6,
-		ScrollBarImageColor3 = C.white,
-		ZIndex = 11,
-		Parent = window.body,
-	})
-	UIKit.create("UIListLayout", {
-		FillDirection = Enum.FillDirection.Horizontal,
-		Padding = UDim.new(0, UIKit.CARD_GAP),
-		SortOrder = Enum.SortOrder.LayoutOrder,
-		VerticalAlignment = Enum.VerticalAlignment.Center,
-		Parent = row,
-	})
-	UIKit.create("UIPadding", { PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 4), Parent = row })
+	row = UIKit.cardGrid(window.body, 4)
 	for index, dummy in ThrowDummies.LIST do
 		local card = UIKit.card(row, index, function()
 			onAction(index)

@@ -8,6 +8,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Objectives = require(Shared:WaitForChild("Objectives"))
+local Overlay = require(Shared:WaitForChild("Overlay"))
 local Training = require(Shared:WaitForChild("Training"))
 local Tutorial = require(Shared:WaitForChild("Tutorial"))
 local UIMotion = require(Shared:WaitForChild("UIMotion"))
@@ -27,6 +28,7 @@ local ARROW_SIZE = 3 -- studs de côté de la flèche du décor (avant pulsation
 local ARROW_FLOAT = 0.5 -- studs de flottement de la flèche du décor
 local HUD_ARROW_FLOAT = 8 -- px de flottement de la flèche d'interface
 local TARGET_REFRESH = 0.2 -- s entre deux choix de cible
+local LABEL_TOP = 36 -- px : haut du texte de l'objectif, écran libre
 
 local Objective = {}
 
@@ -148,20 +150,21 @@ local function placeHudArrow(anchor: GuiObject?)
 	end
 	local screen = Workspace.CurrentCamera.ViewportSize.X
 	local x = anchor.AbsolutePosition.X + anchor.AbsoluteSize.X / 2
+	local gap = 6 * (if arrowOnOffer then 1 / Hud.OFFER_SCALE else 1) -- px entre flèche et bouton (offre réduite)
 	if arrowOnEdge and x < screen / 3 then
 		hudArrow.AnchorPoint = Vector2.new(0, 0.5)
 		hudArrow.Rotation = 90 -- pointe à gauche
-		hudArrowBase = UDim2.new(1, 6, 0.5, 0)
+		hudArrowBase = UDim2.new(1, gap, 0.5, 0)
 		hudArrowBob = Vector2.xAxis
 	elseif arrowOnEdge and x > screen * 2 / 3 then
 		hudArrow.AnchorPoint = Vector2.new(1, 0.5)
 		hudArrow.Rotation = -90 -- pointe à droite
-		hudArrowBase = UDim2.new(0, -6, 0.5, 0)
+		hudArrowBase = UDim2.new(0, -gap, 0.5, 0)
 		hudArrowBob = -Vector2.xAxis
 	else
 		hudArrow.AnchorPoint = Vector2.new(0.5, 1)
 		hudArrow.Rotation = 0
-		hudArrowBase = UDim2.new(0.5, 0, 0, -6)
+		hudArrowBase = UDim2.new(0.5, 0, 0, -gap)
 		hudArrowBob = Vector2.yAxis
 	end
 end
@@ -212,8 +215,17 @@ end
 -- Cette méthode permet d'animer le texte, la flèche et les chevrons à chaque image lorsque l'objectif est affiché.
 local function step()
 	updateHudAnchor()
-	-- Le popup « NEW GEAR! » dit déjà quoi faire : le texte se tait, la flèche désigne son bouton
-	label.Visible = current ~= nil and not Hud.isPopupShown() and not arrowOnOffer
+	-- Texte en haut au centre : il se tait sous une fenêtre, un bandeau ou un popup, passe sous le popup d'offre, puis
+	-- revient sans rejouer son apparition (Shared.Overlay) ; l'offre « NEW GEAR! » que la flèche désigne dit déjà quoi
+	-- faire : le texte se tait
+	local place = Overlay.objective({
+		windowOpen = Hud.isWindowOpen(),
+		bannerShown = Hud.isBannerShown(),
+		popupShown = Hud.isPopupShown(),
+		offerShown = Hud.isOfferShown(),
+	})
+	label.Visible = current ~= nil and not arrowOnOffer and place ~= "Hidden"
+	label.Position = UDim2.new(0.5, 0, 0, if place == "BelowOffer" then Hud.OFFER_BOTTOM + 6 else LABEL_TOP)
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -243,9 +255,11 @@ local function step()
 	end
 	if hudArrow.Parent and hudArrow.Visible then
 		placeHudArrow(hudArrow.Parent :: GuiObject) -- suit les changements de taille d'écran (rotation du mobile)
-		local bob = UIMotion.float(now, reduced) * HUD_ARROW_FLOAT
+		-- Sur l'offre, réduite par son UIScale : la flèche garde la taille et le flottement qu'elle a ailleurs
+		local compensate = if arrowOnOffer then 1 / Hud.OFFER_SCALE else 1
+		local bob = UIMotion.float(now, reduced) * HUD_ARROW_FLOAT * compensate
 		hudArrow.Position = hudArrowBase + UDim2.fromOffset(hudArrowBob.X * bob, hudArrowBob.Y * bob)
-		hudArrowScale.Scale = UIMotion.pulse(now, reduced)
+		hudArrowScale.Scale = UIMotion.pulse(now, reduced) * compensate
 	end
 	if aim and root and humanoid then
 		local feet = root.Position - Vector3.new(0, humanoid.HipHeight + root.Size.Y / 2 - 0.12, 0)
@@ -262,7 +276,7 @@ function Objective.init(localPlayer: Player, gui: ScreenGui)
 	label = UIKit.text({
 		Name = "Objective",
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 36),
+		Position = UDim2.new(0.5, 0, 0, LABEL_TOP),
 		Size = UDim2.fromOffset(640, 40),
 		TextSize = 34,
 		Visible = false,
