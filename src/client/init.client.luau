@@ -45,7 +45,7 @@ Prize.init(player, remotes, gui)
 Announce.init(remotes.Announce, gui, function()
 	local state = player:GetAttribute("LaneState")
 	return Prize.isShowing() or state == "Flying" or state == "Result"
-end, Hud.reserveTop, Hud.isPopupShown)
+end, Hud.reserveTop, Hud.isLevelPopupShown)
 CharacterPoser.init()
 DummyFx.init()
 ThrowController.init(player, remotes, gui)

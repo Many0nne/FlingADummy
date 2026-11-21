@@ -13,6 +13,7 @@
 -- la barre d'outils (#54) : mannequin équipé près d'un présentoir libre → invite « Place » ; le bouton AUTO, dans sa
 -- base ou tout près, pose le mannequin tenu, sinon le dernier gagné. La barre d'outils n'apparaît qu'au hub, libre.
 local CollectionService = game:GetService("CollectionService")
+local ContextActionService = game:GetService("ContextActionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local StarterGui = game:GetService("StarterGui")
@@ -43,6 +44,7 @@ local TICK_GAP = 0.045 -- écart minimal entre deux tics du compteur de cote (s)
 local PROMPT_REFRESH = 0.25 -- s entre deux mises à jour des invites « Place »
 local AUTO_BOTTOM = 96 -- marge du bouton AUTO au bas de l'écran (px) : au-dessus de la barre d'outils Roblox
 local BLACK = Color3.fromRGB(12, 12, 16)
+local SKIP_ACTION = "PrizeSkip" -- Espace / A de la manette pendant le tirage : passe, sans faire sauter l'avatar
 local STORM = Color3.fromRGB(120, 90, 200) -- teinte du ciel assombri pendant le suspense (neutre : ne trahit pas la rareté)
 -- Exclamation de chaque palier selon la rareté du candidat (« Super chanceux ! », « Chance incroyable ! » de 01)
 local EXCLAIM =
@@ -59,6 +61,7 @@ type Active = {
 	plan: RevealPlan.Tier,
 	startedAt: number,
 	revealed: boolean, -- mannequin en couleurs sorti (sur la piste ou dans le décor du secret)
+	onStage: boolean, -- décor du secret construit (caméra et ciel de nuit dessus)
 	textsShown: boolean, -- rareté, nom et GO BACK affichés : plus rien à passer
 }
 
@@ -418,6 +421,7 @@ local function cleanup()
 	token += 1
 	showing = false
 	active = nil
+	ContextActionService:UnbindAction(SKIP_ACTION)
 	player:SetAttribute("PrizePhase", nil) -- phase du tirage, locale (Client.Music)
 	clearForms()
 	if worldModel then
@@ -530,6 +534,13 @@ local function revealTexts(a: Active, current: number)
 	end)
 end
 
+-- Cette méthode permet de donner le cadrage de départ de FlightCamera.showcase sur `focus` (mannequin de `height`
+-- studs) lorsque la caméra doit y arriver sans glisser (fin du tapis, passage depuis le décor du secret).
+local function showcaseFrame(focus: Vector3, height: number): CFrame
+	local push = math.max(height, 5) * 2.2 + 4
+	return CFrame.lookAt(focus + Vector3.new(push * 0.25, height * 0.35 + 1.5, -push), focus)
+end
+
 -- Cette méthode permet de jouer la séquence du secret (RevealPlan.CINEMATIC : noir et phrase, décor, portail, pièces,
 -- « SECRET!! ») puis les textes de la révélation lorsque le roulement d'un secret finit ; cède jusqu'à la fin.
 local function playSecret(a: Active, current: number)
@@ -542,8 +553,7 @@ local function playSecret(a: Active, current: number)
 	local color = Rarity.get(a.prize.rarity).color
 	local origin = RevealFx.stageOrigin(a.ground)
 	local focus = origin + Vector3.new(0, height / 2, 0)
-	local push = math.max(height, 5) * 2.2 + 4
-	local near = CFrame.lookAt(focus + Vector3.new(push * 0.25, height * 0.35 + 1.5, -push), focus)
+	local near = showcaseFrame(focus, height)
 	local far = CFrame.lookAt(origin + Vector3.new(0, 5, -RevealFx.CARPET_LENGTH + 6), focus)
 	UIKit.closeWindow(tease, true)
 	UIKit.playSound("Thud", 0.6)
@@ -557,6 +567,7 @@ local function playSecret(a: Active, current: number)
 		RevealFx.buildStage(origin)
 		RevealFx.darkenSky(color, true, 0.2)
 		FlightCamera.dolly(far, far, 0.01)
+		a.onStage = true
 	end)
 	task.wait(durations.Blackout)
 	if current ~= token then
@@ -605,13 +616,17 @@ local function skip()
 	end
 	-- Décor du secret retiré, ciel gardé (assombri dès Legendary) ; retour au point d'atterrissage
 	RevealFx.clear(true)
-	if a.plan.cinematic then
-		-- La nuit du décor du secret redevient le ciel d'orage du suspense
+	local height = HEIGHT * Collection.scale(a.entry)
+	local focus = a.ground + Vector3.new(0, height / 2, 0)
+	if a.onStage then
+		-- Depuis le décor du secret : la nuit redevient l'orage du suspense, la caméra saute à la piste (sous l'éclair)
+		a.onStage = false
 		RevealFx.restoreSky()
 		RevealFx.darkenSky(STORM, false, 0.4)
+		local frame = showcaseFrame(focus, height)
+		FlightCamera.dolly(frame, frame, 0.01)
 	end
-	local height = HEIGHT * Collection.scale(a.entry)
-	FlightCamera.showcase(a.ground + Vector3.new(0, height / 2, 0), height)
+	FlightCamera.showcase(focus, height)
 	revealModel(a, a.ground)
 	revealTexts(a, current)
 end
@@ -697,9 +712,16 @@ function Prize.play(result: any)
 		plan = plan,
 		startedAt = os.clock(),
 		revealed = false,
+		onStage = false,
 		textsShown = false,
 	}
 	active = a
+	ContextActionService:BindActionAtPriority(SKIP_ACTION, function(_, inputState)
+		if inputState == Enum.UserInputState.Begin then
+			skip()
+		end
+		return Enum.ContextActionResult.Sink
+	end, false, Enum.ContextActionPriority.High.Value, Enum.KeyCode.Space, Enum.KeyCode.ButtonA)
 	local finalScale = Collection.scale(valid)
 	FlightCamera.showcase(a.ground + Vector3.new(0, HEIGHT * finalScale / 2, 0), HEIGHT * finalScale)
 	if plan.darkSky then
@@ -1059,18 +1081,10 @@ function Prize.init(localPlayer: Player, createdRemotes: Remotes.Remotes, screen
 		end
 	end)
 	RunService.Heartbeat:Connect(refreshPrompts)
-	-- Clic, toucher, Espace ou A de la manette : passe le tirage (après la première seconde)
+	-- Clic ou toucher : passe le tirage (après la première seconde) ; Espace et A : action SKIP_ACTION
 	UserInputService.InputBegan:Connect(function(input, processed)
 		local kind = input.UserInputType
-		if
-			not processed
-			and (
-				kind == Enum.UserInputType.MouseButton1
-				or kind == Enum.UserInputType.Touch
-				or input.KeyCode == Enum.KeyCode.Space
-				or input.KeyCode == Enum.KeyCode.ButtonA
-			)
-		then
+		if not processed and (kind == Enum.UserInputType.MouseButton1 or kind == Enum.UserInputType.Touch) then
 			skip()
 		end
 	end)

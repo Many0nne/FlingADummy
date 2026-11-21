@@ -50,6 +50,7 @@ type Flight = {
 	owner: Player?, -- nil pour un mannequin de test (DebugLaunchBots)
 	key: any, -- clé dans `flights` : le joueur, ou un identifiant de mannequin de test
 	slot: Slot,
+	announce: any?, -- annonce du tirage (Legendary et plus), envoyée à tous quand le gagnant a vu sa révélation
 	dummy: Model,
 	torso: BasePart,
 	parts: { BasePart },
@@ -449,12 +450,17 @@ local function checkSmashed(list: { Flight })
 end
 
 -- Cette méthode permet de rendre la main au joueur (retour au hub derrière la bande) lorsque son résultat et son
--- tirage sont finis (GO BACK du client, ou délai RevealPlan.resultTime dépassé) ; sans effet si ce résultat est déjà clos.
+-- tirage sont finis (GO BACK, ou délai RevealPlan.resultTime dépassé), et d'annoncer à tous un tirage rare ; sans
+-- effet si ce résultat est déjà clos.
 local function closeResult(player: Player, flight: Flight)
 	if results[player] ~= flight then
 		return
 	end
 	results[player] = nil
+	if flight.announce and player.Parent then
+		remotes.Announce:FireAllClients(flight.announce)
+		flight.announce = nil
+	end
 	if
 		player.Parent
 		and SlotService.getSlot(player) == flight.slot
@@ -491,17 +497,17 @@ local function finish(flight: Flight, elapsed: number)
 		player:SetAttribute("LaneState", "Result")
 		results[player] = flight
 		remotes.LaunchResult:FireClient(player, result)
-		-- Bandeau pour tous à partir de Legendary (#67) ; chaque client l'affiche quand il n'est ni en vol ni en tirage
-		-- (le gagnant, déjà en Result, le voit après son propre tirage)
+		-- Bandeau pour tous à partir de Legendary (#67), envoyé à la fin du résultat (closeResult) : personne ne gâche
+		-- le tirage du gagnant dans le chat avant qu'il l'ait vu
 		local prize = result.prize
 		if prize and RevealPlan.announces(prize.rarity) then
-			remotes.Announce:FireAllClients({
+			flight.announce = {
 				userId = player.UserId,
 				player = player.DisplayName,
 				name = prize.name,
 				rarity = prize.rarity,
 				odds = prize.odds,
-			})
+			}
 		end
 		-- Fin forcée sans GO BACK : plus tard pour une mise en scène plus longue (secret ≈ 30 s)
 		task.delay(RevealPlan.resultTime(prize and prize.rarity), closeResult, player, flight)

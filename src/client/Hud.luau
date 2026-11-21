@@ -72,6 +72,8 @@ local lastRepFloat = 0
 local knownLevel = math.huge -- palier d'entraînement et équipement déjà annoncés (aucun avant le chargement)
 local knownTier = math.huge
 local popupEndsAt = 0
+local bannerEndsAt = 0 -- bandeau d'annonce en haut de l'écran (Client.Announce) : les popups passent dessous
+local BANNER_POPUP_Y = 160 -- px : centre d'un popup ouvert pendant un bandeau (au lieu de 92)
 -- Ventes envoyées au serveur : leur argent volera du bouton au compteur quand il arrivera
 type ExpectedGain = { amount: number, from: Vector2, untilTime: number }
 local expectedGains: { ExpectedGain } = {}
@@ -686,6 +688,9 @@ end
 -- Cette méthode permet d'afficher un popup de palier et de retenir sa fin (l'objectif se tait pendant ce temps)
 -- lorsque le joueur gagne un niveau ou un équipement.
 local function showPopup(options: UIKit.PopupOptions)
+	if os.clock() < bannerEndsAt and not options.position then
+		options.position = UDim2.new(0.5, 0, 0, BANNER_POPUP_Y)
+	end
 	local duration = UIKit.popup(gui, options)
 	popupEndsAt = math.max(popupEndsAt, os.clock() + duration)
 end
@@ -821,14 +826,20 @@ function Hud.popup(options: UIKit.PopupOptions)
 	showPopup(options)
 end
 
--- Cette méthode permet de réserver le haut de l'écran pendant `duration` s (l'objectif se tait) lorsque un bandeau
--- d'annonce de tirage s'y affiche.
+-- Cette méthode permet de réserver le haut de l'écran pour `duration` s à partir de maintenant (0 : libéré ;
+-- l'objectif se tait, les popups passent dessous) lorsque un bandeau d'annonce s'affiche ou s'en va.
 function Hud.reserveTop(duration: number)
-	popupEndsAt = math.max(popupEndsAt, os.clock() + duration)
+	bannerEndsAt = os.clock() + duration
 end
 
 -- Cette méthode permet de savoir si un popup de palier occupe le haut de l'écran lorsque l'objectif s'affiche.
 function Hud.isPopupShown(): boolean
+	return os.clock() < popupEndsAt or os.clock() < bannerEndsAt
+end
+
+-- Cette méthode permet de savoir si un popup de palier (hors bandeau d'annonce) est à l'écran lorsque un bandeau
+-- attend son tour.
+function Hud.isLevelPopupShown(): boolean
 	return os.clock() < popupEndsAt
 end
 

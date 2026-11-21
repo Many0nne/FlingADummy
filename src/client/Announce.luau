@@ -85,6 +85,7 @@ local function show(data: RevealPlan.Announcement)
 	while os.clock() < stay and not isBusy() do
 		task.wait(WAIT_STEP)
 	end
+	onShown(SLIDE) -- le haut se libère dès la sortie (anticipée ou non)
 	local leave = TweenService:Create(strip, TweenInfo.new(SLIDE, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 		Position = UDim2.new(0.5, 0, 0, -70),
 	})
@@ -108,6 +109,11 @@ local function drain()
 			local ok, err = pcall(show, table.remove(queue, 1) :: RevealPlan.Announcement)
 			if not ok then
 				warn("[Announce] " .. tostring(err))
+				local strip = gui:FindFirstChild("Announce")
+				if strip then
+					strip:Destroy()
+				end
+				onShown(0)
 			end
 		end
 		running = false

@@ -232,9 +232,14 @@ function BaseService.award(player: Player, luck: number): Prize?
 		return rng:NextNumber()
 	end
 	-- Studio : DebugPrize impose le prochain tirage (rareté 1-7 ou son nom, ou « id:taille »), puis s'efface
-	local forced = if RunService:IsStudio() then RevealPlan.debugEntry(player:GetAttribute("DebugPrize"), roll) else nil
-	if forced then
+	-- (même au premier tirage, à la place du mannequin garanti)
+	local debugValue = if RunService:IsStudio() then player:GetAttribute("DebugPrize") else nil
+	local forced = if debugValue ~= nil then RevealPlan.debugEntry(debugValue, roll) else nil
+	if debugValue ~= nil then
 		player:SetAttribute("DebugPrize", nil)
+		if not forced then
+			warn("[Debug] DebugPrize illisible : " .. tostring(debugValue))
+		end
 	end
 	local entry = if forced
 		then forced
