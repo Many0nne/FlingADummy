@@ -1,5 +1,5 @@
 -- Effets des crashs, joués par chaque client à partir des chocs annoncés par le serveur : son positionné, gerbe de
--- particules, popup dans la scène (« +1 BONE », « SMASH x6 »), combos, foule sur les gros crashs ; secousses de
+-- particules, popup dans la scène (« +1 BONE », « SMASH x6 », « BOING! » des pièges des thèmes), combos, foule sur les gros crashs ; secousses de
 -- caméra et souffle du vent pour le vol du joueur local.
 local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
@@ -10,6 +10,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Sounds = require(Shared:WaitForChild("Sounds"))
+local Traps = require(Shared:WaitForChild("Traps"))
 
 local FlightCamera = require(script.Parent.FlightCamera)
 local UIKit = require(script.Parent.UIKit)
@@ -162,6 +163,18 @@ local function onImpact(impact: any)
 			FlightCamera.shake(0.3 + count * 0.05)
 			bumpCombo(position)
 		end
+	elseif impact.kind == "Trap" then
+		local def = Traps.KINDS[impact.material or ""]
+		if def then
+			playAt(def.sound, position, 1)
+			burst(def.burst, position, 40)
+			burst("Dust", position, 10)
+			popup(position + Vector3.new(0, 3, 0), def.label, C.gold, 52)
+			if mine then
+				FlightCamera.shake(0.9)
+				bumpCombo(position)
+			end
+		end
 	elseif impact.kind == "Thud" then
 		playAt("Thud", position)
 		burst("Dust", position, 14)
@@ -232,6 +245,84 @@ function Effects.init(localPlayer: Player, impactRemote: RemoteEvent)
 		Speed = NumberRange.new(20, 40),
 		SpreadAngle = Vector2.new(120, 120),
 		Acceleration = Vector3.new(0, -80, 0),
+	})
+	-- Gerbes des pièges des thèmes (Shared.Traps : `burst`)
+	local sparkle = "rbxasset://textures/particles/sparkles_main.dds"
+	emitter("Stars", {
+		Texture = sparkle,
+		Color = ColorSequence.new(Color3.fromRGB(255, 230, 80)),
+		LightEmission = 1,
+		Size = NumberSequence.new(1.6, 0),
+		Lifetime = NumberRange.new(0.5, 0.9),
+		Speed = NumberRange.new(20, 35),
+		SpreadAngle = Vector2.new(180, 180),
+		Drag = 3,
+	})
+	emitter("Wind", {
+		Texture = "rbxasset://textures/particles/smoke_main.dds",
+		Color = ColorSequence.new(Color3.fromRGB(235, 245, 255)),
+		Transparency = NumberSequence.new(0.4, 1),
+		Size = NumberSequence.new(2, 6),
+		Lifetime = NumberRange.new(0.5, 0.9),
+		Speed = NumberRange.new(30, 50),
+		SpreadAngle = Vector2.new(180, 40),
+		Drag = 2,
+	})
+	emitter("Splash", {
+		Texture = sparkle,
+		Color = ColorSequence.new(Color3.fromRGB(120, 210, 255), Color3.fromRGB(255, 255, 255)),
+		Size = NumberSequence.new(1.4, 0.4),
+		Lifetime = NumberRange.new(0.6, 1.1),
+		Speed = NumberRange.new(20, 40),
+		SpreadAngle = Vector2.new(70, 70),
+		Acceleration = Vector3.new(0, -90, 0),
+		EmissionDirection = Enum.NormalId.Top,
+	})
+	emitter("Sparks", {
+		Texture = sparkle,
+		Color = ColorSequence.new(Color3.fromRGB(140, 230, 255), Color3.fromRGB(255, 255, 255)),
+		LightEmission = 1,
+		Size = NumberSequence.new(1, 0),
+		Lifetime = NumberRange.new(0.3, 0.6),
+		Speed = NumberRange.new(30, 55),
+		SpreadAngle = Vector2.new(180, 180),
+		Drag = 4,
+	})
+	emitter("Snow", {
+		Texture = sparkle,
+		Color = ColorSequence.new(Color3.fromRGB(255, 255, 255)),
+		Size = NumberSequence.new(1.2, 0.6),
+		Lifetime = NumberRange.new(0.8, 1.4),
+		Speed = NumberRange.new(10, 25),
+		SpreadAngle = Vector2.new(180, 90),
+		Acceleration = Vector3.new(0, -30, 0),
+	})
+	emitter("Fire", {
+		Texture = "rbxasset://textures/particles/fire_main.dds",
+		Color = ColorSequence.new(Color3.fromRGB(255, 200, 60), Color3.fromRGB(255, 60, 20)),
+		LightEmission = 1,
+		Size = NumberSequence.new(3, 0),
+		Lifetime = NumberRange.new(0.4, 0.8),
+		Speed = NumberRange.new(12, 25),
+		SpreadAngle = Vector2.new(60, 60),
+		EmissionDirection = Enum.NormalId.Top,
+	})
+	emitter("Confetti", {
+		Texture = sparkle,
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 90, 160)),
+			ColorSequenceKeypoint.new(0.33, Color3.fromRGB(90, 200, 255)),
+			ColorSequenceKeypoint.new(0.66, Color3.fromRGB(255, 220, 60)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 230, 110)),
+		}),
+		Size = NumberSequence.new(1, 0.5),
+		Lifetime = NumberRange.new(0.9, 1.6),
+		Speed = NumberRange.new(25, 45),
+		SpreadAngle = Vector2.new(180, 180),
+		Acceleration = Vector3.new(0, -40, 0),
+		Drag = 2,
+		Rotation = NumberRange.new(0, 360),
+		RotSpeed = NumberRange.new(-300, 300),
 	})
 	wind = UIKit.create("Sound", {
 		SoundId = Sounds.Wind.id,

@@ -1,6 +1,7 @@
--- Obstacles partagés de la piste unique : vitres (une par colonne), tours de caisses, murs de briques, voitures-cibles et
--- panneaux-cibles en pièces légères simulées par le serveur. Les mannequins de tous les joueurs les cassent ; une pièce
--- déplacée réapparaît à sa place RESPAWN_DELAY après le dernier choc subi par son obstacle, une par une, de bas en
+-- Obstacles partagés de la piste unique, posés aux sites de Shared.TrackPlan : dans chaque thème une rangée de vitres
+-- (une par colonne, cadre à la couleur du thème), ses obstacles cassables (Server.ThemeObstacles) en pièces légères
+-- simulées par le serveur, et son piège signature (Server.TrapProps, déclenché par Server.LaunchService). Les
+-- mannequins de tous les joueurs cassent les obstacles ; une pièce déplacée réapparaît à sa place RESPAWN_DELAY après le dernier choc subi par son obstacle, une par une, de bas en
 -- haut, avec un petit effet d'apparition (Shared.ObstacleRules).
 local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
@@ -12,8 +13,12 @@ local Workspace = game:GetService("Workspace")
 local CourseLayout = require(ReplicatedStorage.Shared.CourseLayout)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local ObstacleRules = require(ReplicatedStorage.Shared.ObstacleRules)
+local TrackPlan = require(ReplicatedStorage.Shared.TrackPlan)
+local Zones = require(ReplicatedStorage.Shared.Zones)
 local Build = require(script.Parent.Build)
 local CollisionGroups = require(script.Parent.CollisionGroups)
+local ThemeObstacles = require(script.Parent.ThemeObstacles)
+local TrapProps = require(script.Parent.TrapProps)
 
 local SHARD_COUNT = 12
 local SHARD_LIFETIME = 4
@@ -24,22 +29,7 @@ local OCCUPIED_SCALE = 0.9 -- emplacement vérifié avant réapparition (pièces
 local OCCUPIED_RETRY = 0.2 -- une pièce dont l'emplacement est occupé attend (s)…
 local OCCUPIED_TRIES = 40 -- … au plus 8 s (un mannequin posé disparaît RESULT_CLEAR_TIME après la fin de son vol)
 
--- Obstacles très légers : le mannequin les traverse et les projette au lieu de s'y arrêter
-local CRATE_DENSITY = 0.05
-local BRICK_DENSITY = 0.08
-local CAR_DENSITY = 0.1
-
-local GLASS_Z = { 45, 140, 240, 380, 560, 800, 1100, 1500, 2000 }
-local TOWERS_Z = { 90, 300, 650, 1250, 1800 }
-local TARGETS_Z = { 120, 420, 850, 1400, 2100 }
-local WALLS_Z = { 185, 480, 950, 1600, 2200 }
-
-local rgb = Color3.fromRGB
-local GLASS_COLOR = rgb(170, 225, 255)
-local CRATE_COLORS = { rgb(235, 150, 55), rgb(210, 120, 45) }
-local BRICK_COLORS = { rgb(230, 60, 50), rgb(250, 120, 40) }
-local CAR_COLORS = { rgb(60, 140, 255), rgb(255, 205, 40), rgb(240, 60, 70), rgb(80, 210, 110) }
-local YELLOW, BLACK, WHITE = rgb(255, 210, 40), rgb(35, 35, 40), rgb(250, 250, 250)
+local GLASS_COLOR = Color3.fromRGB(170, 225, 255)
 
 export type Glass = { part: BasePart?, z: number, top: number, minX: number, maxX: number, brokenAt: number? }
 
@@ -48,7 +38,7 @@ export type Piece = {
 	part: BasePart,
 	template: BasePart,
 	home: CFrame,
-	kind: string, -- "Crates" | "Wall" | "Car" | "Sign"
+	kind: string, -- obstacle du thème (Server.ThemeObstacles : "Crates", "Wall", "Tractor"…)
 	material: string, -- "Crate" | "Brick"
 	group: Group,
 	displaced: boolean,
@@ -61,6 +51,7 @@ local Obstacles = {}
 
 local folder: Folder
 local glasses: { Glass } = {}
+local trapBoxes: { TrackPlan.TrapBox } = {}
 local pieces: { Piece } = {}
 local groups: { Group } = {}
 local pieceOf: { [BasePart]: Piece } = {}
@@ -71,7 +62,10 @@ overlap.RespectCanCollide = true
 -- l'on monte un obstacle ; elle ignore les avatars (seuls les mannequins la bousculent).
 local function addPiece(group: Group, props: { [string]: any }, density: number, kind: string, material: string)
 	props.Anchored = false
-	props.Variant = Build.BRICK
+	-- Briques à tenons, sauf matériau imposé (roche en fusion en Neon)
+	if props.Material == nil then
+		props.Variant = Build.BRICK
+	end
 	props.CollisionGroup = CollisionGroups.OBSTACLES
 	props.CustomPhysicalProperties = PhysicalProperties.new(density, 0.5, 0.2)
 	props.Parent = folder
@@ -121,10 +115,10 @@ local function makeGlass(glass: Glass)
 	})
 end
 
--- Cette méthode permet de poser une rangée de vitres (une par colonne, avec leurs cadres) à `z` lorsque la piste est
--- construite.
-local function buildGlassRow(z: number)
-	local height = math.clamp(30 + z * 0.15, 30, 320)
+-- Cette méthode permet de poser une rangée de vitres (une par colonne, cadre à la couleur du thème `color`) à `z`
+-- lorsque la piste est construite.
+local function buildGlassRow(z: number, color: Color3)
+	local height = TrackPlan.glassHeight(z)
 	local half = GameConfig.SLOT_SPACING / 2
 	for index = 1, GameConfig.SLOT_COUNT do
 		local x = CourseLayout.slotX(index)
@@ -139,7 +133,7 @@ local function buildGlassRow(z: number)
 			Name = "GlassPost",
 			Size = Vector3.new(0.8, height, 0.8),
 			Position = Vector3.new(-span / 2 + index * GameConfig.SLOT_SPACING, height / 2, z),
-			Color = WHITE,
+			Color = color,
 			Variant = Build.BRICK,
 			Parent = folder,
 		})
@@ -148,116 +142,43 @@ local function buildGlassRow(z: number)
 		Name = "GlassFrame",
 		Size = Vector3.new(span + 0.8, 1.2, 1),
 		Position = Vector3.new(0, height, z),
-		Color = WHITE,
+		Color = color,
 		Variant = Build.BRICK,
 		Parent = folder,
 	})
 end
 
--- Cette méthode permet d'empiler une tour de caisses (2 × 2, 4 étages) dans chaque colonne à `z` lorsque la piste est
--- construite.
-local function buildTowers(z: number)
-	local size = 3.6
-	for index = 1, GameConfig.SLOT_COUNT do
-		local group = newGroup()
-		local x = CourseLayout.slotX(index)
-		for level = 0, 3 do
-			for i = 0, 1 do
-				for j = 0, 1 do
-					addPiece(group, {
-						Name = "Crate",
-						Size = Vector3.one * size,
-						Position = Vector3.new(x + (i - 0.5) * size, size / 2 + level * size, z + (j - 0.5) * size),
-						Color = CRATE_COLORS[(i + j + level) % 2 + 1],
-					}, CRATE_DENSITY, "Crates", "Crate")
-				end
+-- Cette méthode permet de donner à Server.ThemeObstacles de quoi monter l'obstacle `kind` (un groupe de pièces par
+-- appel à `group`) lorsque l'on construit un site.
+local function kitFor(kind: string): ThemeObstacles.Kit
+	return {
+		group = function()
+			local group = newGroup()
+			return function(props, density, material)
+				addPiece(group, props, density, kind, material)
 			end
-		end
-	end
+		end,
+	}
 end
 
--- Cette méthode permet de monter un mur de briques en quinconce sur toute la largeur des colonnes à `z` lorsque la
--- piste est construite.
-local function buildWall(z: number)
-	local group = newGroup()
-	local span = GameConfig.SLOT_COUNT * GameConfig.SLOT_SPACING
-	local count = math.floor(span / 4)
-	for row = 0, 6 do
-		-- Appareil en quinconce : une rangée sur deux décalée d'une demi-brique, une brique de moins (rien en porte-à-faux)
-		local offset = if row % 2 == 0 then 0 else 2
-		for col = 0, count - 1 - row % 2 do
-			addPiece(group, {
-				Name = "Brick",
-				Size = Vector3.new(3.96, 3, 2.5),
-				Position = Vector3.new(-span / 2 + 2 + col * 4 + offset, 1.5 + row * 3, z),
-				Color = BRICK_COLORS[(row + col) % 2 + 1],
-			}, BRICK_DENSITY, "Wall", "Brick")
-		end
-	end
-end
-
--- Cette méthode permet de garer une voiture-cible en blocs (roues, caisse, cabine, cible sur le toit) en travers de
--- la colonne centrée sur `x` à `z` lorsque la piste est construite.
-local function buildCar(x: number, z: number, color: Color3)
-	local group = newGroup()
-	-- Cette méthode permet d'ajouter une pièce de la voiture au décalage `offset` lorsque l'on l'assemble.
-	local function add(name: string, size: Vector3, offset: Vector3, partColor: Color3)
-		addPiece(group, {
-			Name = name,
-			Size = size,
-			Position = Vector3.new(x, 0, z) + offset,
-			Color = partColor,
-		}, CAR_DENSITY, "Car", "Brick")
-	end
-	for _, wx in { -3.4, 3.4 } do
-		add("Wheel", Vector3.new(2.4, 2.4, 5.2), Vector3.new(wx, 1.2, 0), BLACK)
-	end
-	add("Chassis", Vector3.new(11, 2.4, 5), Vector3.new(0, 3.6, 0), color)
-	add("Cabin", Vector3.new(6, 2.6, 4.6), Vector3.new(-0.5, 6.1, 0), Build.shade(color, 0.85))
-	add("Target", Vector3.new(3.6, 0.6, 3.6), Vector3.new(-0.5, 7.7, 0), WHITE)
-	add("Bullseye", Vector3.new(1.6, 0.6, 1.6), Vector3.new(-0.5, 8.3, 0), rgb(235, 40, 40))
-end
-
--- Cette méthode permet de dresser un panneau-cible de crash-test (damier jaune et noir de 3 × 3 plaques) dans la
--- colonne centrée sur `x` à `z` lorsque la piste est construite.
-local function buildSign(x: number, z: number)
-	local group = newGroup()
-	for row = 0, 2 do
-		for col = -1, 1 do
-			addPiece(group, {
-				Name = "SignPlate",
-				Size = Vector3.new(4.6, 4.6, 1.2),
-				Position = Vector3.new(x + col * 4.62, 2.3 + row * 4.62, z),
-				Color = if (row + col) % 2 == 0 then YELLOW else BLACK,
-			}, CRATE_DENSITY, "Sign", "Crate")
-		end
-	end
-end
-
--- Cette méthode permet de construire tous les obstacles de la piste sous `parent` lorsque le serveur démarre.
+-- Cette méthode permet de construire tous les obstacles de la piste (vitres, obstacles des thèmes, pièges) sous
+-- `parent` lorsque le serveur démarre.
 function Obstacles.build(parent: Instance)
 	folder = Instance.new("Folder")
 	folder.Name = "Obstacles"
 	folder.Parent = parent
-	for _, z in GLASS_Z do
-		buildGlassRow(z)
-	end
-	for _, z in TOWERS_Z do
-		buildTowers(z)
-	end
-	for _, z in WALLS_Z do
-		buildWall(z)
-	end
-	for site, z in TARGETS_Z do
-		-- Voitures et panneaux alternent d'une colonne à l'autre, et d'un site au suivant
-		for index = 1, GameConfig.SLOT_COUNT do
-			local x = CourseLayout.slotX(index)
-			if (index + site) % 2 == 0 then
-				buildCar(x, z, CAR_COLORS[(index + site) % #CAR_COLORS + 1])
-			else
-				buildSign(x, z)
-			end
+	local sites = TrackPlan.sites(GameConfig.COURSE_LENGTH)
+	for _, site in sites do
+		local zone = Zones.LIST[site.zone]
+		if site.kind == "Glass" then
+			buildGlassRow(site.z, zone.color)
+		elseif site.kind == "Obstacle" then
+			ThemeObstacles.build(site.name, kitFor(site.name), site.z, zone)
 		end
+	end
+	trapBoxes = TrackPlan.trapBoxes(sites)
+	for _, box in trapBoxes do
+		TrapProps.build(box, folder)
 	end
 	-- Simulées par le serveur : sinon le joueur le plus proche prend la main sur la physique des débris
 	for _, piece in pieces do
@@ -276,6 +197,11 @@ end
 -- Cette méthode permet de donner toutes les pièces des obstacles lorsque LaunchService compte les objets projetés.
 function Obstacles.pieces(): { Piece }
 	return pieces
+end
+
+-- Cette méthode permet de donner les boîtes de déclenchement des pièges lorsque LaunchService suit un vol.
+function Obstacles.traps(): { TrackPlan.TrapBox }
+	return trapBoxes
 end
 
 -- Cette méthode permet de trouver la pièce d'obstacle touchée (déplacée ou en mouvement) la plus proche de `position`,
