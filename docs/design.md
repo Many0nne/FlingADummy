@@ -118,8 +118,10 @@ Comme 01 et 09 : le lancer fait le lien entre les deux.
   (`DummyShape.buildVisual`) d'après l'outil équipé. Barre masquée et mannequin déséquipé hors du hub (bande, vol,
   tirage, entraînement). Posé, vendu ou rangé par PLACE BEST : son outil quitte la barre ; le Backpack est reconstruit
   depuis le stock à chaque réapparition et à chaque arrivée (pas de sauvegarde à part).
-- **AUTO** (bouton compact, le panneau « Place your… » n'existe que pendant l'étape « Place » du tutoriel) : pose le mannequin tenu, sinon le dernier gagné, sur le premier présentoir libre ; base pleine, le nouveau remplace le moins rentable s'il
-  rapporte plus (l'ancien retourne au stock), sinon il reste au stock. Rien n'est jamais vendu sans clic.
+- **AUTO** (bouton compact au-dessus de la barre d'outils, le panneau « Place your… » n'existe que pendant l'étape
+  « Place » du tutoriel) : pose le mannequin tenu, sinon le dernier gagné, sur le premier présentoir libre ; base pleine,
+  le nouveau remplace le moins rentable s'il rapporte plus (l'ancien retourne au stock), sinon il reste au stock (AUTO
+  est alors caché). Rien n'est jamais vendu sans clic.
 - **Fenêtre « My Dummies »** (bouton Dummies, panneau à droite comme « Mes plantes » de 09) : en haut « IN YOUR BASE
   n/N · INVENTORY n », total $/s et bouton orange **PLACE BEST** (remplit les présentoirs avec les plus rentables, posés
   et stock confondus ; un posé reste en place s'il en fait partie) ; puis une ligne par mannequin, posés d'abord, puis

@@ -290,6 +290,7 @@ local function update(player: Player, state: State)
 	local releasedHere = player == localPlayer and throw ~= nil and throw.released
 	-- Le suffixe reconstruit le décoratif en maillé quand les gabarits arrivent après lui (blocs en attendant)
 	local shape = if DummyShape.isMeshed() then ":mesh" else ":block"
+	local carried = if action == nil then carriedKey(character) else nil
 	if action == "Holding" and not releasedHere then
 		setVisual(state, "Holding" .. shape, function()
 			return DummyShape.buildVisual(HELD_SCALE)
@@ -306,9 +307,9 @@ local function update(player: Player, state: State)
 		if state.visual then
 			state.visual:PivotTo(liftFrame(character, root, gear.scale))
 		end
-	elseif action == nil and carriedKey(character) then
+	elseif carried then
 		-- Mannequin de collection porté (outil équipé), à l'échelle de sa taille
-		local key = carriedKey(character) :: string
+		local key = carried
 		local entry = Inventory.parseKey(key) :: Collection.Entry
 		local scale = AnimationData.CARRY_SCALE * Collection.SIZES[entry.size].scale
 		setVisual(state, "Carry" .. key .. shape, function()

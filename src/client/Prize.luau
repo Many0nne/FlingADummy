@@ -690,8 +690,17 @@ local function refreshPanel()
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local slot = player:GetAttribute("Slot")
 	local near = root ~= nil and typeof(slot) == "number" and CourseLayout.isNearBase(slot, root.Position)
-	-- AUTO pose le mannequin tenu, sinon le dernier gagné
-	placeAuto.Visible = free and toPlace() ~= nil and near and not firstPlace
+	-- AUTO pose le mannequin tenu, sinon le dernier gagné ; caché si la règle AUTO ne lui trouve aucun présentoir (base
+	-- pleine de plus rentables : un clic ne ferait rien)
+	local candidate = toPlace()
+	local target = candidate
+		and Inventory.autoTarget({
+			base = Inventory.decodeBase(player:GetAttribute("BaseDummies")),
+			displays = (player:GetAttribute("Displays") :: number?) or 0,
+			stock = {},
+			index = {},
+		}, candidate)
+	placeAuto.Visible = free and target ~= nil and near and not firstPlace
 	if visible and entry then
 		local key = Inventory.key(entry)
 		if key ~= placeKey then

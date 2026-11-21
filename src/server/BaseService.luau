@@ -1,9 +1,9 @@
 -- Base du joueur : mannequins de collection gagnés au lancer (tirage « 1 en N », Shared.Collection), gardés en stock
 -- (Shared.Inventory) et posés sur les présentoirs de sa base, qui versent leur revenu chaque seconde : seule source
 -- d'argent du jeu. Chaque mannequin du stock est un outil du Backpack (Server.DummyTools) : équipé près d'un
--- présentoir libre, il se pose par l'invite « Place » ou le bouton AUTO ; sans mannequin équipé, ils posent le dernier
--- gagné (attribut `PendingDummy`, première pose du tutoriel). Un nouveau lancer l'ajoute au stock, rien ne se perd. Fenêtres de collection (remote Inventory) : poser,
--- retirer, vendre, « Place best ». Pad « 6 > 7 » devant la base : achat du présentoir suivant. Le serveur publie la
+-- présentoir libre, il se pose par l'invite « Place » ou le bouton AUTO ; sans mannequin équipé, AUTO pose le dernier
+-- gagné (attribut `PendingDummy`), comme l'invite pendant la première pose du tutoriel. Un nouveau lancer l'ajoute au
+-- stock, rien ne se perd. Fenêtres de collection (remote Inventory) : poser, retirer, vendre, « Place best ». Pad « 6 > 7 » devant la base : achat du présentoir suivant. Le serveur publie la
 -- collection dans des attributs du joueur (Stock, BaseDummies, Displays, DummyIndex) que le client affiche. Les
 -- mannequins posés sont construits par le serveur, visibles de tous.
 local Players = game:GetService("Players")
@@ -313,8 +313,8 @@ function BaseService.place(player: Player, display: any, force: boolean?): boole
 	else
 		PlayerData.tutorialStep(player, "Place") -- seule une pose à la main compte (première pose du tutoriel)
 	end
-	if data.last and Inventory.key(data.last) == key then
-		data.last = nil
+	if not held then
+		data.last = nil -- le dernier gagné vient d'être posé (un doublon tenu posé le laisse proposé)
 	end
 	-- L'outil tenu part avec le mannequin posé (la synchronisation retirerait sinon un doublon rangé)
 	if held then
@@ -465,7 +465,8 @@ local function watchTemplates()
 end
 
 -- Cette méthode permet de brancher en Studio les attributs de test (MCP) lorsque le joueur arrive : DebugPlace = n
--- pose le dernier gagné sur le présentoir n (comme l'invite), toute autre valeur avec AUTO sans condition ;
+-- pose le mannequin tenu, sinon le dernier gagné, sur le présentoir n (comme l'invite, sans ses conditions), toute
+-- autre valeur avec AUTO sans condition ;
 -- DebugGive = « id:taille » ajoute ce mannequin comme s'il venait d'être gagné ; DebugEquip = « id:taille » équipe
 -- son outil du Backpack (« » déséquipe) ; DebugInventory = « Action » ou
 -- « Action|argument » (actions de BaseService.act).
@@ -474,7 +475,7 @@ local function bindDebug(player: Player)
 		local value = player:GetAttribute("DebugPlace")
 		if value ~= nil then
 			player:SetAttribute("DebugPlace", nil)
-			BaseService.place(player, if typeof(value) == "number" then value else nil, typeof(value) ~= "number")
+			BaseService.place(player, if typeof(value) == "number" then value else nil, true)
 		end
 	end)
 	player:GetAttributeChangedSignal("DebugGive"):Connect(function()

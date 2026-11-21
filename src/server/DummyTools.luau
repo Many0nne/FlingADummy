@@ -2,7 +2,8 @@
 -- Shared.BackpackPlan (rareté décroissante, puis arrivée). Les outils ne portent que des données (nom, info-bulle,
 -- icône de rareté, attribut DummyKey) : le mannequin tenu est construit par chaque client (Client.CharacterPoser) d'après
 -- l'outil équipé. Le joueur ne tient un mannequin qu'au hub, libre : sur la bande, en vol, au résultat ou à
--- l'entraînement (et pendant la première pose du tutoriel), il est déséquipé. Le Backpack, recréé à chaque réapparition, est resynchronisé depuis le stock.
+-- l'entraînement (et pendant la première pose du tutoriel), il est déséquipé. Le Backpack, recréé à chaque
+-- réapparition, est resynchronisé depuis le stock.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
@@ -54,7 +55,13 @@ end
 -- Cette méthode permet de donner l'outil de mannequin équipé par le joueur (et sa clé) lorsque le serveur pose le
 -- mannequin tenu ; nil s'il n'en tient pas.
 function DummyTools.equipped(player: Player): (Tool?, string?)
-	return BackpackPlan.held(player.Character)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	-- Personnage mort (réapparition en cours) : l'outil part avec lui, il ne compte plus comme tenu
+	if not humanoid or humanoid.Health <= 0 then
+		return nil, nil
+	end
+	return BackpackPlan.held(character)
 end
 
 -- Cette méthode permet de déséquiper le mannequin tenu lorsque le joueur ne peut plus le tenir (lancer, entraînement).
@@ -160,7 +167,13 @@ function DummyTools.sync(player: Player, stock: { Collection.Entry })
 			ordered[index].Parent = nil
 		end
 	end
-	state.sequence = ordered
+	-- L'outil tenu garde sa place dans la séquence : le poser (détruit) ou le ranger laisse un trou à cet endroit
+	local sequence = table.clone(ordered)
+	if held and heldKey and not removed[held] then
+		local at = table.find(state.sequence, held) or #sequence + 1
+		table.insert(sequence, math.min(at, #sequence + 1), held)
+	end
+	state.sequence = sequence
 	-- La barre du client ne voit pas un retrait suivi d'une remise dans la même frame (mesuré en Studio : ordre
 	-- inchangé) : les outils reviennent après REORDER_GAP, et une synchronisation demandée entre-temps attend
 	state.busy = true
