@@ -25,8 +25,6 @@ type Mover = {
 	lit: boolean?, -- état affiché des pièces `power`
 }
 
-local POWER_OFF = Color3.fromRGB(55, 60, 70)
-
 local movers: { [Model]: Mover } = {}
 
 -- Cette méthode permet de retenir un modèle mobile (repos, mouvement lu dans ses attributs) lorsqu'il arrive chez le
@@ -43,7 +41,6 @@ local function track(model: Instance)
 	local power = {}
 	for _, part in model:GetDescendants() do
 		if part:IsA("BasePart") and part.Name == Traps.POWER_PART then
-			part:SetAttribute("OnColor", part.Color)
 			table.insert(power, part)
 		end
 	end
@@ -71,9 +68,9 @@ local function setPower(mover: Mover, lit: boolean)
 	end
 	mover.lit = lit
 	for _, part in mover.power do
-		part.Material = if lit then Enum.Material.Neon else Enum.Material.Metal
-		local on = part:GetAttribute("OnColor")
-		part.Color = if lit and typeof(on) == "Color3" then on else POWER_OFF
+		part.Material = if lit then Enum.Material.Neon else Enum.Material.Metal -- éteinte : état construit par le serveur
+		local on = part:GetAttribute("PowerColor")
+		part.Color = if lit and typeof(on) == "Color3" then on else Traps.POWER_OFF
 		for _, emitter in part:GetChildren() do
 			if emitter:IsA("ParticleEmitter") then
 				emitter.Enabled = lit

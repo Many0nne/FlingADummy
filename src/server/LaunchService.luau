@@ -68,6 +68,7 @@ type Flight = {
 	worstImpact: { kind: string, dv: number, speed: number }?,
 	impacts: { Impact },
 	traps: { [number]: boolean }, -- pièges déjà déclenchés par ce vol (site de TrackPlan.TrapBox, toutes colonnes)
+	trapMisses: { [number]: boolean }, -- pièges traversés hors phase (trace Studio, une fois par vol et par piège)
 	lastTrap: { kind: string, at: number }?, -- dernier piège déclenché : cause des os cassés juste après
 }
 
@@ -152,6 +153,7 @@ local function startFlight(owner: Player?, key: any, slot: Slot, power: number, 
 		worstImpact = nil,
 		impacts = {},
 		traps = {},
+		trapMisses = {},
 		lastTrap = nil,
 	}
 	return dummy, origin, speed
@@ -352,9 +354,25 @@ local function triggerTrap(flight: Flight, box: TrackPlan.TrapBox, position: Vec
 	end
 end
 
+-- Cette méthode permet de savoir si le piège `box` agit à l'instant `now` sur un torse allé de `previous` à `position`
+-- pendant la frame lorsqu'il traverse sa boîte ; le rondin doit toucher le torse en un point du trajet (4 points testés).
+local function trapActs(box: TrackPlan.TrapBox, now: number, previous: Vector3, position: Vector3): boolean
+	local offset = Traps.phaseOffset(box.x, box.z)
+	if box.kind ~= "SwingLog" then
+		return Traps.active(box.kind, now, offset)
+	end
+	local foot = Vector3.new(box.x, 0, box.z)
+	for step = 0, 3 do
+		if Traps.active(box.kind, now, offset, previous:Lerp(position, step / 3) - foot) then
+			return true
+		end
+	end
+	return false
+end
+
 -- Cette méthode permet de déclencher les pièges dont le torse a traversé la boîte entre deux frames lorsqu'il bouge
 -- (passage à grande vitesse compris : le trajet est testé, pas seulement la position) ; un piège hors de sa phase
--- active (presse levée, rondin en haut, diable rentré, aimant éteint : Shared.Traps.active) laisse passer.
+-- active (presse levée, rondin loin du torse, diable rentré, aimant éteint : Shared.Traps.active) laisse passer.
 local function checkTraps(flight: Flight, previous: Vector3, position: Vector3)
 	if os.clock() - flight.startTime <= GameConfig.IMPACT_GRACE_TIME then
 		return
@@ -369,11 +387,11 @@ local function checkTraps(flight: Flight, previous: Vector3, position: Vector3)
 			and Traps.crosses(box.center, box.size, previous, position)
 		then
 			local now = Workspace:GetServerTimeNow()
-			if Traps.active(box.kind, now, Traps.phaseOffset(box.x, box.z)) then
+			if trapActs(box, now, previous, position) then
 				triggerTrap(flight, box, position, now)
-			elseif RunService:IsStudio() and not flight.traps[-box.site] then
+			elseif RunService:IsStudio() and not flight.trapMisses[box.site] then
 				-- Trace de vérification (Studio) : un passage hors phase, une fois par vol et par piège
-				flight.traps[-box.site] = true
+				flight.trapMisses[box.site] = true
 				print(
 					string.format(
 						"[Trap] %s colonne %d à %.0f m, phase %s : hors phase, rien",

@@ -153,15 +153,15 @@ end
 
 -- Cette méthode permet de monter un rondin qui balance entre deux troncs (poutre, cordes, rondin rayé) au-dessus de la
 -- boîte lorsque la piste est construite.
-builders.SwingLog = function(model, at, box)
-	local top = box.size.Y + 3
+builders.SwingLog = function(model, at)
+	local top = Traps.SWING_PIVOT
 	local bark = rgb(125, 80, 40)
 	for _, side in { -1, 1 } do
 		put(model, at, Vector3.new(2, top, 2), Vector3.new(side * 6.5, top / 2, 0), bark)
 	end
 	put(model, at, Vector3.new(15, 1.6, 1.6), Vector3.new(0, top, 0), rgb(150, 95, 50))
 	-- Rondin suspendu : balance dans l'axe de la piste, entre les troncs (qu'il ne traverse pas) ; il ne frappe qu'en
-	-- passant en bas et pousse le mannequin dans le sens où il va (Shared.Traps.swingReach / swingPush)
+	-- passant en bas et pousse le mannequin dans le sens où il va (Shared.Traps.swingHits / swingPush)
 	local swing = moving(
 		model,
 		at * CFrame.new(0, top, 0),
@@ -282,9 +282,13 @@ builders.Magnet = function(model, at, box)
 	put(magnet, at, Vector3.new(0.3, cableLength, 0.3), Vector3.new(-2.4, top - cableLength / 2, 0), BLACK)
 	local bottom = top - cableLength
 	put(magnet, at, Vector3.new(6, 1.4, 6), Vector3.new(-2.4, bottom - 0.7, 0), RED)
-	-- Plaque : allumée (néon, étincelles) par chaque client pendant la phase active seulement (Client.TrapMotion)
-	local plate = glow(magnet, at, Vector3.new(6.2, 0.4, 6.2), Vector3.new(-2.4, bottom - 1.5, 0), rgb(120, 220, 255))
+	-- Plaque : éteinte au départ (de loin, hors de portée de l'animation), allumée à `PowerColor` (néon, étincelles) par
+	-- chaque client pendant la phase active seulement (Client.TrapMotion)
+	local plate = put(magnet, at, Vector3.new(6.2, 0.4, 6.2), Vector3.new(-2.4, bottom - 1.5, 0), Traps.POWER_OFF)
 	plate.Name = Traps.POWER_PART
+	plate.Material = Enum.Material.Metal -- même état que l'extinction côté client
+	plate.MaterialVariant = ""
+	plate:SetAttribute("PowerColor", rgb(120, 220, 255))
 	particles(plate, {
 		Texture = "rbxasset://textures/particles/sparkles_main.dds",
 		Color = ColorSequence.new(rgb(150, 235, 255)),
@@ -497,6 +501,10 @@ function TrapProps.build(box: TrapBox, parent: Instance)
 		if CollectionService:HasTag(child, Traps.MOTION_TAG) then
 			child:SetAttribute("Trap", box.kind)
 			child:SetAttribute("Phase", Traps.phaseOffset(box.x, box.z))
+			local cycle = Traps.CYCLES[box.kind]
+			if cycle then
+				child:SetAttribute("Period", cycle.period) -- l'animation bat au rythme où le serveur décide
+			end
 		end
 	end
 	model.Parent = parent

@@ -226,8 +226,8 @@ cassés dans les 0,8 s qui suivent). Chaque client joue son
 son, sa gerbe de particules et son popup (« BOING! ») ; les pièces mobiles (pales, rondin, presse, diable, vague) sont
 animées par chaque client (`Client.TrapMotion`) sur l'horloge du serveur, avec la phase que le serveur prend pour
 décider si le piège agit (`Traps.CYCLES`, `Traps.active`, #79) : la presse n'écrase que pendant sa descente, le diable
-n'éjecte que sorti, l'aimant n'arrache que plaque allumée (néon et étincelles), le rondin ne frappe qu'en passant en bas
-de son balancement et pousse le mannequin dans l'axe de la piste, dans le sens où il va (vers l'avant ou en arrière).
+n'éjecte que sorti, l'aimant n'arrache que plaque allumée (néon et étincelles), le rondin ne frappe que le torse qu'il
+touche, en passant en bas de son balancement, et pousse le mannequin dans l'axe de la piste, dans le sens où il va (vers l'avant ou en arrière).
 Hors de cette phase, le mannequin passe sans rien. L'anneau propulseur est un cerceau néon en haut de la colonne, sur la
 ligne de vol des vitres, avec un pad au sol ; entre les deux, un halo et des étincelles.
 

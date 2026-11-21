@@ -104,7 +104,8 @@ return function(T, Loader)
 		end)
 	end)
 
-	-- Phase de l'animation (Traps.motion, comme Client.TrapMotion) du piège `kind` à la phase de cycle `phase`
+	-- Cette méthode permet de donner la position Y de la pièce animée du piège `kind` (Traps.motion, comme Client.TrapMotion)
+	-- à la phase de cycle `phase` lorsque l'on compare l'animation à la fenêtre active.
 	local function animated(kind, motion, phase, amplitude)
 		local period = Traps.CYCLES[kind].period
 		return Traps.motion(motion, phase * period, Vector3.yAxis, amplitude, period).Position.Y
@@ -180,6 +181,26 @@ return function(T, Loader)
 				end
 			end
 			T.expect(hits > 20 and hits < 100, "partie active : " .. hits .. " / 200")
+		end)
+
+		T.it("le rondin ne frappe que le torse qu'il touche, à la position que montre l'animation", function()
+			local period = Traps.CYCLES.SwingLog.period
+			-- Centre d'après l'animation : rotation autour de X du pivot (SWING_PIVOT du sol), bras de SWING_ARM
+			for phase = 0, 0.995, 0.005 do
+				local swing = Traps.motion("Swing", phase * period, Vector3.xAxis, Traps.SWING_AMPLITUDE, period)
+				local center = Vector3.new(0, Traps.SWING_PIVOT, 0) + swing * Vector3.new(0, -Traps.SWING_ARM, 0)
+				T.expect(
+					(Traps.swingCenter(phase) - center).Magnitude < 1e-3, -- Vector3 en float32
+					string.format("phase %.3f : centre", phase)
+				)
+				local hit = Traps.active("SwingLog", phase * period, 0, center)
+				T.expectEqual(hit, Traps.swingReach(phase))
+			end
+			local low = Traps.swingCenter(0.5)
+			T.expectNear(low.Y, Traps.SWING_PIVOT - Traps.SWING_ARM, 1e-4)
+			T.expect(Traps.active("SwingLog", 0.5 * period, 0, low + Vector3.new(5, 2, 1)), "torse contre le rondin")
+			T.expect(not Traps.active("SwingLog", 0.5 * period, 0, low + Vector3.new(0, 9, 0)), "torse au-dessus")
+			T.expect(not Traps.active("SwingLog", 0.5 * period, 0, low + Vector3.new(0, 0, 5)), "torse devant")
 		end)
 
 		T.it("le rondin pousse dans le sens où il balance, à pleine force au plus bas", function()
