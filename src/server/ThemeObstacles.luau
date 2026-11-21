@@ -129,12 +129,13 @@ local builders: { [string]: (kit: Kit, z: number, zone: Zone) -> () } = {}
 
 -- Prairie -----------------------------------------------------------------------------------------------------------
 
--- Cette méthode permet d'empiler une tour de caisses (2 × 2, 4 étages) dans chaque colonne lorsque le site est construit.
+-- Cette méthode permet d'empiler une tour de caisses (2 × 2, 3 étages : un lancer de débutant passe juste au-dessus)
+-- dans chaque colonne lorsque le site est construit.
 builders.Crates = function(kit, z)
 	local size = 3.6
 	local colors = { rgb(235, 150, 55), rgb(210, 120, 45) }
 	eachColumn(kit, function(add, x)
-		for level = 0, 3 do
+		for level = 0, 2 do
 			for i = 0, 1 do
 				for j = 0, 1 do
 					local position = Vector3.new(x + (i - 0.5) * size, size / 2 + level * size, z + (j - 0.5) * size)
@@ -159,13 +160,13 @@ builders.Sign = function(kit, z)
 	end)
 end
 
--- Cette méthode permet d'empiler des bottes de foin en pyramide (3, 2, 1) dans chaque colonne lorsque le site est
+-- Cette méthode permet d'empiler des bottes de foin en pyramide basse (3, 2) dans chaque colonne lorsque le site est
 -- construit.
 builders.HayBales = function(kit, z)
 	local size = Vector3.new(3.9, 3, 4.6)
 	local colors = { rgb(240, 200, 70), rgb(215, 170, 50) }
 	eachColumn(kit, function(add, x)
-		for row = 0, 2 do
+		for row = 0, 1 do
 			for i = 0, 2 - row do
 				local position =
 					Vector3.new(x + (i - (2 - row) / 2) * (size.X + GAP), size.Y / 2 + row * (size.Y + GAP), z)
@@ -179,29 +180,29 @@ end
 
 -- Cette méthode permet de garer un tracteur rouge en blocs (grandes roues arrière, petites roues et moteur à l'avant,
 -- châssis, capot, cabine jaune, pot d'échappement) en travers de chaque colonne lorsque le site est construit ; chaque
--- étage repose sur le précédent.
+-- étage repose sur le précédent. Léger (début de piste) : il ne stoppe pas net un lancer de débutant.
 builders.Tractor = function(kit, z)
 	local red, dark = rgb(225, 50, 40), rgb(60, 60, 65)
 	eachColumn(kit, function(add, x)
-		block(add, "Wheel", Vector3.new(3.6, 4.4, 5.6), Vector3.new(x + 2.4, 2.2, z), BLACK, HEAVY, "Brick")
-		block(add, "Wheel", Vector3.new(2.4, 2.4, 4.6), Vector3.new(x - 3.2, 1.2, z), BLACK, HEAVY, "Brick")
-		block(add, "Engine", Vector3.new(3.4, 2, 3), Vector3.new(x - 3.2, 2.4 + GAP + 1, z), dark, HEAVY, "Brick")
+		block(add, "Wheel", Vector3.new(3.6, 4.4, 5.6), Vector3.new(x + 2.4, 2.2, z), BLACK, LIGHT, "Brick")
+		block(add, "Wheel", Vector3.new(2.4, 2.4, 4.6), Vector3.new(x - 3.2, 1.2, z), BLACK, LIGHT, "Brick")
+		block(add, "Engine", Vector3.new(3.4, 2, 3), Vector3.new(x - 3.2, 2.4 + GAP + 1, z), dark, LIGHT, "Brick")
 		local deck = 4.4 + GAP -- dessus des roues arrière et du moteur
-		block(add, "Chassis", Vector3.new(10, 0.8, 3.6), Vector3.new(x - 0.4, deck + 0.4, z), red, HEAVY, "Brick")
+		block(add, "Chassis", Vector3.new(10, 0.8, 3.6), Vector3.new(x - 0.4, deck + 0.4, z), red, LIGHT, "Brick")
 		local floor = deck + 0.8 + GAP
-		block(add, "Hood", Vector3.new(4.4, 1.6, 3), Vector3.new(x - 2.8, floor + 0.8, z), red, HEAVY, "Brick")
-		block(add, "Cabin", Vector3.new(3.6, 3.4, 3.4), Vector3.new(x + 2.4, floor + 1.7, z), YELLOW, HEAVY, "Brick")
+		block(add, "Hood", Vector3.new(4.4, 1.6, 3), Vector3.new(x - 2.8, floor + 0.8, z), red, LIGHT, "Brick")
+		block(add, "Cabin", Vector3.new(3.6, 3.4, 3.4), Vector3.new(x + 2.4, floor + 1.7, z), YELLOW, LIGHT, "Brick")
 		block(
 			add,
 			"Roof",
 			Vector3.new(4.2, 0.6, 4),
 			Vector3.new(x + 2.4, floor + 3.4 + GAP + 0.3, z),
 			red,
-			HEAVY,
+			LIGHT,
 			"Brick"
 		)
 		local exhaust = Vector3.new(x - 3.6, floor + 1.6 + GAP + 1.2, z + 0.9)
-		block(add, "Exhaust", Vector3.new(0.6, 2.4, 0.6), exhaust, dark, HEAVY, "Brick")
+		block(add, "Exhaust", Vector3.new(0.6, 2.4, 0.6), exhaust, dark, LIGHT, "Brick")
 	end)
 end
 
