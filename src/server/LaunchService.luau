@@ -11,6 +11,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage.Shared
 local Damage = require(Shared.Damage)
 local Economy = require(Shared.Economy)
+local FlightArc = require(Shared.FlightArc)
 local GameConfig = require(Shared.GameConfig)
 local Gauge = require(Shared.Gauge)
 local Rebirth = require(Shared.Rebirth)
@@ -53,6 +54,13 @@ type Flight = {
 	thrown: ThrowDummies.Dummy, -- mannequin à lancer équipé au départ : chance, os, portance, poussée
 	rebirth: number, -- multiplicateur de CHANCE des renaissances du lanceur au départ (Shared.Rebirth.luck)
 	forward: Vector3, -- direction du lancer (poussée du réacteur)
+	flat: Vector3, -- direction de la piste à plat (trajectoire, frein au sol)
+	origin: Vector3, -- point de départ du mannequin
+	arc: FlightArc.Plan, -- plafond, fin de la croisière, distance au premier contact (#113)
+	phase: FlightArc.Phase, -- montée, croisière, vol libre ou au sol
+	apex: number, -- plus haut point du torse (trace Studio)
+	landedAt: number?, -- distance au premier contact au sol (trace Studio : glissade)
+	trapped: boolean, -- un piège l'a projeté : plus de plafond
 	announce: any?, -- annonce du tirage (Legendary et plus), envoyée à tous quand le gagnant a vu sa révélation
 	dummy: Model,
 	torso: BasePart,
@@ -120,6 +128,9 @@ local function startFlight(
 	local speed = Economy.launchSpeed(power) * Gauge.launchFactor(gauge)
 	local dir = slot.direction
 	local origin = throwOrigin(owner, slot)
+	local flatDir = Vector3.new(dir.X, 0, dir.Z)
+	local flat = if flatDir.Magnitude > 1e-3 then flatDir.Unit else Vector3.zAxis
+	local arc = FlightArc.plan(speed * flatDir.Magnitude, speed * dir.Y, origin.Y, Workspace.Gravity)
 	local thrown = ThrowDummies.get(thrownIndex)
 	local dummy = DummyFactory.build(ThrowDummies.variant(thrownIndex) :: any, thrown.physics)
 	-- Tête la première : l'axe vertical du mannequin suit la direction du lancer
@@ -159,6 +170,13 @@ local function startFlight(
 		thrown = thrown,
 		rebirth = rebirth,
 		forward = dir,
+		flat = flat,
+		origin = origin,
+		arc = arc,
+		phase = FlightArc.startPhase(arc),
+		apex = origin.Y,
+		landedAt = nil,
+		trapped = false,
 		dummy = dummy,
 		torso = torso,
 		parts = parts,
@@ -320,6 +338,11 @@ end
 local function triggerTrap(flight: Flight, box: TrackPlan.TrapBox, position: Vector3, now: number)
 	flight.traps[box.site] = true
 	flight.lastTrap = { kind = box.kind, at = os.clock() }
+	-- Le piège rend le vol libre : son rebond peut passer le plafond (#113)
+	flight.trapped = true
+	if flight.phase == "Rise" or flight.phase == "Cruise" then
+		flight.phase = "Free"
+	end
 	local def = Traps.KINDS[box.kind]
 	local before = flight.torso.AssemblyLinearVelocity
 	local after = Traps.react(box.kind, before, Traps.push(box.kind, now, Traps.phaseOffset(box.x, box.z)))
@@ -564,7 +587,8 @@ local function finish(flight: Flight, elapsed: number)
 	if RunService:IsStudio() then
 		print(
 			string.format(
-				"[Launch] %s dummy=%s rebirth=x%g distance=%d zone=%d bones=%d smashed=%d chance=%.2f prize=%s gauge=%.2f time=%.1f | %s",
+				"[Launch] %s dummy=%s rebirth=x%g distance=%d zone=%d bones=%d smashed=%d chance=%.2f prize=%s gauge=%.2f time=%.1f | %s"
+					.. " | apex=%d landed=%s slide=%s planned=%d",
 				if player then player.Name else tostring(flight.key),
 				flight.thrown.id,
 				flight.rebirth,
@@ -576,7 +600,11 @@ local function finish(flight: Flight, elapsed: number)
 				if result.prize then result.prize.name .. " (1 in " .. result.prize.odds .. ")" else "-",
 				flight.gauge,
 				elapsed,
-				tostring(result.cause)
+				tostring(result.cause),
+				math.floor(flight.apex),
+				if flight.landedAt then tostring(math.floor(flight.landedAt)) else "-",
+				if flight.landedAt then tostring(math.floor(flight.distance - flight.landedAt)) else "-",
+				math.floor(flight.origin.Z + flight.arc.range)
 			)
 		)
 	end
@@ -610,17 +638,37 @@ local function publish(flight: Flight)
 end
 
 -- Cette méthode permet d'appliquer le comportement en vol du mannequin lancé (portance du planeur, poussée du
--- réacteur, rebond du caoutchouc d'après la vitesse du torse `before` de la frame précédente) à toutes ses pièces
+-- réacteur, rebond du caoutchouc d'après la vitesse du torse `before` de la frame précédente) puis la trajectoire
+-- (plafond, croisière, frein au sol : Shared.FlightArc ; `impact` : choc du torse cette frame) à toutes ses pièces
 -- lorsque le vol avance d'une frame ; les vitesses de référence suivent (pas de choc).
-local function applyBehavior(flight: Flight, elapsed: number, dt: number, before: Vector3?)
+local function applyBehavior(flight: Flight, elapsed: number, dt: number, before: Vector3?, impact: boolean)
 	local velocity = flight.torso.AssemblyLinearVelocity
 	local change = ThrowDummies.flightAccel(flight.thrown, velocity, flight.forward, elapsed, Workspace.Gravity) * dt
-	if before and elapsed > GameConfig.IMPACT_GRACE_TIME then
+	local armed = elapsed > GameConfig.IMPACT_GRACE_TIME
+	if before and armed then
 		local bounced = ThrowDummies.bounce(flight.thrown, before, velocity, flight.forward)
 		if bounced then
 			change += bounced - velocity
 		end
 	end
+	local position = flight.torso.Position
+	local phase, control = FlightArc.step(flight.arc, {
+		phase = flight.phase,
+		along = (position - flight.origin):Dot(flight.flat),
+		height = position.Y,
+		velocity = velocity + change,
+		forward = flight.flat,
+		armed = armed,
+		impact = armed and impact,
+		trapped = flight.trapped,
+		dt = dt,
+		gravity = Workspace.Gravity,
+	})
+	if phase == "Landed" and flight.phase ~= "Landed" then
+		flight.landedAt = position.Z
+	end
+	flight.phase = phase
+	change += control
 	if change == Vector3.zero then
 		return
 	end
@@ -647,11 +695,14 @@ local function step(flight: Flight, dt: number)
 	local position = torso.Position
 	local previous = flight.prevPosition
 	local before = flight.prevVelocity[torso] -- vitesse du torse à la frame précédente (rebond du caoutchouc)
+	-- Choc du torse cette frame (avant qu'un piège ne remplace sa vitesse) : fin de la montée ou premier contact
+	local impact = before ~= nil and (torso.AssemblyLinearVelocity - before).Magnitude > FlightArc.IMPACT_DV
 	flight.prevPosition = position
+	flight.apex = math.max(flight.apex, position.Y)
 	checkBones(flight, elapsed)
 	checkTraps(flight, previous, position)
 	flight.distance = math.max(flight.distance, position.Z)
-	applyBehavior(flight, elapsed, dt, before)
+	applyBehavior(flight, elapsed, dt, before, impact)
 	publish(flight)
 	if #flight.impacts > 0 then
 		remotes.Impact:FireAllClients(flight.impacts)
