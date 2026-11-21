@@ -1,6 +1,8 @@
 -- Animation des pièces mobiles des pièges (pales du ventilateur, rondin, presse, diable, vague…) : chaque client fait
 -- bouger lui-même les modèles étiquetés Traps.MOTION_TAG par Server.TrapProps (mouvement : Shared.Traps.motion), et
--- seulement ceux proches de sa caméra. Rien ne se réplique à chaque image.
+-- seulement ceux proches de sa caméra. Rien ne se réplique à chaque image. Horloge et phase sont celles que le serveur
+-- prend pour déclencher le piège (Shared.Traps.active) : la pièce frappe quand elle agit. Les pièces nommées
+-- Traps.POWER_PART (plaque de l'aimant) ne s'allument que pendant la phase active.
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -18,7 +20,12 @@ type Mover = {
 	amplitude: number,
 	period: number,
 	offset: number, -- décalage de phase : deux pièges voisins ne battent pas en même temps
+	kind: string?, -- piège (Shared.Traps.KINDS) de la pièce mobile
+	power: { BasePart }, -- pièces allumées pendant la phase active
+	lit: boolean?, -- état affiché des pièces `power`
 }
+
+local POWER_OFF = Color3.fromRGB(55, 60, 70)
 
 local movers: { [Model]: Mover } = {}
 
@@ -33,6 +40,15 @@ local function track(model: Instance)
 	if typeof(home) ~= "CFrame" or typeof(axis) ~= "Vector3" or axis.Magnitude < 1e-6 then
 		return
 	end
+	local power = {}
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") and part.Name == Traps.POWER_PART then
+			part:SetAttribute("OnColor", part.Color)
+			table.insert(power, part)
+		end
+	end
+	local phase = model:GetAttribute("Phase")
+	local kind = model:GetAttribute("Trap")
 	movers[model] = {
 		model = model,
 		home = home,
@@ -40,8 +56,30 @@ local function track(model: Instance)
 		axis = axis,
 		amplitude = tonumber(model:GetAttribute("Amplitude")) or 0,
 		period = math.max(tonumber(model:GetAttribute("Period")) or 1, 0.05),
-		offset = Traps.phaseOffset(home.Position.X, home.Position.Z),
+		offset = if type(phase) == "number" then phase else Traps.phaseOffset(home.Position.X, home.Position.Z),
+		kind = if type(kind) == "string" then kind else nil,
+		power = power,
+		lit = nil,
 	}
+end
+
+-- Cette méthode permet d'allumer ou d'éteindre les pièces `power` d'une pièce mobile (néon et étincelles, ou métal
+-- sombre) lorsque son piège entre dans sa phase active ou en sort.
+local function setPower(mover: Mover, lit: boolean)
+	if mover.lit == lit then
+		return
+	end
+	mover.lit = lit
+	for _, part in mover.power do
+		part.Material = if lit then Enum.Material.Neon else Enum.Material.Metal
+		local on = part:GetAttribute("OnColor")
+		part.Color = if lit and typeof(on) == "Color3" then on else POWER_OFF
+		for _, emitter in part:GetChildren() do
+			if emitter:IsA("ParticleEmitter") then
+				emitter.Enabled = lit
+			end
+		end
+	end
 end
 
 -- Cette méthode permet d'avancer d'une image les pièces mobiles proches de la caméra lorsque le rendu tourne.
@@ -61,6 +99,9 @@ local function step()
 		end
 		local t = now + mover.offset * mover.period
 		model:PivotTo(mover.home * Traps.motion(mover.motion, t, mover.axis, mover.amplitude, mover.period))
+		if mover.kind and #mover.power > 0 then
+			setPower(mover, Traps.active(mover.kind, now, mover.offset))
+		end
 	end
 end
 
