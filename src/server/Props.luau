@@ -4,6 +4,7 @@
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local BaseLook = require(ReplicatedStorage.Shared.BaseLook)
 local CourseLayout = require(ReplicatedStorage.Shared.CourseLayout)
 local Build = require(script.Parent.Build)
 
@@ -480,19 +481,110 @@ function Props.build(kind: string, parent: Instance, at: CFrame, rng: Random, so
 	end
 end
 
--- Cette méthode permet de poser une barrière en blocs de bois (poteaux carrés, deux lisses) de `from` à `to` au sol
--- lorsque l'on clôture une base ou le bord d'une zone.
-function Props.fence(parent: Instance, from: Vector3, to: Vector3)
+-- Cette méthode permet de poser une barrière en blocs au style `style` (bois par défaut) de `from` à `to` lorsque l'on
+-- clôture une base ; `skipStart` : pas de poteau en `from` (coin déjà posé par le tronçon voisin).
+function Props.fence(parent: Instance, from: Vector3, to: Vector3, style: BaseLook.Fence?, skipStart: boolean?)
+	local look = style or BaseLook.FENCES.wood
 	local delta = to - from
 	local length = delta.Magnitude
 	local count = math.max(1, math.floor(length / 6 + 0.5))
 	local frame = CFrame.lookAt(from, to)
-	for i = 0, count do
-		Build.block(parent, Vector3.new(1.4, 4.4, 1.4), frame * CFrame.new(0, 2.2, -length * i / count), WOOD_DARK)
+	local h, w = look.height, look.width
+	for i = if skipStart then 1 else 0, count do
+		local at = frame * CFrame.new(0, 0, -length * i / count)
+		Build.block(parent, Vector3.new(w, h, w), at * CFrame.new(0, h / 2, 0), look.post)
+		if look.cap then
+			-- Chapeau plus large que le poteau (faces décalées : pas de faces coplanaires)
+			local cap = BaseLook.CAP_HEIGHT
+			local side = w + 2 * BaseLook.CAP_OVERHANG
+			Build.block(parent, Vector3.new(side, cap, side), at * CFrame.new(0, h + cap / 2, 0), look.cap)
+		end
 	end
-	for _, y in { 1.6, 3.2 } do
-		Build.block(parent, Vector3.new(0.8, 0.9, length), frame * CFrame.new(0, y, -length / 2), WOOD)
+	-- Lisses en retrait des poteaux, à 36 % et 73 % de leur hauteur
+	for _, y in { h * 0.36, h * 0.73 } do
+		local size = Vector3.new(w * BaseLook.RAIL_RATIO, 0.9, length)
+		Build.block(parent, size, frame * CFrame.new(0, y, -length / 2), look.rail)
 	end
+end
+
+-- Décor des paliers de base (#61, Shared.BaseLook) : lanternes, massifs de fleurs, drapeaux, arche d'entrée
+local LANTERN_FRAME = rgb(60, 45, 35)
+local LANTERN_LIGHT = rgb(255, 210, 90)
+local FLOWER_COLORS =
+	{ rgb(255, 80, 90), rgb(255, 220, 60), rgb(255, 130, 210), rgb(250, 250, 250), rgb(170, 110, 255) }
+local SOIL = rgb(120, 75, 40)
+local GOLD = rgb(255, 200, 40)
+
+-- Cette méthode permet de poser une lanterne (socle et toit sombres, lumière néon chaude) dont le pied est en `top`
+-- lorsque l'on habille le haut d'un poteau de clôture ou d'une arche.
+function Props.lantern(parent: Instance, top: Vector3)
+	Build.block(parent, Vector3.new(1.1, 0.3, 1.1), CFrame.new(top + Vector3.new(0, 0.15, 0)), LANTERN_FRAME, false)
+	local light = Build.decor({
+		Name = "Lantern",
+		Size = Vector3.new(0.8, 1, 0.8),
+		Position = top + Vector3.new(0, 0.8, 0),
+		Color = LANTERN_LIGHT,
+		Material = Enum.Material.Neon,
+		Parent = parent,
+	})
+	light.CastShadow = false
+	Build.block(parent, Vector3.new(1.3, 0.3, 1.3), CFrame.new(top + Vector3.new(0, 1.45, 0)), LANTERN_FRAME, false)
+	Build.block(parent, Vector3.new(0.5, 0.3, 0.5), CFrame.new(top + Vector3.new(0, 1.75, 0)), LANTERN_FRAME, false)
+end
+
+-- Cette méthode permet de poser un massif de fleurs (terre, touffes coiffées de fleurs colorées tous les 3 studs) de
+-- `from` à `to` lorsque l'on habille l'intérieur d'une base.
+function Props.flowerBed(parent: Instance, from: Vector3, to: Vector3)
+	local length = (to - from).Magnitude
+	local frame = CFrame.lookAt(from, to)
+	put(parent, frame, Vector3.new(2.4, 0.5, length), Vector3.new(0, 0.25, -length / 2), SOIL, false)
+	local count = math.max(1, math.floor(length / 3))
+	for i = 1, count do
+		local z = -length * (i - 0.5) / count
+		put(parent, frame, Vector3.new(1.4, 0.6, 1.4), Vector3.new(0, 0.8, z), LEAF_DARK, false)
+		put(
+			parent,
+			frame,
+			Vector3.new(0.9, 0.9, 0.9),
+			Vector3.new(0, 1.55, z),
+			FLOWER_COLORS[(i - 1) % #FLOWER_COLORS + 1],
+			false
+		)
+	end
+end
+
+-- Cette méthode permet de planter un drapeau (mât, fanion à la couleur `color` tourné vers `side`, boule dorée) au sol
+-- en `at` lorsque l'on habille les coins d'une base.
+function Props.flag(parent: Instance, at: Vector3, side: Vector3, color: Color3)
+	local height = 11
+	Build.block(parent, Vector3.new(0.5, height, 0.5), CFrame.new(at + Vector3.new(0, height / 2, 0)), WHITE, false)
+	Build.block(parent, Vector3.new(0.9, 0.9, 0.9), CFrame.new(at + Vector3.new(0, height + 0.45, 0)), GOLD, false)
+	local frame = CFrame.lookAt(at, at + side)
+	-- Fanion décollé du mât (0,1 stud) : pas de faces confondues
+	put(parent, frame, Vector3.new(0.2, 2.6, 3.6), Vector3.new(0, height - 1.6, -2.15), color, false)
+end
+
+-- Cette méthode permet de bâtir une arche d'entrée (piliers `color`, linteau doré) entre deux points au sol lorsque
+-- l'on habille le dernier palier d'une base ; renvoie le dessus du linteau au-dessus de chaque pilier.
+function Props.arch(parent: Instance, a: Vector3, b: Vector3, color: Color3): (Vector3, Vector3)
+	local height = 10
+	local frame = CFrame.lookAt(a, b)
+	local span = (b - a).Magnitude
+	for _, z in { 0, -span } do
+		put(parent, frame, Vector3.new(2.6, height, 2.6), Vector3.new(0, height / 2, z), color, true)
+	end
+	put(parent, frame, Vector3.new(2.2, 1.6, span + 3), Vector3.new(0, height + 0.8, -span / 2), GOLD, true)
+	put(
+		parent,
+		frame,
+		Vector3.new(1.6, 1.6, 1.6),
+		Vector3.new(0, height + 2.6, -span / 2),
+		GOLD,
+		false,
+		Vector3.new(0, 0, 45)
+	)
+	local lift = Vector3.new(0, height + 1.6, 0)
+	return a + lift, b + lift
 end
 
 -- Stands du hub (#68), calés sur les stands de 01 et 09 : échoppe en bois à auvent rayé, comptoir garni, marchand

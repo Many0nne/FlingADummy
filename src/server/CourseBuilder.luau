@@ -7,6 +7,7 @@ local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local BaseLook = require(ReplicatedStorage.Shared.BaseLook)
 local Collection = require(ReplicatedStorage.Shared.Collection)
 local CourseLayout = require(ReplicatedStorage.Shared.CourseLayout)
 local Drips = require(ReplicatedStorage.Shared.Drips)
@@ -53,17 +54,43 @@ local COLORS = {
 	metal = rgb(70, 72, 80),
 }
 
+local PLOT_TOP = 0.3 -- épaisseur du terrain d'une base (dessus au-dessus de la pelouse)
+local GATE_WIDTH = 10 -- entrée de la base, côté hub
+local BED_INSET = 2.2 -- du bord de la base à l'axe d'un massif de fleurs
+local BED_END = 5 -- massifs arrêtés à cette distance des clôtures avant et arrière
+local FLAG_INSET = 2.5 -- drapeaux plantés à l'intérieur des coins
+local LABEL_HEIGHT = 24 -- texte flottant de la base, au-dessus de son centre (au-dessus des plus grands mannequins posés)
+local LABEL_SIZE = Vector2.new(14, 8) -- taille du texte flottant en studs (plus une marge en pixels : lisible de loin)
+local LABEL_DISTANCE = 600 -- distance d'affichage du texte flottant (tout le hub et la zone de lancer)
+local LABEL_GREEN = Color3.fromRGB(80, 215, 70) -- revenu (vert du HUD)
+local LABEL_CYAN = Color3.fromRGB(90, 205, 255) -- Throw Power (cyan du HUD)
+
 -- Pad d'achat de présentoir devant la base (panneau « 6 > 7 » et prix, mis à jour par Server.BaseService)
 export type Pad = { title: TextLabel, price: TextLabel, prompt: ProximityPrompt }
 
+-- Texte flottant au-dessus de la base (#91), rempli par Server.BaseService (Shared.BaseLook.label)
+export type BaseLabel = { avatar: ImageLabel, title: TextLabel, income: TextLabel, power: TextLabel }
+
 export type Base = {
 	model: Model,
-	sign: TextLabel,
-	income: TextLabel, -- revenu de la base, au-dessus du panneau
+	plot: BasePart, -- terrain, teinté au palier
+	look: Folder, -- clôture et décor du palier visuel (Shared.BaseLook), refaits à chaque palier
+	tier: number, -- palier visuel affiché
+	label: BaseLabel,
+	burst: BasePart, -- confettis d'achat de présentoir (CourseBuilder.celebrate)
 	displays: { BasePart }, -- dessus des DISPLAY_MAX présentoirs (invite « Place » dedans), grisés tant que pas achetés
 	pedestals: { BasePart }, -- socles des présentoirs
 	facing: number, -- côté de l'entrée (±1 sur X) : les mannequins posés regardent par là
 	pad: Pad,
+}
+
+-- Appareil d'entraînement d'une place (#92) : habillé au palier de Training Gear de son propriétaire
+export type Trainer = {
+	model: Model,
+	look: Model, -- podium et râtelier, refaits à chaque palier
+	floor: CFrame, -- centre du podium au sol, -Z = face de l'avatar
+	tier: number, -- palier de Training Gear affiché
+	burst: BasePart, -- confettis d'achat de Training Gear (CourseBuilder.celebrate)
 }
 
 export type Slot = {
@@ -72,6 +99,7 @@ export type Slot = {
 	launchPoint: Vector3, -- point de la bande, au sol, d'où partent les mannequins de test de la place (Studio)
 	station: CFrame, -- position de l'avatar qui s'entraîne (sur le podium, face au centre du hub)
 	prompt: ProximityPrompt, -- « Lift » sur l'appareil d'entraînement, devant la base
+	trainer: Trainer, -- appareil d'entraînement, habillé par Server.TrainingService
 	base: Base, -- présentoirs, remplis par Server.BaseService
 	direction: Vector3,
 	spawn: CFrame, -- réapparition et retour après un lancer : dans le hub, juste derrière la bande, face à la piste
@@ -82,7 +110,8 @@ export type Course = { slots: { Slot }, dummies: Folder }
 local CourseBuilder = {}
 
 local rng = Random.new(SEED)
-local rackPlacers: { () -> () } = {} -- reposent les mannequins des râteliers quand les gabarits maillés arrivent
+-- Par place : repose les mannequins de son râtelier quand les gabarits maillés arrivent
+local rackPlacers: { [number]: () -> () } = {}
 
 -- Cette méthode permet de désigner une pièce comme cible d'objectif du HUD (réservée au joueur de la place `slot`)
 -- lorsque l'on construit son appareil d'entraînement.
@@ -437,19 +466,119 @@ local function rackDummy(parent: Instance, gear: Training.Gear, hook: CFrame)
 	model.Parent = parent
 end
 
--- Cette méthode permet de monter le podium de l'appareil (socle en pierre, bordure à la couleur de la place, planches,
--- coins boulonnés, marches, pastille jaune, disques de fonte) lorsque l'appareil est construit.
-local function buildPodium(model: Model, floor: CFrame, color: Color3)
+-- Cette méthode permet de poser une pièce lumineuse (néon, sans tenons ni collision) lorsque l'on habille l'appareil
+-- d'entraînement des derniers paliers ou la base (lanternes).
+local function glow(parent: Instance, size: Vector3, cframe: CFrame, color: Color3): Part
+	return Build.decor({
+		Name = "Glow",
+		Size = size,
+		CFrame = cframe,
+		Color = color,
+		Material = Enum.Material.Neon,
+		Parent = parent,
+	})
+end
+
+-- Cette méthode permet de poser un émetteur d'étincelles dorées ou colorées dans le volume d'une pièce invisible
+-- lorsque l'on habille un palier brillant (base dorée, appareil Diamond et plus).
+local function sparkles(parent: Instance, size: Vector3, cframe: CFrame, color: Color3, rate: number)
+	local zone = Build.decor({ Name = "Sparkles", Size = size, CFrame = cframe, Transparency = 1, Parent = parent })
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	emitter.Shape = Enum.ParticleEmitterShape.Box
+	emitter.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+	emitter.Color = ColorSequence.new(color, Color3.new(1, 1, 1))
+	emitter.LightEmission = 1
+	emitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.3, 0.7),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	emitter.Lifetime = NumberRange.new(0.8, 1.4)
+	emitter.Speed = NumberRange.new(0.5, 1.5)
+	emitter.Rate = rate
+	emitter.Parent = zone
+end
+
+-- Cette méthode permet de poser l'émetteur de confettis joué par chaque client (Client.HubShops) quand le serveur
+-- incrémente l'attribut `Upgrades` (CourseBuilder.celebrate) lorsque l'on construit une base ou un appareil.
+local function upgradeBurst(parent: Instance, position: Vector3, color: Color3): Part
+	local burst = Build.decor({
+		Name = "UpgradeBurst",
+		Size = Vector3.new(4, 1, 4),
+		Position = position,
+		Transparency = 1,
+		Parent = parent,
+	})
+	local confetti = Instance.new("ParticleEmitter")
+	confetti.Name = "Confetti"
+	confetti.Enabled = false
+	confetti.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	confetti.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, color),
+		ColorSequenceKeypoint.new(0.5, rgb(255, 220, 60)),
+		ColorSequenceKeypoint.new(1, rgb(255, 255, 255)),
+	})
+	confetti.Size = NumberSequence.new(1.2, 0.5)
+	confetti.Lifetime = NumberRange.new(1, 1.8)
+	confetti.Speed = NumberRange.new(25, 45)
+	confetti.SpreadAngle = Vector2.new(60, 60)
+	confetti.EmissionDirection = Enum.NormalId.Top
+	confetti.Acceleration = Vector3.new(0, -40, 0)
+	confetti.Drag = 1.5
+	confetti.Rotation = NumberRange.new(0, 360)
+	confetti.RotSpeed = NumberRange.new(-300, 300)
+	confetti:SetAttribute("Count", 80)
+	confetti.Parent = burst
+	local stars = Instance.new("ParticleEmitter")
+	stars.Name = "Stars"
+	stars.Enabled = false
+	stars.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	stars.Color = ColorSequence.new(rgb(255, 240, 120))
+	stars.LightEmission = 1
+	stars.Size = NumberSequence.new(2.4, 0)
+	stars.Lifetime = NumberRange.new(0.5, 0.9)
+	stars.Speed = NumberRange.new(18, 30)
+	stars.SpreadAngle = Vector2.new(180, 180)
+	stars.Drag = 3
+	stars:SetAttribute("Count", 30)
+	stars.Parent = burst
+	burst:SetAttribute("Upgrades", 0)
+	CollectionService:AddTag(burst, CourseLayout.UPGRADE_BURST_TAG)
+	return burst
+end
+
+-- Cette méthode permet de faire jaillir les confettis d'une base ou d'un appareil chez tous les clients lorsque son
+-- propriétaire achète un présentoir ou un Training Gear.
+function CourseBuilder.celebrate(burst: BasePart)
+	burst:SetAttribute("Upgrades", ((burst:GetAttribute("Upgrades") :: number?) or 0) + 1)
+end
+
+-- Cette méthode permet de monter le podium de l'appareil (socle, bordure de la place, planches et marches aux couleurs
+-- du Training Gear, liseré néon des derniers paliers) lorsque l'appareil est habillé.
+local function buildPodium(model: Model, floor: CFrame, color: Color3, look: BaseLook.StationLook)
 	local size = CourseLayout.STATION_SIZE
 	local h = STATION_HEIGHT
 	fine(model, Vector3.new(size + 0.8, 0.5, size + 0.8), floor * CFrame.new(0, 0.25, 0), color)
 	fine(model, Vector3.new(size, h - 0.9, size), floor * CFrame.new(0, 0.5 + (h - 0.9) / 2, 0), COLORS.stone)
+	if look.glow then
+		-- Liseré néon sur la bordure, autour du socle (à 0,05 stud de ses faces : pas de faces coplanaires)
+		local ring = size / 2 + 0.2
+		glow(model, Vector3.new(size + 0.7, 0.2, 0.3), floor * CFrame.new(0, 0.6, ring), look.glow)
+		-- Devant : interrompu par les marches (4 studs de large)
+		local piece = size / 2 + 0.35 - 2.05
+		for _, side in { -1, 1 } do
+			local x = side * (2.05 + piece / 2)
+			glow(model, Vector3.new(piece, 0.2, 0.3), floor * CFrame.new(x, 0.6, -ring), look.glow)
+			glow(model, Vector3.new(0.3, 0.2, size + 0.1), floor * CFrame.new(side * ring, 0.6, 0), look.glow)
+		end
+	end
 	-- Planches du dessus, teintes alternées, dans le sens de la face
 	local planks = 4
 	local width = (size - 0.4) / planks
 	for i = 1, planks do
 		local x = -(size - 0.4) / 2 + (i - 0.5) * width
-		local tint = if i % 2 == 0 then COLORS.wood else COLORS.woodLight
+		local tint = if i % 2 == 0 then look.plank else look.plankAlt
 		fine(model, Vector3.new(width - 0.12, 0.4, size - 0.4), floor * CFrame.new(x, h - 0.2, 0), tint)
 	end
 	for _, corner in { Vector3.new(-1, 0, -1), Vector3.new(1, 0, -1), Vector3.new(-1, 0, 1), Vector3.new(1, 0, 1) } do
@@ -457,8 +586,8 @@ local function buildPodium(model: Model, floor: CFrame, color: Color3)
 		metal(model, { Size = Vector3.new(0.7, 0.25, 0.7), CFrame = floor * CFrame.new(at.X, h + 0.05, at.Z) })
 	end
 	-- Deux marches devant, côté hub
-	fine(model, Vector3.new(4, h * 2 / 3, 1.2), floor * CFrame.new(0, h / 3, -size / 2 - 0.6), COLORS.woodDark)
-	fine(model, Vector3.new(4, h / 3, 1.2), floor * CFrame.new(0, h / 6, -size / 2 - 1.8), COLORS.woodDark)
+	fine(model, Vector3.new(4, h * 2 / 3, 1.2), floor * CFrame.new(0, h / 3, -size / 2 - 0.6), look.postDark)
+	fine(model, Vector3.new(4, h / 3, 1.2), floor * CFrame.new(0, h / 6, -size / 2 - 1.8), look.postDark)
 	local top = floor * CFrame.new(0, h, 0)
 	Build.decor({
 		Name = "TrainPad",
@@ -483,14 +612,21 @@ local function buildPodium(model: Model, floor: CFrame, color: Color3)
 	})
 end
 
--- Cette méthode permet de monter le râtelier derrière l'avatar (montants à sangles de métal et chapeaux en gradins comme
--- la barre de la référence 09, traverse liée de corde, mannequins suspendus) lorsque l'appareil est construit.
-local function buildRack(model: Model, top: CFrame, color: Color3)
+-- Cette méthode permet de monter le râtelier (montants, traverse, mannequins des trois derniers paliers, 1 à 3 au départ) aux
+-- couleurs du Training Gear `tier` lorsque l'appareil de la place `index` est habillé.
+local function buildRack(
+	model: Model,
+	top: CFrame,
+	color: Color3,
+	look: BaseLook.StationLook,
+	tier: number,
+	index: number
+)
 	local z = CourseLayout.STATION_SIZE / 2 - 1.2
 	local postX = 3.9
 	for _, side in { -1, 1 } do
 		local x = side * postX
-		fine(model, Vector3.new(1.6, RACK_HEIGHT, 1.6), top * CFrame.new(x, RACK_HEIGHT / 2, z), COLORS.wood)
+		fine(model, Vector3.new(1.6, RACK_HEIGHT, 1.6), top * CFrame.new(x, RACK_HEIGHT / 2, z), look.post)
 		for _, y in { 1.2, RACK_HEIGHT - 1.6 } do
 			metal(model, { Size = Vector3.new(1.8, 0.35, 1.8), CFrame = top * CFrame.new(x, y, z) })
 		end
@@ -504,16 +640,30 @@ local function buildRack(model: Model, top: CFrame, color: Color3)
 			model,
 			Vector3.new(0.7, 2.6, 0.7),
 			top * CFrame.new(x, 1.1, z + 0.5) * CFrame.Angles(math.rad(-30), 0, 0),
-			COLORS.woodDark
+			look.postDark
 		)
 	end
 	local barY = RACK_HEIGHT - 0.9
-	fine(model, Vector3.new(postX * 2, 0.9, 0.9), top * CFrame.new(0, barY, z), COLORS.woodDark)
+	fine(model, Vector3.new(postX * 2, 0.9, 0.9), top * CFrame.new(0, barY, z), look.postDark)
 	for _, x in { -2.9, 2.9 } do
 		fine(model, Vector3.new(0.45, 1.05, 1.05), top * CFrame.new(x, barY, z), COLORS.rope)
 	end
-	-- Cette méthode permet de suspendre (ou resuspendre) les mannequins des premiers paliers lorsque l'appareil est
-	-- construit puis quand les gabarits maillés arrivent (blocs du gabarit en attendant).
+	if look.glow then
+		-- Néon sous la traverse, plus étroit qu'elle
+		glow(model, Vector3.new(postX * 2 - 1.7, 0.2, 0.5), top * CFrame.new(0, barY - 0.55, z), look.glow)
+	end
+	if look.sparkle then
+		sparkles(
+			model,
+			Vector3.new(postX * 2 + 2, RACK_HEIGHT, 3),
+			top * CFrame.new(0, RACK_HEIGHT / 2, z),
+			look.glow or look.plankAlt,
+			8
+		)
+	end
+	local rack = BaseLook.rackTiers(tier)
+	-- Cette méthode permet de suspendre (ou resuspendre) les mannequins des trois derniers paliers lorsque
+	-- l'appareil est habillé puis quand les gabarits maillés arrivent (blocs du gabarit en attendant).
 	local function placeRack()
 		for _, child in model:GetChildren() do
 			if child.Name == "RackDummy" then
@@ -522,7 +672,7 @@ local function buildRack(model: Model, top: CFrame, color: Color3)
 		end
 		for i, x in { -2.1, 0, 2.1 } do
 			local hookY = barY - 0.45 - RACK_ROPE
-			rackDummy(model, Training.GEARS[i], top * CFrame.new(x, hookY, z))
+			rackDummy(model, Training.GEARS[rack[i]], top * CFrame.new(x, hookY, z))
 		end
 	end
 	for _, x in { -2.1, 0, 2.1 } do
@@ -535,19 +685,49 @@ local function buildRack(model: Model, top: CFrame, color: Color3)
 		})
 	end
 	placeRack()
-	table.insert(rackPlacers, placeRack)
+	rackPlacers[index] = placeRack
+end
+
+-- Cette méthode permet d'habiller l'appareil d'une place au Training Gear `tier` de son propriétaire (podium et
+-- râtelier refaits) lorsqu'il arrive, part ou achète un équipement ; sans effet si l'appareil a déjà ce palier.
+function CourseBuilder.styleStation(slot: Slot, tier: number)
+	local trainer = slot.trainer
+	if trainer.tier == tier then
+		return
+	end
+	local look = BaseLook.station(tier)
+	-- Nouvel habillage posé avant de retirer l'ancien : le podium ne manque jamais sous l'avatar
+	local fresh = Instance.new("Model")
+	fresh.Name = "Look"
+	buildPodium(fresh, trainer.floor, slot.color, look)
+	buildRack(fresh, trainer.floor * CFrame.new(0, STATION_HEIGHT, 0), slot.color, look, tier, slot.index)
+	fresh.Parent = trainer.model
+	trainer.look:Destroy()
+	trainer.look = fresh
+	trainer.tier = tier
 end
 
 -- Cette méthode permet de construire l'appareil d'entraînement d'une place à côté de l'entrée de sa base (podium,
--- râtelier, invite « Lift ») lorsque le hub est construit.
+-- râtelier, invite « Lift », confettis d'achat) lorsque le hub est construit ; habillé au premier palier.
 local function buildStation(parent: Instance, slot: Slot)
 	local center, facing = CourseLayout.stationPosition(slot.index)
 	local floor = CFrame.lookAt(center, center + facing) -- centre du podium au sol, -Z = face de l'avatar
 	local model = Instance.new("Model")
 	model.Name = "Station" .. slot.index
-	buildPodium(model, floor, slot.color)
+	local look = Instance.new("Model")
+	look.Name = "Look"
+	look.Parent = model
 	local top = floor * CFrame.new(0, STATION_HEIGHT, 0)
-	buildRack(model, top, slot.color)
+	-- Confettis au-dessus du râtelier
+	local burstAt = top * CFrame.new(0, RACK_HEIGHT + 1, CourseLayout.STATION_SIZE / 2 - 1.2)
+	slot.trainer = {
+		model = model,
+		look = look,
+		floor = floor,
+		tier = 0,
+		burst = upgradeBurst(model, burstAt.Position, slot.color),
+	}
+	CourseBuilder.styleStation(slot, 1)
 	model.Parent = parent
 	local anchor = Build.decor({
 		Name = "TrainSpot",
@@ -606,43 +786,191 @@ local function buildPad(parent: Instance, slot: Slot): Pad
 	return { title = title, price = price, prompt = prompt }
 end
 
--- Cette méthode permet de construire la base d'une place (terrain clôturé, présentoirs vides, panneau au nom du
--- joueur) lorsque le hub est construit ; les présentoirs attendent les mannequins de collection.
+-- Cette méthode permet de construire le texte flottant d'une base (portrait, nom, revenu, Throw Power ; taille en
+-- studs plus une marge en pixels, lisible de loin) lorsque la base est construite ; rempli par Server.BaseService.
+local function baseLabel(parent: Instance, position: Vector3): BaseLabel
+	local anchor = Build.decor({
+		Name = "BaseLabel",
+		Size = Vector3.one,
+		Position = position,
+		Transparency = 1,
+		Parent = parent,
+	})
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "BaseLabel"
+	gui.Size = UDim2.new(LABEL_SIZE.X, 110, LABEL_SIZE.Y, 70)
+	gui.LightInfluence = 0
+	gui.MaxDistance = LABEL_DISTANCE
+	gui.Parent = anchor
+	local avatar = Instance.new("ImageLabel")
+	avatar.Name = "Avatar"
+	avatar.AnchorPoint = Vector2.new(0.5, 0)
+	avatar.Position = UDim2.fromScale(0.5, 0)
+	avatar.Size = UDim2.fromScale(1, 0.3)
+	avatar.SizeConstraint = Enum.SizeConstraint.RelativeYY
+	avatar.BackgroundColor3 = Color3.new(1, 1, 1)
+	avatar.Image = ""
+	avatar.Visible = false
+	local ratio = Instance.new("UIAspectRatioConstraint")
+	ratio.Parent = avatar
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.5, 0)
+	corner.Parent = avatar
+	local ring = Instance.new("UIStroke")
+	ring.Thickness = 3
+	ring.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	ring.Parent = avatar
+	avatar.Parent = gui
+	-- Cette méthode permet de poser une ligne du texte (hauteur `height` à partir de `y`, couleur) lorsque le texte
+	-- flottant est construit.
+	local function line(name: string, y: number, height: number, color: Color3): TextLabel
+		local label = Instance.new("TextLabel")
+		label.Name = name
+		label.Position = UDim2.fromScale(0, y)
+		label.Size = UDim2.fromScale(1, height)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.FredokaOne
+		label.TextScaled = true
+		label.TextColor3 = color
+		label.Text = ""
+		local stroke = Instance.new("UIStroke")
+		stroke.Thickness = 3
+		stroke.Parent = label
+		label.Parent = gui
+		return label
+	end
+	return {
+		avatar = avatar,
+		title = line("Title", 0.31, 0.25, Color3.new(1, 1, 1)),
+		income = line("Income", 0.56, 0.24, LABEL_GREEN),
+		power = line("Power", 0.8, 0.2, LABEL_CYAN),
+	}
+end
+
+-- Cette méthode permet de poser la clôture d'une base au style `fence` (ouverte côté hub, entrée de 10 studs) dans
+-- `folder` lorsque la base est habillée ; renvoie les deux bouts de l'entrée et les quatre coins, au sol.
+local function baseFence(folder: Instance, slot: Slot, fence: BaseLook.Fence): ({ Vector3 }, { Vector3 })
+	local center = CourseLayout.basePosition(slot.index)
+	local size = CourseLayout.BASE_SIZE
+	local hx, hz = size.X / 2, size.Z / 2
+	local inward = CourseLayout.entranceSide(slot.index)
+	local corners = {
+		center + Vector3.new(-hx, 0, -hz),
+		center + Vector3.new(hx, 0, -hz),
+		center + Vector3.new(hx, 0, hz),
+		center + Vector3.new(-hx, 0, hz),
+	}
+	local gate = {}
+	for i, from in corners do
+		local to = corners[i % 4 + 1]
+		-- Chaque coin n'a qu'un poteau : posé par le tronçon qui y finit
+		if math.abs(from.X - to.X) < 0.01 and math.sign(from.X - center.X) == inward then
+			local mid = (from + to) / 2
+			local dir = (to - from).Unit
+			gate = { mid - dir * GATE_WIDTH / 2, mid + dir * GATE_WIDTH / 2 }
+			Props.fence(folder, from, gate[1], fence, true)
+			Props.fence(folder, gate[2], to, fence)
+		else
+			Props.fence(folder, from, to, fence, true)
+		end
+	end
+	return gate, corners
+end
+
+-- Cette méthode permet d'habiller une base au palier visuel `tier` (Shared.BaseLook : sol, clôture, décor) lorsque son
+-- propriétaire change ou achète un présentoir ; sans effet si la base a déjà ce palier.
+function CourseBuilder.styleBase(slot: Slot, tier: number)
+	local base = slot.base
+	if base.tier == tier then
+		return
+	end
+	local look, fence = BaseLook.base(tier)
+	-- Nouvel habillage posé avant de retirer l'ancien : la clôture ne disparaît jamais
+	local folder = Instance.new("Folder")
+	folder.Name = "Look"
+	local old = base.look
+	base.plot.Color = look.plot or Build.shade(slot.color, 0.6)
+	local center = CourseLayout.basePosition(slot.index)
+	local hx, hz = CourseLayout.BASE_SIZE.X / 2, CourseLayout.BASE_SIZE.Z / 2
+	local inward = CourseLayout.entranceSide(slot.index)
+	local gate, corners = baseFence(folder, slot, fence)
+	local lift = Vector3.new(0, BaseLook.postTop(fence), 0)
+	-- Arche d'entrée : les lanternes de l'entrée montent sur son linteau
+	local gateTops = { gate[1] + lift, gate[2] + lift }
+	if look.arch then
+		local a, b = Props.arch(folder, gate[1], gate[2], slot.color)
+		gateTops = { a, b }
+	end
+	if look.lanterns >= 2 then
+		for _, top in gateTops do
+			Props.lantern(folder, top)
+		end
+	end
+	if look.lanterns >= 6 then
+		for _, corner in corners do
+			Props.lantern(folder, corner + lift)
+		end
+	end
+	local plotTop = center.Y + PLOT_TOP
+	if look.flowers then
+		-- Le long du fond (côté opposé à l'entrée) et de part et d'autre de l'entrée, entre clôture et présentoirs
+		local back = center.X - inward * (hx - BED_INSET)
+		local front = center.X + inward * (hx - BED_INSET)
+		local reach = hz - BED_END
+		Props.flowerBed(
+			folder,
+			Vector3.new(back, plotTop, center.Z - reach),
+			Vector3.new(back, plotTop, center.Z + reach)
+		)
+		for _, side in { -1, 1 } do
+			Props.flowerBed(
+				folder,
+				Vector3.new(front, plotTop, center.Z + side * (GATE_WIDTH / 2 + 1.5)),
+				Vector3.new(front, plotTop, center.Z + side * reach)
+			)
+		end
+	end
+	if look.flags then
+		for _, corner in corners do
+			local inside = Vector3.new(math.sign(center.X - corner.X), 0, math.sign(center.Z - corner.Z))
+			-- Fanion tourné vers l'extérieur de la base, côté entrée ou fond
+			local outward = Vector3.new(-inside.X, 0, 0)
+			Props.flag(folder, Vector3.new(corner.X, plotTop, corner.Z) + inside * FLAG_INSET, outward, slot.color)
+		end
+	end
+	if fence.shine then
+		sparkles(
+			folder,
+			Vector3.new(hx * 2, 8, hz * 2),
+			CFrame.new(center + Vector3.new(0, 6, 0)),
+			rgb(255, 215, 80),
+			14
+		)
+	end
+	folder.Parent = base.model
+	old:Destroy()
+	base.look = folder
+	base.tier = tier
+end
+
+-- Cette méthode permet de construire la base d'une place (terrain, présentoirs vides, texte flottant, confettis
+-- d'achat, habillage du premier palier) lorsque le hub est construit.
 local function buildBase(parent: Instance, slot: Slot)
 	local center = CourseLayout.basePosition(slot.index)
 	local size = CourseLayout.BASE_SIZE
 	local model = Instance.new("Model")
 	model.Name = "Base" .. slot.index
-	Build.decor({
+	local plot = Build.decor({
 		Name = "Plot",
-		Size = Vector3.new(size.X, 0.3, size.Z),
-		Position = center + Vector3.new(0, 0.15, 0),
+		Size = Vector3.new(size.X, PLOT_TOP, size.Z),
+		Position = center + Vector3.new(0, PLOT_TOP / 2, 0),
 		Color = COLORS.plot,
 		Variant = Build.BRICK,
 		Parent = model,
 	})
-	-- Clôture en blocs, ouverte du côté du centre du hub
-	local hx, hz = size.X / 2, size.Z / 2
-	local inward = CourseLayout.entranceSide(slot.index)
-	local corners = {
-		Vector3.new(-hx, 0, -hz),
-		Vector3.new(hx, 0, -hz),
-		Vector3.new(hx, 0, hz),
-		Vector3.new(-hx, 0, hz),
-	}
-	for i, corner in corners do
-		local nextCorner = corners[i % 4 + 1]
-		local from, to = center + corner, center + nextCorner
-		if math.abs(corner.X - nextCorner.X) < 0.01 and math.sign(corner.X) == inward then
-			-- Côté du hub : deux tronçons de part et d'autre d'une entrée de 10 studs
-			local mid = (from + to) / 2
-			local dir = (to - from).Unit
-			Props.fence(model, from, mid - dir * 5)
-			Props.fence(model, mid + dir * 5, to)
-		else
-			Props.fence(model, from, to)
-		end
-	end
+	local look = Instance.new("Folder")
+	look.Name = "Look"
+	look.Parent = model
 	local displays: { BasePart } = {}
 	local pedestals: { BasePart } = {}
 	for index, position in CourseLayout.displayPositions(slot.index) do
@@ -672,27 +1000,21 @@ local function buildBase(parent: Instance, slot: Slot)
 		prompt.Parent = top
 		table.insert(displays, top)
 	end
-	-- Panneau à l'entrée, tourné vers le centre du hub
-	local front = center + Vector3.new(inward * (hx + 3), 0, 0)
-	local facing = CFrame.lookAt(front, front + Vector3.new(inward, 0, 0))
-	for _, side in { -1, 1 } do
-		Build.block(model, Vector3.new(1, 7, 1), facing * CFrame.new(side * 6, 3.5, 0), COLORS.woodDark)
-	end
-	local board = Build.block(model, Vector3.new(14, 3.6, 0.8), facing * CFrame.new(0, 6.5, 0), slot.color)
-	local sign = Build.surfaceText(board, Enum.NormalId.Front, "EMPTY BASE")
-	-- Revenu de la base au-dessus du panneau (« $223/s », comparaison entre joueurs comme les références)
-	local income = Build.billboard(model, (facing * CFrame.new(0, 10, 0)).Position, "", Vector2.new(10, 2.4), 200)
-	income.TextColor3 = Color3.fromRGB(90, 235, 80)
 	model.Parent = parent
 	slot.base = {
 		model = model,
-		sign = sign,
-		income = income,
+		plot = plot,
+		look = look,
+		tier = 0,
+		-- Au-dessus du centre de la base, plus haut que les plus grands mannequins posés (comme les jardins de 09)
+		label = baseLabel(model, center + Vector3.new(0, LABEL_HEIGHT, 0)),
+		burst = upgradeBurst(model, center + Vector3.new(0, 3, 0), slot.color),
 		displays = displays,
 		pedestals = pedestals,
-		facing = inward,
+		facing = CourseLayout.entranceSide(slot.index),
 		pad = buildPad(parent, slot),
 	}
+	CourseBuilder.styleBase(slot, 1)
 end
 
 -- Cette méthode permet de poser l'invite d'un stand du hub (E, sans maintien, 10 studs, marquée `tag` : chaque client
@@ -892,6 +1214,7 @@ local function newSlots(): { Slot }
 			launchPoint = launchPoint,
 			station = CFrame.lookAt(stationPos, stationPos + stationFacing),
 			prompt = nil :: any,
+			trainer = nil :: any,
 			base = nil :: any,
 			direction = direction,
 			spawn = CFrame.lookAt(spawnPos, spawnPos + Vector3.zAxis),
