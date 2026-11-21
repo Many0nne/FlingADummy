@@ -201,6 +201,7 @@ return function(T, Loader)
 			T.expect(Traps.active("SwingLog", 0.5 * period, 0, low + Vector3.new(5, 2, 1)), "torse contre le rondin")
 			T.expect(not Traps.active("SwingLog", 0.5 * period, 0, low + Vector3.new(0, 9, 0)), "torse au-dessus")
 			T.expect(not Traps.active("SwingLog", 0.5 * period, 0, low + Vector3.new(0, 0, 5)), "torse devant")
+			T.expect(Traps.active("SwingLog", 0.5 * period, 0, Vector3.new(0, 0.5, 0)), "mannequin couché qui glisse")
 		end)
 
 		T.it("le rondin pousse dans le sens où il balance, à pleine force au plus bas", function()

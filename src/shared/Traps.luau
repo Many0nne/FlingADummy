@@ -82,7 +82,7 @@ Traps.CYCLES = {
 -- tant que son centre est à moins de SWING_REACH studs du milieu de la boîte, dans l'axe de la piste.
 Traps.SWING_AMPLITUDE = 50
 Traps.SWING_ARM = 15
-Traps.SWING_PIVOT = 20
+Traps.SWING_PIVOT = 17.5 -- au plus bas, le rondin rase le sol (centre à 2,5 studs) : il frappe un mannequin couché
 Traps.SWING_REACH = 5
 Traps.SWING_HIT = 4
 
