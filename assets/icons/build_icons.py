@@ -1,6 +1,6 @@
 # Icones d'interface dessinees en couleur (style des jeux de reference : objet 3D sature, contour noir epais) :
 # boutique (cadeau), index (livre), mannequins (buste du mannequin de crash-test), puissance (biceps), argent (liasse),
-# fleche d'objectif (triangle jaune), musique (double croche violette), raretes (rarity1 a rarity7 : buste du
+# fleche d'objectif (triangle jaune), musique (double croche violette), raretes (rarity1 a rarity11 : buste du
 # mannequin a la couleur de la rarete, icones des mannequins dans la barre d'outils).
 # Rend chaque icone sur fond transparent puis ajoute le contour noir par dilatation de l'alpha.
 # Usage : blender -b --factory-startup --python assets/icons/build_icons.py [-- nom1 nom2]
@@ -240,8 +240,10 @@ def build_music():
     parent_all(objs, (0, 0, math.radians(-10)))
 
 
-# Couleurs des raretes (Shared.Rarity, dans l'ordre) : icones des mannequins dans la barre d'outils (#54)
-RARITY_COLORS = ["#EBEBEB", "#5ADC5A", "#46A0FF", "#BE5AFF", "#FFBE28", "#FF466E", "#6EFFE1"]
+# Couleurs des raretes (Shared.Rarity, dans l'ordre) : icones des mannequins dans la barre d'outils (#54), puis les
+# raretes au-dela de Secret (#94 : Divine, Celestial, Ethereal, Infinity)
+RARITY_COLORS = ["#EBEBEB", "#5ADC5A", "#46A0FF", "#BE5AFF", "#FFBE28", "#FF466E", "#6EFFE1",
+                 "#FFF08C", "#FF8CEB", "#AA8CFF", "#FF6E1E"]
 
 
 def rarity_builder(color):

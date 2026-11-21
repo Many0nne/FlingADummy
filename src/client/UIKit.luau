@@ -14,6 +14,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Assets = require(Shared:WaitForChild("Assets"))
+local DummyShape = require(Shared:WaitForChild("DummyShape"))
 local Sounds = require(Shared:WaitForChild("Sounds"))
 local UIMotion = require(Shared:WaitForChild("UIMotion"))
 
@@ -795,6 +796,7 @@ function UIKit.showModel(viewport: ViewportFrame, model: Model?)
 	local eye = center + Vector3.new(0.45, 0.3, -1).Unit * distance
 	camera.CFrame = CFrame.lookAt(eye, center)
 	viewport.CurrentCamera = camera
+	DummyShape.viewportSafe(model) -- verre et champ de force ne s'y rendent pas (#89)
 	model.Parent = viewport
 end
 

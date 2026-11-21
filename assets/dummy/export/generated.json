@@ -1,0 +1,7442 @@
+{
+  "amber_royal": {
+    "color": [
+      255,
+      175,
+      35
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          255,
+          211,
+          98
+        ],
+        "color2": [
+          255,
+          233,
+          177
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          -2.5999999046325684,
+          -0.25
+        ],
+        "piece": "RightLowerArm",
+        "preset": "glint"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          244,
+          192,
+          131
+        ],
+        "color2": [
+          255,
+          233,
+          177
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1.2999999523162842,
+          0
+        ],
+        "piece": "Head",
+        "preset": "sparkle"
+      }
+    ],
+    "parts": [
+      {
+        "color": [
+          216,
+          135,
+          63
+        ],
+        "material": "Metal",
+        "mesh": "royal_KnightHelm",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          170,
+          88,
+          14
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "royal_HelmSlit",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          223,
+          93,
+          20
+        ],
+        "material": "Fabric",
+        "mesh": "royal_Plume",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          229,
+          131,
+          18
+        ],
+        "material": "Fabric",
+        "mesh": "royal_RoyalCape",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          216,
+          135,
+          63
+        ],
+        "material": "Metal",
+        "mesh": "royal_Sword",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          229,
+          131,
+          18
+        ],
+        "material": "Foil",
+        "mesh": "royal_ShieldRim",
+        "piece": "LeftLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          203,
+          100,
+          65
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "royal_ShieldFace",
+        "piece": "LeftLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          216,
+          135,
+          63
+        ],
+        "material": "Metal",
+        "mesh": "royal_PauldronL",
+        "piece": "LeftUpperArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          216,
+          135,
+          63
+        ],
+        "material": "Metal",
+        "mesh": "royal_PauldronR",
+        "piece": "RightUpperArm",
+        "transparency": 0
+      }
+    ]
+  },
+  "angelic_ghost": {
+    "color": [
+      230,
+      225,
+      250
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          240,
+          251,
+          224
+        ],
+        "color2": [
+          255,
+          253,
+          237
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          -2.5,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "wisp"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          226,
+          251,
+          222
+        ],
+        "color2": [
+          226,
+          251,
+          222
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          0,
+          -1.5
+        ],
+        "piece": "Torso"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          234,
+          251,
+          220
+        ],
+        "color2": [
+          255,
+          253,
+          237
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          -1,
+          -0.44999998807907104
+        ],
+        "piece": "RightLowerArm",
+        "preset": "motes"
+      }
+    ],
+    "hidden": [
+      "LeftUpperLeg",
+      "LeftLowerLeg",
+      "RightUpperLeg",
+      "RightLowerLeg"
+    ],
+    "parts": [
+      {
+        "color": [
+          251,
+          215,
+          115
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "ghost_GhostTail",
+        "piece": "Torso",
+        "transparency": 0.45
+      },
+      {
+        "color": [
+          244,
+          212,
+          115
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "ghost_GhostCape",
+        "piece": "Torso",
+        "transparency": 0.45
+      },
+      {
+        "color": [
+          230,
+          192,
+          92
+        ],
+        "material": "Foil",
+        "mesh": "ghost_ShackleL",
+        "piece": "LeftLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          230,
+          192,
+          92
+        ],
+        "material": "Foil",
+        "mesh": "ghost_ShackleR",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          223,
+          185,
+          84
+        ],
+        "material": "Foil",
+        "mesh": "ghost_Lantern",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          233,
+          217,
+          111
+        ],
+        "material": "Foil",
+        "mesh": "ghost_LanternFlame",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          233,
+          217,
+          111
+        ],
+        "material": "Foil",
+        "mesh": "ghost_SpiritCrown",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          233,
+          217,
+          111
+        ],
+        "material": "Foil",
+        "mesh": "ghost_Wisps",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          233,
+          217,
+          111
+        ],
+        "material": "Foil",
+        "mesh": "ghost_GhostEyes",
+        "piece": "Head",
+        "transparency": 0
+      }
+    ]
+  },
+  "angelic_hero": {
+    "color": [
+      230,
+      225,
+      250
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          255,
+          244,
+          188
+        ],
+        "color2": [
+          255,
+          253,
+          237
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0.30000001192092896,
+          -0.699999988079071
+        ],
+        "piece": "Torso",
+        "preset": "glint"
+      }
+    ],
+    "parts": [
+      {
+        "color": [
+          251,
+          185,
+          83
+        ],
+        "material": "Foil",
+        "mesh": "hero_Cape",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          251,
+          185,
+          83
+        ],
+        "material": "Foil",
+        "mesh": "hero_EmblemDisc",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          211,
+          83
+        ],
+        "material": "Foil",
+        "mesh": "hero_Emblem",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          221,
+          182,
+          81
+        ],
+        "material": "Foil",
+        "mesh": "hero_Mask",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          253,
+          215,
+          113
+        ],
+        "material": "Foil",
+        "mesh": "hero_MaskEyes",
+        "piece": "Head",
+        "transparency": 0
+      }
+    ],
+    "pieces": {
+      "LeftLowerArm": [
+        251,
+        185,
+        83
+      ],
+      "LeftLowerLeg": [
+        251,
+        185,
+        83
+      ],
+      "RightLowerArm": [
+        251,
+        185,
+        83
+      ],
+      "RightLowerLeg": [
+        251,
+        185,
+        83
+      ]
+    }
+  },
+  "angelic_royal": {
+    "color": [
+      230,
+      225,
+      250
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          255,
+          243,
+          194
+        ],
+        "color2": [
+          255,
+          253,
+          237
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          -2.5999999046325684,
+          -0.25
+        ],
+        "piece": "RightLowerArm",
+        "preset": "glint"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          244,
+          224,
+          227
+        ],
+        "color2": [
+          255,
+          253,
+          237
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1.2999999523162842,
+          0
+        ],
+        "piece": "Head",
+        "preset": "sparkle"
+      }
+    ],
+    "parts": [
+      {
+        "color": [
+          248,
+          210,
+          110
+        ],
+        "material": "Foil",
+        "mesh": "royal_KnightHelm",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          220,
+          182,
+          80
+        ],
+        "material": "Foil",
+        "mesh": "royal_HelmSlit",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          251,
+          185,
+          84
+        ],
+        "material": "Foil",
+        "mesh": "royal_Plume",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          208,
+          83
+        ],
+        "material": "Foil",
+        "mesh": "royal_RoyalCape",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          248,
+          210,
+          110
+        ],
+        "material": "Foil",
+        "mesh": "royal_Sword",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          208,
+          83
+        ],
+        "material": "Foil",
+        "mesh": "royal_ShieldRim",
+        "piece": "LeftLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          239,
+          189,
+          111
+        ],
+        "material": "Foil",
+        "mesh": "royal_ShieldFace",
+        "piece": "LeftLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          248,
+          210,
+          110
+        ],
+        "material": "Foil",
+        "mesh": "royal_PauldronL",
+        "piece": "LeftUpperArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          248,
+          210,
+          110
+        ],
+        "material": "Foil",
+        "mesh": "royal_PauldronR",
+        "piece": "RightUpperArm",
+        "transparency": 0
+      }
+    ]
+  },
+  "aurora_ghost": {
+    "color": [
+      70,
+      235,
+      200
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          148,
+          255,
+          224
+        ],
+        "color2": [
+          197,
+          255,
+          237
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          -2.5,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "wisp"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          134,
+          255,
+          222
+        ],
+        "color2": [
+          134,
+          255,
+          222
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          0,
+          -1.5
+        ],
+        "piece": "Torso"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          142,
+          255,
+          220
+        ],
+        "color2": [
+          197,
+          255,
+          237
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          -1,
+          -0.44999998807907104
+        ],
+        "piece": "RightLowerArm",
+        "preset": "motes"
+      }
+    ],
+    "hidden": [
+      "LeftUpperLeg",
+      "LeftLowerLeg",
+      "RightUpperLeg",
+      "RightLowerLeg"
+    ],
+    "parts": [
+      {
+        "color": [
+          165,
+          136,
+          255
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "ghost_GhostTail",
+        "piece": "Torso",
+        "transparency": 0.45
+      },
+      {
+        "color": [
+          156,
+          132,
+          255
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "ghost_GhostCape",
+        "piece": "Torso",
+        "transparency": 0.45
+      },
+      {
+        "color": [
+          138,
+          106,
+          225
+        ],
+        "material": "Neon",
+        "mesh": "ghost_ShackleL",
+        "piece": "LeftLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          138,
+          106,
+          225
+        ],
+        "material": "Neon",
+        "mesh": "ghost_ShackleR",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          128,
+          96,
+          214
+        ],
+        "material": "Neon",
+        "mesh": "ghost_Lantern",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          142,
+          139,
+          250
+        ],
+        "material": "Neon",
+        "mesh": "ghost_LanternFlame",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          142,
+          139,
+          250
+        ],
+        "material": "Neon",
+        "mesh": "ghost_SpiritCrown",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          142,
+          139,
+          250
+        ],
+        "material": "Neon",
+        "mesh": "ghost_Wisps",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          142,
+          139,
+          250
+        ],
+        "material": "Neon",
+        "mesh": "ghost_GhostEyes",
+        "piece": "Head",
+        "transparency": 0
+      }
+    ]
+  },
+  "aurora_royal": {
+    "color": [
+      70,
+      235,
+      200
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          163,
+          247,
+          194
+        ],
+        "color2": [
+          197,
+          255,
+          237
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          -2.5999999046325684,
+          -0.25
+        ],
+        "piece": "RightLowerArm",
+        "preset": "glint"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          152,
+          228,
+          227
+        ],
+        "color2": [
+          197,
+          255,
+          237
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1.2999999523162842,
+          0
+        ],
+        "piece": "Head",
+        "preset": "sparkle"
+      }
+    ],
+    "parts": [
+      {
+        "color": [
+          161,
+          130,
+          248
+        ],
+        "material": "Neon",
+        "mesh": "royal_KnightHelm",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          124,
+          92,
+          209
+        ],
+        "material": "Neon",
+        "mesh": "royal_HelmSlit",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          166,
+          96,
+          214
+        ],
+        "material": "Neon",
+        "mesh": "royal_Plume",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          171,
+          127,
+          212
+        ],
+        "material": "Neon",
+        "mesh": "royal_RoyalCape",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          161,
+          130,
+          248
+        ],
+        "material": "Neon",
+        "mesh": "royal_Sword",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          171,
+          127,
+          212
+        ],
+        "material": "Neon",
+        "mesh": "royal_ShieldRim",
+        "piece": "LeftLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          150,
+          102,
+          250
+        ],
+        "material": "Neon",
+        "mesh": "royal_ShieldFace",
+        "piece": "LeftLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          161,
+          130,
+          248
+        ],
+        "material": "Neon",
+        "mesh": "royal_PauldronL",
+        "piece": "LeftUpperArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          161,
+          130,
+          248
+        ],
+        "material": "Neon",
+        "mesh": "royal_PauldronR",
+        "piece": "RightUpperArm",
+        "transparency": 0
+      }
+    ]
+  },
+  "cherry_biker": {
+    "color": [
+      235,
+      50,
+      70
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          234,
+          126,
+          136
+        ],
+        "color2": [
+          203,
+          135,
+          145
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          -0.5,
+          0.4000000059604645
+        ],
+        "piece": "LeftLowerLeg",
+        "preset": "smoke"
+      }
+    ],
+    "parts": [
+      {
+        "color": [
+          116,
+          26,
+          41
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "biker_Helmet",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          192,
+          32,
+          44
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "biker_HelmetStripe",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          204,
+          72,
+          36
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "biker_Visor",
+        "piece": "Head",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          116,
+          26,
+          41
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "biker_Jacket",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          184,
+          96,
+          112
+        ],
+        "material": "Foil",
+        "mesh": "biker_Rivets",
+        "piece": "Torso",
+        "transparency": 0
+      }
+    ],
+    "pieces": {
+      "LeftLowerLeg": [
+        122,
+        44,
+        88
+      ],
+      "LeftUpperLeg": [
+        122,
+        44,
+        88
+      ],
+      "RightLowerLeg": [
+        122,
+        44,
+        88
+      ],
+      "RightUpperLeg": [
+        122,
+        44,
+        88
+      ]
+    }
+  },
+  "emerald_ocean": {
+    "color": [
+      40,
+      205,
+      115
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          130,
+          250,
+          187
+        ],
+        "color2": [
+          187,
+          255,
+          213
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1.2000000476837158,
+          0
+        ],
+        "piece": "Head",
+        "preset": "bubbles"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          130,
+          250,
+          187
+        ],
+        "color2": [
+          187,
+          255,
+          213
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1.2999999523162842,
+          1.2999999523162842
+        ],
+        "piece": "Torso",
+        "preset": "bubbles"
+      }
+    ],
+    "parts": [
+      {
+        "color": [
+          69,
+          139,
+          75
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "ocean_DiveHelmet",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          53,
+          163,
+          124
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "ocean_Portholes",
+        "piece": "Head",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          79,
+          158,
+          70
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "ocean_Tanks",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          66,
+          158,
+          115
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "ocean_Valves",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          79,
+          128,
+          70
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "ocean_FlipperL",
+        "piece": "LeftLowerLeg",
+        "transparency": 0
+      },
+      {
+        "color": [
+          79,
+          128,
+          70
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "ocean_FlipperR",
+        "piece": "RightLowerLeg",
+        "transparency": 0
+      }
+    ]
+  },
+  "frost_lava": {
+    "color": [
+      120,
+      200,
+      255
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          211,
+          226,
+          212
+        ],
+        "color2": [
+          227,
+          150,
+          137
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1.100000023841858,
+          0
+        ],
+        "piece": "Head",
+        "preset": "fire"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          211,
+          220,
+          212
+        ],
+        "color2": [
+          227,
+          150,
+          137
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "embers"
+      },
+      {
+        "brightness": 3,
+        "color": [
+          211,
+          216,
+          212
+        ],
+        "color2": [
+          211,
+          216,
+          212
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          1.5,
+          -1
+        ],
+        "piece": "Torso"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          174,
+          204,
+          216
+        ],
+        "color2": [
+          135,
+          150,
+          157
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1.399999976158142,
+          0
+        ],
+        "piece": "Head",
+        "preset": "smoke"
+      }
+    ],
+    "material": "Ice",
+    "parts": [
+      {
+        "color": [
+          77,
+          151,
+          223
+        ],
+        "material": "Ice",
+        "mesh": "lava_Horns",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          106,
+          160,
+          220
+        ],
+        "material": "Ice",
+        "mesh": "lava_HornTips",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          106,
+          167,
+          221
+        ],
+        "material": "Ice",
+        "mesh": "lava_Flames",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          106,
+          160,
+          220
+        ],
+        "material": "Ice",
+        "mesh": "lava_MagmaOrbit",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          77,
+          151,
+          223
+        ],
+        "material": "Ice",
+        "mesh": "lava_BouldersL",
+        "piece": "LeftUpperArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          77,
+          151,
+          223
+        ],
+        "material": "Ice",
+        "mesh": "lava_BouldersR",
+        "piece": "RightUpperArm",
+        "transparency": 0
+      }
+    ]
+  },
+  "frost_neon": {
+    "color": [
+      120,
+      200,
+      255
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          211,
+          204,
+          244
+        ],
+        "color2": [
+          130,
+          247,
+          255
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0.5,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "sparkle"
+      },
+      {
+        "brightness": 3,
+        "color": [
+          211,
+          204,
+          244
+        ],
+        "color2": [
+          211,
+          204,
+          244
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          1,
+          -1.5
+        ],
+        "piece": "Torso"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          160,
+          243,
+          255
+        ],
+        "color2": [
+          227,
+          120,
+          237
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0.20000000298023224,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "vortex"
+      }
+    ],
+    "material": "Ice",
+    "parts": [
+      {
+        "color": [
+          77,
+          183,
+          255
+        ],
+        "material": "Ice",
+        "mesh": "neon_CyberVisor",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          106,
+          154,
+          247
+        ],
+        "material": "Ice",
+        "mesh": "neon_Mohawk",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          79,
+          156,
+          231
+        ],
+        "material": "Ice",
+        "mesh": "neon_HelmetGear",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          106,
+          154,
+          247
+        ],
+        "material": "Ice",
+        "mesh": "neon_AntennaTips",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          106,
+          154,
+          247
+        ],
+        "material": "Ice",
+        "mesh": "neon_NeonLines",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          79,
+          156,
+          231
+        ],
+        "material": "Ice",
+        "mesh": "neon_CyberArmor",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          77,
+          183,
+          255
+        ],
+        "material": "Ice",
+        "mesh": "neon_ArmorCore",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          79,
+          156,
+          231
+        ],
+        "material": "Ice",
+        "mesh": "neon_WingFrame",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          77,
+          183,
+          255
+        ],
+        "material": "Neon",
+        "mesh": "neon_WingBlades",
+        "piece": "Torso",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          106,
+          154,
+          247
+        ],
+        "material": "Ice",
+        "mesh": "neon_WingEdges",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          106,
+          154,
+          247
+        ],
+        "material": "Ice",
+        "mesh": "neon_HoloHalo",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          77,
+          183,
+          255
+        ],
+        "material": "Ice",
+        "mesh": "neon_RingA",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          106,
+          154,
+          247
+        ],
+        "material": "Ice",
+        "mesh": "neon_RingB",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          77,
+          183,
+          255
+        ],
+        "material": "Ice",
+        "mesh": "neon_NeonPadL",
+        "piece": "LeftUpperArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          79,
+          156,
+          231
+        ],
+        "material": "Ice",
+        "mesh": "neon_GauntletL",
+        "piece": "LeftLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          77,
+          183,
+          255
+        ],
+        "material": "Ice",
+        "mesh": "neon_NeonPadR",
+        "piece": "RightUpperArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          79,
+          156,
+          231
+        ],
+        "material": "Ice",
+        "mesh": "neon_GauntletR",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      }
+    ]
+  },
+  "golden_galaxy": {
+    "color": [
+      255,
+      200,
+      45
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          255,
+          235,
+          147
+        ],
+        "color2": [
+          227,
+          195,
+          187
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0.5,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "stars"
+      },
+      {
+        "brightness": 2.5,
+        "color": [
+          240,
+          208,
+          147
+        ],
+        "color2": [
+          240,
+          208,
+          147
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          1,
+          -1.5
+        ],
+        "piece": "Torso"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          244,
+          216,
+          147
+        ],
+        "color2": [
+          255,
+          243,
+          187
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0,
+          0
+        ],
+        "piece": "Head",
+        "preset": "motes"
+      }
+    ],
+    "material": "Foil",
+    "parts": [
+      {
+        "color": [
+          248,
+          185,
+          53
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "galaxy_SpaceHelmet",
+        "piece": "Head",
+        "transparency": 0.5
+      },
+      {
+        "color": [
+          255,
+          182,
+          34
+        ],
+        "material": "Foil",
+        "mesh": "galaxy_GoldVisor",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          254,
+          187,
+          52
+        ],
+        "material": "Foil",
+        "mesh": "galaxy_SuitCollar",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          254,
+          187,
+          52
+        ],
+        "material": "Foil",
+        "mesh": "galaxy_SuitPads",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          173,
+          47
+        ],
+        "material": "Foil",
+        "mesh": "galaxy_SuitStripes",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          254,
+          187,
+          52
+        ],
+        "material": "Foil",
+        "mesh": "galaxy_LifePack",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          238,
+          185,
+          53
+        ],
+        "material": "Foil",
+        "mesh": "galaxy_PackLights",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          173,
+          47
+        ],
+        "material": "Neon",
+        "mesh": "galaxy_PlanetRing",
+        "piece": "Torso",
+        "transparency": 0.15
+      },
+      {
+        "color": [
+          255,
+          184,
+          35
+        ],
+        "material": "Foil",
+        "mesh": "galaxy_RingRocks",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          184,
+          35
+        ],
+        "material": "Foil",
+        "mesh": "galaxy_Moons",
+        "piece": "Torso",
+        "transparency": 0
+      }
+    ],
+    "pieces": {
+      "Torso": [
+        253,
+        186,
+        52
+      ]
+    }
+  },
+  "golden_void": {
+    "color": [
+      255,
+      200,
+      45
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          242,
+          202,
+          147
+        ],
+        "color2": [
+          147,
+          115,
+          100
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1.7000000476837158,
+          2
+        ],
+        "piece": "Torso",
+        "preset": "vortex"
+      },
+      {
+        "brightness": 3,
+        "color": [
+          238,
+          196,
+          147
+        ],
+        "color2": [
+          238,
+          196,
+          147
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          1,
+          0
+        ],
+        "piece": "Torso"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          236,
+          196,
+          147
+        ],
+        "color2": [
+          137,
+          115,
+          80
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1,
+          1.7000000476837158
+        ],
+        "piece": "Torso",
+        "preset": "vortex"
+      }
+    ],
+    "material": "Foil",
+    "parts": [
+      {
+        "color": [
+          231,
+          163,
+          29
+        ],
+        "material": "Foil",
+        "mesh": "void_VoidCore",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          254,
+          184,
+          53
+        ],
+        "material": "Foil",
+        "mesh": "void_PhotonRing",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          179,
+          38
+        ],
+        "material": "Foil",
+        "mesh": "void_AccretionHot",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          253,
+          170,
+          53
+        ],
+        "material": "Foil",
+        "mesh": "void_Accretion",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          238,
+          165,
+          44
+        ],
+        "material": "Neon",
+        "mesh": "void_AccretionOuter",
+        "piece": "Torso",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          246,
+          168,
+          53
+        ],
+        "material": "Foil",
+        "mesh": "void_VoidCracks",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          246,
+          168,
+          53
+        ],
+        "material": "Foil",
+        "mesh": "void_VoidEyes",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          233,
+          165,
+          33
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "void_VoidCrown",
+        "piece": "Head",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          253,
+          170,
+          53
+        ],
+        "material": "Foil",
+        "mesh": "void_CrownCores",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          238,
+          166,
+          41
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "void_VoidWings",
+        "piece": "Torso",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          253,
+          170,
+          53
+        ],
+        "material": "Foil",
+        "mesh": "void_WingTips",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          238,
+          165,
+          44
+        ],
+        "material": "Foil",
+        "mesh": "void_VoidShards",
+        "piece": "Torso",
+        "transparency": 0
+      }
+    ]
+  },
+  "grape_mint": {
+    "color": [
+      160,
+      100,
+      235
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          184,
+          179,
+          244
+        ],
+        "color2": [
+          227,
+          207,
+          255
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1,
+          0
+        ],
+        "piece": "Head",
+        "preset": "notes"
+      }
+    ],
+    "parts": [
+      {
+        "color": [
+          168,
+          72,
+          188
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "mint_Headphones",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          126,
+          64,
+          212
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "mint_Deck",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          168,
+          124,
+          136
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "mint_Wheels",
+        "piece": "Torso",
+        "transparency": 0
+      }
+    ]
+  },
+  "infinite_cosmic": {
+    "color": [
+      255,
+      245,
+      230
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          255,
+          195,
+          123
+        ],
+        "color2": [
+          255,
+          150,
+          160
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0.5,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "stars"
+      },
+      {
+        "brightness": 3,
+        "color": [
+          248,
+          168,
+          123
+        ],
+        "color2": [
+          248,
+          168,
+          123
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          1,
+          -1.5
+        ],
+        "piece": "Torso"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          255,
+          184,
+          123
+        ],
+        "color2": [
+          203,
+          200,
+          172
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1,
+          1.7000000476837158
+        ],
+        "piece": "Torso",
+        "preset": "stars"
+      }
+    ],
+    "parts": [
+      {
+        "color": [
+          222,
+          104,
+          48
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_GalaxyDisc",
+        "piece": "Torso",
+        "transparency": 0.1
+      },
+      {
+        "color": [
+          255,
+          113,
+          67
+        ],
+        "material": "Foil",
+        "mesh": "cosmic_GalaxyArmsA",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          230,
+          135,
+          72
+        ],
+        "material": "Foil",
+        "mesh": "cosmic_GalaxyArmsB",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          253,
+          139,
+          71
+        ],
+        "material": "Foil",
+        "mesh": "cosmic_GalaxyStars",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          139,
+          64
+        ],
+        "material": "Foil",
+        "mesh": "cosmic_GalaxyCore",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          131,
+          40
+        ],
+        "material": "Foil",
+        "mesh": "cosmic_GalaxyRim",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          230,
+          135,
+          72
+        ],
+        "material": "Foil",
+        "mesh": "cosmic_RimGems",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          131,
+          40
+        ],
+        "material": "Foil",
+        "mesh": "cosmic_StarCrown",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          113,
+          67
+        ],
+        "material": "Foil",
+        "mesh": "cosmic_CrownGems",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          136,
+          48
+        ],
+        "material": "Foil",
+        "mesh": "cosmic_CrownStar",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          131,
+          40
+        ],
+        "material": "Foil",
+        "mesh": "cosmic_CosmicArmor",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          230,
+          135,
+          72
+        ],
+        "material": "Foil",
+        "mesh": "cosmic_ArmorGems",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          131,
+          40
+        ],
+        "material": "Foil",
+        "mesh": "cosmic_PauldronL",
+        "piece": "LeftUpperArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          131,
+          40
+        ],
+        "material": "Foil",
+        "mesh": "cosmic_PauldronR",
+        "piece": "RightUpperArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          233,
+          140,
+          68
+        ],
+        "material": "Foil",
+        "mesh": "cosmic_CosmicMoons",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          113,
+          67
+        ],
+        "material": "Foil",
+        "mesh": "cosmic_MoonRings",
+        "piece": "Torso",
+        "transparency": 0
+      }
+    ],
+    "pieces": {
+      "Torso": [
+        225,
+        106,
+        55
+      ]
+    }
+  },
+  "infinite_king": {
+    "color": [
+      255,
+      245,
+      230
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          255,
+          188,
+          90
+        ],
+        "color2": [
+          255,
+          217,
+          172
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "sparkle"
+      },
+      {
+        "brightness": 3,
+        "color": [
+          255,
+          184,
+          88
+        ],
+        "color2": [
+          255,
+          184,
+          88
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          2,
+          -2
+        ],
+        "piece": "Torso"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          255,
+          187,
+          84
+        ],
+        "color2": [
+          255,
+          217,
+          172
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1.5,
+          0
+        ],
+        "piece": "Head",
+        "preset": "sparkle"
+      }
+    ],
+    "parts": [
+      {
+        "color": [
+          255,
+          131,
+          40
+        ],
+        "material": "Foil",
+        "mesh": "king_Crown",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          108,
+          45
+        ],
+        "material": "Foil",
+        "mesh": "king_CrownGems",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          226,
+          122,
+          72
+        ],
+        "material": "Foil",
+        "mesh": "king_CrownSapphires",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          253,
+          139,
+          71
+        ],
+        "material": "Foil",
+        "mesh": "king_CrownPearls",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          247,
+          105,
+          40
+        ],
+        "material": "Foil",
+        "mesh": "king_Robe",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          131,
+          40
+        ],
+        "material": "Foil",
+        "mesh": "king_RobeTrim",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          254,
+          139,
+          71
+        ],
+        "material": "Foil",
+        "mesh": "king_Ermine",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          222,
+          107,
+          40
+        ],
+        "material": "Foil",
+        "mesh": "king_ErmineSpots",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          131,
+          40
+        ],
+        "material": "Foil",
+        "mesh": "king_Scepter",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          108,
+          45
+        ],
+        "material": "Foil",
+        "mesh": "king_ScepterGem",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          130,
+          40
+        ],
+        "material": "Foil",
+        "mesh": "king_Throne",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          247,
+          105,
+          40
+        ],
+        "material": "Foil",
+        "mesh": "king_ThroneCushion",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          226,
+          122,
+          72
+        ],
+        "material": "Foil",
+        "mesh": "king_ThroneSapphires",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          108,
+          45
+        ],
+        "material": "Foil",
+        "mesh": "king_ThroneRubies",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          134,
+          45
+        ],
+        "material": "Foil",
+        "mesh": "king_SunHalo",
+        "piece": "Head",
+        "transparency": 0
+      }
+    ]
+  },
+  "infinite_neon": {
+    "color": [
+      255,
+      245,
+      230
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          255,
+          156,
+          112
+        ],
+        "color2": [
+          157,
+          217,
+          172
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0.5,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "sparkle"
+      },
+      {
+        "brightness": 3,
+        "color": [
+          255,
+          156,
+          112
+        ],
+        "color2": [
+          255,
+          156,
+          112
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          1,
+          -1.5
+        ],
+        "piece": "Torso"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          204,
+          195,
+          123
+        ],
+        "color2": [
+          255,
+          90,
+          155
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0.20000000298023224,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "vortex"
+      }
+    ],
+    "parts": [
+      {
+        "color": [
+          226,
+          140,
+          72
+        ],
+        "material": "Foil",
+        "mesh": "neon_CyberVisor",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          111,
+          64
+        ],
+        "material": "Foil",
+        "mesh": "neon_Mohawk",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          227,
+          113,
+          48
+        ],
+        "material": "Foil",
+        "mesh": "neon_HelmetGear",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          111,
+          64
+        ],
+        "material": "Foil",
+        "mesh": "neon_AntennaTips",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          111,
+          64
+        ],
+        "material": "Foil",
+        "mesh": "neon_NeonLines",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          227,
+          113,
+          48
+        ],
+        "material": "Foil",
+        "mesh": "neon_CyberArmor",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          226,
+          140,
+          72
+        ],
+        "material": "Foil",
+        "mesh": "neon_ArmorCore",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          227,
+          113,
+          48
+        ],
+        "material": "Foil",
+        "mesh": "neon_WingFrame",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          226,
+          140,
+          72
+        ],
+        "material": "Neon",
+        "mesh": "neon_WingBlades",
+        "piece": "Torso",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          255,
+          111,
+          64
+        ],
+        "material": "Foil",
+        "mesh": "neon_WingEdges",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          111,
+          64
+        ],
+        "material": "Foil",
+        "mesh": "neon_HoloHalo",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          226,
+          140,
+          72
+        ],
+        "material": "Foil",
+        "mesh": "neon_RingA",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          111,
+          64
+        ],
+        "material": "Foil",
+        "mesh": "neon_RingB",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          226,
+          140,
+          72
+        ],
+        "material": "Foil",
+        "mesh": "neon_NeonPadL",
+        "piece": "LeftUpperArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          227,
+          113,
+          48
+        ],
+        "material": "Foil",
+        "mesh": "neon_GauntletL",
+        "piece": "LeftLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          226,
+          140,
+          72
+        ],
+        "material": "Foil",
+        "mesh": "neon_NeonPadR",
+        "piece": "RightUpperArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          227,
+          113,
+          48
+        ],
+        "material": "Foil",
+        "mesh": "neon_GauntletR",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      }
+    ]
+  },
+  "magma_cosmic": {
+    "color": [
+      255,
+      95,
+      30
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          255,
+          171,
+          83
+        ],
+        "color2": [
+          255,
+          135,
+          135
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0.5,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "stars"
+      },
+      {
+        "brightness": 3,
+        "color": [
+          248,
+          144,
+          83
+        ],
+        "color2": [
+          248,
+          144,
+          83
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          1,
+          -1.5
+        ],
+        "piece": "Torso"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          255,
+          160,
+          83
+        ],
+        "color2": [
+          203,
+          185,
+          147
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1,
+          1.7000000476837158
+        ],
+        "piece": "Torso",
+        "preset": "stars"
+      }
+    ],
+    "material": "CrackedLava",
+    "parts": [
+      {
+        "color": [
+          211,
+          51,
+          35
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_GalaxyDisc",
+        "piece": "Torso",
+        "transparency": 0.1
+      },
+      {
+        "color": [
+          255,
+          62,
+          60
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_GalaxyArmsA",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          222,
+          92,
+          67
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_GalaxyArmsB",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          253,
+          97,
+          65
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_GalaxyStars",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          97,
+          56
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_GalaxyCore",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          87,
+          24
+        ],
+        "material": "Foil",
+        "mesh": "cosmic_GalaxyRim",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          222,
+          92,
+          67
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_RimGems",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          87,
+          24
+        ],
+        "material": "Foil",
+        "mesh": "cosmic_StarCrown",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          62,
+          60
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_CrownGems",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          94,
+          34
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_CrownStar",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          87,
+          24
+        ],
+        "material": "Foil",
+        "mesh": "cosmic_CosmicArmor",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          222,
+          92,
+          67
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_ArmorGems",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          87,
+          24
+        ],
+        "material": "Foil",
+        "mesh": "cosmic_PauldronL",
+        "piece": "LeftUpperArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          87,
+          24
+        ],
+        "material": "Foil",
+        "mesh": "cosmic_PauldronR",
+        "piece": "RightUpperArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          226,
+          99,
+          61
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_CosmicMoons",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          62,
+          60
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_MoonRings",
+        "piece": "Torso",
+        "transparency": 0
+      }
+    ],
+    "pieces": {
+      "Torso": [
+        215,
+        54,
+        44
+      ]
+    }
+  },
+  "magma_ghost": {
+    "color": [
+      255,
+      95,
+      30
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          240,
+          171,
+          80
+        ],
+        "color2": [
+          255,
+          203,
+          147
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          -2.5,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "wisp"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          226,
+          171,
+          78
+        ],
+        "color2": [
+          226,
+          171,
+          78
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          0,
+          -1.5
+        ],
+        "piece": "Torso"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          234,
+          171,
+          76
+        ],
+        "color2": [
+          255,
+          203,
+          147
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          -1,
+          -0.44999998807907104
+        ],
+        "piece": "RightLowerArm",
+        "preset": "motes"
+      }
+    ],
+    "hidden": [
+      "LeftUpperLeg",
+      "LeftLowerLeg",
+      "RightUpperLeg",
+      "RightLowerLeg"
+    ],
+    "material": "CrackedLava",
+    "parts": [
+      {
+        "color": [
+          249,
+          96,
+          67
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "ghost_GhostTail",
+        "piece": "Torso",
+        "transparency": 0.45
+      },
+      {
+        "color": [
+          240,
+          92,
+          67
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "ghost_GhostCape",
+        "piece": "Torso",
+        "transparency": 0.45
+      },
+      {
+        "color": [
+          222,
+          66,
+          37
+        ],
+        "material": "Metal",
+        "mesh": "ghost_ShackleL",
+        "piece": "LeftLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          222,
+          66,
+          37
+        ],
+        "material": "Metal",
+        "mesh": "ghost_ShackleR",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          212,
+          56,
+          26
+        ],
+        "material": "Metal",
+        "mesh": "ghost_Lantern",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          226,
+          99,
+          62
+        ],
+        "material": "Neon",
+        "mesh": "ghost_LanternFlame",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          226,
+          99,
+          62
+        ],
+        "material": "Neon",
+        "mesh": "ghost_SpiritCrown",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          226,
+          99,
+          62
+        ],
+        "material": "Neon",
+        "mesh": "ghost_Wisps",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          226,
+          99,
+          62
+        ],
+        "material": "Neon",
+        "mesh": "ghost_GhostEyes",
+        "piece": "Head",
+        "transparency": 0
+      }
+    ]
+  },
+  "nebula_galaxy": {
+    "color": [
+      120,
+      60,
+      220
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          227,
+          163,
+          255
+        ],
+        "color2": [
+          210,
+          150,
+          255
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0.5,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "stars"
+      },
+      {
+        "brightness": 2.5,
+        "color": [
+          212,
+          136,
+          255
+        ],
+        "color2": [
+          212,
+          136,
+          255
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          1,
+          -1.5
+        ],
+        "piece": "Torso"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          216,
+          144,
+          255
+        ],
+        "color2": [
+          237,
+          197,
+          255
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0,
+          0
+        ],
+        "piece": "Head",
+        "preset": "motes"
+      }
+    ],
+    "material": "Foil",
+    "parts": [
+      {
+        "color": [
+          242,
+          133,
+          227
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "galaxy_SpaceHelmet",
+        "piece": "Head",
+        "transparency": 0.5
+      },
+      {
+        "color": [
+          255,
+          128,
+          190
+        ],
+        "material": "Neon",
+        "mesh": "galaxy_GoldVisor",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          253,
+          137,
+          225
+        ],
+        "material": "Neon",
+        "mesh": "galaxy_SuitCollar",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          253,
+          137,
+          225
+        ],
+        "material": "Neon",
+        "mesh": "galaxy_SuitPads",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          110,
+          216
+        ],
+        "material": "Neon",
+        "mesh": "galaxy_SuitStripes",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          253,
+          137,
+          225
+        ],
+        "material": "Neon",
+        "mesh": "galaxy_LifePack",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          222,
+          134,
+          227
+        ],
+        "material": "Neon",
+        "mesh": "galaxy_PackLights",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          110,
+          216
+        ],
+        "material": "Neon",
+        "mesh": "galaxy_PlanetRing",
+        "piece": "Torso",
+        "transparency": 0.15
+      },
+      {
+        "color": [
+          255,
+          132,
+          192
+        ],
+        "material": "Neon",
+        "mesh": "galaxy_RingRocks",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          132,
+          192
+        ],
+        "material": "Neon",
+        "mesh": "galaxy_Moons",
+        "piece": "Torso",
+        "transparency": 0
+      }
+    ],
+    "pieces": {
+      "Torso": [
+        251,
+        135,
+        225
+      ]
+    }
+  },
+  "nebula_king": {
+    "color": [
+      120,
+      60,
+      220
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          227,
+          156,
+          222
+        ],
+        "color2": [
+          237,
+          197,
+          255
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "sparkle"
+      },
+      {
+        "brightness": 3,
+        "color": [
+          227,
+          152,
+          220
+        ],
+        "color2": [
+          227,
+          152,
+          220
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          2,
+          -2
+        ],
+        "piece": "Torso"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          227,
+          155,
+          216
+        ],
+        "color2": [
+          237,
+          197,
+          255
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1.5,
+          0
+        ],
+        "piece": "Head",
+        "preset": "sparkle"
+      }
+    ],
+    "material": "Foil",
+    "parts": [
+      {
+        "color": [
+          255,
+          127,
+          184
+        ],
+        "material": "Neon",
+        "mesh": "king_Crown",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          96,
+          190
+        ],
+        "material": "Neon",
+        "mesh": "king_CrownGems",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          216,
+          114,
+          227
+        ],
+        "material": "Neon",
+        "mesh": "king_CrownSapphires",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          253,
+          137,
+          225
+        ],
+        "material": "Neon",
+        "mesh": "king_CrownPearls",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          244,
+          92,
+          184
+        ],
+        "material": "Neon",
+        "mesh": "king_Robe",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          127,
+          184
+        ],
+        "material": "Neon",
+        "mesh": "king_RobeTrim",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          254,
+          138,
+          226
+        ],
+        "material": "Neon",
+        "mesh": "king_Ermine",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          210,
+          94,
+          184
+        ],
+        "material": "Neon",
+        "mesh": "king_ErmineSpots",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          127,
+          184
+        ],
+        "material": "Neon",
+        "mesh": "king_Scepter",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          96,
+          190
+        ],
+        "material": "Neon",
+        "mesh": "king_ScepterGem",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          126,
+          184
+        ],
+        "material": "Neon",
+        "mesh": "king_Throne",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          244,
+          92,
+          184
+        ],
+        "material": "Neon",
+        "mesh": "king_ThroneCushion",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          216,
+          114,
+          227
+        ],
+        "material": "Neon",
+        "mesh": "king_ThroneSapphires",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          96,
+          190
+        ],
+        "material": "Neon",
+        "mesh": "king_ThroneRubies",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          131,
+          190
+        ],
+        "material": "Neon",
+        "mesh": "king_SunHalo",
+        "piece": "Head",
+        "transparency": 0
+      }
+    ]
+  },
+  "omega_ghost": {
+    "color": [
+      25,
+      20,
+      30
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          240,
+          107,
+          88
+        ],
+        "color2": [
+          255,
+          162,
+          152
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          -2.5,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "wisp"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          226,
+          107,
+          86
+        ],
+        "color2": [
+          226,
+          107,
+          86
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          0,
+          -1.5
+        ],
+        "piece": "Torso"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          234,
+          107,
+          84
+        ],
+        "color2": [
+          255,
+          162,
+          152
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          -1,
+          -0.44999998807907104
+        ],
+        "piece": "RightLowerArm",
+        "preset": "motes"
+      }
+    ],
+    "hidden": [
+      "LeftUpperLeg",
+      "LeftLowerLeg",
+      "RightUpperLeg",
+      "RightLowerLeg"
+    ],
+    "material": "Metal",
+    "parts": [
+      {
+        "color": [
+          252,
+          60,
+          62
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "ghost_GhostTail",
+        "piece": "Torso",
+        "transparency": 0.45
+      },
+      {
+        "color": [
+          247,
+          58,
+          62
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "ghost_GhostCape",
+        "piece": "Torso",
+        "transparency": 0.45
+      },
+      {
+        "color": [
+          238,
+          45,
+          47
+        ],
+        "material": "Neon",
+        "mesh": "ghost_ShackleL",
+        "piece": "LeftLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          238,
+          45,
+          47
+        ],
+        "material": "Neon",
+        "mesh": "ghost_ShackleR",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          233,
+          40,
+          41
+        ],
+        "material": "Neon",
+        "mesh": "ghost_Lantern",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          240,
+          62,
+          59
+        ],
+        "material": "Neon",
+        "mesh": "ghost_LanternFlame",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          240,
+          62,
+          59
+        ],
+        "material": "Neon",
+        "mesh": "ghost_SpiritCrown",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          240,
+          62,
+          59
+        ],
+        "material": "Neon",
+        "mesh": "ghost_Wisps",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          240,
+          62,
+          59
+        ],
+        "material": "Neon",
+        "mesh": "ghost_GhostEyes",
+        "piece": "Head",
+        "transparency": 0
+      }
+    ]
+  },
+  "omega_void": {
+    "color": [
+      25,
+      20,
+      30
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          242,
+          74,
+          91
+        ],
+        "color2": [
+          147,
+          35,
+          65
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1.7000000476837158,
+          2
+        ],
+        "piece": "Torso",
+        "preset": "vortex"
+      },
+      {
+        "brightness": 3,
+        "color": [
+          238,
+          68,
+          91
+        ],
+        "color2": [
+          238,
+          68,
+          91
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          1,
+          0
+        ],
+        "piece": "Torso"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          236,
+          68,
+          91
+        ],
+        "color2": [
+          137,
+          35,
+          45
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1,
+          1.7000000476837158
+        ],
+        "piece": "Torso",
+        "preset": "vortex"
+      }
+    ],
+    "material": "Metal",
+    "parts": [
+      {
+        "color": [
+          231,
+          37,
+          38
+        ],
+        "material": "Neon",
+        "mesh": "void_VoidCore",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          254,
+          58,
+          62
+        ],
+        "material": "Neon",
+        "mesh": "void_PhotonRing",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          53,
+          47
+        ],
+        "material": "Neon",
+        "mesh": "void_AccretionHot",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          253,
+          44,
+          62
+        ],
+        "material": "Neon",
+        "mesh": "void_Accretion",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          238,
+          39,
+          53
+        ],
+        "material": "Neon",
+        "mesh": "void_AccretionOuter",
+        "piece": "Torso",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          246,
+          42,
+          62
+        ],
+        "material": "Neon",
+        "mesh": "void_VoidCracks",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          246,
+          42,
+          62
+        ],
+        "material": "Neon",
+        "mesh": "void_VoidEyes",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          233,
+          39,
+          42
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "void_VoidCrown",
+        "piece": "Head",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          253,
+          44,
+          62
+        ],
+        "material": "Neon",
+        "mesh": "void_CrownCores",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          238,
+          40,
+          50
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "void_VoidWings",
+        "piece": "Torso",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          253,
+          44,
+          62
+        ],
+        "material": "Neon",
+        "mesh": "void_WingTips",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          238,
+          39,
+          53
+        ],
+        "material": "Neon",
+        "mesh": "void_VoidShards",
+        "piece": "Torso",
+        "transparency": 0
+      }
+    ]
+  },
+  "pink_rookie": {
+    "color": [
+      255,
+      130,
+      195
+    ],
+    "effects": {},
+    "parts": [
+      {
+        "color": [
+          169,
+          96,
+          198
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "rookie_Helmet",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          104,
+          108
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "rookie_FloatyL",
+        "piece": "LeftUpperArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          104,
+          108
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "rookie_FloatyR",
+        "piece": "RightUpperArm",
+        "transparency": 0
+      }
+    ]
+  },
+  "plasma_neon": {
+    "color": [
+      255,
+      50,
+      200
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          255,
+          108,
+          224
+        ],
+        "color2": [
+          157,
+          187,
+          243
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0.5,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "sparkle"
+      },
+      {
+        "brightness": 3,
+        "color": [
+          255,
+          108,
+          224
+        ],
+        "color2": [
+          255,
+          108,
+          224
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          1,
+          -1.5
+        ],
+        "piece": "Torso"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          204,
+          147,
+          235
+        ],
+        "color2": [
+          255,
+          60,
+          225
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0.20000000298023224,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "vortex"
+      }
+    ],
+    "material": "Neon",
+    "parts": [
+      {
+        "color": [
+          77,
+          225,
+          255
+        ],
+        "material": "Neon",
+        "mesh": "neon_CyberVisor",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          106,
+          196,
+          247
+        ],
+        "material": "Neon",
+        "mesh": "neon_Mohawk",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          79,
+          198,
+          231
+        ],
+        "material": "Neon",
+        "mesh": "neon_HelmetGear",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          106,
+          196,
+          247
+        ],
+        "material": "Neon",
+        "mesh": "neon_AntennaTips",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          106,
+          196,
+          247
+        ],
+        "material": "Neon",
+        "mesh": "neon_NeonLines",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          79,
+          198,
+          231
+        ],
+        "material": "Neon",
+        "mesh": "neon_CyberArmor",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          77,
+          225,
+          255
+        ],
+        "material": "Neon",
+        "mesh": "neon_ArmorCore",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          79,
+          198,
+          231
+        ],
+        "material": "Neon",
+        "mesh": "neon_WingFrame",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          77,
+          225,
+          255
+        ],
+        "material": "Neon",
+        "mesh": "neon_WingBlades",
+        "piece": "Torso",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          106,
+          196,
+          247
+        ],
+        "material": "Neon",
+        "mesh": "neon_WingEdges",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          106,
+          196,
+          247
+        ],
+        "material": "Neon",
+        "mesh": "neon_HoloHalo",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          77,
+          225,
+          255
+        ],
+        "material": "Neon",
+        "mesh": "neon_RingA",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          106,
+          196,
+          247
+        ],
+        "material": "Neon",
+        "mesh": "neon_RingB",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          77,
+          225,
+          255
+        ],
+        "material": "Neon",
+        "mesh": "neon_NeonPadL",
+        "piece": "LeftUpperArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          79,
+          198,
+          231
+        ],
+        "material": "Neon",
+        "mesh": "neon_GauntletL",
+        "piece": "LeftLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          77,
+          225,
+          255
+        ],
+        "material": "Neon",
+        "mesh": "neon_NeonPadR",
+        "piece": "RightUpperArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          79,
+          198,
+          231
+        ],
+        "material": "Neon",
+        "mesh": "neon_GauntletR",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      }
+    ]
+  },
+  "plasma_void": {
+    "color": [
+      255,
+      50,
+      200
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          242,
+          114,
+          235
+        ],
+        "color2": [
+          147,
+          60,
+          155
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1.7000000476837158,
+          2
+        ],
+        "piece": "Torso",
+        "preset": "vortex"
+      },
+      {
+        "brightness": 3,
+        "color": [
+          238,
+          108,
+          235
+        ],
+        "color2": [
+          238,
+          108,
+          235
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          1,
+          0
+        ],
+        "piece": "Torso"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          236,
+          108,
+          235
+        ],
+        "color2": [
+          137,
+          60,
+          135
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1,
+          1.7000000476837158
+        ],
+        "piece": "Torso",
+        "preset": "vortex"
+      }
+    ],
+    "material": "Neon",
+    "parts": [
+      {
+        "color": [
+          70,
+          188,
+          220
+        ],
+        "material": "Neon",
+        "mesh": "void_VoidCore",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          105,
+          219,
+          255
+        ],
+        "material": "Neon",
+        "mesh": "void_PhotonRing",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          106,
+          212,
+          233
+        ],
+        "material": "Neon",
+        "mesh": "void_AccretionHot",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          103,
+          199,
+          255
+        ],
+        "material": "Neon",
+        "mesh": "void_Accretion",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          82,
+          191,
+          242
+        ],
+        "material": "Neon",
+        "mesh": "void_AccretionOuter",
+        "piece": "Torso",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          94,
+          196,
+          255
+        ],
+        "material": "Neon",
+        "mesh": "void_VoidCracks",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          94,
+          196,
+          255
+        ],
+        "material": "Neon",
+        "mesh": "void_VoidEyes",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          73,
+          191,
+          225
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "void_VoidCrown",
+        "piece": "Head",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          103,
+          199,
+          255
+        ],
+        "material": "Neon",
+        "mesh": "void_CrownCores",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          81,
+          193,
+          238
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "void_VoidWings",
+        "piece": "Torso",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          103,
+          199,
+          255
+        ],
+        "material": "Neon",
+        "mesh": "void_WingTips",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          82,
+          191,
+          242
+        ],
+        "material": "Neon",
+        "mesh": "void_VoidShards",
+        "piece": "Torso",
+        "transparency": 0
+      }
+    ]
+  },
+  "prism_diamond": {
+    "color": [
+      170,
+      215,
+      255
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          220,
+          210,
+          255
+        ],
+        "color2": [
+          243,
+          227,
+          255
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0.5,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "sparkle"
+      },
+      {
+        "brightness": 2.5,
+        "color": [
+          208,
+          206,
+          255
+        ],
+        "color2": [
+          208,
+          206,
+          255
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          1.2000000476837158,
+          0
+        ],
+        "piece": "Head"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          220,
+          210,
+          255
+        ],
+        "color2": [
+          243,
+          227,
+          255
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          2.4000000953674316,
+          0
+        ],
+        "piece": "Head",
+        "preset": "glint"
+      }
+    ],
+    "material": "Ice",
+    "parts": [
+      {
+        "color": [
+          229,
+          172,
+          244
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "diamond_Crystals",
+        "piece": "Torso",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          224,
+          174,
+          244
+        ],
+        "material": "Neon",
+        "mesh": "diamond_FloatGem",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          250,
+          175,
+          244
+        ],
+        "material": "Neon",
+        "mesh": "diamond_Tiara",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          229,
+          172,
+          244
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "diamond_ShoulderGemL",
+        "piece": "LeftUpperArm",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          229,
+          172,
+          244
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "diamond_ShoulderGemR",
+        "piece": "RightUpperArm",
+        "transparency": 0.25
+      }
+    ]
+  },
+  "prism_ice": {
+    "color": [
+      170,
+      215,
+      255
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          228,
+          209,
+          255
+        ],
+        "color2": [
+          243,
+          227,
+          255
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          2,
+          0
+        ],
+        "piece": "Head",
+        "preset": "snow"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          222,
+          207,
+          255
+        ],
+        "color2": [
+          210,
+          217,
+          255
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          -3.700000047683716,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "wisp"
+      }
+    ],
+    "material": "Ice",
+    "parts": [
+      {
+        "color": [
+          234,
+          172,
+          244
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "ice_IceCrown",
+        "piece": "Head",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          234,
+          172,
+          244
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "ice_IceWings",
+        "piece": "Torso",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          234,
+          172,
+          244
+        ],
+        "material": "Neon",
+        "mesh": "ice_IceShoulderL",
+        "piece": "LeftUpperArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          234,
+          172,
+          244
+        ],
+        "material": "Neon",
+        "mesh": "ice_IceBootL",
+        "piece": "LeftLowerLeg",
+        "transparency": 0
+      },
+      {
+        "color": [
+          234,
+          172,
+          244
+        ],
+        "material": "Neon",
+        "mesh": "ice_IceShoulderR",
+        "piece": "RightUpperArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          234,
+          172,
+          244
+        ],
+        "material": "Neon",
+        "mesh": "ice_IceBootR",
+        "piece": "RightLowerLeg",
+        "transparency": 0
+      }
+    ]
+  },
+  "quantum_cosmic": {
+    "color": [
+      20,
+      230,
+      255
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          163,
+          247,
+          255
+        ],
+        "color2": [
+          197,
+          182,
+          243
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0.5,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "stars"
+      },
+      {
+        "brightness": 3,
+        "color": [
+          156,
+          220,
+          255
+        ],
+        "color2": [
+          156,
+          220,
+          255
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          1,
+          -1.5
+        ],
+        "piece": "Torso"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          163,
+          236,
+          255
+        ],
+        "color2": [
+          145,
+          233,
+          255
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1,
+          1.7000000476837158
+        ],
+        "piece": "Torso",
+        "preset": "stars"
+      }
+    ],
+    "material": "Neon",
+    "parts": [
+      {
+        "color": [
+          143,
+          75,
+          223
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_GalaxyDisc",
+        "piece": "Torso",
+        "transparency": 0.1
+      },
+      {
+        "color": [
+          187,
+          86,
+          248
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_GalaxyArmsA",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          154,
+          116,
+          255
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_GalaxyArmsB",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          185,
+          121,
+          253
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_GalaxyStars",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          187,
+          121,
+          244
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_GalaxyCore",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          187,
+          111,
+          212
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_GalaxyRim",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          154,
+          116,
+          255
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_RimGems",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          187,
+          111,
+          212
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_StarCrown",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          187,
+          86,
+          248
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_CrownGems",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          187,
+          118,
+          222
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_CrownStar",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          187,
+          111,
+          212
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_CosmicArmor",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          154,
+          116,
+          255
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_ArmorGems",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          187,
+          111,
+          212
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_PauldronL",
+        "piece": "LeftUpperArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          187,
+          111,
+          212
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_PauldronR",
+        "piece": "RightUpperArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          158,
+          123,
+          249
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_CosmicMoons",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          187,
+          86,
+          248
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_MoonRings",
+        "piece": "Torso",
+        "transparency": 0
+      }
+    ],
+    "pieces": {
+      "Torso": [
+        147,
+        78,
+        232
+      ]
+    }
+  },
+  "radiant_diamond": {
+    "color": [
+      255,
+      220,
+      100
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          240,
+          246,
+          195
+        ],
+        "color2": [
+          255,
+          250,
+          217
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0.5,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "sparkle"
+      },
+      {
+        "brightness": 2.5,
+        "color": [
+          228,
+          242,
+          195
+        ],
+        "color2": [
+          228,
+          242,
+          195
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          1.2000000476837158,
+          0
+        ],
+        "piece": "Head"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          240,
+          246,
+          195
+        ],
+        "color2": [
+          255,
+          250,
+          217
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          2.4000000953674316,
+          0
+        ],
+        "piece": "Head",
+        "preset": "glint"
+      }
+    ],
+    "parts": [
+      {
+        "color": [
+          239,
+          219,
+          106
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "diamond_Crystals",
+        "piece": "Torso",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          236,
+          219,
+          106
+        ],
+        "material": "Neon",
+        "mesh": "diamond_FloatGem",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          252,
+          220,
+          106
+        ],
+        "material": "Neon",
+        "mesh": "diamond_Tiara",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          239,
+          219,
+          106
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "diamond_ShoulderGemL",
+        "piece": "LeftUpperArm",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          239,
+          219,
+          106
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "diamond_ShoulderGemR",
+        "piece": "RightUpperArm",
+        "transparency": 0.25
+      }
+    ]
+  },
+  "radiant_galaxy": {
+    "color": [
+      255,
+      220,
+      100
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          255,
+          247,
+          195
+        ],
+        "color2": [
+          227,
+          203,
+          217
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0.5,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "stars"
+      },
+      {
+        "brightness": 2.5,
+        "color": [
+          240,
+          220,
+          195
+        ],
+        "color2": [
+          240,
+          220,
+          195
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          1,
+          -1.5
+        ],
+        "piece": "Torso"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          244,
+          228,
+          195
+        ],
+        "color2": [
+          255,
+          250,
+          217
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0,
+          0
+        ],
+        "piece": "Head",
+        "preset": "motes"
+      }
+    ],
+    "parts": [
+      {
+        "color": [
+          245,
+          217,
+          106
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "galaxy_SpaceHelmet",
+        "piece": "Head",
+        "transparency": 0.5
+      },
+      {
+        "color": [
+          255,
+          213,
+          79
+        ],
+        "material": "Neon",
+        "mesh": "galaxy_GoldVisor",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          253,
+          219,
+          105
+        ],
+        "material": "Neon",
+        "mesh": "galaxy_SuitCollar",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          253,
+          219,
+          105
+        ],
+        "material": "Neon",
+        "mesh": "galaxy_SuitPads",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          199,
+          98
+        ],
+        "material": "Neon",
+        "mesh": "galaxy_SuitStripes",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          253,
+          219,
+          105
+        ],
+        "material": "Neon",
+        "mesh": "galaxy_LifePack",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          230,
+          217,
+          106
+        ],
+        "material": "Neon",
+        "mesh": "galaxy_PackLights",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          199,
+          98
+        ],
+        "material": "Neon",
+        "mesh": "galaxy_PlanetRing",
+        "piece": "Torso",
+        "transparency": 0.15
+      },
+      {
+        "color": [
+          255,
+          216,
+          80
+        ],
+        "material": "Neon",
+        "mesh": "galaxy_RingRocks",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          216,
+          80
+        ],
+        "material": "Neon",
+        "mesh": "galaxy_Moons",
+        "piece": "Torso",
+        "transparency": 0
+      }
+    ],
+    "pieces": {
+      "Torso": [
+        252,
+        218,
+        105
+      ]
+    }
+  },
+  "radiant_king": {
+    "color": [
+      255,
+      220,
+      100
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          255,
+          240,
+          162
+        ],
+        "color2": [
+          255,
+          250,
+          217
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "sparkle"
+      },
+      {
+        "brightness": 3,
+        "color": [
+          255,
+          236,
+          160
+        ],
+        "color2": [
+          255,
+          236,
+          160
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          2,
+          -2
+        ],
+        "piece": "Torso"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          255,
+          239,
+          156
+        ],
+        "color2": [
+          255,
+          250,
+          217
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1.5,
+          0
+        ],
+        "piece": "Head",
+        "preset": "sparkle"
+      }
+    ],
+    "parts": [
+      {
+        "color": [
+          255,
+          212,
+          74
+        ],
+        "material": "Neon",
+        "mesh": "king_Crown",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          189,
+          79
+        ],
+        "material": "Neon",
+        "mesh": "king_CrownGems",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          226,
+          202,
+          106
+        ],
+        "material": "Neon",
+        "mesh": "king_CrownSapphires",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          253,
+          219,
+          105
+        ],
+        "material": "Neon",
+        "mesh": "king_CrownPearls",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          247,
+          186,
+          74
+        ],
+        "material": "Neon",
+        "mesh": "king_Robe",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          212,
+          74
+        ],
+        "material": "Neon",
+        "mesh": "king_RobeTrim",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          254,
+          220,
+          106
+        ],
+        "material": "Neon",
+        "mesh": "king_Ermine",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          222,
+          188,
+          74
+        ],
+        "material": "Neon",
+        "mesh": "king_ErmineSpots",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          212,
+          74
+        ],
+        "material": "Neon",
+        "mesh": "king_Scepter",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          189,
+          79
+        ],
+        "material": "Neon",
+        "mesh": "king_ScepterGem",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          211,
+          74
+        ],
+        "material": "Neon",
+        "mesh": "king_Throne",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          247,
+          186,
+          74
+        ],
+        "material": "Neon",
+        "mesh": "king_ThroneCushion",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          226,
+          202,
+          106
+        ],
+        "material": "Neon",
+        "mesh": "king_ThroneSapphires",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          189,
+          79
+        ],
+        "material": "Neon",
+        "mesh": "king_ThroneRubies",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          215,
+          79
+        ],
+        "material": "Neon",
+        "mesh": "king_SunHalo",
+        "piece": "Head",
+        "transparency": 0
+      }
+    ]
+  },
+  "ruby_diamond": {
+    "color": [
+      225,
+      30,
+      65
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          240,
+          122,
+          147
+        ],
+        "color2": [
+          255,
+          172,
+          187
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0.5,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "sparkle"
+      },
+      {
+        "brightness": 2.5,
+        "color": [
+          228,
+          118,
+          147
+        ],
+        "color2": [
+          228,
+          118,
+          147
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          1.2000000476837158,
+          0
+        ],
+        "piece": "Head"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          240,
+          122,
+          147
+        ],
+        "color2": [
+          255,
+          172,
+          187
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          2.4000000953674316,
+          0
+        ],
+        "piece": "Head",
+        "preset": "glint"
+      }
+    ],
+    "parts": [
+      {
+        "color": [
+          150,
+          68,
+          94
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "diamond_Crystals",
+        "piece": "Torso",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          145,
+          69,
+          94
+        ],
+        "material": "Neon",
+        "mesh": "diamond_FloatGem",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          171,
+          70,
+          94
+        ],
+        "material": "Foil",
+        "mesh": "diamond_Tiara",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          150,
+          68,
+          94
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "diamond_ShoulderGemL",
+        "piece": "LeftUpperArm",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          150,
+          68,
+          94
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "diamond_ShoulderGemR",
+        "piece": "RightUpperArm",
+        "transparency": 0.25
+      }
+    ]
+  },
+  "ruby_hero": {
+    "color": [
+      225,
+      30,
+      65
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          255,
+          116,
+          108
+        ],
+        "color2": [
+          255,
+          172,
+          187
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0.30000001192092896,
+          -0.699999988079071
+        ],
+        "piece": "Torso",
+        "preset": "glint"
+      }
+    ],
+    "parts": [
+      {
+        "color": [
+          170,
+          18,
+          40
+        ],
+        "material": "Fabric",
+        "mesh": "hero_Cape",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          170,
+          18,
+          40
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "hero_EmblemDisc",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          176,
+          61,
+          40
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "hero_Emblem",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          119,
+          14,
+          38
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "hero_Mask",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          174,
+          69,
+          91
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "hero_MaskEyes",
+        "piece": "Head",
+        "transparency": 0
+      }
+    ],
+    "pieces": {
+      "LeftLowerArm": [
+        170,
+        18,
+        40
+      ],
+      "LeftLowerLeg": [
+        170,
+        18,
+        40
+      ],
+      "RightLowerArm": [
+        170,
+        18,
+        40
+      ],
+      "RightLowerLeg": [
+        170,
+        18,
+        40
+      ]
+    }
+  },
+  "ruby_toxic": {
+    "color": [
+      225,
+      30,
+      65
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          234,
+          123,
+          108
+        ],
+        "color2": [
+          233,
+          172,
+          120
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1,
+          1.25
+        ],
+        "piece": "Torso",
+        "preset": "bubbles"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          226,
+          116,
+          108
+        ],
+        "color2": [
+          182,
+          155,
+          90
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          -3.700000047683716,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "smoke"
+      }
+    ],
+    "parts": [
+      {
+        "color": [
+          130,
+          26,
+          51
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "toxic_GasMask",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          142,
+          71,
+          45
+        ],
+        "material": "Neon",
+        "mesh": "toxic_MaskLenses",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          142,
+          71,
+          45
+        ],
+        "material": "Neon",
+        "mesh": "toxic_Slime",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          176,
+          60,
+          38
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "toxic_Barrel",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          142,
+          71,
+          45
+        ],
+        "material": "Neon",
+        "mesh": "toxic_BarrelGoo",
+        "piece": "Torso",
+        "transparency": 0
+      }
+    ]
+  },
+  "sapphire_pilot": {
+    "color": [
+      45,
+      90,
+      235
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          147,
+          176,
+          216
+        ],
+        "color2": [
+          187,
+          125,
+          137
+        ],
+        "kind": "particles",
+        "offset": [
+          -0.4000000059604645,
+          -1.2999999523162842,
+          1
+        ],
+        "piece": "Torso",
+        "preset": "jet"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          147,
+          176,
+          216
+        ],
+        "color2": [
+          187,
+          125,
+          137
+        ],
+        "kind": "particles",
+        "offset": [
+          0.4000000059604645,
+          -1.2999999523162842,
+          1
+        ],
+        "piece": "Torso",
+        "preset": "jet"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          136,
+          176,
+          246
+        ],
+        "color2": [
+          160,
+          185,
+          233
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          -2.200000047683716,
+          1
+        ],
+        "piece": "Torso",
+        "preset": "smoke"
+      }
+    ],
+    "parts": [
+      {
+        "color": [
+          51,
+          58,
+          137
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "pilot_AviatorCap",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          34,
+          48,
+          134
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "pilot_Goggles",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          83,
+          88,
+          142
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "pilot_GoggleLens",
+        "piece": "Head",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          70,
+          90,
+          182
+        ],
+        "material": "Metal",
+        "mesh": "pilot_Jetpack",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          76,
+          48,
+          137
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "pilot_Wings",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          80,
+          99,
+          189
+        ],
+        "material": "Fabric",
+        "mesh": "pilot_Scarf",
+        "piece": "Torso",
+        "transparency": 0
+      }
+    ],
+    "pieces": {
+      "LeftLowerLeg": [
+        51,
+        58,
+        137
+      ],
+      "RightLowerLeg": [
+        51,
+        58,
+        137
+      ]
+    }
+  },
+  "shadow_gold": {
+    "color": [
+      45,
+      40,
+      60
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          187,
+          118,
+          228
+        ],
+        "color2": [
+          213,
+          172,
+          255
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0.5,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "sparkle"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          187,
+          114,
+          222
+        ],
+        "color2": [
+          187,
+          114,
+          222
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          1,
+          -1
+        ],
+        "piece": "Torso"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          187,
+          115,
+          216
+        ],
+        "color2": [
+          213,
+          170,
+          227
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0.5,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "burst"
+      }
+    ],
+    "parts": [
+      {
+        "color": [
+          126,
+          54,
+          210
+        ],
+        "material": "Neon",
+        "mesh": "gold_TopHat",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          171,
+          87,
+          212
+        ],
+        "material": "Neon",
+        "mesh": "gold_HatTrim",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          171,
+          91,
+          216
+        ],
+        "material": "Neon",
+        "mesh": "gold_GoldChain",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          171,
+          89,
+          214
+        ],
+        "material": "Neon",
+        "mesh": "gold_CoinRing",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          132,
+          83,
+          219
+        ],
+        "material": "Neon",
+        "mesh": "gold_MoneyBag",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          171,
+          87,
+          212
+        ],
+        "material": "Neon",
+        "mesh": "gold_MoneyMark",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      }
+    ]
+  },
+  "shadow_ice": {
+    "color": [
+      45,
+      40,
+      60
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          180,
+          121,
+          255
+        ],
+        "color2": [
+          213,
+          172,
+          255
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          2,
+          0
+        ],
+        "piece": "Head",
+        "preset": "snow"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          174,
+          119,
+          255
+        ],
+        "color2": [
+          180,
+          162,
+          255
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          -3.700000047683716,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "wisp"
+      }
+    ],
+    "parts": [
+      {
+        "color": [
+          154,
+          96,
+          255
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "ice_IceCrown",
+        "piece": "Head",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          154,
+          96,
+          255
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "ice_IceWings",
+        "piece": "Torso",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          154,
+          96,
+          255
+        ],
+        "material": "Neon",
+        "mesh": "ice_IceShoulderL",
+        "piece": "LeftUpperArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          154,
+          96,
+          255
+        ],
+        "material": "Neon",
+        "mesh": "ice_IceBootL",
+        "piece": "LeftLowerLeg",
+        "transparency": 0
+      },
+      {
+        "color": [
+          154,
+          96,
+          255
+        ],
+        "material": "Neon",
+        "mesh": "ice_IceShoulderR",
+        "piece": "RightUpperArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          154,
+          96,
+          255
+        ],
+        "material": "Neon",
+        "mesh": "ice_IceBootR",
+        "piece": "RightLowerLeg",
+        "transparency": 0
+      }
+    ]
+  },
+  "shadow_king": {
+    "color": [
+      45,
+      40,
+      60
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          187,
+          116,
+          222
+        ],
+        "color2": [
+          213,
+          172,
+          255
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "sparkle"
+      },
+      {
+        "brightness": 3,
+        "color": [
+          187,
+          112,
+          220
+        ],
+        "color2": [
+          187,
+          112,
+          220
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          2,
+          -2
+        ],
+        "piece": "Torso"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          187,
+          115,
+          216
+        ],
+        "color2": [
+          213,
+          172,
+          255
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1.5,
+          0
+        ],
+        "piece": "Head",
+        "preset": "sparkle"
+      }
+    ],
+    "parts": [
+      {
+        "color": [
+          171,
+          87,
+          212
+        ],
+        "material": "Neon",
+        "mesh": "king_Crown",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          171,
+          56,
+          218
+        ],
+        "material": "Neon",
+        "mesh": "king_CrownGems",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          132,
+          74,
+          255
+        ],
+        "material": "Neon",
+        "mesh": "king_CrownSapphires",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          169,
+          97,
+          253
+        ],
+        "material": "Neon",
+        "mesh": "king_CrownPearls",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          160,
+          52,
+          212
+        ],
+        "material": "Neon",
+        "mesh": "king_Robe",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          171,
+          87,
+          212
+        ],
+        "material": "Neon",
+        "mesh": "king_RobeTrim",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          170,
+          98,
+          254
+        ],
+        "material": "Neon",
+        "mesh": "king_Ermine",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          126,
+          54,
+          212
+        ],
+        "material": "Neon",
+        "mesh": "king_ErmineSpots",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          171,
+          87,
+          212
+        ],
+        "material": "Neon",
+        "mesh": "king_Scepter",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          171,
+          56,
+          218
+        ],
+        "material": "Neon",
+        "mesh": "king_ScepterGem",
+        "piece": "RightLowerArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          171,
+          86,
+          212
+        ],
+        "material": "Neon",
+        "mesh": "king_Throne",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          160,
+          52,
+          212
+        ],
+        "material": "Neon",
+        "mesh": "king_ThroneCushion",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          132,
+          74,
+          255
+        ],
+        "material": "Neon",
+        "mesh": "king_ThroneSapphires",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          171,
+          56,
+          218
+        ],
+        "material": "Neon",
+        "mesh": "king_ThroneRubies",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          171,
+          91,
+          218
+        ],
+        "material": "Neon",
+        "mesh": "king_SunHalo",
+        "piece": "Head",
+        "transparency": 0
+      }
+    ]
+  },
+  "solar_galaxy": {
+    "color": [
+      255,
+      150,
+      20
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          255,
+          211,
+          99
+        ],
+        "color2": [
+          227,
+          180,
+          157
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0.5,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "stars"
+      },
+      {
+        "brightness": 2.5,
+        "color": [
+          240,
+          184,
+          99
+        ],
+        "color2": [
+          240,
+          184,
+          99
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          1,
+          -1.5
+        ],
+        "piece": "Torso"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          244,
+          192,
+          99
+        ],
+        "color2": [
+          255,
+          227,
+          157
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0,
+          0
+        ],
+        "piece": "Head",
+        "preset": "motes"
+      }
+    ],
+    "material": "Neon",
+    "parts": [
+      {
+        "color": [
+          245,
+          238,
+          106
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "galaxy_SpaceHelmet",
+        "piece": "Head",
+        "transparency": 0.5
+      },
+      {
+        "color": [
+          255,
+          234,
+          79
+        ],
+        "material": "Foil",
+        "mesh": "galaxy_GoldVisor",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          253,
+          241,
+          105
+        ],
+        "material": "Foil",
+        "mesh": "galaxy_SuitCollar",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          253,
+          241,
+          105
+        ],
+        "material": "Foil",
+        "mesh": "galaxy_SuitPads",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          220,
+          98
+        ],
+        "material": "Foil",
+        "mesh": "galaxy_SuitStripes",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          253,
+          241,
+          105
+        ],
+        "material": "Foil",
+        "mesh": "galaxy_LifePack",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          230,
+          238,
+          106
+        ],
+        "material": "Foil",
+        "mesh": "galaxy_PackLights",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          220,
+          98
+        ],
+        "material": "Neon",
+        "mesh": "galaxy_PlanetRing",
+        "piece": "Torso",
+        "transparency": 0.15
+      },
+      {
+        "color": [
+          255,
+          237,
+          80
+        ],
+        "material": "Foil",
+        "mesh": "galaxy_RingRocks",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          237,
+          80
+        ],
+        "material": "Foil",
+        "mesh": "galaxy_Moons",
+        "piece": "Torso",
+        "transparency": 0
+      }
+    ],
+    "pieces": {
+      "Torso": [
+        252,
+        239,
+        105
+      ]
+    }
+  },
+  "starlight_cosmic": {
+    "color": [
+      255,
+      160,
+      235
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          255,
+          203,
+          247
+        ],
+        "color2": [
+          255,
+          155,
+          237
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0.5,
+          0
+        ],
+        "piece": "Torso",
+        "preset": "stars"
+      },
+      {
+        "brightness": 3,
+        "color": [
+          248,
+          176,
+          247
+        ],
+        "color2": [
+          248,
+          176,
+          247
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          1,
+          -1.5
+        ],
+        "piece": "Torso"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          255,
+          192,
+          247
+        ],
+        "color2": [
+          203,
+          205,
+          250
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1,
+          1.7000000476837158
+        ],
+        "piece": "Torso",
+        "preset": "stars"
+      }
+    ],
+    "parts": [
+      {
+        "color": [
+          211,
+          99,
+          195
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_GalaxyDisc",
+        "piece": "Torso",
+        "transparency": 0.1
+      },
+      {
+        "color": [
+          255,
+          110,
+          220
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_GalaxyArmsA",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          222,
+          140,
+          227
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_GalaxyArmsB",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          253,
+          145,
+          225
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_GalaxyStars",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          145,
+          216
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_GalaxyCore",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          135,
+          184
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_GalaxyRim",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          222,
+          140,
+          227
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_RimGems",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          135,
+          184
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_StarCrown",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          110,
+          220
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_CrownGems",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          142,
+          194
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_CrownStar",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          135,
+          184
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_CosmicArmor",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          222,
+          140,
+          227
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_ArmorGems",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          135,
+          184
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_PauldronL",
+        "piece": "LeftUpperArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          135,
+          184
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_PauldronR",
+        "piece": "RightUpperArm",
+        "transparency": 0
+      },
+      {
+        "color": [
+          226,
+          147,
+          221
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_CosmicMoons",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          110,
+          220
+        ],
+        "material": "Neon",
+        "mesh": "cosmic_MoonRings",
+        "piece": "Torso",
+        "transparency": 0
+      }
+    ],
+    "pieces": {
+      "Torso": [
+        215,
+        102,
+        204
+      ]
+    }
+  },
+  "starlight_hero": {
+    "color": [
+      255,
+      160,
+      235
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          255,
+          196,
+          208
+        ],
+        "color2": [
+          255,
+          223,
+          250
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          0.30000001192092896,
+          -0.699999988079071
+        ],
+        "piece": "Torso",
+        "preset": "glint"
+      }
+    ],
+    "parts": [
+      {
+        "color": [
+          250,
+          104,
+          184
+        ],
+        "material": "Neon",
+        "mesh": "hero_Cape",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          250,
+          104,
+          184
+        ],
+        "material": "Neon",
+        "mesh": "hero_EmblemDisc",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          139,
+          184
+        ],
+        "material": "Neon",
+        "mesh": "hero_Emblem",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          209,
+          101,
+          182
+        ],
+        "material": "Neon",
+        "mesh": "hero_Mask",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          253,
+          145,
+          225
+        ],
+        "material": "Neon",
+        "mesh": "hero_MaskEyes",
+        "piece": "Head",
+        "transparency": 0
+      }
+    ],
+    "pieces": {
+      "LeftLowerArm": [
+        250,
+        104,
+        184
+      ],
+      "LeftLowerLeg": [
+        250,
+        104,
+        184
+      ],
+      "RightLowerArm": [
+        250,
+        104,
+        184
+      ],
+      "RightLowerLeg": [
+        250,
+        104,
+        184
+      ]
+    }
+  },
+  "starlight_void": {
+    "color": [
+      255,
+      160,
+      235
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          242,
+          170,
+          247
+        ],
+        "color2": [
+          147,
+          95,
+          162
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1.7000000476837158,
+          2
+        ],
+        "piece": "Torso",
+        "preset": "vortex"
+      },
+      {
+        "brightness": 3,
+        "color": [
+          238,
+          164,
+          247
+        ],
+        "color2": [
+          238,
+          164,
+          247
+        ],
+        "kind": "light",
+        "offset": [
+          0,
+          1,
+          0
+        ],
+        "piece": "Torso"
+      },
+      {
+        "brightness": 2,
+        "color": [
+          236,
+          164,
+          247
+        ],
+        "color2": [
+          137,
+          95,
+          142
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1,
+          1.7000000476837158
+        ],
+        "piece": "Torso",
+        "preset": "vortex"
+      }
+    ],
+    "parts": [
+      {
+        "color": [
+          207,
+          98,
+          180
+        ],
+        "material": "Neon",
+        "mesh": "void_VoidCore",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          253,
+          139,
+          227
+        ],
+        "material": "Neon",
+        "mesh": "void_PhotonRing",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          130,
+          198
+        ],
+        "material": "Neon",
+        "mesh": "void_AccretionHot",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          251,
+          112,
+          227
+        ],
+        "material": "Neon",
+        "mesh": "void_Accretion",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          222,
+          102,
+          210
+        ],
+        "material": "Neon",
+        "mesh": "void_AccretionOuter",
+        "piece": "Torso",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          238,
+          108,
+          227
+        ],
+        "material": "Neon",
+        "mesh": "void_VoidCracks",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          238,
+          108,
+          227
+        ],
+        "material": "Neon",
+        "mesh": "void_VoidEyes",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          211,
+          101,
+          187
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "void_VoidCrown",
+        "piece": "Head",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          251,
+          112,
+          227
+        ],
+        "material": "Neon",
+        "mesh": "void_CrownCores",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          221,
+          104,
+          204
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "void_VoidWings",
+        "piece": "Torso",
+        "transparency": 0.25
+      },
+      {
+        "color": [
+          251,
+          112,
+          227
+        ],
+        "material": "Neon",
+        "mesh": "void_WingTips",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          222,
+          102,
+          210
+        ],
+        "material": "Neon",
+        "mesh": "void_VoidShards",
+        "piece": "Torso",
+        "transparency": 0
+      }
+    ]
+  },
+  "tangerine_nerd": {
+    "color": [
+      255,
+      160,
+      50
+    ],
+    "effects": [
+      {
+        "brightness": 2,
+        "color": [
+          255,
+          206,
+          106
+        ],
+        "color2": [
+          255,
+          227,
+          182
+        ],
+        "kind": "particles",
+        "offset": [
+          0,
+          1,
+          0
+        ],
+        "piece": "Head",
+        "preset": "sparkle"
+      }
+    ],
+    "parts": [
+      {
+        "color": [
+          166,
+          79,
+          27
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "nerd_Glasses",
+        "piece": "Head",
+        "transparency": 0
+      },
+      {
+        "color": [
+          241,
+          164,
+          114
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "nerd_Lenses",
+        "piece": "Head",
+        "transparency": 0.3
+      },
+      {
+        "color": [
+          245,
+          82,
+          32
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "nerd_BowTie",
+        "piece": "Torso",
+        "transparency": 0
+      },
+      {
+        "color": [
+          255,
+          126,
+          28
+        ],
+        "material": "SmoothPlastic",
+        "mesh": "nerd_Backpack",
+        "piece": "Torso",
+        "transparency": 0
+      }
+    ]
+  }
+}

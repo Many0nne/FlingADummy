@@ -288,6 +288,25 @@ local function hasTemplates(names: { string }?): boolean
 	return true
 end
 
+-- Maillages publiés (assets/dummy/*.fbx, exportés avec l'avant de Blender vers +Z) : dans Roblox, leur contenu est
+-- tourné d'un demi-tour autour de Y dans leur boîte (#89 : hublot avant du scaphandre caché au fond du casque,
+-- épaulettes de la cape dans le dos, yeux à l'arrière de la tête). Chaque MeshPart reçoit donc ce demi-tour, sauf le
+-- torse : symétrique d'avant en arrière, il porte le pivot du modèle (PivotTo, LookVector) qui ne doit pas tourner.
+DummyShape.MESH_FLIP = CFrame.Angles(0, math.pi, 0)
+DummyShape.FLIPPED = "MeshFlip" -- attribut des pièces qui ont reçu MESH_FLIP
+
+-- Cette méthode permet de savoir si une pièce créée par makePart doit recevoir le demi-tour MESH_FLIP lorsque l'on la
+-- place.
+local function needsFlip(part: BasePart): boolean
+	return part:IsA("MeshPart") and part.Name ~= "Torso"
+end
+
+-- Cette méthode permet de donner le repère de conception d'une pièce (sans le demi-tour MESH_FLIP de son maillage)
+-- lorsque l'on y pose une pièce ajoutée, un bloc ou un effet à un décalage du gabarit.
+function DummyShape.designFrame(part: BasePart): CFrame
+	return if part:GetAttribute(DummyShape.FLIPPED) then part.CFrame * DummyShape.MESH_FLIP else part.CFrame
+end
+
 -- Cette méthode permet de créer une pièce (maillée si son gabarit existe, bloc sinon) à la taille voulue lorsque
 -- l'on construit un mannequin ; nil pour un accessoire sans maillage.
 function DummyShape.makePart(name: string, size: Vector3): BasePart?
@@ -332,6 +351,42 @@ function DummyShape.applyMaterial(part: BasePart, variant: Variant?): Enum.Mater
 	return material
 end
 
+-- Pièces ajoutées translucides (#89) : le verre (Glass) laisse voir en jeu la pièce opaque juste derrière sans presque
+-- rien teinter (hublot du scaphandre, verres : invisibles sur le modèle, bien visibles sur l'icône rendue par Blender),
+-- et ni le verre ni le champ de force ne se rendent en ViewportFrame (fenêtres). Ces pièces passent donc en plastique
+-- lisse translucide, transparence bornée par matériau d'origine (plancher : la teinte se voit ; plafond : la pièce se
+-- voit). Bornes calées sur les aperçus Blender (verre : opacité 0,72 au plus ; champ de force : 0,45).
+DummyShape.SEE_THROUGH = {
+	Glass = { min = 0.25, max = 0.5 },
+	ForceField = { min = 0.45, max = 0.5 },
+} :: { [string]: { min: number, max: number } } -- par nom de matériau
+DummyShape.MAX_TRANSPARENCY = 0.5 -- au-delà, une pièce visible ne se voit plus en jeu (garde-fou des tests)
+
+-- Cette méthode permet de donner le matériau et la transparence d'une pièce ajoutée (`def` : Shared.DummyModels.ADDONS)
+-- sous une déclinaison lorsque l'on la pose : matériau de la palette sauf pour une vitre, puis verre et champ de force
+-- rendus en plastique lisse translucide (SEE_THROUGH).
+function DummyShape.addonFinish(def: DummyModels.Addon, variant: Variant?): (Enum.Material, number)
+	local transparency = def.transparency or 0
+	-- Une vitre (casque de scaphandre, visière, verres) garde son matériau d'origine sous une palette de variante générée
+	local seeThrough = DummyShape.SEE_THROUGH[def.material.Name] ~= nil or transparency > 0
+	local material = if seeThrough then def.material else (variant and variant.accessoryMaterial) or def.material
+	local bounds = DummyShape.SEE_THROUGH[material.Name]
+	if bounds then
+		return Enum.Material.SmoothPlastic, math.clamp(transparency, bounds.min, bounds.max)
+	end
+	return material, math.min(transparency, DummyShape.MAX_TRANSPARENCY)
+end
+
+-- Cette méthode permet de remplacer, dans un modèle affiché en ViewportFrame, les matériaux qui ne s'y rendent pas
+-- (verre, champ de force du corps : Diamond, Ghost, Glass Dummy) par du néon lorsque une fenêtre montre un mannequin.
+function DummyShape.viewportSafe(model: Model)
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") and DummyShape.SEE_THROUGH[part.Material.Name] then
+			part.Material = Enum.Material.Neon
+		end
+	end
+end
+
 -- Cette méthode permet de créer les pièces d'un mannequin debout à l'échelle `scale` (couleur, matériau, cibles des
 -- blocs) lorsque le serveur ou le client en construit un ; renvoie les pièces par nom.
 function DummyShape.buildPieces(model: Model, scale: number, variant: Variant?): { [string]: BasePart }
@@ -342,6 +397,10 @@ function DummyShape.buildPieces(model: Model, scale: number, variant: Variant?):
 	for _, piece in DummyShape.PIECES do
 		local p = DummyShape.makePart(piece.name, piece.size * scale) :: BasePart
 		p.CFrame = CFrame.new(piece.position * scale)
+		if needsFlip(p) then
+			p.CFrame *= DummyShape.MESH_FLIP
+			p:SetAttribute(DummyShape.FLIPPED, true)
+		end
 		p.Material = DummyShape.applyMaterial(p, variant) -- avant la couleur : retire l'atlas si besoin
 		p.Color = DummyShape.colorOf(piece, p, variant)
 		if hide and table.find((variant :: Variant).hidden :: { string }, piece.name) then
@@ -488,7 +547,9 @@ function DummyShape.addEffects(parts: { [string]: BasePart }, scale: number, var
 		end
 		local attachment = Instance.new("Attachment")
 		attachment.Name = "Fx" .. index
-		attachment.Position = effect.offset * scale
+		-- Décalage du gabarit, dans le repère de conception de la pièce (sans le demi-tour de son maillage)
+		attachment.Position =
+			carrier.CFrame:PointToObjectSpace(DummyShape.designFrame(carrier) * (effect.offset * scale))
 		if effect.kind == "light" then
 			local light = Instance.new("PointLight")
 			light.Color = effect.color
@@ -524,7 +585,7 @@ function DummyShape.addAccessories(model: Model, parts: { [string]: BasePart }, 
 			local p = Instance.new("Part")
 			p.Name = "Block"
 			p.Size = block.size * scale
-			p.CFrame = carrier.CFrame * CFrame.new(block.offset * scale)
+			p.CFrame = DummyShape.designFrame(carrier) * CFrame.new(block.offset * scale)
 			p.Color = block.color
 			p.Material = block.material or Enum.Material.SmoothPlastic
 			p.TopSurface = Enum.SurfaceType.Smooth
@@ -547,14 +608,16 @@ function DummyShape.addAccessories(model: Model, parts: { [string]: BasePart }, 
 		local carrier = def and parts[def.piece]
 		local accessory = carrier and DummyShape.makePart(name, def.size * scale)
 		if accessory then
-			local offset = CFrame.new(def.offset * scale)
-			accessory.CFrame = carrier.CFrame * offset
+			accessory.CFrame = DummyShape.designFrame(carrier) * CFrame.new(def.offset * scale)
+			if needsFlip(accessory) then
+				accessory.CFrame *= DummyShape.MESH_FLIP
+				accessory:SetAttribute(DummyShape.FLIPPED, true)
+			end
+			local offset = carrier.CFrame:ToObjectSpace(accessory.CFrame) -- repos dans le repère réel de la pièce
 			accessory.Color = variant.accessoryColor or (variant.accessoryColors or {})[name] or def.color
-			-- Une vitre (casque de scaphandre, visière, verres) reste en verre sous une palette de variante générée
-			local seeThrough = def.material == Enum.Material.Glass or (def.transparency or 0) > 0
-			local material = if seeThrough then def.material else variant.accessoryMaterial or def.material
+			local material, transparency = DummyShape.addonFinish(def, variant)
 			accessory.Material = material
-			accessory.Transparency = def.transparency or 0
+			accessory.Transparency = transparency
 			accessory.Massless = true
 			accessory.CanCollide = false
 			accessory.CanQuery = false

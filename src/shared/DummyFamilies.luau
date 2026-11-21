@@ -26,6 +26,8 @@ export type Palette = {
 
 -- Palettes, de la plus simple (plastique uni des raretés basses) à la plus folle (néon, métal, glace des raretés
 -- au-delà de Secret). Ni verre ni champ de force : invisibles dans les fenêtres (ViewportFrame).
+-- Vérifiées en jeu (#96) : ni corps ni teinte des pièces blancs en néon ou en Foil pâle (le Bloom en fait une tache
+-- blanche), glaces assez bleues pour se détacher du ciel.
 -- stylua: ignore
 DummyFamilies.PALETTES = {
 	pink      = { name = "Pink",      body = rgb(255, 130, 195), accent = rgb(255, 80, 160),  tint = 0.6,  glow = rgb(255, 150, 210) },
@@ -41,19 +43,19 @@ DummyFamilies.PALETTES = {
 	shadow    = { name = "Shadow",    body = rgb(45, 40, 60),    accent = rgb(150, 60, 255),  tint = 0.8,  glow = rgb(170, 90, 255),  accessoryMaterial = M.Neon },
 	silver    = { name = "Silver",    body = rgb(200, 205, 215), accent = rgb(170, 175, 190), tint = 0.85, glow = rgb(235, 240, 255), material = M.Metal, accessoryMaterial = M.Metal },
 	golden    = { name = "Golden",    body = rgb(255, 200, 45),  accent = rgb(255, 180, 30),  tint = 0.9,  glow = rgb(255, 230, 120), material = M.Foil, accessoryMaterial = M.Foil },
-	frost     = { name = "Frost",     body = rgb(175, 230, 255), accent = rgb(120, 200, 255), tint = 0.85, glow = rgb(200, 240, 255), material = M.Ice, accessoryMaterial = M.Ice },
+	frost     = { name = "Frost",     body = rgb(120, 200, 255), accent = rgb(80, 170, 255),  tint = 0.85, glow = rgb(200, 240, 255), material = M.Ice, accessoryMaterial = M.Ice },
 	magma     = { name = "Magma",     body = rgb(255, 95, 30),   accent = rgb(255, 60, 20),   tint = 0.8,  glow = rgb(255, 150, 40),  material = M.CrackedLava },
-	radiant   = { name = "Radiant",   body = rgb(255, 245, 170), accent = rgb(255, 215, 80),  tint = 0.85, glow = rgb(255, 245, 180), material = M.Foil, accessoryMaterial = M.Neon },
-	angelic   = { name = "Angelic",   body = rgb(250, 250, 255), accent = rgb(255, 210, 90),  tint = 0.85, glow = rgb(255, 250, 220), accessoryMaterial = M.Foil },
-	starlight = { name = "Starlight", body = rgb(255, 160, 235), accent = rgb(255, 230, 255), tint = 0.8,  glow = rgb(255, 190, 245), accessoryMaterial = M.Neon },
+	radiant   = { name = "Radiant",   body = rgb(255, 220, 100), accent = rgb(255, 215, 80),  tint = 0.85, glow = rgb(255, 245, 180), accessoryMaterial = M.Neon },
+	angelic   = { name = "Angelic",   body = rgb(230, 225, 250), accent = rgb(255, 210, 90),  tint = 0.85, glow = rgb(255, 250, 220), accessoryMaterial = M.Foil },
+	starlight = { name = "Starlight", body = rgb(255, 160, 235), accent = rgb(255, 120, 220), tint = 0.8,  glow = rgb(255, 190, 245), accessoryMaterial = M.Neon },
 	nebula    = { name = "Nebula",    body = rgb(120, 60, 220),  accent = rgb(255, 110, 220), tint = 0.8,  glow = rgb(220, 140, 255), material = M.Foil, accessoryMaterial = M.Neon },
 	aurora    = { name = "Aurora",    body = rgb(70, 235, 200),  accent = rgb(150, 110, 255), tint = 0.8,  glow = rgb(140, 255, 220), accessoryMaterial = M.Neon },
 	plasma    = { name = "Plasma",    body = rgb(255, 50, 200),  accent = rgb(80, 220, 255),  tint = 0.85, glow = rgb(255, 120, 230), material = M.Neon, accessoryMaterial = M.Neon },
-	prism     = { name = "Prism",     body = rgb(210, 240, 255), accent = rgb(255, 150, 240), tint = 0.75, glow = rgb(230, 200, 255), material = M.Ice, accessoryMaterial = M.Neon },
-	quantum   = { name = "Quantum",   body = rgb(20, 230, 255),  accent = rgb(255, 255, 255), tint = 0.8,  glow = rgb(140, 245, 255), material = M.Neon, accessoryMaterial = M.Neon },
+	prism     = { name = "Prism",     body = rgb(170, 215, 255), accent = rgb(255, 150, 240), tint = 0.75, glow = rgb(230, 200, 255), material = M.Ice, accessoryMaterial = M.Neon },
+	quantum   = { name = "Quantum",   body = rgb(20, 230, 255),  accent = rgb(170, 90, 255),  tint = 0.8,  glow = rgb(140, 245, 255), material = M.Neon, accessoryMaterial = M.Neon },
 	solar     = { name = "Solar",     body = rgb(255, 150, 20),  accent = rgb(255, 240, 80),  tint = 0.85, glow = rgb(255, 200, 60),  material = M.Neon, accessoryMaterial = M.Foil },
 	omega     = { name = "Omega",     body = rgb(25, 20, 30),    accent = rgb(255, 40, 40),   tint = 0.9,  glow = rgb(255, 70, 50),   material = M.Metal, accessoryMaterial = M.Neon },
-	infinite  = { name = "Infinite",  body = rgb(255, 255, 255), accent = rgb(255, 120, 40),  tint = 0.85, glow = rgb(255, 180, 90),  material = M.Neon, accessoryMaterial = M.Foil },
+	infinite  = { name = "Infinite",  body = rgb(255, 245, 230), accent = rgb(255, 120, 40),  tint = 0.85, glow = rgb(255, 180, 90),  accessoryMaterial = M.Foil },
 } :: { [string]: Palette }
 
 -- Mannequins générés, par rareté (indice de Shared.Rarity) : famille (id d'un mannequin dessiné) × palette, du moins

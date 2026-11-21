@@ -1,6 +1,8 @@
 # Icones des mannequins de collection dans la barre d'outils (#66) : une icone carree par mannequin, tiree de son
 # apercu trois-quarts (assets/dummy/export/collection/<id>.png, rendu par build_collection.py, effets compris),
 # recadree au plus pres, centree, puis contouree de noir comme les autres icones (build_icons.outline).
+# Mannequins generes (#96) : apercus d'abord rendus par `lune run tools/export-generated-looks.luau` puis
+# `blender -b --factory-startup --python assets/dummy/build_collection.py -- --generated`.
 # Usage : blender -b --factory-startup --python assets/icons/dummy_icons.py
 # Sortie : assets/icons/export/dummy_<id>.png (256 x 256) et assets/icons/export/dummy_sheet.png (planche de controle).
 import os

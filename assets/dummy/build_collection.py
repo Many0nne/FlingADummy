@@ -4,6 +4,8 @@
 # export/collection.json et genere src/shared/DummyModels.luau (looks, gabarit des pieces, effets), puis rend un apercu
 # par mannequin dans export/collection/<id>.png (planche : collection_sheet.py).
 # Usage : blender -b --factory-startup --python assets/dummy/build_collection.py [-- --no-render] [--only id,id]
+#         [--generated] (rend seulement les mannequins generes, #96 : looks de export/generated.json ecrits par
+#         `lune run tools/export-generated-looks.luau`, sans reecrire l'export FBX, le JSON ni le module Luau)
 # Unite : 1 unite Blender = 1 stud. Coordonnees des formes en repere Roblox (X droite, Y haut, -Z avant).
 import json
 import math
@@ -1658,9 +1660,11 @@ def particle_specks(effect, rng):
     piece = effect["piece"]
     base = Vector(PIECES[piece][1]) + Vector(effect["offset"])
     preset = effect["preset"]
+    # Grands effets plats ou halos (anneau, flaque, rayons) : pas d'eclats ; autres preregles : eclats moyens
     count, radius, size = {"sparkle": (16, 2.2, 0.16), "fire": (14, 0.6, 0.22), "embers": (16, 2.2, 0.12),
                            "wisp": (10, 1.0, 0.3), "stars": (22, 2.8, 0.16), "vortex": (18, 2.4, 0.14),
-                           "aura": (0, 0, 0)}[preset]
+                           "aura": (0, 0, 0), "ring": (0, 0, 0), "pool": (0, 0, 0),
+                           "rays": (0, 0, 0)}.get(preset, (12, 2.0, 0.14))
     out = []
     for i in range(count):
         d = Vector((rng.uniform(-1, 1), rng.uniform(-1, 1), rng.uniform(-1, 1)))
@@ -1770,23 +1774,30 @@ def main():
         catalog[dummy_id] = entry
         print(f"[collection] {dummy_id}: {len(parts)} pieces, {sum(p['triangles'] for p in parts)} triangles")
 
-    with open(os.path.join(EXPORT, "collection.json"), "w", encoding="utf-8") as f:
-        json.dump(catalog, f, indent=1)
-    write_luau(catalog)
+    generated = "--generated" in argv
+    if generated:
+        # Mannequins generes (famille x palette) : memes maillages, couleurs et materiaux calcules par le jeu
+        with open(os.path.join(EXPORT, "generated.json"), encoding="utf-8") as f:
+            catalog = json.load(f)
+    else:
+        with open(os.path.join(EXPORT, "collection.json"), "w", encoding="utf-8") as f:
+            json.dump(catalog, f, indent=1)
+        write_luau(catalog)
 
     # Export : pieces ajoutees seules (le corps reste dans dummy.fbx, deja publie)
-    bpy.ops.object.select_all(action="DESELECT")
-    for o in addons.values():
-        o.select_set(True)
-    bpy.ops.export_scene.fbx(
-        filepath=os.path.join(EXPORT, "collection.fbx"),
-        use_selection=True,
-        object_types={"MESH"},
-        apply_unit_scale=True,
-        mesh_smooth_type="FACE",
-        axis_forward="-Z",
-        axis_up="Y",
-    )
+    if not generated:
+        bpy.ops.object.select_all(action="DESELECT")
+        for o in addons.values():
+            o.select_set(True)
+        bpy.ops.export_scene.fbx(
+            filepath=os.path.join(EXPORT, "collection.fbx"),
+            use_selection=True,
+            object_types={"MESH"},
+            apply_unit_scale=True,
+            mesh_smooth_type="FACE",
+            axis_forward="-Z",
+            axis_up="Y",
+        )
     if "--no-render" in argv:
         return
 

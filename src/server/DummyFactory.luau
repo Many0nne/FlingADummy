@@ -15,7 +15,8 @@ local DummyFactory = {}
 local function attach(partInstance: BasePart, world: Vector3, axis: Vector3): Attachment
 	local attachment = Instance.new("Attachment")
 	local up = if math.abs(axis.Y) > 0.9 then Vector3.xAxis else Vector3.yAxis
-	attachment.CFrame = CFrame.new(partInstance.Position):ToObjectSpace(CFrame.fromMatrix(world, axis, up))
+	-- Repère réel de la pièce : la tête et les membres maillés ont reçu le demi-tour DummyShape.MESH_FLIP
+	attachment.CFrame = partInstance.CFrame:ToObjectSpace(CFrame.fromMatrix(world, axis, up))
 	attachment.Parent = partInstance
 	return attachment
 end
