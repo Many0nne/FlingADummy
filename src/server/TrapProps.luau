@@ -517,8 +517,9 @@ builders.Bumper = function(model, at, box)
 		local x = (i - 2) * 2.3
 		local h = 5 + (i % 2) * 2
 		-- Inclinés vers l'avant de la piste (+Z), comme une rampe qui renvoie le mannequin
+		-- Cristal et pointe dans le même mouvement : la pointe ne se détache pas
 		local crystal = put(
-			model,
+			pulse,
 			at * CFrame.new(x, 1.2, -1) * CFrame.Angles(math.rad(25), 0, 0),
 			Vector3.new(2, h, 2),
 			Vector3.new(0, h / 2, 0),
@@ -605,17 +606,20 @@ builders.Ghost = function(model, at, box)
 	put(model, at, Vector3.new(1, 3, 0.3), Vector3.new(0, 4, back - 0.75), rgb(90, 85, 100))
 	put(model, at, Vector3.new(2.6, 0.3, 0.3), Vector3.new(0, 4.6, back - 0.75), rgb(90, 85, 100))
 	put(model, at, Vector3.new(9, 0.5, 5), Vector3.new(0, 0.25, -0.5), rgb(85, 60, 45))
-	-- Fantôme : jaillit d'un coup puis redescend lentement (même mouvement que le diable en boîte)
-	local ghost = moving(model, at, "Press", Vector3.yAxis, 8, Traps.CYCLES.Ghost.period)
-	local body = put(ghost, at, Vector3.new(3.6, 4, 2.4), Vector3.new(0, 1.5, -0.5), WHITE)
+	-- Fantôme : caché sous la terre au repos (sous le sol de la piste), il jaillit d'un coup de `rise` studs puis redescend
+	-- lentement (même mouvement que le diable en boîte) : on le voit dehors pendant sa phase active
+	local rise = 8
+	local low = -rise
+	local ghost = moving(model, at, "Press", Vector3.yAxis, rise, Traps.CYCLES.Ghost.period)
+	local body = put(ghost, at, Vector3.new(3.6, 4, 2.4), Vector3.new(0, low + 2.5, -0.5), WHITE)
 	body.Transparency = 0.2
-	local head = put(ghost, at, Vector3.new(3, 2.6, 2.4), Vector3.new(0, 4.8, -0.5), WHITE)
+	local head = put(ghost, at, Vector3.new(3, 2.6, 2.4), Vector3.new(0, low + 5.8, -0.5), WHITE)
 	head.Transparency = 0.2
 	for _, side in { -1, 1 } do
-		put(ghost, at, Vector3.new(0.6, 0.9, 0.3), Vector3.new(side * 0.7, 5, -1.8), BLACK)
-		put(ghost, at, Vector3.new(1.6, 0.8, 0.8), Vector3.new(side * 2.4, 3, -1), WHITE)
+		put(ghost, at, Vector3.new(0.6, 0.9, 0.3), Vector3.new(side * 0.7, low + 6, -1.8), BLACK)
+		put(ghost, at, Vector3.new(1.6, 0.8, 0.8), Vector3.new(side * 2.4, low + 4, -1), WHITE)
 	end
-	put(ghost, at, Vector3.new(1, 0.6, 0.3), Vector3.new(0, 4.1, -1.8), BLACK)
+	put(ghost, at, Vector3.new(1, 0.6, 0.3), Vector3.new(0, low + 5.1, -1.8), BLACK)
 end
 
 -- Cette méthode permet de dresser un portail de trou de ver (anneau à 12 pans violet et noir posé sur un socle, spirale

@@ -1303,7 +1303,7 @@ function CourseBuilder.build(): Course
 	-- Coût du décor généré (#97) : temps par étape et par zone, nombre d'instances
 	print(
 		string.format(
-			"[Course] construit en %.0f ms (hub %.0f, piste %.0f, obstacles %.0f), %d instances ; zones (ms) : %s",
+			"[Course] construit en %.0f ms (hub et zone de lancer %.0f, piste %.0f, obstacles %.0f), %d instances ; zones (ms) : %s",
 			(os.clock() - started) * 1000,
 			hubTime * 1000,
 			trackTime * 1000,

@@ -780,7 +780,7 @@ end
 
 -- Ville néon (#97) --------------------------------------------------------------------------------------------------
 
--- Cette méthode permet de garer un taxi jaune (roues, caisse, bande à damier, cabine, enseigne TAXI) en travers de
+-- Cette méthode permet de garer un taxi jaune (roues, caisse, bande noire, cabine, enseigne blanche) en travers de
 -- chaque colonne lorsque le site est construit.
 builders.Taxis = function(kit, z)
 	eachColumn(kit, function(add, x)
@@ -847,18 +847,15 @@ builders.CloudPuffs = function(kit, z)
 	end)
 end
 
--- Cette méthode permet de poser une montgolfière (nacelle en osier, quatre cordes, ballon rayé en trois étages) dans
--- chaque colonne lorsque le site est construit.
+-- Cette méthode permet de poser une montgolfière (nacelle en osier, brûleur, ballon rayé en trois étages) dans chaque
+-- colonne lorsque le site est construit ; le ballon repose sur un brûleur large et centré (des cordes fines plieraient).
 builders.HotAirBalloons = function(kit, z)
 	local stripes = { rgb(255, 80, 80), rgb(255, 210, 50), rgb(80, 170, 255), rgb(120, 220, 110) }
 	eachColumn(kit, function(add, x, column)
 		local color = stripes[(column - 1) % #stripes + 1]
 		block(add, "Basket", Vector3.new(4, 3, 4), Vector3.new(x, 1.5, z), rgb(170, 115, 60), LIGHT, "Crate")
 		local top = 3 + GAP
-		for _, corner in { Vector2.new(-1, -1), Vector2.new(1, -1), Vector2.new(-1, 1), Vector2.new(1, 1) } do
-			local at = Vector3.new(x + corner.X * 1.7, top + 1.5, z + corner.Y * 1.7)
-			block(add, "Rope", Vector3.new(0.4, 3, 0.4), at, rgb(235, 215, 165), LIGHT, "Crate")
-		end
+		block(add, "Burner", Vector3.new(3, 3, 3), Vector3.new(x, top + 1.5, z), rgb(235, 215, 165), LIGHT, "Crate")
 		local y = top + 3 + GAP
 		block(add, "Envelope", Vector3.new(5, 2, 5), Vector3.new(x, y + 1, z), color, LIGHT, "Crate")
 		block(add, "Envelope", Vector3.new(7, 4, 7), Vector3.new(x, y + 2 + GAP + 2, z), WHITE, LIGHT, "Crate")

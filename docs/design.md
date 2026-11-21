@@ -403,7 +403,7 @@ l'entraînement, revenus des premières raretés) ; la collection reste plus pet
   mannequin passe dessous et s'arrête contre la paroi en gradins du bout (6 040 m ; vol mesuré à 6 037 m). Limite d'un
   vol portée de 16 à 22 s (`MAX_FLIGHT_TIME`) : un vol de 4,4 B met 14 à 16 s pour glisser jusqu'au bout.
 - **Coût du décor généré** (#97, mesuré en Studio, journal `[Course]` du serveur) : 25 160 instances construites en
-  307-485 ms (hub 11-20 ms, piste 100-196 ms, obstacles 91-124 ms) ; les 12 premiers thèmes et le hub en font ≈ 12 600,
+  307-485 ms (hub et zone de lancer 11-20 ms, piste 100-196 ms, obstacles 91-124 ms) ; les 12 premiers thèmes et le hub en font ≈ 12 600,
   les six thèmes de 2,4 à 6 km ≈ 12 900 (× 2 environ). `StreamingEnabled` est coupé : chaque client reçoit tout (client
   Studio : 60 FPS, 119 Mo pour les instances).
 - **Obstacles partagés** (`Server.Obstacles`, plan dans `Shared.TrackPlan`) : dans chaque thème, les 2 ou 3 obstacles cassables du thème à

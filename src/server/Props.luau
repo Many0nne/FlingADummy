@@ -569,9 +569,11 @@ end
 -- Cette méthode permet de faire flotter un nuage en cubes blancs lorsque l'on habille le royaume des nuages.
 builders.cloud = function(parent, at, rng)
 	local y = snap(rng, 6, 14, 1)
-	for i = 1, rng:NextInteger(3, 4) do
+	local count = rng:NextInteger(3, 4)
+	for i = 1, count do
 		local size = snap(rng, 3, 5, 0.5)
-		local offset = Vector3.new((i - 2.5) * 2.6, y + rng:NextNumber(-0.6, 0.6), rng:NextNumber(-1, 1))
+		-- Cubes centrés sur le repère, quel que soit leur nombre
+		local offset = Vector3.new((i - (count + 1) / 2) * 2.6, y + rng:NextNumber(-0.6, 0.6), rng:NextNumber(-1, 1))
 		put(parent, at, Vector3.one * size, offset, if i % 2 == 0 then WHITE else rgb(230, 242, 255), false)
 	end
 end
