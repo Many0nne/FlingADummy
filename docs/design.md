@@ -58,10 +58,11 @@ base, il rapporte des $/s, seule source d'argent.
    tard 20 s après l'atterrissage).
 7. **Poser** : de retour au hub, panneau « Place your Crash Dummy! » en bas au centre (rendu 3D). **Première pose à la
    main** (étape du tutoriel) : flèche et chevrons vers un présentoir libre de sa base, présentoirs libres en
-   surbrillance, invite « Place » (E). Ensuite le bouton **AUTO** apparaît seulement dans sa base ou à moins de
-   12 studs de sa clôture (vérifié aussi par le serveur). Le mannequin gagné va d'abord au **stock** (inventaire) : un
-   lancer suivant sans poser l'y laisse et y ajoute le nouveau, rien ne se perd (#54) ; le panneau montre le dernier
-   gagné.
+   surbrillance, invite « Place » (E). Le mannequin gagné va d'abord au **stock** (inventaire) et dans la **barre
+   d'outils** Roblox (#54) : un lancer suivant sans poser l'y laisse et y ajoute le nouveau, rien ne se perd ; le
+   panneau montre le dernier gagné. Ensuite, la pose passe par la barre : mannequin **équipé** près d'un présentoir
+   libre → invite « Place » ; le bouton **AUTO** (dans sa base ou à moins de 12 studs de sa clôture, vérifié aussi par
+   le serveur) pose le mannequin tenu, sinon le dernier gagné.
 
 ## Mécanique secondaire : l'entraînement
 - Un appareil d'entraînement par joueur, devant sa base à côté de l'entrée (podium à tenons, râtelier de mannequins
@@ -109,8 +110,19 @@ Comme 01 et 09 : le lancer fait le lien entre les deux.
 - Revenu versé chaque seconde (attribut `Income`, compteur « +$N/s ») : **seule source d'argent**.
 - **Stock** (inventaire) : les mannequins possédés non posés, doublons compris, dans l'ordre d'arrivée ; tout mannequin
   gagné y entre. Plafond technique 200 (`INVENTORY_MAX`) : au-delà, le moins rentable du stock est vendu d'office.
-- **AUTO** (bouton compact, le panneau « Place your… » n'existe que pendant l'étape « Place » du tutoriel) : premier présentoir libre ; base pleine, le nouveau remplace le moins rentable s'il
-  rapporte plus (l'ancien retourne au stock), sinon il reste au stock. Rien n'est jamais vendu sans clic.
+- **Barre d'outils** (Backpack Roblox, `Server.DummyTools`, logique dans `Shared.BackpackPlan`) : un outil par mannequin
+  du stock, doublons compris, rareté décroissante puis ordre d'arrivée ; nom du mannequin, icône du mannequin
+  (`Assets.DUMMY_ICONS`, rendus des modèles de #66), sinon de sa rareté (buste à sa couleur, `Assets.RARITY_ICONS` ;
+  nom affiché à la place tant qu'aucune n'est publiée), info-bulle
+  « nom · rareté · $/s ». Équipé, l'avatar le porte debout devant la poitrine, à l'échelle de sa taille (0,42 × échelle
+  de la taille), animation « Carry » du haut du corps (marche et saut libres) ; chaque client construit le modèle tenu
+  (`DummyShape.buildVisual`) d'après l'outil équipé. Barre masquée et mannequin déséquipé hors du hub (bande, vol,
+  tirage, entraînement). Posé, vendu ou rangé par PLACE BEST : son outil quitte la barre ; le Backpack est reconstruit
+  depuis le stock à chaque réapparition et à chaque arrivée (pas de sauvegarde à part).
+- **AUTO** (bouton compact au-dessus de la barre d'outils, le panneau « Place your… » n'existe que pendant l'étape
+  « Place » du tutoriel) : pose le mannequin tenu, sinon le dernier gagné, sur le premier présentoir libre ; base pleine,
+  le nouveau remplace le moins rentable s'il rapporte plus (l'ancien retourne au stock), sinon il reste au stock (AUTO
+  est alors caché). Rien n'est jamais vendu sans clic.
 - **Fenêtre « My Dummies »** (bouton Dummies, panneau à droite comme « Mes plantes » de 09) : en haut « IN YOUR BASE
   n/N · INVENTORY n », total $/s et bouton orange **PLACE BEST** (remplit les présentoirs avec les plus rentables, posés
   et stock confondus ; un posé reste en place s'il en fait partie) ; puis une ligne par mannequin, posés d'abord, puis
@@ -235,7 +247,7 @@ Interface : section suivante.
 - Lobby de 4 joueurs (`SLOT_COUNT`, `MaxPlayers` du projet Rojo) sur **une piste partagée** : chaque joueur a une place
   (`Server.SlotService`) ; les vols coexistent, les obstacles réapparaissent d'eux-mêmes au lieu d'être reconstruits.
 - Studio : `DebugLaunch` (0-1) sur le joueur lance son mannequin, `DebugLaunchBots` (n) lance n mannequins de test depuis
-  les places libres (mesure de 4 vols simultanés), `DebugPlace` pose le mannequin en main (AUTO) ; `FreshPlayer` sur
+  les places libres (mesure de 4 vols simultanés), `DebugPlace` pose le mannequin tenu ou le dernier gagné (AUTO), `DebugEquip` (« id:taille », « » pour ranger) équipe un mannequin de la barre ; `FreshPlayer` sur
   Workspace : nouveau joueur sans sauvegarde.
 - Le décor est généré par le code (`CourseBuilder`) : rien à exporter depuis Studio.
 

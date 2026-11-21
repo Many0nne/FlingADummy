@@ -1,6 +1,7 @@
 # Icones d'interface dessinees en couleur (style des jeux de reference : objet 3D sature, contour noir epais) :
 # boutique (cadeau), index (livre), mannequins (buste du mannequin de crash-test), puissance (biceps), argent (liasse),
-# fleche d'objectif (triangle jaune), musique (double croche violette).
+# fleche d'objectif (triangle jaune), musique (double croche violette), raretes (rarity1 a rarity7 : buste du
+# mannequin a la couleur de la rarete, icones des mannequins dans la barre d'outils).
 # Rend chaque icone sur fond transparent puis ajoute le contour noir par dilatation de l'alpha.
 # Usage : blender -b --factory-startup --python assets/icons/build_icons.py [-- nom1 nom2]
 # Sortie : assets/icons/export/<nom>.png (256 x 256) et assets/icons/export/sheet.png (planche de controle).
@@ -239,6 +240,28 @@ def build_music():
     parent_all(objs, (0, 0, math.radians(-10)))
 
 
+# Couleurs des raretes (Shared.Rarity, dans l'ordre) : icones des mannequins dans la barre d'outils (#54)
+RARITY_COLORS = ["#EBEBEB", "#5ADC5A", "#46A0FF", "#BE5AFF", "#FFBE28", "#FF466E", "#6EFFE1"]
+
+
+def rarity_builder(color):
+    """Cette methode permet de fabriquer la construction de l'icone d'une rarete (buste du mannequin, zones claires a
+    la couleur de la rarete) lorsque la table des icones est remplie."""
+
+    def build():
+        """Cette methode permet de construire le buste teinte lorsque l'icone de la rarete est rendue."""
+        build_dummy()
+        tint = material("Rarity", color, roughness=0.35)
+        for obj in bpy.context.scene.objects:
+            if obj.type != "MESH":
+                continue
+            for index, slot in enumerate(obj.material_slots):
+                if slot.material and slot.material.name.split(".")[0] == "Body":
+                    obj.material_slots[index].material = tint
+
+    return build
+
+
 ICONS = {
     "shop": build_gift,
     "index": build_book,
@@ -248,6 +271,8 @@ ICONS = {
     "arrow": build_arrow,
     "music": build_music,
 }
+for _rank, _color in enumerate(RARITY_COLORS, start=1):
+    ICONS["rarity%d" % _rank] = rarity_builder(_color)
 
 
 def setup_render():
