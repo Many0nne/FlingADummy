@@ -30,7 +30,7 @@ export type Remotes = {
 	LaunchResult: RemoteEvent, -- serveur → client : gains, blessures, cause
 	Impact: RemoteEvent, -- serveur → tous les clients : liste de chocs de la frame (effets, sons, popups)
 	SetMusic: RemoteEvent, -- client → serveur : true = musique coupée (bouton du HUD), sauvegardé avec les données
-	-- serveur → tous les clients : tirage Legendary ou plus (bandeau) : { player, name, rarity, odds }
+	-- serveur → tous les clients : tirage Legendary ou plus (bandeau) : { userId, player, name, rarity, odds }
 	Announce: RemoteEvent,
 }
 

@@ -58,6 +58,7 @@ type Active = {
 	ground: Vector3,
 	plan: RevealPlan.Tier,
 	startedAt: number,
+	revealed: boolean, -- mannequin en couleurs sorti (sur la piste ou dans le décor du secret)
 	textsShown: boolean, -- rareté, nom et GO BACK affichés : plus rien à passer
 }
 
@@ -146,9 +147,8 @@ local function groundAt(position: Vector3): Vector3
 	return if hit then hit.Position else position - Vector3.new(0, 1.5, 0)
 end
 
--- Cette méthode permet de construire le mannequin du tirage (en silhouette noire ou en couleurs) debout sur `ground`,
--- tourné vers la caméra (arrière de la piste), lorsque le tirage commence ou se révèle ; `parent` nil le garde hors du
--- monde (silhouette préparée pour l'hésitation).
+-- Cette méthode permet de construire le mannequin du tirage (silhouette noire ou couleurs) debout sur `ground`, face
+-- à la caméra, lorsque le tirage commence ou se révèle ; `parent` nil le garde hors du monde (hésitation).
 local function buildStanding(entry: Collection.Entry, ground: Vector3, silhouette: boolean, parent: Instance?): Model
 	local scale = Collection.scale(entry)
 	local variant: any = Collection.variant(entry)
@@ -223,9 +223,8 @@ local function ring(ground: Vector3, scale: number)
 	end)
 end
 
--- Cette méthode permet de faire éclater un palier du suspense au centre `center` (éclair blanc qui gonfle et
--- s'efface, gerbe de `count` étincelles, contour de la silhouette qui flashe) lorsque la silhouette change de
--- candidat ou que le mannequin se révèle.
+-- Cette méthode permet de faire éclater un palier en `center` (éclair blanc, `count` étincelles, contour qui flashe)
+-- lorsque la silhouette change de candidat ou que le mannequin se révèle.
 local function burst(center: Vector3, scale: number, color: Color3, count: number?)
 	local ball = UIKit.create("Part", {
 		Name = "TeaseBurst",
@@ -284,9 +283,8 @@ local function clearForms()
 	end
 end
 
--- Cette méthode permet de construire (une seule fois) la silhouette du palier `index` de la suite, contour lumineux à
--- la couleur de sa rareté, et dès Legendary les rayons et la colonne de lumière (Shared.RevealPlan.teaseEffects)
--- lorsque le suspense ou l'hésitation en a besoin ; hors du monde tant qu'elle n'est pas montrée.
+-- Cette méthode permet de construire une fois la silhouette du palier `index` (contour, rayons dès Legendary :
+-- RevealPlan.teaseEffects), hors du monde, lorsque le suspense ou l'hésitation en a besoin.
 local function formOf(index: number): Model
 	local existing = forms[index]
 	if existing then
@@ -337,9 +335,8 @@ local function showForm(index: number, from: number?)
 	growIn(model, from or 0.8)
 end
 
--- Cette méthode permet de faire trembler la silhouette affichée de plus en plus fort pendant `duration` s (roulement
--- avant la révélation) lorsque le dernier palier est affiché ; suit la silhouette du moment (hésitation) et s'arrête si
--- le tirage est interrompu (`current` périmé).
+-- Cette méthode permet de faire trembler la silhouette affichée de plus en plus fort pendant `duration` s lorsque le
+-- roulement commence ; suit l'hésitation et s'arrête si le tirage est interrompu (`current` périmé).
 local function drumroll(scale: number, duration: number, current: number)
 	local start = os.clock()
 	local connection
@@ -387,9 +384,8 @@ local function hesitate(current: number)
 	end
 end
 
--- Cette méthode permet de faire défiler la cote affichée de `from` à `to` en `duration` s (vite puis de plus en plus
--- lentement, un tic à chaque chiffre, de plus en plus aigu) lorsque le suspense monte vers le palier `index` ; cède
--- jusqu'à la fin et renvoie false si le tirage a été interrompu.
+-- Cette méthode permet de faire défiler la cote de `from` à `to` en `duration` s (un tic par chiffre) lorsque le
+-- suspense monte vers le palier `index` ; cède jusqu'à la fin, false si le tirage a été interrompu.
 local function climb(from: number, to: number, duration: number, index: number, current: number): boolean
 	local start = os.clock()
 	local last = from
@@ -450,13 +446,13 @@ local function finish()
 	remotes.ResultDone:FireServer()
 end
 
--- Cette méthode permet de faire apparaître le mannequin gagné en couleurs sur `ground` (anneaux, éclat, éclair plein
--- écran, secousse, sons ; confettis dès Rare, explosion dès Legendary) lorsque le suspense se termine, que le secret
--- sort du portail ou que le tirage est passé.
+-- Cette méthode permet de faire apparaître le mannequin en couleurs sur `ground` (anneaux, éclair, sons ; confettis dès
+-- Rare, explosion dès Legendary) lorsque le suspense finit, que le secret sort du portail ou que l'on passe.
 local function revealModel(a: Active, ground: Vector3)
 	local scale = Collection.scale(a.entry)
 	local plan = a.plan
 	local color = Rarity.get(a.prize.rarity).color
+	a.revealed = true
 	clearForms()
 	if worldModel then
 		worldModel:Destroy()
@@ -534,9 +530,8 @@ local function revealTexts(a: Active, current: number)
 	end)
 end
 
--- Cette méthode permet de jouer la séquence du secret après le roulement (Shared.RevealPlan.CINEMATIC : écran noir et
--- phrase lettre à lettre, décor dédié et caméra le long du tapis rouge, portail, sortie du mannequin et pluie de
--- pièces, « SECRET!! » et cote complète) puis la révélation habituelle ; cède jusqu'à la fin.
+-- Cette méthode permet de jouer la séquence du secret (RevealPlan.CINEMATIC : noir et phrase, décor, portail, pièces,
+-- « SECRET!! ») puis les textes de la révélation lorsque le roulement d'un secret finit ; cède jusqu'à la fin.
 local function playSecret(a: Active, current: number)
 	local durations: { [string]: number } = {}
 	for _, step in RevealPlan.CINEMATIC do
@@ -602,6 +597,12 @@ local function skip()
 	end
 	token += 1
 	local current = token
+	if a.revealed then
+		-- Secret déjà sorti du portail : on garde le décor, seuls les textes manquent
+		RevealFx.clearOverlays()
+		revealTexts(a, current)
+		return
+	end
 	-- Décor du secret retiré, ciel gardé (assombri dès Legendary) ; retour au point d'atterrissage
 	RevealFx.clear(true)
 	local height = HEIGHT * Collection.scale(a.entry)
@@ -690,6 +691,7 @@ function Prize.play(result: any)
 		ground = groundAt(result.landing),
 		plan = plan,
 		startedAt = os.clock(),
+		revealed = false,
 		textsShown = false,
 	}
 	active = a

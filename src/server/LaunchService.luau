@@ -491,10 +491,12 @@ local function finish(flight: Flight, elapsed: number)
 		player:SetAttribute("LaneState", "Result")
 		results[player] = flight
 		remotes.LaunchResult:FireClient(player, result)
-		-- Bandeau pour tous à partir de Legendary (#67) ; le client du gagnant l'affiche après son propre tirage
+		-- Bandeau pour tous à partir de Legendary (#67) ; chaque client l'affiche quand il n'est ni en vol ni en tirage
+		-- (le gagnant, déjà en Result, le voit après son propre tirage)
 		local prize = result.prize
 		if prize and RevealPlan.announces(prize.rarity) then
 			remotes.Announce:FireAllClients({
+				userId = player.UserId,
 				player = player.DisplayName,
 				name = prize.name,
 				rarity = prize.rarity,

@@ -1,7 +1,8 @@
 -- Annonce serveur d'un tirage Legendary ou plus (#67) : bandeau en haut au centre, vu par tous les joueurs du serveur
--- (« Ana pulled a LEGENDARY Gold Dummy! 1 IN 4K », couleur de la rareté), et ligne dans le chat. Les annonces arrivées
--- pendant le tirage du joueur local attendent la fin de son tirage (le gagnant ne voit pas son résultat gâché, et le
--- haut de l'écran reste à la cote du suspense) ; elles passent ensuite une par une.
+-- (« Ana pulled a LEGENDARY Gold Dummy! 1 IN 4K », couleur de la rareté), et ligne dans le chat. Une annonce attend
+-- que le joueur local ne soit ni en vol ni en tirage (le gagnant, en vol puis en tirage quand elle arrive, ne voit pas
+-- son résultat gâché, et le haut de l'écran reste à la cote du suspense) ; un bandeau affiché s'efface dès qu'un
+-- tirage local commence. Les annonces passent une par une.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TextChatService = game:GetService("TextChatService")
 local TweenService = game:GetService("TweenService")
@@ -80,7 +81,11 @@ local function show(data: RevealPlan.Announcement)
 		Position = UDim2.new(0.5, 0, 0, 10),
 	}):Play()
 	UIKit.sparkles(strip, 5, Vector2.new(680, 40), 32, 0.2)
-	task.wait(SHOW_TIME - 0.35)
+	-- Reste affiché, sauf si un vol ou un tirage du joueur local commence entre-temps
+	local stay = os.clock() + SHOW_TIME - 0.35
+	while os.clock() < stay and not isBusy() do
+		task.wait(WAIT_STEP)
+	end
 	local leave = TweenService:Create(strip, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 		Position = UDim2.new(0.5, 0, 0, -70),
 	})
@@ -121,8 +126,8 @@ function Announce.receive(data: any)
 	drain()
 end
 
--- Cette méthode permet de brancher les annonces sur le remote du serveur lorsque le client démarre ; `busy` dit si le
--- tirage local occupe l'écran, `shown` est appelé (durée en s) quand un bandeau occupe le haut de l'écran.
+-- Cette méthode permet de brancher les annonces sur le remote du serveur lorsque le client démarre ; `busy` : vol ou
+-- tirage local en cours, `shown` : appelé (durée en s) quand un bandeau occupe le haut de l'écran.
 function Announce.init(remote: RemoteEvent, screen: ScreenGui, busy: () -> boolean, shown: (number) -> ())
 	gui = screen
 	isBusy = busy

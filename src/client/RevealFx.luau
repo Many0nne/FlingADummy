@@ -46,6 +46,8 @@ type SavedSky = {
 }
 local saved: SavedSky? = nil
 local grading: ColorCorrectionEffect? = nil
+local skyTweens: { Tween } = {} -- assombrissement en cours (annulé par restoreSky, sinon il réécrirait la lumière)
+local loose: { Instance } = {} -- effets posés hors du décor (attachements du terrain), retirés avec lui
 
 -- Cette méthode permet de créer une couche d'interface plein écran (sans marge du haut, ordre `order`) lorsque le
 -- module démarre ; son échelle suit la taille de l'écran comme le HUD.
@@ -92,9 +94,8 @@ local function alive(mine: number): boolean
 	return mine == generation
 end
 
--- Cette méthode permet d'assombrir le ciel (heure qui avance vers le soir ou la nuit, lumière et brume baissées,
--- teinte de la couleur `color` de la rareté) en `time` s lorsque la silhouette d'un Legendary ou plus apparaît, ou que
--- le décor du secret s'affiche (`night`).
+-- Cette méthode permet d'assombrir le ciel en `time` s (soir, ou nuit si `night`, teinte `color`) lorsque la
+-- silhouette d'un Legendary ou plus apparaît, ou que le décor du secret s'affiche.
 function RevealFx.darkenSky(color: Color3, night: boolean, time: number)
 	local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
 	if not saved then
@@ -108,29 +109,36 @@ function RevealFx.darkenSky(color: Color3, night: boolean, time: number)
 		}
 	end
 	local info = TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-	TweenService:Create(Lighting, info, {
-		ClockTime = if night then 23.9 else 19.6,
-		Brightness = if night then 0.6 else 1.4,
-		OutdoorAmbient = Color3.fromRGB(70, 60, 95),
-	}):Play()
-	if atmosphere then
-		TweenService:Create(atmosphere, info, {
-			Color = Color3.fromRGB(40, 30, 60),
-			Decay = Color3.fromRGB(30, 20, 50),
-		}):Play()
-	end
 	if not grading then
 		grading = UIKit.create("ColorCorrectionEffect", { Name = "RevealDark", Parent = Lighting })
 	end
-	TweenService:Create(grading :: ColorCorrectionEffect, info, {
-		TintColor = color:Lerp(WHITE, 0.7),
-		Contrast = 0.15,
-		Brightness = -0.04,
-	}):Play()
+	local goals: { { any } } = {
+		{
+			Lighting,
+			{
+				ClockTime = if night then 23.9 else 19.6,
+				Brightness = if night then 0.6 else 1.4,
+				OutdoorAmbient = Color3.fromRGB(70, 60, 95),
+			},
+		},
+		{ grading, { TintColor = color:Lerp(WHITE, 0.7), Contrast = 0.15, Brightness = -0.04 } },
+	}
+	if atmosphere then
+		table.insert(goals, { atmosphere, { Color = Color3.fromRGB(40, 30, 60), Decay = Color3.fromRGB(30, 20, 50) } })
+	end
+	for _, goal in goals do
+		local tween = TweenService:Create(goal[1], info, goal[2])
+		table.insert(skyTweens, tween)
+		tween:Play()
+	end
 end
 
 -- Cette méthode permet de rendre la lumière d'origine lorsque le tirage se termine (GO BACK, fin forcée).
 function RevealFx.restoreSky()
+	for _, tween in skyTweens do
+		tween:Cancel()
+	end
+	skyTweens = {}
 	local sky = saved
 	saved = nil
 	if grading then
@@ -140,7 +148,7 @@ function RevealFx.restoreSky()
 	if not sky then
 		return
 	end
-	-- Pose directe (le joueur repart au hub) : un tween en cours serait écrasé
+	-- Pose directe (le joueur repart au hub), les tweens d'assombrissement annulés ci-dessus
 	Lighting.ClockTime = sky.clock
 	Lighting.Brightness = sky.brightness
 	Lighting.OutdoorAmbient = sky.outdoor
@@ -288,9 +296,8 @@ function RevealFx.stageOrigin(ground: Vector3): Vector3
 	return ground + Vector3.new(0, STAGE_HEIGHT, 0)
 end
 
--- Cette méthode permet de construire le décor dédié du secret autour de `origin` (sol sombre, tapis rouge vers la
--- caméra (-Z), liserés dorés, colonnes dorées éclairées de chaque côté, deux piliers et un linteau derrière le portail)
--- lorsque l'écran noir le cache.
+-- Cette méthode permet de construire le décor du secret autour de `origin` (sol sombre, tapis rouge vers -Z, colonnes
+-- dorées éclairées, portique) lorsque l'écran noir le cache.
 function RevealFx.buildStage(origin: Vector3)
 	RevealFx.clearStage()
 	local folder = UIKit.create("Folder", { Name = "RevealStage" })
@@ -378,11 +385,14 @@ function RevealFx.clearStage()
 		stage:Destroy()
 		stage = nil
 	end
+	for _, instance in loose do
+		instance:Destroy()
+	end
+	loose = {}
 end
 
--- Cette méthode permet d'ouvrir le portail du secret (anneau clair et cœur rouge sombre qui grandissent, braises qui
--- montent) de diamètre `size` centré sur `center`, face à la caméra (-Z), lorsque la caméra arrive au bout du tapis ;
--- renvoie une fonction qui le fait éclater (éclair blanc puis effacement).
+-- Cette méthode permet d'ouvrir le portail du secret (anneau, cœur rouge, braises) de diamètre `size` en `center`
+-- lorsque la caméra arrive au bout du tapis ; renvoie la fonction qui le fait éclater.
 function RevealFx.portal(center: Vector3, size: number): () -> ()
 	local parent = stage or Workspace
 	local facing = CFrame.new(center) * CFrame.Angles(0, math.pi / 2, 0)
@@ -413,6 +423,7 @@ function RevealFx.portal(center: Vector3, size: number): () -> ()
 		WorldPosition = center - Vector3.new(0, size * 0.4, 0.5),
 		Parent = Workspace.Terrain,
 	})
+	table.insert(loose, holder)
 	UIKit.create("ParticleEmitter", {
 		Texture = DummyShape.fxTexture("star"),
 		Color = ColorSequence.new(C.orange, C.gold),
@@ -440,9 +451,8 @@ function RevealFx.portal(center: Vector3, size: number): () -> ()
 	end
 end
 
--- Cette méthode permet de couvrir l'écran de noir et d'y écrire `text` lettre à lettre (doré, clic à chaque lettre)
--- pendant `duration` s, puis de rendre l'image en fondu ; `onDark` est appelé une fois l'écran noir (on y prépare le
--- décor) ; s'arrête si le tirage est interrompu.
+-- Cette méthode permet de couvrir l'écran de noir et d'y écrire `text` lettre à lettre pendant `duration` s lorsque
+-- la séquence du secret commence ; `onDark` prépare le décor sous le noir.
 function RevealFx.blackout(text: string, duration: number, onDark: () -> ())
 	local mine = generation
 	local s = textScale()
@@ -549,15 +559,21 @@ function RevealFx.banner(title: string, odds: number, color: Color3, duration: n
 	end)
 end
 
--- Cette méthode permet d'arrêter les effets en cours (écran noir, bandeau, confettis, pièces, décor) lorsque le
--- tirage est passé au clic ou se termine ; `keepSky` garde le ciel assombri (révélation qui suit un passage).
-function RevealFx.clear(keepSky: boolean?)
+-- Cette méthode permet d'arrêter les effets d'interface en cours (écran noir, bandeau, confettis, pièces) lorsque le
+-- tirage est passé au clic alors que le mannequin est déjà sorti du portail.
+function RevealFx.clearOverlays()
 	generation += 1
 	for _, screen in { layer, cover } do
 		for _, child in screen:GetChildren() do
 			child:Destroy()
 		end
 	end
+end
+
+-- Cette méthode permet d'arrêter les effets en cours (interface, décor, ciel) lorsque le tirage est passé au clic ou
+-- se termine ; `keepSky` garde le ciel assombri (révélation qui suit un passage).
+function RevealFx.clear(keepSky: boolean?)
+	RevealFx.clearOverlays()
 	RevealFx.clearStage()
 	if not keepSky then
 		RevealFx.restoreSky()

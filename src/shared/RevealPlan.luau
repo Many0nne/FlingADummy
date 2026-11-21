@@ -35,7 +35,7 @@ export type Tier = {
 
 export type Step = { name: string, duration: number }
 export type Swap = { at: number, form: number }
-export type Announcement = { player: string, name: string, rarity: number, odds: number }
+export type Announcement = { userId: number?, player: string, name: string, rarity: number, odds: number }
 
 -- stylua: ignore
 RevealPlan.TIERS = {
@@ -137,9 +137,8 @@ function RevealPlan.resultTime(rarity: number?): number
 	return math.max(GameConfig.RESULT_MAX_TIME, needed)
 end
 
--- Cette méthode permet de choisir les paliers de la suite entre lesquels la silhouette hésite (indices dans
--- `sequence`, le gagné en dernier) lorsque le roulement commence ; vide si le palier n'hésite pas ou s'il n'y a pas
--- d'autre candidat.
+-- Cette méthode permet de choisir les paliers de `sequence` entre lesquels la silhouette hésite (gagné en dernier ; vide
+-- sans hésitation ou sans autre candidat) lorsque le roulement commence.
 function RevealPlan.forms(rarity: number, sequence: { Collection.TeaseStep }): { number }
 	local count = math.min(RevealPlan.get(rarity).forms, #sequence)
 	if count < 2 then
@@ -152,9 +151,8 @@ function RevealPlan.forms(rarity: number, sequence: { Collection.TeaseStep }): {
 	return list
 end
 
--- Cette méthode permet de planifier l'hésitation de la silhouette entre `count` formes pendant `duration` s (changements
--- rapides puis de plus en plus lents, le dernier sur le gagné, forme `count`, avant la fin) lorsque le roulement
--- commence ; vide pour moins de 2 formes.
+-- Cette méthode permet de planifier les changements de forme (rapides puis lents, le dernier sur le gagné `count`)
+-- pendant `duration` s lorsque le roulement commence ; vide sous 2 formes.
 function RevealPlan.hesitation(count: number, duration: number): { Swap }
 	if count < 2 or duration <= 0 then
 		return {}
@@ -177,9 +175,8 @@ function RevealPlan.hesitation(count: number, duration: number): { Swap }
 	return swaps
 end
 
--- Cette méthode permet de donner les effets ajoutés à la silhouette d'un palier à rayons (gloire de rayons derrière,
--- colonne de lumière, poussières, à la couleur `color` de la rareté : préréglages de Shared.DummyShape) lorsque la
--- silhouette d'un Legendary ou plus apparaît ; vide sinon.
+-- Cette méthode permet de donner les effets ajoutés à la silhouette dès Legendary (gloire de rayons, colonne de
+-- lumière, poussières, couleur `color`) lorsque la silhouette apparaît ; vide sinon.
 function RevealPlan.teaseEffects(rarity: number, color: Color3): { DummyModels.Effect }
 	if not RevealPlan.get(rarity).rays then
 		return {}
@@ -251,12 +248,12 @@ function RevealPlan.parseAnnouncement(data: any): Announcement?
 	then
 		return nil
 	end
-	return { player = data.player, name = data.name, rarity = data.rarity, odds = data.odds }
+	local userId = if type(data.userId) == "number" then data.userId else nil
+	return { userId = userId, player = data.player, name = data.name, rarity = data.rarity, odds = data.odds }
 end
 
--- Cette méthode permet de donner le mannequin imposé au prochain tirage par l'attribut de test `DebugPrize` (Studio)
--- lorsque le serveur tire : rareté 1 à 7 ou son nom (« Legendary » : un mannequin de cette rareté au hasard, taille
--- normale), ou clé « id:taille » ; nil si la valeur est absente ou illisible.
+-- Cette méthode permet de donner le mannequin imposé par `DebugPrize` (rareté 1-7, son nom ou « id:taille » ; nil si
+-- absent ou illisible) lorsque le serveur tire en Studio.
 function RevealPlan.debugEntry(value: any, roll: () -> number): Collection.Entry?
 	local rarity: number? = nil
 	if type(value) == "number" then
@@ -266,6 +263,7 @@ function RevealPlan.debugEntry(value: any, roll: () -> number): Collection.Entry
 		if entry then
 			return entry
 		end
+		rarity = tonumber(value)
 		for index, tier in Rarity.LIST do
 			if string.lower(tier.name) == string.lower(value) then
 				rarity = index

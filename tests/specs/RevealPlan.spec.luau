@@ -189,13 +189,18 @@ return function(T, Loader)
 			local ok =
 				RevealPlan.parseAnnouncement({ player = "Ana", name = "Gold", rarity = 5, odds = 4000, extra = 1 })
 			T.expect(ok ~= nil and ok.odds == 4000 and (ok :: any).extra == nil, "champs connus seulement")
+			T.expectEqual(ok.userId, nil, "identifiant facultatif")
+			local own =
+				RevealPlan.parseAnnouncement({ userId = 42, player = "Ana", name = "Gold", rarity = 5, odds = 1 })
+			T.expectEqual(own and own.userId, 42)
 		end)
 	end)
 
 	T.describe("RevealPlan.debugEntry", function()
 		T.it("rareté par numéro ou par nom : un mannequin de cette rareté, taille normale", function()
 			for rarity = 1, #Rarity.LIST do
-				for _, value in { rarity, Rarity.LIST[rarity].name, string.lower(Rarity.LIST[rarity].name) } do
+				local name = Rarity.LIST[rarity].name
+				for _, value in { rarity, tostring(rarity), name, string.lower(name) } do
 					for _, roll in { 0, 0.5, 0.999 } do
 						local entry = RevealPlan.debugEntry(value, fixed(roll))
 						T.expect(entry ~= nil, tostring(value))
