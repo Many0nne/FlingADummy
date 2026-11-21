@@ -320,7 +320,7 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
     12) ;
   - fenêtre **Rebirth** (bandeau violet → rose) : « LUCK x2 FOREVER », « Luck x4 → x8 », colonnes **RESETS** (rouge,
     ✖) et **KEEPS** (vert, ✔), condition « ✔ Infinite Dummy » et prix « ✔ $50B » (vert, rouge sinon), compteur
-    « Rebirths: k », gros bouton vert **REBIRTH** grisé avec la condition manquante (« NEED INFINITE GEAR »,
+    « Rebirths: k » (coches et croix en emoji ✅ / ❌), gros bouton vert **REBIRTH** grisé avec la condition manquante (« NEED INFINITE GEAR »,
     « NEED $50B ») ; deux clics (« SURE? » orange pendant 3 s) : la renaissance efface beaucoup ;
   - à la renaissance, **écran plein violet** (« REBIRTH! », « LUCK x2 FOREVER! », « Rebirth k • total luck x8 »,
     rayons et gerbe d'étoiles violettes de 05, 3,4 s) ;

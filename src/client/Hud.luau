@@ -1040,6 +1040,7 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 		money = function()
 			return math.max(0, stat("Money", 0) - counters.Money.pending)
 		end,
+		reserveTop = Hud.reserveTop,
 		screenFree = function()
 			local lane = player:GetAttribute("LaneState")
 			return seeded

@@ -21,11 +21,14 @@ local PINK = Color3.fromRGB(255, 80, 200)
 local STAR = Color3.fromHex(Rebirth.COLOR_HEX) -- violet des étoiles (aussi celui du compteur de la base, du bandeau)
 local CONFIRM_TIME = 3 -- s pendant lesquelles le second clic confirme
 local CELEBRATE_TIME = 3.4 -- s d'écran plein à la renaissance, fondu compris
+-- Coche et croix en emoji couleur : les glyphes ✔ / ✖ de la police, fins, disparaissent sous le contour noir
+local YES, NO = "✅", "❌"
 
 export type Hooks = {
 	popup: (options: UIKit.PopupOptions) -> (), -- popup de palier (« REBIRTH READY! »)
 	money: () -> number, -- argent affiché (gains en vol pas encore arrivés exclus)
 	screenFree: () -> boolean, -- au hub, écran libre (ni vol, ni tirage, ni jauge, ni fenêtre, ni bandeau)
+	reserveTop: (duration: number) -> (), -- réserve le haut de l'écran (offre et objectif masqués) pendant la fête
 }
 
 local RebirthWindow = {}
@@ -84,9 +87,9 @@ function RebirthWindow.refresh()
 	)
 	countLabel.Text = "Rebirths: " .. k
 	local hasGear = current.gearTier >= Rebirth.REQUIRED_GEAR
-	gearLabel.Text = (if hasGear then "✔ " else "✖ ") .. Training.gear(Rebirth.REQUIRED_GEAR).name
+	gearLabel.Text = (if hasGear then YES .. " " else NO .. " ") .. Training.gear(Rebirth.REQUIRED_GEAR).name
 	gearLabel.TextColor3 = if hasGear then C.green else C.red
-	priceLabel.Text = (if current.money >= price then "✔ " else "✖ ") .. Format.money(price)
+	priceLabel.Text = (if current.money >= price then YES .. " " else NO .. " ") .. Format.money(price)
 	priceLabel.TextColor3 = if current.money >= price then C.green else C.red
 	if missing == "Max" then
 		button.Text = "MAX"
@@ -174,8 +177,8 @@ local function buildBody(body: Frame)
 		ZIndex = 12,
 		Parent = body,
 	})
-	column(body, 0, "RESETS", C.red, "✖", Rebirth.RESETS)
-	column(body, 0.5, "KEEPS", C.green, "✔", Rebirth.KEEPS)
+	column(body, 0, "RESETS", C.red, NO, Rebirth.RESETS)
+	column(body, 0.5, "KEEPS", C.green, YES, Rebirth.KEEPS)
 	gearLabel = UIKit.text({
 		Position = UDim2.fromOffset(4, 274),
 		Size = UDim2.new(0.5, -8, 0, 28),
@@ -255,6 +258,7 @@ end
 -- Cette méthode permet de fêter une renaissance (écran plein violet, « REBIRTH! », rayons, gerbe d'étoiles, gain et
 -- numéro de la renaissance, puis fondu) lorsque le compteur du joueur local augmente.
 local function celebrate(rebirths: number)
+	hooks.reserveTop(CELEBRATE_TIME) -- l'offre « NEW GEAR! » du palier remis à zéro attend la fin de la fête
 	local cover = UIKit.create("Frame", {
 		Name = "RebirthCelebration",
 		Size = UDim2.fromScale(1, 1),
