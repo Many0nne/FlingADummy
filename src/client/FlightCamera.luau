@@ -85,7 +85,8 @@ function FlightCamera.closeUp(root: BasePart, duration: number)
 end
 
 -- Cette méthode permet de suivre un mannequin lancé lorsque le serveur annonce le lancer ; la caméra avance avec la
--- vitesse du torse et le lissage ne corrige que l'écart, d'où aucun retard même à grande vitesse ; le cadrage
+-- vitesse du torse (position et point visé) et le lissage ne corrige que l'écart, d'où aucun retard même à grande
+-- vitesse ; le cadrage
 -- (Shared.FlightFraming) plonge vers la piste quand le mannequin monte.
 function FlightCamera.follow(model: Model)
 	local torso = model:WaitForChild("Torso", 2) :: BasePart?
@@ -109,6 +110,9 @@ function FlightCamera.follow(model: Model)
 		position += velocity * dt
 		local offset = FlightFraming.offset(target.Y, velocity.Magnitude) -- piste à y = 0
 		position = position:Lerp(target + offset, 1 - math.exp(-POSITION_SHARPNESS * dt))
+		-- Le point visé avance lui aussi avec le torse : sinon, en montée rapide, il traîne en dessous et le mannequin
+		-- sort par le haut de l'image (#88)
+		focus += velocity * dt
 		focus = focus:Lerp(target, 1 - math.exp(-FOCUS_SHARPNESS * dt))
 		shake *= math.exp(-SHAKE_DECAY * dt)
 		local jitter = Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 2 * shake
