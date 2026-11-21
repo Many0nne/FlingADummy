@@ -134,7 +134,7 @@ local function refresh()
 end
 
 -- Cette méthode permet d'avancer les fondus d'une image (volumes vers leur cible, pistes effacées détruites, fin de
--- la fanfare, enchaînement du hub avant la fin de piste) lorsque le client rend une image.
+-- la fanfare, enchaînement du hub avant la fin de piste) à chaque pas de simulation du client.
 local function step(dt: number)
 	local fanfareOn = false
 	if fanfare then
@@ -248,7 +248,7 @@ function Music.init(localPlayer: Player, allRemotes: Remotes.Remotes)
 		setMuted(value)
 	end)
 	player:GetAttributeChangedSignal("DataReady"):Connect(start)
-	RunService.RenderStepped:Connect(step)
+	RunService.Heartbeat:Connect(step) -- pas RenderStepped : la musique avance même sans rendu (fenêtre réduite)
 	start()
 end
 
