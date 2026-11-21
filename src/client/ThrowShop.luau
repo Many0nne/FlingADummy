@@ -117,6 +117,9 @@ end
 -- Cette méthode permet d'annoncer un mannequin acheté (popup « NEW DUMMY! », nom et chance) lorsque le nombre de
 -- mannequins possédés augmente après le chargement.
 local function onTier()
+	if player:GetAttribute("DataReady") ~= true then
+		return -- sauvegarde pas encore chargée : seed() retiendra la valeur lue
+	end
 	local owned = levels()
 	if owned > knownTier then
 		local dummy = ThrowDummies.get(owned)

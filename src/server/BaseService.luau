@@ -43,7 +43,7 @@ export type Prize = {
 local FEET = 3.82 -- du centre du torse au bas des pieds, échelle 1 (Shared.DummyShape)
 local LOCKED_COLOR = Color3.fromRGB(120, 122, 132) -- présentoir pas encore acheté
 local LOCKED_TRANSPARENCY = 0.55
-local SELL_BURST_REACH = 30 -- vente faite au stand SELL (invite à 10 studs) : éclat de pièces au-dessus du comptoir
+local SELL_BURST_REACH = 12 -- vente faite au stand SELL (invite à 10 studs) : éclat de pièces au-dessus du comptoir
 
 local BaseService = {}
 

@@ -3,6 +3,7 @@
 -- physique de chacun. Logique pure, partagée par le serveur (validation, vol) et le client (boutique, mannequin tenu).
 -- Distincts des mannequins de collection (Shared.Collection) : on les possède une fois pour toutes, on en lance un.
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local DummyShape = require(Shared:WaitForChild("DummyShape"))
 local Tutorial = require(Shared:WaitForChild("Tutorial"))
 
 local ThrowDummies = {}
@@ -10,14 +11,8 @@ local ThrowDummies = {}
 ThrowDummies.SHOP_TAG = "ShopStand" -- invite du stand SHOP du hub (ouvre la boutique)
 ThrowDummies.DISPLAY_TAG = "ShopDisplay" -- socles de vitrine du stand SHOP (attribut Index) : le client y fait tourner le mannequin
 
--- Pièce en blocs soudée à une pièce du corps (aile, réacteur, plaques) : boîte, décalage du centre, couleur, matériau
-export type Block = {
-	piece: string,
-	size: Vector3,
-	offset: Vector3,
-	color: Color3,
-	material: Enum.Material?,
-}
+-- Pièce en blocs soudée à une pièce du corps (aile, réacteur, plaques) : type de Shared.DummyShape, qui la construit
+export type Block = DummyShape.Block
 
 -- Propriétés physiques des 10 pièces du mannequin lancé (PhysicalProperties) : densité, frottement, rebond, poids
 export type Physics = {

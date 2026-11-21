@@ -389,7 +389,8 @@ local function buildGearOffer()
 	}, function()
 		if offerKind == "Gear" and offerTier == stat("GearTier", 1) + 1 then
 			Hud.onBuy("Gear")
-		elseif offerKind == "Dummy" then
+		elseif offerKind == "Dummy" and offerTier then
+			dismissedOffers.Dummy[offerTier] = true -- vu dans la boutique : l'offre ne revient pas à sa fermeture
 			Hud.openDummyShop()
 		end
 	end)

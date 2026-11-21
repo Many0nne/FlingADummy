@@ -808,7 +808,8 @@ function Props.shopStand(parent: Instance, at: CFrame, displayTag: string, count
 	local head = Instance.new("Model")
 	head.Name = "SignHead"
 	head.ModelStreamingMode = Enum.ModelStreamingMode.Atomic -- tourne d'un bloc côté client
-	local skull = put(head, at, Vector3.new(4, 4, 4), Vector3.new(0, 21.4, 4.2), DUMMY_YELLOW, true)
+	-- Sans collision : elle ne tourne que chez chaque client
+	local skull = put(head, at, Vector3.new(4, 4, 4), Vector3.new(0, 21.4, 4.2), DUMMY_YELLOW, false)
 	for _, face in { -1, 1 } do
 		-- Cible de crash-test (disques noir et jaune) de chaque côté
 		local disc = smooth(
@@ -974,7 +975,7 @@ function Props.sellStand(parent: Instance, at: CFrame)
 		Vector3.new(0, 22, 4.2),
 		gold,
 		Enum.Material.Metal,
-		true,
+		false, -- sans collision : elle ne tourne que chez chaque client
 		Vector3.new(0, 90, 0)
 	)
 	disc.Shape = Enum.PartType.Cylinder
