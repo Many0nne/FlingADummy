@@ -787,7 +787,7 @@ local function buildPad(parent: Instance, slot: Slot): Pad
 	return { title = title, price = price, prompt = prompt }
 end
 
--- Cette méthode permet de construire le texte flottant d'une base (portrait, nom, revenu, Throw Power ; taille en
+-- Cette méthode permet de construire le texte flottant d'une base (portrait, nom, revenu, Throw Power et renaissances ; taille en
 -- studs plus une marge en pixels, lisible de loin) lorsque la base est construite ; rempli par Server.BaseService.
 local function baseLabel(parent: Instance, position: Vector3): BaseLabel
 	local anchor = Build.decor({
@@ -840,11 +840,13 @@ local function baseLabel(parent: Instance, position: Vector3): BaseLabel
 		label.Parent = gui
 		return label
 	end
+	local power = line("Power", 0.8, 0.2, LABEL_CYAN)
+	power.RichText = true -- compteur de renaissances en violet à côté de la Throw Power (Shared.BaseLook.label)
 	return {
 		avatar = avatar,
 		title = line("Title", 0.31, 0.25, Color3.new(1, 1, 1)),
 		income = line("Income", 0.56, 0.24, LABEL_GREEN),
-		power = line("Power", 0.8, 0.2, LABEL_CYAN),
+		power = power,
 	}
 end
 

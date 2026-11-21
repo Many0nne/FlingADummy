@@ -1,5 +1,5 @@
 -- Écran de vol : bandes noires de cinéma, bannière CHANCE (« 1.36X », qui monte avec la distance et les crashs ; badge
--- du multiplicateur du mannequin à lancer, « RUBBER 1.25x ») et zone traversée, compteurs en direct (distance, os, objets) et panneau radio du mannequin (membres colorés selon leur gravité).
+-- du multiplicateur du mannequin à lancer, « RUBBER 1.25x », à droite et des renaissances, « REBIRTH x2 », à gauche) et zone traversée, compteurs en direct (distance, os, objets) et panneau radio du mannequin (membres colorés selon leur gravité).
 -- À l'arrêt du mannequin (détecté ici, sans attendre le serveur) : trèfle et CHANCE finale « X1.36 » au-dessus de lui,
 -- titre du crash dessous (« BRUTAL! »), comme le « X1.22 » de 09 ; la radio reste quelques secondes dans son coin avec
 -- le bilan (os, objets, blessures, cause) pendant que le tirage (Client.Prize) enchaîne.
@@ -40,6 +40,8 @@ local chanceBox: Frame
 local chanceLabel: TextLabel
 local luckBadge: Frame
 local luckLabel: TextLabel
+local rebirthBadge: Frame
+local rebirthLabel: TextLabel
 local zoneBanner: Frame
 local zoneLabel: TextLabel
 local xray: Frame
@@ -257,6 +259,28 @@ local function build(gui: ScreenGui)
 		TextSize = 20,
 		ZIndex = 4,
 		Parent = luckBadge,
+	})
+	-- Badge des renaissances, en miroir au coin gauche (violet des renaissances ; multiplicateur compris dans la CHANCE)
+	rebirthBadge = UIKit.create("Frame", {
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.fromOffset(18, 6),
+		Size = UDim2.fromOffset(0, 30),
+		AutomaticSize = Enum.AutomaticSize.X,
+		Rotation = -8,
+		BackgroundColor3 = Color3.fromRGB(150, 70, 255),
+		Visible = false,
+		ZIndex = 3,
+		Parent = chanceBox,
+	})
+	UIKit.corner(rebirthBadge, 15)
+	UIKit.outline(rebirthBadge, 3)
+	UIKit.create("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10), Parent = rebirthBadge })
+	rebirthLabel = UIKit.text({
+		Size = UDim2.fromScale(0, 1),
+		AutomaticSize = Enum.AutomaticSize.X,
+		TextSize = 20,
+		ZIndex = 4,
+		Parent = rebirthBadge,
 	})
 	zoneBanner = UIKit.create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0),
@@ -489,6 +513,12 @@ function FlightView.show(model: Model)
 	if luck > 1 then
 		local short = if typeof(thrown) == "string" then string.upper((string.gsub(thrown, " Dummy$", ""))) else ""
 		luckLabel.Text = string.format("%s %s", short, Format.luck(luck))
+	end
+	-- Multiplicateur des renaissances du lanceur (#108), lui aussi déjà compté
+	local rebirth = (model:GetAttribute("Rebirth") :: number?) or 1
+	rebirthBadge.Visible = rebirth > 1
+	if rebirth > 1 then
+		rebirthLabel.Text = "REBIRTH x" .. Format.short(rebirth)
 	end
 	showZone(1)
 	update()

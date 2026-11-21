@@ -142,5 +142,17 @@ return function(T, Loader)
 			T.expectEqual(BaseLook.label("Bob", 3.6e6, 2e9).income, "$3.6M/s")
 			T.expectEqual(BaseLook.label("Bob", 0, 2e9).power, "💪 2B")
 		end)
+		T.it(
+			"ajoute le compteur de renaissances violet à côté de la Throw Power, seulement à partir d'une",
+			function()
+				T.expectEqual(BaseLook.label("Bob", 0, 1234, 0).power, "💪 1.23K")
+				T.expectEqual(
+					BaseLook.label("Bob", 0, 1234, 3).power,
+					'💪 1.23K  <font color="#' .. loader:require("src/shared/Rebirth").COLOR_HEX .. '">🌟 3</font>'
+				)
+				T.expectEqual(BaseLook.label("Bob", 0, nil, 3).power, "", "rien avant le chargement")
+				T.expectEqual(BaseLook.label(nil, 0, 10, 3).power, "", "base vide")
+			end
+		)
 	end)
 end

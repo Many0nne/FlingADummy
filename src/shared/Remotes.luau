@@ -15,6 +15,7 @@ local NAMES = {
 	"SetMusic",
 	"Announce",
 	"ThrowDummy",
+	"Rebirth",
 }
 
 export type Remotes = {
@@ -32,10 +33,11 @@ export type Remotes = {
 	Impact: RemoteEvent, -- serveur → tous les clients : liste de chocs de la frame (effets, sons, popups)
 	SetMusic: RemoteEvent, -- client → serveur : true = musique coupée (bouton du HUD), sauvegardé avec les données
 	-- serveur → tous les clients : tirage Legendary ou plus (bandeau), à la fin du résultat du gagnant :
-	-- { userId, player, name, rarity, odds }
+	-- { userId, player, name, rarity, odds } ; renaissance d'un joueur : { kind = "Rebirth", userId, player, rebirths }
 	Announce: RemoteEvent,
 	-- client → serveur : boutique de mannequins à lancer (Shared.ThrowDummies) : "Buy" / "Equip" + indice du catalogue
 	ThrowDummy: RemoteEvent,
+	Rebirth: RemoteEvent, -- client → serveur : sans charge, bouton REBIRTH de la fenêtre (Shared.Rebirth)
 }
 
 local Remotes = {}

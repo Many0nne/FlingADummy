@@ -1,5 +1,5 @@
 -- Amorçage du serveur : groupes de collision, gabarits maillés du mannequin, décor (et cibles des objectifs), remotes,
--- données joueur, places du lobby, bases (collection et revenu), entraînement et lancers.
+-- données joueur, places du lobby, bases (collection et revenu), entraînement, lancers et renaissance.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -36,8 +36,24 @@ end)
 remotes.ThrowDummy.OnServerEvent:Connect(function(player, action, index)
 	PlayerData.throwDummy(player, action, index)
 end)
+-- Renaissance validée par le serveur (Shared.Rebirth), annoncée à tous les joueurs du serveur (bandeau et chat)
+remotes.Rebirth.OnServerEvent:Connect(function(player)
+	-- Renaissance acceptée : séance arrêtée avant la remise à zéro (l'équipement soulevé change)
+	local rebirths = PlayerData.rebirth(player, function()
+		TrainingService.stop(player)
+	end)
+	if rebirths then
+		remotes.Announce:FireAllClients({
+			kind = "Rebirth",
+			userId = player.UserId,
+			player = player.DisplayName,
+			rebirths = rebirths,
+		})
+	end
+end)
 
--- Studio : DebugThrowDummy (indice du catalogue, contexte Server) donne et équipe ce mannequin à lancer (mesures)
+-- Studio : DebugThrowDummy (indice du catalogue, contexte Server) donne et équipe ce mannequin à lancer (mesures) ;
+-- DebugWipe (true) remet toute la sauvegarde du joueur à l'état d'un nouveau joueur (avant une sprint review, #95)
 if RunService:IsStudio() then
 	-- Cette méthode permet de suivre l'attribut DebugThrowDummy d'un joueur lorsqu'il arrive (ou est déjà là).
 	local function watchDebugThrowDummy(player: Player)
@@ -46,6 +62,13 @@ if RunService:IsStudio() then
 			if value ~= nil then
 				player:SetAttribute("DebugThrowDummy", nil)
 				PlayerData.debugThrowDummy(player, value)
+			end
+		end)
+		player:GetAttributeChangedSignal("DebugWipe"):Connect(function()
+			if player:GetAttribute("DebugWipe") == true then
+				player:SetAttribute("DebugWipe", nil)
+				TrainingService.stop(player)
+				PlayerData.wipe(player)
 			end
 		end)
 	end

@@ -105,7 +105,7 @@ Comme 01 et 09 : le lancer fait le lien entre les deux.
 
 ## CHANCE et tirage (`Shared.Economy`, `Shared.Collection`)
 - CHANCE = chance des zones × (1 + 2 % par os cassé + 1 % par objet détruit) × multiplicateur du mannequin lancé
-  (section suivante), arrondie au centième. La chance des zones
+  (section suivante) × 2^k (k renaissances, section « Renaissance »), arrondie au centième. La chance des zones
   vaut celle de la zone à son entrée et monte en continu jusqu'à celle de la suivante (18 à 2,4 km, 60 au bout de la
   piste de 6 km) : un
   premier lancer (≈ 145 m) donne ≈ 1.4X, comme le 1.36X de 09.
@@ -221,9 +221,12 @@ Règles de cote et de revenu :
 | Mythic | 6 | 1 IN 40K à 330K | 20K à 110K | 89 min |
 | Secret | 6 | 1 IN 500K à 4M | 150K à 410K | 3,8 h (5,7 h avec la piste de 2,4 km) |
 | Divine | 6 | 1 IN 5M à 100M | 450K à 1.7M | 7,1 h (12,3 h avec la piste de 2,4 km) |
-| Celestial | 6 | 1 IN 500M à 10B | 3.6M à 14M | renaissance (≈ 7) |
-| Ethereal | 6 | 1 IN 50B à 1T | 29M à 110M | renaissance (≈ 14) |
-| Infinity | 6 | 1 IN 5T à 100T | 230M à 870M | renaissance (≈ 20) |
+| Celestial | 6 | 1 IN 500M à 10B | 3.6M à 14M | 23,7 h (après la 3e renaissance ; 47,5 h avec 2,4 km) |
+| Ethereal | 6 | 1 IN 50B à 1T | 29M à 110M | 185 h (après la 7e ; > 300 h avec 2,4 km) |
+| Infinity | 6 | 1 IN 5T à 100T | 230M à 870M | > 300 h |
+
+Celestial à Infinity : piste de 6 km (#97) et renaissance de #108 (prix × 4, section « Renaissance »), 40 joueurs
+sur 300 h ; avec la proposition × 2 (#109) : 21 h, 50 h et 161 h.
 
 En taille Giant (× 500 de cote), le plus rare s'affiche « 1 IN 50Qa ». Spectacle : Divine et au-delà jouent la
 séquence complète du secret (phrase propre à la rareté : « THE HEAVENS HAVE OPENED... »), aura un cran plus fournie par
@@ -269,7 +272,7 @@ Puissance : 1 K à 5 min, 100 K à 20 min, 1 M à 45 min, 100 M à 3,2 h, 10 B �
 la piste de 6 km (#97) donne un but aux paliers prolongés (tableau « Fin de piste » ci-dessous).
 **Effet de bord** : la CHANCE plus haute fait sortir des raretés plus rentables plus tôt, et tout le catalogue d'achats
 est fini à ≈ 9 h simulées au lieu de 13 h (revenu 10 M/s à 7,8 h au lieu de 13,7 h) : la cible « une douzaine
-d'heures » se recale avec la renaissance (#108) et l'économie (#15).
+d'heures » avant la première renaissance (désormais à 9,6 h) se recale avec l'économie (#15, #109).
 
 ### Repères comparés aux références
 | Repère | Fling a Dummy (simulé) | 09 *Throw a Seed* | 01 *Throw Food For Animals* |
@@ -287,7 +290,7 @@ d'heures » se recale avec la renaissance (#108) et l'économie (#15).
 l'entraînement, revenus des premières raretés) ; la collection reste plus petite que celle de 09 (familles et palettes
 à ajouter sans dessin).
 
-### Piste prolongée (#97, fait) et renaissance (proposition)
+### Piste prolongée (#97) et renaissance (#108) : les deux leviers
 1. **Piste prolongée à 6 km** (#97) : six thèmes de plus après Moon Base, un tous les 600 m (section « Zones de la
    piste »), CHANCE des zones de × 18 à × 60. Joueur simulé rejoué (60 joueurs, 24 h) et vols mesurés en Studio
    (Crash Dummy, jauge pleine, `DebugLaunch`) :
@@ -303,20 +306,63 @@ l'entraînement, revenus des premières raretés) ; la collection reste plus pet
    sur 5, frôlé une fois : 5 903 m coupé par l'ancienne limite de vol de 16 s, portée à 22 s) et 3,1-3,6 km à 360 M.
    Le bout de piste est donc plutôt atteint vers 10-50 B de puissance (≈ 8 à 10 h simulées, non mesuré). Effet
    simulé : CHANCE finale × 3,3 (17 K au lieu de 5,1 K à 24 h), Divine à 7,1 h au lieu de 12,3 h.
-2. **Renaissance** (après Infinite Rocket, ≈ 13 h ; prix $50B × 4^k) : remet à zéro argent, puissance, équipement et
-   mannequins à lancer, garde la collection (base, stock, Index) et les présentoirs ; chaque renaissance multiplie la
-   CHANCE par 2 (définitif). Avec la collection gardée, une renaissance se refait en ≈ 1 à 2 h. Celestial (1 IN 500M)
-   demande ≈ 100 fois la CHANCE de fin (5,1 K) pour sortir en ≈ 1 000 lancers : ≈ 7 renaissances (estimé, non simulé :
-   ≈ 25 h de jeu au
-   total), Ethereal ≈ 14 (≈ 40 h), Infinity ≈ 20 (≈ 55 h). Écart assumé aux cibles du concept (« première renaissance
-   < 3 min », modèle de *Net a Fish!*) : 01 et 09, nos références de boucle, n'en montrent aucune en 15 min.
+2. **Renaissance** : faite (#108), section suivante. L'estimation de conception (une renaissance refaite en 1 à 2 h)
+   était trop optimiste : avec la piste de 6 km, le joueur simulé met 4 à 80 h entre deux renaissances (prix × 4).
+
+### Renaissance (#108, `Shared.Rebirth`)
+Le levier après le dernier équipement (≈ 9,6 h simulées avec la piste de 6 km, 14,4 h avec 2,4 km), comme la
+RENAISSANCE de *Net a Fish!* (12) et
+d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour toujours.
+- **Condition** : posséder le dernier équipement d'entraînement (Infinite) **et** payer **$50B × 4^k** (k renaissances
+  déjà faites : $50B, $200B, $800B, $3.2T…). Validée par le serveur (`PlayerData.rebirth` : chargé, au hub, ni en vol
+  ni jauge ouverte, `Rebirth.missing`), remote `Rebirth` sans charge ; la séance d'entraînement en cours s'arrête.
+- **Remis à zéro** (valeurs d'un nouveau joueur, `Rebirth.RESET`) : argent, Throw Power, niveau et EXP
+  d'entraînement, équipement d'entraînement, mannequins à lancer achetés (retour au Crash Dummy). **Gardés** :
+  collection (base, présentoirs achetés, stock, Index), tutoriel terminé, record de distance, tirages.
+- **Effet** : CHANCE × 2^k définitive, dans la même chaîne que la CHANCE des zones et du mannequin lancé
+  (`Economy.chance`, champ `rebirth`, capté au lancer) : tirage de la rareté et de la taille.
+- **Interface** :
+  - bouton **Rebirth** (🌟, sous Shop dans la colonne de gauche) dès le premier lancer, pour que l'objectif se voie
+    tôt (bouton Renaissance de 12) ; pastille « ! » quand la renaissance est possible ;
+  - popup **« REBIRTH READY! »** une fois par renaissance quand la condition est remplie (« Renaissance prête ! » de
+    12) ;
+  - fenêtre **Rebirth** (bandeau violet → rose) : « LUCK x2 FOREVER », « Luck x4 → x8 », colonnes **RESETS** (rouge,
+    ✖) et **KEEPS** (vert, ✔), condition « ✔ Infinite Dummy » et prix « ✔ $50B » (vert, rouge sinon), compteur
+    « Rebirths: k » (coches et croix en emoji ✅ / ❌), gros bouton vert **REBIRTH** grisé avec la condition manquante (« NEED INFINITE GEAR »,
+    « NEED $50B ») ; deux clics (« SURE? » orange pendant 3 s) : la renaissance efface beaucoup ;
+  - à la renaissance, **écran plein violet** (« REBIRTH! », « LUCK x2 FOREVER! », « Rebirth k • total luck x8 »,
+    rayons et gerbe d'étoiles violettes de 05, 3,4 s) ;
+  - **annonce** aux autres joueurs du serveur (bandeau violet et ligne de chat, file de `Client.Announce`) :
+    « Ana rebirthed! Rebirth 3: x8 luck » ;
+  - **badge « REBIRTH x8 »** violet au coin gauche de la bannière CHANCE (en miroir du badge du mannequin lancé à
+    droite ; multiplicateur déjà compté dans le chiffre) ;
+  - **texte flottant de la base** : « 💪 1.2K  🌟 3 » (compteur violet à côté de la Throw Power, dès 1).
+- **Sauvegarde** : champ `Rebirths` (entier, `Rebirth.read` : 0 pour une sauvegarde antérieure, borné à 60).
+- **Joueur simulé** (`lune run tools/progression 40 300`, médianes ; 3e argument : facteur de prix pour les essais),
+  rejoué avec la piste de 6 km (#97) ; entre parenthèses, la piste de 2,4 km (#108) :
+  | Renaissance | Prix | CHANCE | Atteinte (× 4, #108) | Atteinte (× 2, proposition #109) |
+  |---|---|---|---|---|
+  | 1 | $50B | x2 | 9,6 h (14,4 h) | 9,6 h (14,4 h) |
+  | 2 | $200B (× 2 : $100B) | x4 | 13,3 h (20,7 h) | 12,5 h (19,3 h) |
+  | 3 | $800B ($200B) | x8 | 18,9 h (29,9 h) | 14,8 h (23,4 h) |
+  | 4 | $3.2T ($400B) | x16 | 29,5 h (46 h) | 17,6 h (27,6 h) |
+  | 5 | $12.8T ($800B) | x32 | 50 h (80 h) | 20,8 h (32,1 h) |
+  | 6 | $51.2T ($1.6T) | x64 | 87 h (147 h) | 24,4 h (37,8 h) |
+  | 7 | $204T ($3.2T) | x128 | 167 h (265 h) | 29,2 h (45,1 h) |
+  Premières sorties : Celestial 23,7 h (× 2 : 21 h), Ethereal 185 h (50 h), Infinity > 300 h (161 h).
+  Le prix × 4 croît plus vite que le revenu, qui ne monte qu'avec la CHANCE (× 2) et le nombre de tirages : l'écart
+  entre deux renaissances double presque à chaque fois (4, 6, 11, 21, 37, 80 h).
+- **Proposition** (#109, pas appliquée) : prix **× 2** par renaissance. L'écart reste de 2 à 5 h jusqu'à la 8e, puis
+  7 à 60 h ; Celestial, Ethereal et Infinity deviennent atteignables (21, 50, 161 h), dans l'esprit « des jours de
+  jeu » visé par #94.
+- **Studio** : `DebugWipe` (section « Architecture ») remet le compte à zéro, renaissances comprises.
 
 ## Base et collection (`Server.BaseService`, `Shared.Inventory`)
 - **Présentoirs** : 6 au départ (2 rangées de 3), jusqu'à 10. Les mannequins posés sont construits par le serveur
   (visibles de tous), nom coloré par rareté et $/s au-dessus.
 - **Texte flottant** au-dessus du centre de la base (#91, comme les jardins de 09 et les enclos de 01 ; `BillboardGui`
   à 24 studs, police Fredoka One et contour du HUD) : portrait du joueur, « NOM'S BASE », revenu « $223/s » en vert et
-  Throw Power « 💪 1.2K » en cyan, mis à jour en direct (achat, pose, entraînement) ; « EMPTY BASE · $0/s » sans
+  Throw Power « 💪 1.2K » en cyan (renaissances « 🌟 3 » en violet à côté, #108), mis à jour en direct (achat, pose, entraînement) ; « EMPTY BASE · $0/s » sans
   joueur. Taille en studs plus une marge en pixels : lisible de près et à travers tout le hub (affiché jusqu'à
   600 studs). Comparaison entre joueurs d'un coup d'œil ; plus de panneau à l'entrée.
 - **Paliers visuels de la base** (#61, `Shared.BaseLook`) : la base change d'aspect à chaque présentoir acheté, un
@@ -370,7 +416,7 @@ l'entraînement, revenus des premières raretés) ; la collection reste plus pet
   `Inventory` : Place / Sell + clé, Remove + présentoir, SellRarity + rareté, PlaceBest ; invite du pad), le serveur
   valide tout. Deux doublons sont interchangeables : le client désigne un mannequin du stock par sa clé.
 - **Sauvegarde** avec les données du joueur (`Collection` : présentoirs, présentoirs achetés, stock, Index = meilleure
-  taille par mannequin ; `Draws` : nombre de tirages). Migration des sauvegardes de #13 : le mannequin en main passe au
+  taille par mannequin ; `Draws` : nombre de tirages ; `Rebirths` : renaissances, section « Renaissance »). Migration des sauvegardes de #13 : le mannequin en main passe au
   stock, la liste des découverts devient l'Index.
 
 ## Carte (v0.3) : lobby de 4 joueurs, piste unique
@@ -495,8 +541,8 @@ Interface : section suivante.
 
 ## Interface (grammaire des jeux de référence 01 / 09)
 - **Police** : Fredoka One partout, blanc à contour noir fin ; grands nombres abrégés (`1.2K`, `3.4M`).
-- **Boutons** : carrés arrondis à icône dessinée en couleur et libellé dessous ; Index et Shop au bord gauche, Dummies
-  au bord droit (place du bouton de collection des références) ; pastille rouge « ! » quand un achat est possible.
+- **Boutons** : carrés arrondis à icône dessinée en couleur et libellé dessous ; Index, Shop et Rebirth (dès le
+  premier lancer, section « Renaissance ») au bord gauche, Dummies au bord droit (place du bouton de collection des références) ; pastille rouge « ! » quand un achat est possible.
 - **Compteurs** (bas gauche) : biceps + Throw Power (cyan), liasse + argent (blanc), revenu « +$N/s » en vert à droite
   de l'argent quand l'attribut joueur `Income` (revenu de la base) est positif ; l'argent du revenu tombe tout seul.
 - **Tutoriel** (objectif en haut au centre) : toute la boucle une fois, dans l'ordre des références, puis plus jamais de
@@ -541,7 +587,9 @@ Interface : section suivante.
   (`Server.SlotService`) ; les vols coexistent, les obstacles réapparaissent d'eux-mêmes au lieu d'être reconstruits.
 - Studio : `DebugLaunch` (0-1) sur le joueur lance son mannequin, `DebugLaunchBots` (n) lance n mannequins de test depuis
   les places libres (mesure de 4 vols simultanés), `DebugPlace` pose le mannequin tenu ou le dernier gagné (AUTO), `DebugEquip` (« id:taille », « » pour ranger) équipe un mannequin de la barre, `DebugThrowDummy` (1-6) donne et équipe ce
-  mannequin à lancer ; `FreshPlayer` sur
+  mannequin à lancer ; `DebugWipe` (true) remet toute la sauvegarde du joueur à l'état d'un nouveau joueur
+  (renaissances, collection, tutoriel et records compris ; écrite à son départ : remise à zéro du compte du testeur
+  avant une sprint review, #95) ; `FreshPlayer` sur
   Workspace : nouveau joueur sans sauvegarde.
 - Le décor est généré par le code (`CourseBuilder`) : rien à exporter depuis Studio.
 

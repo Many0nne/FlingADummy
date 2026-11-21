@@ -1,0 +1,132 @@
+-- Renaissance (#108) : prix $50B × 4^k, condition (dernier équipement et prix), état après renaissance (remis à zéro /
+-- gardé), multiplicateur de CHANCE × 2^k, lecture d'une ancienne sauvegarde, annonce aux joueurs du serveur.
+return function(T, Loader)
+	local loader = Loader.new()
+	local Economy = loader:require("src/shared/Economy")
+	local GameConfig = loader:require("src/shared/GameConfig")
+	local Rebirth = loader:require("src/shared/Rebirth")
+	local Training = loader:require("src/shared/Training")
+
+	local LAST = #Training.GEARS
+
+	T.describe("Rebirth.price", function()
+		T.it("vaut $50B, puis × 4 à chaque renaissance", function()
+			T.expectEqual(Rebirth.price(0), 50e9)
+			T.expectEqual(Rebirth.price(1), 200e9)
+			T.expectEqual(Rebirth.price(2), 800e9)
+			T.expectEqual(Rebirth.price(3), 3.2e12)
+		end)
+		T.it("lit un compteur illisible comme 0", function()
+			T.expectEqual(Rebirth.price(-3), 50e9)
+			T.expectEqual(Rebirth.price(0 / 0), 50e9)
+		end)
+	end)
+
+	T.describe("Rebirth.missing (condition)", function()
+		T.it("demande le dernier équipement d'entraînement (Infinite)", function()
+			T.expectEqual(Rebirth.REQUIRED_GEAR, LAST)
+			T.expectEqual(Training.gear(LAST).name, "Infinite Dummy")
+			T.expectEqual(Rebirth.missing({ gearTier = LAST - 1, money = 1e15, rebirths = 0 }), "Gear")
+		end)
+		T.it("demande ensuite le prix de la renaissance suivante", function()
+			T.expectEqual(Rebirth.missing({ gearTier = LAST, money = 50e9 - 1, rebirths = 0 }), "Money")
+			T.expectEqual(Rebirth.missing({ gearTier = LAST, money = 50e9, rebirths = 0 }), nil)
+			T.expectEqual(Rebirth.missing({ gearTier = LAST, money = 50e9, rebirths = 1 }), "Money")
+			T.expectEqual(Rebirth.missing({ gearTier = LAST, money = 200e9, rebirths = 1 }), nil)
+		end)
+		T.it("signale l'équipement avant l'argent quand les deux manquent", function()
+			T.expectEqual(Rebirth.missing({ gearTier = 1, money = 0, rebirths = 0 }), "Gear")
+		end)
+		T.it("s'arrête au plafond : le compteur ne dépasse jamais ce que la sauvegarde relit", function()
+			local state = { gearTier = LAST, money = math.huge, rebirths = Rebirth.MAX }
+			T.expectEqual(Rebirth.missing(state), "Max")
+			T.expectEqual(Rebirth.apply(state), nil)
+			state.rebirths = Rebirth.MAX - 1
+			T.expectEqual((Rebirth.apply(state) :: any).Rebirths, Rebirth.MAX)
+		end)
+	end)
+
+	T.describe("Rebirth.apply (état après renaissance)", function()
+		T.it("refuse sans la condition", function()
+			T.expectEqual(Rebirth.apply({ gearTier = LAST, money = 1, rebirths = 0 }), nil)
+			T.expectEqual(Rebirth.apply({ gearTier = 3, money = 1e15, rebirths = 0 }), nil)
+		end)
+		T.it("remet argent, puissance, entraînement, équipement et mannequins à lancer à leur départ", function()
+			local after = Rebirth.apply({ gearTier = LAST, money = 75e9, rebirths = 0 }) :: any
+			T.expect(after ~= nil, "renaissance acceptée")
+			T.expectEqual(after.Money, 0)
+			T.expectEqual(after.ThrowPower, GameConfig.START_POWER)
+			T.expectEqual(after.GearTier, 1)
+			T.expectEqual(after.TrainLevel, 1)
+			T.expectEqual(after.TrainExp, 0)
+			T.expectEqual(after.ThrowTier, 1)
+			T.expectEqual(after.ThrowEquipped, 1)
+			T.expectEqual(after.Rebirths, 1)
+		end)
+		T.it("garde collection, tutoriel, records, tirages et réglages (rien d'autre n'est touché)", function()
+			local after = Rebirth.apply({ gearTier = LAST, money = 200e9, rebirths = 1 }) :: any
+			T.expectEqual(after.Rebirths, 2)
+			for _, kept in { "Collection", "Tutorial", "BestDistance", "Draws", "MusicOff", "Displays" } do
+				T.expectEqual(after[kept], nil, kept .. " gardé")
+			end
+			local count = 0
+			for _ in after do
+				count += 1
+			end
+			T.expectEqual(count, 8, "7 valeurs remises à zéro + le compteur")
+		end)
+		T.it("ne modifie pas la table des valeurs de départ", function()
+			local after = Rebirth.apply({ gearTier = LAST, money = 50e9, rebirths = 0 }) :: any
+			after.Money = 123
+			T.expectEqual(Rebirth.RESET.Money, 0)
+			T.expectEqual(Rebirth.RESET.Rebirths, nil)
+		end)
+	end)
+
+	T.describe("Rebirth.luck (multiplicateur)", function()
+		T.it("double la CHANCE à chaque renaissance, pour toujours", function()
+			T.expectEqual(Rebirth.luck(0), 1)
+			T.expectEqual(Rebirth.luck(1), 2)
+			T.expectEqual(Rebirth.luck(3), 8)
+			T.expectEqual(Rebirth.luckText(3), "x8")
+			T.expectEqual(Rebirth.luckText(10), "x1.02K")
+		end)
+		T.it("multiplie la CHANCE du lancer comme le mannequin lancé (Economy.chance)", function()
+			local base = Economy.chance({ distance = 300, bones = 5, smashed = 4, luck = 1.25 })
+			local reborn = Economy.chance({ distance = 300, bones = 5, smashed = 4, luck = 1.25, rebirth = 8 })
+			T.expectEqual(base.rebirth, 1)
+			T.expectEqual(reborn.rebirth, 8)
+			T.expectNear(reborn.total, base.total * 8, 0.05, "CHANCE × 8 à 3 renaissances (arrondis au centième)")
+		end)
+	end)
+
+	T.describe("Rebirth.read (ancienne sauvegarde)", function()
+		T.it("lit 0 sans champ ou avec une valeur illisible", function()
+			T.expectEqual(Rebirth.read(nil), 0)
+			T.expectEqual(Rebirth.read("3"), 0)
+			T.expectEqual(Rebirth.read(0 / 0), 0)
+			T.expectEqual(Rebirth.read(-2), 0)
+		end)
+		T.it("garde un entier, borné", function()
+			T.expectEqual(Rebirth.read(3), 3)
+			T.expectEqual(Rebirth.read(3.7), 3)
+			T.expectEqual(Rebirth.read(1e9), Rebirth.MAX)
+		end)
+	end)
+
+	T.describe("Rebirth : annonce aux joueurs du serveur", function()
+		T.it("écrit « NAME rebirthed! Rebirth 3: x8 luck »", function()
+			T.expectEqual(Rebirth.announceText("Ana", 3), "Ana rebirthed! Rebirth 3: x8 luck")
+		end)
+		T.it("lit une annonce valide et rejette les autres", function()
+			local parsed =
+				Rebirth.parseAnnouncement({ kind = "Rebirth", userId = 7, player = "Ana", rebirths = 2 }) :: any
+			T.expectEqual(parsed.player, "Ana")
+			T.expectEqual(parsed.rebirths, 2)
+			T.expectEqual(parsed.userId, 7)
+			T.expectEqual(Rebirth.parseAnnouncement({ kind = "Rebirth", player = "Ana", rebirths = 0 }), nil)
+			T.expectEqual(Rebirth.parseAnnouncement({ player = "Ana", rebirths = 2 }), nil, "tirage, pas renaissance")
+			T.expectEqual(Rebirth.parseAnnouncement("Rebirth"), nil)
+		end)
+	end)
+end

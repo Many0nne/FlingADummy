@@ -3,8 +3,10 @@
 -- (tirage Shared.Collection, entraînement Shared.Training, CHANCE Shared.Economy, prix Shared.ThrowDummies). Modèle
 -- simple, à recaler sur les mesures de Studio (#15) : distance ∝ vitesse² (calée sur les vols mesurés de #14), une
 -- boucle = un lancer (THROW_TIME s) puis TRAIN_TIME s d'entraînement, achats dès que possible (le moins cher d'abord),
--- mannequins hors présentoirs vendus aussitôt.
--- Usage : lune run tools/progression [joueurs] [heures]   (défaut : 40 joueurs, 12 h)
+-- mannequins hors présentoirs vendus aussitôt. Renaissance (#108, Shared.Rebirth) dès que possible, après les achats
+-- moins chers : progression remise à zéro, base et présentoirs gardés, CHANCE × 2 par renaissance.
+-- Usage : lune run tools/progression [joueurs] [heures] [facteur de prix des renaissances]
+-- (défaut : 40 joueurs, 12 h, × 4 ; renaissances : 100 h et plus)
 local process = require("@lune/process")
 
 local Loader = require("../tests/lib/Loader")
@@ -16,11 +18,14 @@ local Format = loader:require("src/shared/Format")
 local GameConfig = loader:require("src/shared/GameConfig")
 local Inventory = loader:require("src/shared/Inventory")
 local Rarity = loader:require("src/shared/Rarity")
+local Rebirth = loader:require("src/shared/Rebirth")
 local ThrowDummies = loader:require("src/shared/ThrowDummies")
 local Training = loader:require("src/shared/Training")
 
 local PLAYERS = tonumber(process.args[1]) or 40
 local HOURS = tonumber(process.args[2]) or 12
+-- 3e argument (essai) : facteur de prix entre deux renaissances à la place de Rebirth.PRICE_GROWTH
+Rebirth.PRICE_GROWTH = tonumber(process.args[3]) or Rebirth.PRICE_GROWTH
 
 local THROW_TIME = 15 -- lancer, vol, tirage et retour (s ; 15 s mesurés sur Throw a Seed)
 local TRAIN_TIME = 15 -- entraînement entre deux lancers (s)
@@ -57,6 +62,7 @@ local function simulate(seed: number, seconds: number): { [string]: number }
 	local displays = GameConfig.DISPLAY_START
 	local base: { number } = {} -- revenus des mannequins posés
 	local draws = 0
+	local rebirths = 0
 	local marks: { [string]: number } = {}
 
 	-- Cette méthode permet de noter l'instant où un palier est atteint pour la première fois lorsque la simulation avance.
@@ -123,13 +129,26 @@ local function simulate(seed: number, seconds: number): { [string]: number }
 		end
 	end
 
+	-- Cette méthode permet de renaître dès que la condition est remplie (Shared.Rebirth), après les achats moins chers,
+	-- lorsque l'argent change : argent, puissance, entraînement, équipement et mannequins à lancer à zéro.
+	local function rebirth()
+		if Rebirth.missing({ gearTier = gear, money = money, rebirths = rebirths }) then
+			return
+		end
+		rebirths += 1
+		mark("rebirth:" .. rebirths)
+		money, power = 0, GameConfig.START_POWER
+		progress = { level = 1, exp = 0 }
+		gear, thrown = 1, 1
+	end
+
 	while t < seconds do
 		-- Lancer
 		local entry
 		if draws == 0 then
 			entry = { id = Collection.STARTER, size = 1 }
 		else
-			entry = Collection.draw(chanceFor(power, ThrowDummies.get(thrown).luck), roll)
+			entry = Collection.draw(chanceFor(power, ThrowDummies.get(thrown).luck) * Rebirth.luck(rebirths), roll)
 		end
 		draws += 1
 		t += THROW_TIME
@@ -168,8 +187,10 @@ local function simulate(seed: number, seconds: number): { [string]: number }
 			end
 		end
 		shop()
+		rebirth()
 	end
-	marks.finalChance = chanceFor(power, ThrowDummies.get(thrown).luck)
+	marks.finalChance = chanceFor(power, ThrowDummies.get(thrown).luck) * Rebirth.luck(rebirths)
+	marks.rebirths = rebirths
 	marks.finalIncome = income()
 	marks.finalPower = power
 	return marks
@@ -256,6 +277,23 @@ for rarity, tier in Rarity.LIST do
 		)
 	)
 end
+print("\n| Renaissance | Prix | CHANCE | Atteinte |")
+print("|---|---|---|---|")
+for k = 1, 30 do
+	local reached = median("rebirth:" .. k)
+	print(
+		string.format(
+			"| %d | %s | %s | %s |",
+			k,
+			Format.money(Rebirth.price(k - 1)),
+			Rebirth.luckText(k),
+			duration(reached)
+		)
+	)
+	if not reached then
+		break
+	end
+end
 print("\n| Présentoir | Prix | Atteint |")
 print("|---|---|---|")
 for count = GameConfig.DISPLAY_START + 1, GameConfig.DISPLAY_START + #GameConfig.DISPLAY_PRICES do
@@ -298,8 +336,9 @@ do
 end
 print(
 	string.format(
-		"\nFin (%d h, médiane) : CHANCE %s, revenu %s, puissance %s",
+		"\nFin (%d h, médiane) : %d renaissance(s), CHANCE %s, revenu %s, puissance %s",
 		HOURS,
+		median("rebirths") or 0,
 		Format.multiplier(median("finalChance") or 0),
 		Format.perSecond(median("finalIncome") or 0),
 		Format.short(median("finalPower") or 0)
