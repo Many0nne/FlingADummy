@@ -66,7 +66,7 @@ local player: Player
 local remotes: Remotes.Remotes
 local hooks: Hooks
 local frames: { [string]: Frame } = {}
-local meshed: boolean? = nil -- forme (maillée ou blocs) des rendus 3D déjà construits
+local meshed: number? = nil -- étape des maillages (DummyShape.meshStage) des rendus 3D déjà construits
 -- Inventaire
 local inventoryList: ScrollingFrame
 local inventoryRows: { [string]: RowUI } = {}
@@ -554,7 +554,7 @@ function CollectionWindows.refresh()
 		return
 	end
 	-- Maillages arrivés : les rendus en blocs sont refaits
-	local nowMeshed = DummyShape.isMeshed()
+	local nowMeshed = DummyShape.meshStage()
 	if meshed ~= nowMeshed then
 		meshed = nowMeshed
 		for _, pool in { inventoryRows, sellRows } do

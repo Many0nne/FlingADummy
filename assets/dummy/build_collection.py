@@ -394,6 +394,7 @@ class Part:
     amplitude + periode)."""
 
     def __init__(self, name, piece, color, shapes, material="SmoothPlastic", transparency=0.0, spin=None, bob=None):
+        """Cette methode permet de decrire une piece ajoutee lorsque l'on compose un modele de collection."""
         self.name = name
         self.piece = piece
         self.color = color

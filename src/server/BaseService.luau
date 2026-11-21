@@ -445,6 +445,8 @@ local function watchTemplates()
 	end
 	local function watch(folder: Instance)
 		folder:GetAttributeChangedSignal("Ready"):Connect(rerender)
+		-- Pièces ajoutées des modèles de collection chargées après le corps : les mannequins posés sans elles sont refaits
+		folder:GetAttributeChangedSignal(DummyShape.COMPLETE):Connect(rerender)
 		if folder:GetAttribute("Ready") then
 			rerender()
 		end

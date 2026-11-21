@@ -154,6 +154,9 @@ return function(T, Loader)
 			for _, effect in carried.effects do
 				T.expect(effect.kind ~= "beam", "pas de colonne de lumière en main")
 			end
+			for _, effect in Collection.variant({ id = "ghost", size = 1 }, true).effects do
+				T.expect(effect.offset.Y > -2, "brume du fantôme retirée en main")
+			end
 		end)
 	end)
 

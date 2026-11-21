@@ -227,7 +227,12 @@ end
 function Collection.variant(entry: Entry, carried: boolean?): { [string]: any }
 	local dummy = byId[entry.id] or byId[Collection.STARTER]
 	local look = DummyModels.LOOKS[dummy.id]
-	local effects = table.clone(look.effects or {})
+	local effects = {}
+	for _, effect in look.effects or {} do
+		if not (carried and DummyAura.isGrounded(effect)) then
+			table.insert(effects, effect)
+		end
+	end
 	for _, effect in DummyAura.effects(dummy.id, dummy.rarity, carried) do
 		table.insert(effects, effect)
 	end

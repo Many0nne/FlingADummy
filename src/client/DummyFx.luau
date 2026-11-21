@@ -15,34 +15,48 @@ local DummyFx = {}
 
 local MAX_DISTANCE = 220 -- au-delà, une pièce du monde reste figée (studs)
 
-local animated: { [BasePart]: true } = {}
+-- Données d'animation d'une pièce, lues une fois (soudure, repos, rotation, flottement) ; false : pièce inanimable
+type Record = { weld: Weld, carrier: BasePart, base: CFrame, spin: Vector3?, bob: Vector2? }
+local animated: { [BasePart]: Record | false | true } = {}
 
--- Cette méthode permet de placer une pièce animée à l'instant `t` lorsque la boucle d'animation passe sur elle.
-local function step(part: BasePart, t: number, eye: Vector3)
+-- Cette méthode permet de lire une fois les données d'animation d'une pièce étiquetée lorsque la boucle la rencontre
+-- pour la première fois ; false si elle n'est pas animable (soudure ou repos absents).
+local function record(part: BasePart): Record | false
 	local weld = part:FindFirstChild(DummyShape.FX_WELD)
 	local base = part:GetAttribute("FxBase")
-	if not weld or not weld:IsA("Weld") or typeof(base) ~= "CFrame" then
+	if not weld or not weld:IsA("Weld") or typeof(base) ~= "CFrame" or not weld.Part0 then
+		return false
+	end
+	local spin = part:GetAttribute("FxSpin")
+	local bob = part:GetAttribute("FxBob")
+	return {
+		weld = weld,
+		carrier = weld.Part0 :: BasePart,
+		base = base,
+		spin = if typeof(spin) == "Vector3" then spin else nil,
+		bob = if typeof(bob) == "Vector2" then bob else nil,
+	}
+end
+
+-- Cette méthode permet de placer une pièce animée à l'instant `t` lorsque la boucle d'animation passe sur elle (une
+-- pièce du monde trop loin de la caméra reste figée).
+local function step(part: BasePart, t: number, eye: Vector3)
+	local data = animated[part]
+	if data == true then
+		data = record(part)
+		animated[part] = data
+	end
+	if not data then
 		return
 	end
-	local carrier = weld.Part0
-	if not carrier then
+	local weld, carrier = data.weld, data.carrier
+	if (carrier.Position - eye).Magnitude > MAX_DISTANCE and part:IsDescendantOf(Workspace) then
 		return
 	end
 	local inWorld = part:IsDescendantOf(Workspace)
-	if inWorld and (carrier.Position - eye).Magnitude > MAX_DISTANCE then
-		return
-	end
 	local model = part.Parent
 	local scale = if model and model:IsA("Model") then model:GetScale() else 1
-	local spin = part:GetAttribute("FxSpin")
-	local bob = part:GetAttribute("FxBob")
-	local offset = DummyShape.fxOffset(
-		base,
-		scale,
-		t,
-		if typeof(spin) == "Vector3" then spin else nil,
-		if typeof(bob) == "Vector2" then bob else nil
-	)
+	local offset = DummyShape.fxOffset(data.base, scale, t, data.spin, data.bob)
 	if inWorld and not part.Anchored then
 		weld.Enabled = true
 		weld.C0 = offset

@@ -53,51 +53,59 @@ local function createPart(name: string, textured: boolean): MeshPart?
 	return part
 end
 
--- Cette méthode permet de construire les gabarits lorsque le serveur démarre (appel qui cède : à lancer dans un
--- task.spawn) ; les maillages se chargent par WORKERS en parallèle (corps d'abord), et les mannequins construits avant
--- la fin restent en blocs.
-function DummyAssets.init()
-	local folder = Instance.new("Folder")
-	folder.Name = DummyShape.TEMPLATES
-	local queue: { { name: string, body: boolean } } = {}
-	for _, piece in DummyShape.PIECES do
-		table.insert(queue, { name = piece.name, body = true })
-	end
-	for name in DummyShape.ACCESSORIES do
-		if Assets.DUMMY_MESHES[name] then
-			table.insert(queue, { name = name, body = false })
-		end
-	end
-	local nextIndex, running = 1, 0
-	local bodyFailed = false
-	-- Cette méthode permet à un chargeur de prendre les maillages de la file un par un jusqu'à ce qu'elle soit vide
-	-- lorsque les gabarits se construisent ; une erreur imprévue compte comme un échec, sans bloquer l'attente.
+-- Cette méthode permet de charger une liste de maillages par WORKERS en parallèle dans `folder` lorsque les gabarits se
+-- construisent (appel qui cède jusqu'à la fin) ; renvoie le nombre d'échecs (une erreur imprévue compte comme un échec,
+-- sans bloquer l'attente).
+local function loadAll(names: { string }, textured: boolean, folder: Folder): number
+	local nextIndex, running, failures = 1, 0, 0
+	-- Cette méthode permet à un chargeur de prendre les maillages de la liste un par un jusqu'à ce qu'elle soit vide.
 	local function worker()
-		while nextIndex <= #queue do
-			local job = queue[nextIndex]
+		while nextIndex <= #names do
+			local name = names[nextIndex]
 			nextIndex += 1
-			local ok, part = pcall(createPart, job.name, job.body)
+			local ok, part = pcall(createPart, name, textured)
 			if ok and part then
 				part.Parent = folder
-			elseif job.body then
-				bodyFailed = true
+			else
+				failures += 1
 			end
 		end
 		running -= 1
 	end
-	for _ = 1, math.min(WORKERS, #queue) do
+	for _ = 1, math.min(WORKERS, #names) do
 		running += 1
 		task.spawn(worker)
 	end
 	while running > 0 do
 		task.wait(0.1)
 	end
-	if bodyFailed then
-		folder:Destroy()
+	return failures
+end
+
+-- Cette méthode permet de construire les gabarits lorsque le serveur démarre (appel qui cède : à lancer dans un
+-- task.spawn) : les pièces du corps d'abord (dossier publié et marqué Ready), puis les pièces ajoutées des modèles de
+-- collection (attribut Complete à la fin, qui fait reconstruire les mannequins posés sans elles).
+function DummyAssets.init()
+	local folder = Instance.new("Folder")
+	folder.Name = DummyShape.TEMPLATES
+	local body = {}
+	for _, piece in DummyShape.PIECES do
+		table.insert(body, piece.name)
+	end
+	if loadAll(body, true, folder) > 0 then
+		folder:Destroy() -- tout ou rien pour le corps : le jeu garde les blocs du gabarit
 		return
 	end
 	folder:SetAttribute("Ready", true)
 	folder.Parent = ReplicatedStorage
+	local addons = {}
+	for name in DummyShape.ACCESSORIES do
+		if Assets.DUMMY_MESHES[name] then
+			table.insert(addons, name)
+		end
+	end
+	loadAll(addons, false, folder)
+	folder:SetAttribute(DummyShape.COMPLETE, true)
 end
 
 return DummyAssets

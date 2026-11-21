@@ -14,6 +14,8 @@ local DummyShape = {}
 DummyShape.YELLOW = Color3.fromRGB(255, 205, 40)
 DummyShape.DARK = Color3.fromRGB(45, 47, 55)
 DummyShape.TEMPLATES = "DummyTemplates"
+-- Attribut du dossier des gabarits posé quand les pièces ajoutées sont chargées (Ready : le corps seul)
+DummyShape.COMPLETE = "Complete"
 -- SurfaceAppearance de l'atlas (Shared.DummySurface, synchronisée par Rojo) clonée dans chaque gabarit maillé
 DummyShape.SURFACE = "DummySurface"
 -- Pièces ajoutées animées (rotation, flottement) : animées côté client par Client.DummyFx
@@ -241,10 +243,37 @@ function DummyShape.addTarget(part: BasePart, face: Enum.NormalId)
 	gui.Parent = part
 end
 
--- Cette méthode permet de savoir si les gabarits maillés sont prêts lorsque l'on construit un mannequin.
+-- Cette méthode permet de savoir si les gabarits maillés du corps sont prêts lorsque l'on construit un mannequin.
 function DummyShape.isMeshed(): boolean
 	local folder = ReplicatedStorage:FindFirstChild(DummyShape.TEMPLATES)
 	return folder ~= nil and folder:GetAttribute("Ready") == true
+end
+
+-- Cette méthode permet de donner l'étape de chargement des gabarits (0 : blocs, 1 : corps maillé, 2 : pièces ajoutées
+-- aussi) lorsqu'un rendu doit être refait à l'arrivée de nouveaux maillages.
+function DummyShape.meshStage(): number
+	local folder = ReplicatedStorage:FindFirstChild(DummyShape.TEMPLATES)
+	if not folder or folder:GetAttribute("Ready") ~= true then
+		return 0
+	end
+	return if folder:GetAttribute(DummyShape.COMPLETE) == true then 2 else 1
+end
+
+-- Cette méthode permet de savoir si toutes les pièces ajoutées d'une liste ont leur gabarit lorsque l'on décide de
+-- masquer les pièces qu'elles remplacent.
+local function hasTemplates(names: { string }?): boolean
+	local folder = ReplicatedStorage:FindFirstChild(DummyShape.TEMPLATES)
+	if not folder or folder:GetAttribute("Ready") ~= true then
+		return false
+	end
+	if names then
+		for _, name in names do
+			if not folder:FindFirstChild(name) then
+				return false
+			end
+		end
+	end
+	return true
 end
 
 -- Cette méthode permet de créer une pièce (maillée si son gabarit existe, bloc sinon) à la taille voulue lorsque
@@ -269,9 +298,10 @@ end
 -- Cette méthode permet de donner la couleur d'une pièce lorsque l'on habille un mannequin : tout le corps prend la
 -- couleur de la déclinaison quand l'atlas est posé (le noir est dans la texture), seules les zones jaunes sinon.
 function DummyShape.colorOf(piece: Piece, part: BasePart, variant: Variant?): Color3
-	local tint = variant and (variant.pieceColors and variant.pieceColors[piece.name] or variant.color)
-	if part:FindFirstChild(DummyShape.SURFACE) then
-		return tint or DummyShape.YELLOW
+	local own = variant and variant.pieceColors and variant.pieceColors[piece.name]
+	local tint = own or (variant and variant.color)
+	if part:FindFirstChild(DummyShape.SURFACE) or own then
+		return tint or DummyShape.YELLOW -- couleur propre de la pièce : aussi sur une pièce sombre en blocs
 	end
 	return if tint and piece.color == DummyShape.YELLOW then tint else piece.color
 end
@@ -294,14 +324,15 @@ end
 -- blocs) lorsque le serveur ou le client en construit un ; renvoie les pièces par nom.
 function DummyShape.buildPieces(model: Model, scale: number, variant: Variant?): { [string]: BasePart }
 	local parts: { [string]: BasePart } = {}
+	-- Pièces remplacées par une pièce ajoutée (queue du fantôme) : masquées seulement si toutes les pièces ajoutées du
+	-- modèle ont leur maillage, sinon le mannequin perdrait ses jambes sans rien à leur place
+	local hide = variant ~= nil and variant.hidden ~= nil and hasTemplates(variant.accessories)
 	for _, piece in DummyShape.PIECES do
 		local p = DummyShape.makePart(piece.name, piece.size * scale) :: BasePart
 		p.CFrame = CFrame.new(piece.position * scale)
 		p.Material = DummyShape.applyMaterial(p, variant) -- avant la couleur : retire l'atlas si besoin
 		p.Color = DummyShape.colorOf(piece, p, variant)
-		-- Pièce remplacée par une pièce ajoutée (queue du fantôme) : masquée seulement si les maillages des pièces
-		-- ajoutées sont là, sinon le mannequin en blocs perdrait ses jambes sans rien à leur place
-		if variant and variant.hidden and table.find(variant.hidden, piece.name) and DummyShape.isMeshed() then
+		if hide and table.find((variant :: Variant).hidden :: { string }, piece.name) then
 			p.Transparency = 1
 		end
 		p.Parent = model

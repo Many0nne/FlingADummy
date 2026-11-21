@@ -14,6 +14,7 @@ local DummyAura = {}
 
 local WHITE = Color3.fromRGB(255, 255, 255)
 local GROUND = Vector3.new(0, -3.7, 0) -- sol sous les pieds, depuis le centre du torse
+local GROUND_LEVEL = -2 -- sous les hanches (depuis le centre du torse) : effet posé au sol
 local BACK = Vector3.new(0, 0.6, 0.9) -- derrière le torse (le mannequin regarde vers -Z)
 
 -- Cette méthode permet de décrire un émetteur de particules lorsque l'on compose une aura ou un thème.
@@ -128,7 +129,7 @@ DummyAura.THEMES = {
 -- Cette méthode permet de savoir si un effet est posé au sol (onde, flaque, poussières, brume, colonne de lumière)
 -- lorsque l'on habille un mannequin porté en main, où le sol est loin sous lui.
 function DummyAura.isGrounded(effect: Effect): boolean
-	return effect.kind == "beam" or effect.offset == GROUND
+	return effect.kind == "beam" or (effect.piece == "Torso" and effect.offset.Y <= GROUND_LEVEL)
 end
 
 -- Cette méthode permet de donner tous les effets ajoutés d'un mannequin (thème, puis aura de sa rareté) lorsque l'on

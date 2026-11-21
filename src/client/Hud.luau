@@ -455,10 +455,12 @@ end
 local function watchTemplates()
 	-- Cette méthode permet de rafraîchir les fenêtres lorsque le dossier des gabarits passe à Ready.
 	local function watch(folder: Instance)
-		folder:GetAttributeChangedSignal("Ready"):Connect(function()
-			Hud.refresh()
-			CollectionWindows.refresh()
-		end)
+		for _, attribute in { "Ready", DummyShape.COMPLETE } do
+			folder:GetAttributeChangedSignal(attribute):Connect(function()
+				Hud.refresh()
+				CollectionWindows.refresh()
+			end)
+		end
 	end
 	local folder = ReplicatedStorage:FindFirstChild(DummyShape.TEMPLATES)
 	if folder then
