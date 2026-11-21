@@ -1660,11 +1660,12 @@ def particle_specks(effect, rng):
     piece = effect["piece"]
     base = Vector(PIECES[piece][1]) + Vector(effect["offset"])
     preset = effect["preset"]
-    # Grands effets plats ou halos (anneau, flaque, rayons) : pas d'eclats ; autres preregles : eclats moyens
+    # Effets a theme des mannequins generes (#96) : eclats moyens ; un preregle inconnu fait echouer le rendu
+    medium = (12, 2.0, 0.14)
     count, radius, size = {"sparkle": (16, 2.2, 0.16), "fire": (14, 0.6, 0.22), "embers": (16, 2.2, 0.12),
                            "wisp": (10, 1.0, 0.3), "stars": (22, 2.8, 0.16), "vortex": (18, 2.4, 0.14),
-                           "aura": (0, 0, 0), "ring": (0, 0, 0), "pool": (0, 0, 0),
-                           "rays": (0, 0, 0)}.get(preset, (12, 2.0, 0.14))
+                           "aura": (0, 0, 0), "glint": medium, "burst": medium, "jet": medium, "motes": medium,
+                           "bubbles": medium, "snow": medium, "notes": medium, "smoke": medium}[preset]
     out = []
     for i in range(count):
         d = Vector((rng.uniform(-1, 1), rng.uniform(-1, 1), rng.uniform(-1, 1)))
