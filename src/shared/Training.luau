@@ -2,6 +2,7 @@
 -- l'équipement (« +4 EXP / répétition » de la référence 09) qui remplit la barre de niveau, et chaque niveau franchi
 -- (popup « LEVEL UP! ») donne autant de Throw Power que l'EXP qu'il demandait : puissance gagnée = EXP gagnée.
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local DummyFamilies = require(Shared:WaitForChild("DummyFamilies"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 
 local Training = {}
@@ -74,6 +75,33 @@ Training.GEARS = {
 		scale = 0.9,
 	},
 } :: { Gear }
+
+-- Suite des équipements (#94) : gain × GAIN_STEP et prix × PRICE_STEP par palier depuis Cosmic, couleur et matériau
+-- d'une palette de Shared.DummyFamilies, mannequin un peu plus grand à chaque palier (provisoire, recalé par #15 ;
+-- courbe et temps estimés dans docs/design.md, section « Progression longue »).
+Training.EXTENDED = { "ruby", "emerald", "plasma", "omega", "infinite" }
+Training.GAIN_STEP = 4
+Training.PRICE_STEP = 3.5
+
+do
+	local last = Training.GEARS[#Training.GEARS]
+	local gain, cost, scale = last.gain, last.cost, last.scale
+	for _, paletteId in Training.EXTENDED do
+		local palette = DummyFamilies.PALETTES[paletteId]
+		assert(palette, "Training : palette inconnue " .. paletteId)
+		gain = DummyFamilies.nice(gain * Training.GAIN_STEP)
+		cost = DummyFamilies.nice(cost * Training.PRICE_STEP)
+		scale = math.min(scale + 0.03, 0.9) -- au-delà, le mannequin soulevé traverse la tête (AnimationData.TRAIN)
+		table.insert(Training.GEARS, {
+			name = palette.name .. " Dummy",
+			gain = gain,
+			cost = cost,
+			color = palette.body,
+			material = palette.material or Enum.Material.SmoothPlastic,
+			scale = scale,
+		})
+	end
+end
 
 -- `exp` : EXP accumulée dans le niveau en cours (barre « x / y »)
 export type Progress = { level: number, exp: number }

@@ -78,6 +78,21 @@ return function(T, Loader)
 			T.expectEqual(Training.gear(0), Training.GEARS[1])
 			T.expectEqual(Training.gear(99), Training.GEARS[#Training.GEARS])
 		end)
+		T.it(
+			"prolongé (#94) : les 7 paliers d'origine inchangés, puis gain × GAIN_STEP et prix × PRICE_STEP",
+			function()
+				T.expectEqual(#Training.GEARS, 7 + #Training.EXTENDED)
+				T.expectEqual(Training.GEARS[7].name, "Cosmic Dummy")
+				T.expectEqual(Training.GEARS[7].gain, 3000)
+				T.expectEqual(Training.GEARS[7].cost, 25000000)
+				for tier = 8, #Training.GEARS do
+					local gear, before = Training.GEARS[tier], Training.GEARS[tier - 1]
+					T.expect(math.abs(gear.gain / before.gain / Training.GAIN_STEP - 1) < 0.05, gear.name .. " gain")
+					T.expect(math.abs(gear.cost / before.cost / Training.PRICE_STEP - 1) < 0.05, gear.name .. " prix")
+					T.expect(gear.scale <= 0.9, gear.name .. " : soulevé sans traverser la tête")
+				end
+			end
+		)
 	end)
 
 	T.describe("Zones", function()

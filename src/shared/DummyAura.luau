@@ -41,10 +41,12 @@ function DummyAura.rarity(rarity: number, color: Color3): { Effect }
 	if rarity < 3 then
 		return effects
 	end
-	local glints = ({ 1, 1.4, 1.6, 2, 2.4 })[rarity - 2]
+	-- Au-delà de Secret (#94) : un cran de plus par rareté (éclats, poussières, colonne de lumière plus haute)
+	local beyond = math.max(0, rarity - 7)
+	local glints = ({ 1, 1.4, 1.6, 2, 2.4 })[math.min(rarity - 2, 5)] + 0.3 * beyond
 	table.insert(effects, particles("glint", "Torso", Vector3.new(0, 0.3, 0), color, WHITE, { rate = glints }))
 	if rarity >= 4 then
-		local ringSize = if rarity >= 7 then 1.3 else 1
+		local ringSize = if rarity >= 7 then 1.3 + 0.1 * beyond else 1
 		table.insert(effects, particles("ring", "Torso", GROUND, color, WHITE, { size = ringSize }))
 	end
 	if rarity == 4 then
@@ -59,7 +61,7 @@ function DummyAura.rarity(rarity: number, color: Color3): { Effect }
 	end
 	if rarity >= 5 then
 		table.insert(effects, particles("pool", "Torso", GROUND, color))
-		local motes = ({ 1, 1.5, 2 })[rarity - 4]
+		local motes = ({ 1, 1.5, 2 })[math.min(rarity - 4, 3)] + 0.3 * beyond
 		table.insert(effects, particles("motes", "Torso", GROUND, color, WHITE, { rate = motes }))
 	end
 	if rarity >= 6 then
@@ -69,10 +71,15 @@ function DummyAura.rarity(rarity: number, color: Color3): { Effect }
 		)
 	end
 	if rarity >= 7 then
-		table.insert(
-			effects,
-			{ kind = "beam", piece = "Torso", offset = GROUND, color = color, color2 = WHITE, height = 18, width = 4 }
-		)
+		table.insert(effects, {
+			kind = "beam",
+			piece = "Torso",
+			offset = GROUND,
+			color = color,
+			color2 = WHITE,
+			height = 18 + 4 * beyond,
+			width = 4 + 0.5 * beyond,
+		})
 		table.insert(
 			effects,
 			particles(

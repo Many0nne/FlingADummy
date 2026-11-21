@@ -12,7 +12,14 @@ Rarity.LIST = {
 	{ name = "Legendary", color = Color3.fromRGB(255, 190, 40) },
 	{ name = "Mythic", color = Color3.fromRGB(255, 70, 110) },
 	{ name = "Secret", color = Color3.fromRGB(110, 255, 225) },
+	-- Au-delà de Secret (#94), comme les paliers Divin, Céleste, Cosmique de Throw a Seed : cotes de 10^7 à 10^15
+	{ name = "Divine", color = Color3.fromRGB(255, 240, 140) },
+	{ name = "Celestial", color = Color3.fromRGB(255, 140, 235) },
+	{ name = "Ethereal", color = Color3.fromRGB(170, 140, 255) },
+	{ name = "Infinity", color = Color3.fromRGB(255, 110, 30) },
 } :: { Tier }
+
+Rarity.SECRET = 7 -- premier palier joué avec la séquence complète du secret (Shared.RevealPlan)
 
 -- Cette méthode permet de donner la rareté d'indice `index` (bornée) lorsqu'une carte affiche un objet.
 function Rarity.get(index: number): Tier

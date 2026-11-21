@@ -84,7 +84,9 @@ base, il rapporte des $/s, seule source d'argent.
   (plusieurs niveaux d'un coup avec un bon équipement). Le passage de niveau (« LEVEL UP! Throw Power +N ») donne autant
   de **Throw Power** que l'EXP qu'il demandait : puissance gagnée = EXP gagnée = gain × répétitions.
 - **Équipements** (achetés avec l'argent) : mannequin en bois +1, pierre +3, fer +10, or +40, diamant +160, néon +700,
-  cosmique +3 000 EXP par répétition ; prix 100 $, 1,5 K, 25 K, 150 K, 2 M, 25 M.
+  cosmique +3 000 EXP par répétition ; prix 100 $, 1,5 K, 25 K, 150 K, 2 M, 25 M. Suite (#94, `Training.EXTENDED`) :
+  ruby, emerald, plasma, omega, infinite, gain × 4 et prix × 3,5 par palier (+12 K à +3 M, $88M à $14B) ; section
+  « Progression longue ».
 - Vitesse de lancer = 110 + 30 × ln(puissance / 10) studs/s : la puissance explose (10 → 1 M), la distance monte
   régulièrement (≈ 145 m → 2,2 km).
 
@@ -103,7 +105,10 @@ Comme 01 et 09 : le lancer fait le lien entre les deux.
   (le plus courant ramasse le reste) ; la taille se tire de même à CHANCE^0,5. Probabilités exactes affichables
   (`Collection.probabilities`, `sizeProbabilities`), cote affichée = 1 / probabilité à CHANCE 1, × celle de la taille.
 - **Premier lancer** : Crash Dummy (Common, 4 $/s) garanti.
-- **21 mannequins** (déclinaisons du modèle : couleur, matériau, casque, lunettes, cape) de Common à Secret :
+- **64 mannequins** sur 11 raretés (#94) : les 21 dessinés ci-dessous (déclinaisons du modèle : couleur, matériau,
+  casque, lunettes, cape), plus 43 générés par familles et palettes (`Shared.DummyFamilies`, section « Progression
+  longue ») en haut de chaque rareté et dans quatre raretés au-delà de Secret (Divine, Celestial, Ethereal, Infinity).
+  Mannequins dessinés :
   | Rareté | Mannequins | Revenu ($/s) | n |
   |---|---|---|---|
   | Common | Crash, Rookie, Traffic | 4 à 6 | 2 à 5 |
@@ -135,6 +140,11 @@ L'équivalent des aliments de 01 et des graines de 09 : le mannequin qu'on lance
   | Rocket Dummy (rouge, réacteur) | $50M | 3.0x | Jetpack | poussée de 60 studs/s² vers l'avant pendant la 1re seconde |
   Les pièges (`Shared.Traps`) remplacent la vitesse comme pour tous : le comportement reprend ensuite (portance,
   rebond) ou est fini (poussée).
+- **Suite du catalogue** (#94, `ThrowDummies.EXTENDED`) : 14 mannequins de 4x à 135x (« Ruby Rubber Dummy »,
+  « Infinite Rocket Dummy »), chacun avec le comportement et la physique d'un des cinq ci-dessus sous une palette de
+  `Shared.DummyFamilies`, prix = Rocket × (chance / 3)² ($84M à $47B) ; seuls les six premiers sont exposés sur le
+  stand (`ThrowDummies.SHOWCASE`). La boutique s'ouvre sur le prochain achat (défilement automatique, comme la
+  fenêtre Training Gear).
 - **Achat séquentiel** : seul le suivant s'achète, puis il est équipé d'office ; bouton **EQUIP** sur les possédés.
   Validé par le serveur (`ThrowDummies.act` : action, indice, ordre, possession, argent ; remote `ThrowDummy`).
 - **Fenêtre « Dummy Shop »** (invite « Buy dummies » du stand SHOP, ou bouton SHOP du popup « NEW DUMMY! ») : bandeau
@@ -160,6 +170,132 @@ L'équivalent des aliments de 01 et des graines de 09 : le mannequin qu'on lance
   | Rocket | 320-324 m, 6.26-6.74X | 1 221-1 835 m, 33.0-62.9X |
   À haute puissance les pièges (tremplin de ski à 731 m, lave, canons) décident de la distance : les comportements s'y
   lisent surtout aux os et aux objets.
+
+## Progression longue (#94)
+Retour de la sprint review 1 : on arrivait au bout des améliorations en ≈ 1 h (Rocket et Cosmic achetés, bout de la
+piste atteint à 43 min, dernier mannequin de collection à « 1 IN 2M »). *Throw a Seed* (09) monte jusqu'à des plantes
+« 1 IN 300Qa » et des graines à 135x. La courbe ci-dessous vise **une douzaine d'heures** de jeu sans renaissance,
+puis des jours avec la renaissance proposée plus bas. Chiffres provisoires : #15 les recale avec le joueur simulé de
+Studio.
+
+**Joueur simulé** (`lune run tools/progression [joueurs] [heures]`, médiane de 60 joueurs sur 24 h) : vrais modules
+du jeu (tirage, entraînement, CHANCE des zones, prix), une boucle = un lancer (15 s, comme 09) puis 15 s
+d'entraînement, achats dès que possible (le moins cher d'abord), mannequins hors présentoirs vendus aussitôt. Distance
+≈ 0,012 × vitesse² (vols mesurés de #14 : 145-168 m à la puissance 10, ≈ 1 150 m à 10,5 K), os et objets ≈ +30 % de
+CHANCE au départ, +55 % à 10,5 K. Modèle non mesuré en jeu : les pièges, les comportements des mannequins à lancer et
+le temps réel d'une boucle le décaleront.
+
+**Grands nombres** (`Shared.Format`) : K, M, B, T, Qa, Qi, Sx, Sp, Oc, No, Dc (10^33), puis notation scientifique ;
+3 chiffres significatifs tronqués ; cote « 1 IN 300Qa » (`Format.odds`), cote complète du secret avec séparateurs
+jusqu'au milliard puis abrégée (`Format.fullOdds`), CHANCE « X5.11K », chance « 135x ».
+
+### Collection : 11 raretés, 64 mannequins
+Contenu en masse sans dessiner de pièce (`Shared.DummyFamilies`, comme les variantes « Emerald », « Ruby » de 09) :
+un mannequin généré croise une **famille** (un des 21 modèles dessinés : pièces ajoutées, pièces masquées, effets) et
+une **palette** (couleur du corps, teinte et matériau des pièces ajoutées, couleur des effets ; ni verre ni champ de
+force, invisibles dans les fenêtres). Identifiant « palette_famille », nom « Palette Famille » (« Golden Void Dummy »).
+Règles de cote et de revenu :
+- raretés dessinées (Common à Secret) : 1 à 3 générés au-dessus des dessinés, sous la rareté suivante (cote et revenu
+  en progression géométrique entre les deux, arrondis à 2 chiffres) ; un seul Common (deux cotes de Common à moins de 1
+  d'écart sortiraient aussi souvent l'une que l'autre) ;
+- au-delà de Secret : 6 par rareté, deux décades de cote chacune, revenu = 300 K × (n / 2 M) ^ 0,45 (les dessinés
+  suivent ≈ n ^ 0,81 ; au-delà, l'exposant 0,45 garde un revenu × 3 à × 10 d'une rareté à l'autre, règle des
+  références, au lieu de × 40).
+
+| Rareté | Mannequins | Cotes (taille normale) | Revenu ($/s) | Premier obtenu (simulé) |
+|---|---|---|---|---|
+| Common | 4 | 1 IN 3 à 10 | 4 à 9 | 15 s (garanti) |
+| Uncommon | 6 | 1 IN 13 à 51 | 15 à 57 | 75 s |
+| Rare | 6 | 1 IN 62 à 372 | 70 à 310 | 4 min |
+| Epic | 6 | 1 IN 502 à 3K | 400 à 1.8K | 8 min |
+| Legendary | 6 | 1 IN 4K à 28K | 2.5K à 14K | 23 min |
+| Mythic | 6 | 1 IN 40K à 330K | 20K à 110K | 86 min |
+| Secret | 6 | 1 IN 500K à 4M | 150K à 410K | 5,7 h |
+| Divine | 6 | 1 IN 5M à 100M | 450K à 1.7M | 12,3 h |
+| Celestial | 6 | 1 IN 500M à 10B | 3.6M à 14M | renaissance (≈ 7) |
+| Ethereal | 6 | 1 IN 50B à 1T | 29M à 110M | renaissance (≈ 14) |
+| Infinity | 6 | 1 IN 5T à 100T | 230M à 870M | renaissance (≈ 20) |
+
+En taille Giant (× 500 de cote), le plus rare s'affiche « 1 IN 50Qa ». Spectacle : Divine et au-delà jouent la
+séquence complète du secret (phrase propre à la rareté : « THE HEAVENS HAVE OPENED... »), aura un cran plus fournie par
+rareté (éclats, poussières, colonne de lumière plus haute et plus large), modèle × 1,86 à × 2,05. Index : 11 onglets à
+la hauteur de la colonne ; vente : boutons « Sell all » sur deux rangées. Les générés n'ont pas encore d'icône propre
+dans la barre d'outils (icône de rareté jusqu'à Secret, nom au-delà).
+
+### Mannequins à lancer : 20, jusqu'à 135x
+| Mannequin | Chance | Prix | Atteint (simulé) |
+|---|---|---|---|
+| Crash / Rubber / Glass / Steel / Glider / Rocket | 1.0x à 3.0x | $0 à $50M | départ à 57 min |
+| Ruby Rubber | 4.0x | $84M | 74 min |
+| Emerald Glass | 5.0x | $130M | 101 min |
+| Sapphire Steel | 6.5x | $200M | 2,0 h |
+| Amber Glider | 8.0x | $290M | 2,4 h |
+| Golden Rocket | 10x | $440M | 2,9 h |
+| Frost Rubber | 13x | $700M | 3,4 h |
+| Magma Glass | 17x | $1.1B | 4,3 h |
+| Shadow Steel | 22x | $1.8B | 4,8 h |
+| Radiant Glider | 30x | $3.2B | 5,7 h |
+| Starlight Rocket | 40x | $5.3B | 7,1 h |
+| Nebula Rubber | 55x | $9.4B | 7,9 h |
+| Plasma Glass | 75x | $16B | 9,8 h |
+| Quantum Glider | 100x | $28B | 11,3 h |
+| Infinite Rocket | 135x | $47B | 12,9 h |
+
+Prix = Rocket × (chance / 3)^1,8 : sans renaissance, le revenu ne monte qu'avec le nombre de tirages × la CHANCE
+(polynomial), des prix × 6 à chaque niveau (essai : × 12-25 comme les graines de 09) rendaient la suite hors d'atteinte
+(4x à 2,2 h, 6,5x à 9 h, rien au-delà en 12 h).
+
+### Training Gear : 12 paliers
+| Équipement | EXP / rép. | Prix | Atteint (simulé) |
+|---|---|---|---|
+| Wooden → Cosmic | +1 à +3K | $0 à $25M | départ à 41 min |
+| Ruby | +12K | $88M | 87 min |
+| Emerald | +48K | $310M | 2,6 h |
+| Plasma | +190K | $1.1B | 4,0 h |
+| Omega | +760K | $3.9B | 6,3 h |
+| Infinite | +3M | $14B | 8,9 h |
+
+Puissance : 1 K à 5 min, 100 K à 20 min, 1 M à 45 min, 100 M à 3,4 h, 10 B à 9,8 h. **Limite actuelle** : la piste de
+2,4 km est au bout dès ≈ 760 K de puissance (43 min simulées) ; au-delà, la puissance n'ajoute que des os et des objets
+cassés (bonus de CHANCE). Les paliers prolongés prennent tout leur sens avec la piste prolongée (proposition
+ci-dessous, 6 km à ≈ 4,4 B de puissance, ≈ 8,5 h).
+
+### Repères comparés aux références
+| Repère | Fling a Dummy (simulé) | 09 *Throw a Seed* | 01 *Throw Food For Animals* |
+|---|---|---|---|
+| Première récompense | 15 s | 21 s | 24 s |
+| Premier équipement | 45 s ($100) | 1:45 ($500) | 0:42 ($1) |
+| Deuxième projectile | 105 s (1.25x, $1.2K) | 1:42 (1.25x, $1.2K) | 1:27 (pomme) |
+| Puissance | 1K à 5 min, 100K à 20 min | 1.34K à 4 min, 114K à 11 min | 503 à 17 min |
+| Revenu | 1K/s à 7 min, 100K/s à 81 min | 2.19K/s à 3:36 | 1.08K/s vers 9 min, 391K/s à 17 min |
+| Projectile le plus fort | 135x à 12,9 h | 135x (durée inconnue) | non observé |
+| Cote la plus haute | 1 IN 100T (50Qa en Giant) | 1 IN 300Qa | non observé |
+| Collection | 64 mannequins, 11 raretés | 110 plantes, 10 raretés + Royal | non observé |
+
+Écarts : la puissance et le revenu montent ≈ 2 fois moins vite que 09 après 5 min (#15 recale le rythme : gains de
+l'entraînement, revenus des premières raretés) ; la collection reste plus petite que celle de 09 (familles et palettes
+à ajouter sans dessin).
+
+### Proposition : piste prolongée et renaissance (conception, issue #97)
+Deux leviers, à coder après les tâches en cours sur la piste (#88) et la base (#91) :
+1. **Piste prolongée à 6 km** : six thèmes de plus après Moon Base (un tous les 600 m), CHANCE des zones de × 18 à
+   × 60 ; distance atteinte selon le modèle ci-dessus :
+   | Fin de piste | Vitesse | Puissance | Atteinte (simulé) | CHANCE des zones |
+   |---|---|---|---|---|
+   | 2,4 km (actuelle) | 447 | 760 K | 43 min | × 18 |
+   | 3,6 km | 548 | 22 M | ≈ 2 h | × 27 |
+   | 4,8 km | 632 | 360 M | ≈ 4,5 h | × 40 |
+   | 6 km | 707 | 4,4 B | ≈ 8,5 h | × 60 |
+   Effet (estimé, non simulé) : CHANCE finale × 3,3 en fin de courbe (≈ 17 K au lieu de 5,1 K), Divine bien avant
+   12 h ; rend
+   utiles les équipements prolongés.
+2. **Renaissance** (après Infinite Rocket, ≈ 13 h ; prix $50B × 4^k) : remet à zéro argent, puissance, équipement et
+   mannequins à lancer, garde la collection (base, stock, Index) et les présentoirs ; chaque renaissance multiplie la
+   CHANCE par 2 (définitif). Avec la collection gardée, une renaissance se refait en ≈ 1 à 2 h. Celestial (1 IN 500M)
+   demande ≈ 100 fois la CHANCE de fin (5,1 K) pour sortir en ≈ 1 000 lancers : ≈ 7 renaissances (estimé, non simulé :
+   ≈ 25 h de jeu au
+   total), Ethereal ≈ 14 (≈ 40 h), Infinity ≈ 20 (≈ 55 h). Écart assumé aux cibles du concept (« première renaissance
+   < 3 min », modèle de *Net a Fish!*) : 01 et 09, nos références de boucle, n'en montrent aucune en 15 min.
 
 ## Base et collection (`Server.BaseService`, `Shared.Inventory`)
 - **Présentoirs** : 6 au départ (2 rangées de 3), jusqu'à 10. Les mannequins posés sont construits par le serveur
@@ -199,7 +335,7 @@ L'équivalent des aliments de 01 et des graines de 09 : le mannequin qu'on lance
   long de chaque clôture avant et arrière : les 6 premiers ne bougent pas.
 - **Index** (bouton Index, fenêtre bleue comme 09) : raretés en onglets à gauche (« Common 2/3 »), titre et barre de
   progression de la rareté, cases des mannequins (cote « 1 IN N », rendu et nom, ✔ et meilleure taille obtenue ;
-  silhouette noire et « ??? » s'il n'a jamais été obtenu), total « Unlocked: x / 21 » en bas. L'Index garde les
+  silhouette noire et « ??? » s'il n'a jamais été obtenu), total « Unlocked: x / 64 » en bas. L'Index garde les
   mannequins obtenus même vendus.
 - **Réplication** : le serveur publie la collection dans des attributs du joueur (`Stock`, `BaseDummies`, `Displays`,
   `DummyIndex`, `PendingDummy` = dernier gagné), en clés « id:taille ». Le client n'envoie que des intentions (remote
@@ -349,7 +485,8 @@ Interface : section suivante.
 - **v0.2** : boucle des jeux de référence (entraînement, lancer par l'avatar, game feel, dégâts lisibles, zones,
   grands nombres) (fait, rejeté pour son style).
 - **v0.3** : boucle et style calés sur les références (epic #9) : carte (#10), mannequin et cinématique (#11), interface
-  (#12), collection (#13), boutique (#14), économie (#15). ← en cours
+  (#12), collection (#13), boutique (#14), économie (#15), progression longue (#94 ; piste prolongée et renaissance :
+  #97). ← en cours
 - **v1** : variantes « 1 en N » révélées en cinématique, renaissance avec nouveau parcours et nouveau lanceur (lance-pierre
   géant, catapulte, canon), tutoriel en chaîne d'objectifs, récompense quotidienne, index (issue #7).
 - **v2** : produits Robux (passer, x2, lancer auto), événement avec compte à rebours, vignette et page du jeu.

@@ -799,13 +799,24 @@ function UIKit.showModel(viewport: ViewportFrame, model: Model?)
 	model.Parent = viewport
 end
 
+UIKit.CARD_WIDTH = 196 -- largeur d'une carte de boutique (px)
+UIKit.CARD_GAP = 10 -- écart entre deux cartes d'une rangée qui défile
+
+-- Cette méthode permet de faire défiler une rangée de cartes jusqu'à la carte `order` (la précédente reste visible à
+-- gauche) lorsque une boutique s'ouvre : avec 12 équipements ou 20 mannequins (#94), le prochain achat est loin.
+function UIKit.scrollToCard(row: ScrollingFrame, order: number)
+	local x = math.max(0, (order - 2) * (UIKit.CARD_WIDTH + UIKit.CARD_GAP))
+	local maxX = math.max(0, row.AbsoluteCanvasSize.X - row.AbsoluteWindowSize.X)
+	row.CanvasPosition = Vector2.new(math.min(x, maxX), 0)
+end
+
 -- Cette méthode permet de créer une carte d'objet (nom, rareté, rendu 3D, statistique, bouton d'action) dans une
 -- boutique lorsque la fenêtre est construite ; `onAction` est appelé par le bouton.
 function UIKit.card(parent: Instance, order: number, onAction: () -> ()): Card
 	local frame = UIKit.create("Frame", {
 		Name = "Card" .. order,
 		LayoutOrder = order,
-		Size = UDim2.fromOffset(196, 300),
+		Size = UDim2.fromOffset(UIKit.CARD_WIDTH, 300),
 		BackgroundColor3 = Color3.new(1, 1, 1),
 		ZIndex = 11,
 		Parent = parent,

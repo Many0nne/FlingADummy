@@ -96,6 +96,18 @@ return function(T, Loader)
 
 	T.describe("DummyShape.buildVisual avec gabarits maillés", function()
 		local DummyShape = load(templates)
+		T.it("teinte chaque pièce ajoutée et impose leur matériau (variantes générées, #94)", function()
+			local pink = Color3.fromRGB(255, 80, 160)
+			local model = DummyShape.buildVisual(1, {
+				accessories = { "rookie_Helmet", "rookie_FloatyL" },
+				accessoryColors = { rookie_Helmet = pink },
+				accessoryMaterial = roblox.Enum.Material.Foil,
+			})
+			T.expectEqual(model.rookie_Helmet.Color, pink)
+			T.expectEqual(model.rookie_FloatyL.Color, DummyShape.ACCESSORIES.rookie_FloatyL.color)
+			T.expectEqual(model.rookie_Helmet.Material, roblox.Enum.Material.Foil)
+			T.expectEqual(model.rookie_FloatyL.Material, roblox.Enum.Material.Foil)
+		end)
 		T.it("clone les MeshPart à la taille du gabarit et à l'échelle", function()
 			local model = DummyShape.buildVisual(0.5)
 			T.expectEqual(model.Torso.ClassName, "MeshPart")
@@ -238,7 +250,7 @@ return function(T, Loader)
 		local Models = Loader.new():require("src/shared/DummyModels")
 		T.it("donne un modèle à chaque mannequin, aux pièces ajoutées connues", function()
 			for _, dummy in Collection.DUMMIES do
-				local look = Models.LOOKS[dummy.id]
+				local look = Collection.look(dummy.id)
 				T.expect(look ~= nil, "modèle de " .. dummy.id)
 				for _, name in look.accessories do
 					local def = Models.ADDONS[name]
@@ -261,16 +273,19 @@ return function(T, Loader)
 				T.expect(type(id) == "number" and id > 0, name .. " publié")
 			end
 		end)
-		T.it("a une icône publiée pour chaque mannequin (barre d'outils)", function()
-			for _, dummy in Collection.DUMMIES do
-				local id = Assets.DUMMY_ICONS[dummy.id]
-				T.expect(type(id) == "number" and id > 0, dummy.id .. " a son icône")
+		T.it(
+			"a une icône publiée pour chaque mannequin dessiné (barre d'outils ; les générés : celle de leur rareté)",
+			function()
+				for _, dummy in Collection.DRAWN do
+					local id = Assets.DUMMY_ICONS[dummy.id]
+					T.expect(type(id) == "number" and id > 0, dummy.id .. " a son icône")
+				end
 			end
-		end)
+		)
 		T.it("monte en spectacle avec la rareté (pièces ajoutées, effets dès Uncommon, taille)", function()
 			local byRarity = {}
 			for _, dummy in Collection.DUMMIES do
-				local look = Models.LOOKS[dummy.id]
+				local look = Collection.look(dummy.id)
 				local variant = Collection.variant({ id = dummy.id, size = 1 })
 				local stats = byRarity[dummy.rarity] or { parts = 0, effects = 0, count = 0, animated = 0 }
 				stats.parts += #look.accessories

@@ -741,7 +741,7 @@ local function buildHub(parent: Instance, slots: { Slot })
 	-- Invite du stand SELL, devant le comptoir : chaque client y ouvre sa fenêtre de vente
 	standPrompt(parent, (sellAt * CFrame.new(0, 3, -6)).Position, "Sell dummies", "SELL", Collection.SELL_TAG)
 	local shopAt = CFrame.new(24, 0, standZ) * CFrame.Angles(0, math.pi, 0)
-	local shop = Props.shopStand(parent, shopAt, ThrowDummies.DISPLAY_TAG, #ThrowDummies.LIST)
+	local shop = Props.shopStand(parent, shopAt, ThrowDummies.DISPLAY_TAG, ThrowDummies.SHOWCASE)
 	-- Invite du stand SHOP : chaque client y ouvre la boutique des mannequins à lancer
 	standPrompt(parent, shop.prompt, "Buy dummies", "SHOP", ThrowDummies.SHOP_TAG)
 	-- Chevrons jaunes au sol vers la zone de lancer (01 / 09)

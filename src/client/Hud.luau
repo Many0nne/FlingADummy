@@ -59,6 +59,7 @@ local anchors: { [string]: GuiObject } = {} -- éléments que l'objectif peut d�
 local musicOff: Frame -- barre rouge en travers du bouton musique quand la musique est coupée
 local windows: { [string]: Frame } = {}
 local gearCards: { UIKit.Card } = {}
+local gearRow: ScrollingFrame? -- rangée des cartes d'équipement (défile jusqu'au prochain achat à l'ouverture)
 local modelsMeshed: boolean? = nil -- forme (maillée ou blocs) des rendus 3D des cartes déjà construits
 local trainBar: Frame
 local trainLevel: TextLabel
@@ -121,6 +122,12 @@ local function toggle(name: string)
 	end
 	if open then
 		UIKit.openWindow(target)
+		-- Boutiques longues (#94) : ouvertes sur le prochain achat
+		if name == "Shop" and gearRow then
+			UIKit.scrollToCard(gearRow, math.min(stat("GearTier", 1) + 1, #Training.GEARS))
+		elseif name == "DummyShop" then
+			ThrowShop.scrollToNext()
+		end
 	end
 	Hud.refresh()
 	CollectionWindows.refresh() -- les fenêtres de collection ne suivent que leurs attributs : rafraîchies à l'ouverture
@@ -422,7 +429,7 @@ local function cardRow(body: Frame): ScrollingFrame
 	})
 	UIKit.create("UIListLayout", {
 		FillDirection = Enum.FillDirection.Horizontal,
-		Padding = UDim.new(0, 10),
+		Padding = UDim.new(0, UIKit.CARD_GAP),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		VerticalAlignment = Enum.VerticalAlignment.Center,
 		Parent = row,
@@ -450,9 +457,10 @@ local function buildWindows()
 		Hud.refresh()
 	end)
 	windows.Shop = shop.frame
-	local gearRow = cardRow(shop.body)
+	local rowFrame = cardRow(shop.body)
+	gearRow = rowFrame
 	for tier in Training.GEARS do
-		gearCards[tier] = UIKit.card(gearRow, tier, function()
+		gearCards[tier] = UIKit.card(rowFrame, tier, function()
 			if tier == stat("GearTier", 1) + 1 then
 				Hud.onBuy("Gear")
 			end

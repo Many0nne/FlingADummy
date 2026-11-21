@@ -2,7 +2,7 @@
 -- « Mes plantes » : posés puis stock, rendu, rareté, $/s, badge PLACED, Place / Remove / Sell, « Place best » et total
 -- $/s en haut), fenêtre de vente du stand SELL (vente à l'unité, « Sell all » par rareté en boutons colorés, deux clics
 -- pour confirmer), Index (raretés en onglets à gauche comme 09, silhouettes noires et « ??? » pour les jamais obtenus,
--- compteur « x / 21 »). Invites du hub : stand SELL (ouvre la vente), pad d'achat de présentoir (refus affiché si
+-- compteur « x / N »). Invites du hub : stand SELL (ouvre la vente), pad d'achat de présentoir (refus affiché si
 -- l'argent manque, popup à l'achat). Listes en grille verticale (ScrollingFrame Y, #45). Le client lit la collection
 -- dans les attributs publiés par Server.BaseService et n'envoie que des intentions (remote Inventory).
 local CollectionService = game:GetService("CollectionService")
@@ -409,7 +409,7 @@ local function refreshSell(data: Inventory.Data)
 end
 
 -- Cette méthode permet de rafraîchir l'Index (onglets et leurs compteurs, cases de la rareté choisie : rendu et nom,
--- ou silhouette noire et « ??? », meilleure taille, compteur « x / 21 ») lorsque l'Index change ou que l'onglet change.
+-- ou silhouette noire et « ??? », meilleure taille, compteur « x / N ») lorsque l'Index change ou que l'onglet change.
 local function refreshIndex(data: Inventory.Data)
 	local found, total = 0, #Collection.DUMMIES
 	local perRarity: { [number]: { found: number, total: number } } = {}
@@ -472,7 +472,7 @@ local function refreshIndex(data: Inventory.Data)
 		local odds = UIKit.text({
 			Position = UDim2.fromOffset(8, 4),
 			Size = UDim2.new(1, -40, 0, 20),
-			Text = "1 IN " .. Format.short(Collection.odds({ id = dummy.id, size = 1 })),
+			Text = Format.odds(Collection.odds({ id = dummy.id, size = 1 })),
 			TextSize = 16,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			ZIndex = 13,
@@ -655,25 +655,30 @@ local function buildSell(gui: ScreenGui)
 		ZIndex = 12,
 		Parent = body,
 	})
+	-- Boutons « Sell all » : une rangée jusqu'à 7 raretés, deux au-delà (11 depuis #94)
+	local gap = 6
+	local rows = if #Rarity.LIST > 7 then 2 else 1
+	local perRow = math.ceil(#Rarity.LIST / rows)
+	local buttonHeight = if rows > 1 then 40 else 50
+	local stripHeight = rows * buttonHeight + (rows - 1) * gap
 	local strip = UIKit.create("Frame", {
 		Position = UDim2.fromOffset(0, 26),
-		Size = UDim2.new(1, 0, 0, 50),
+		Size = UDim2.new(1, 0, 0, stripHeight),
 		BackgroundTransparency = 1,
 		ZIndex = 11,
 		Parent = body,
 	})
-	UIKit.create("UIListLayout", {
+	UIKit.create("UIGridLayout", {
+		CellPadding = UDim2.fromOffset(gap, gap),
+		CellSize = UDim2.fromOffset(math.floor((656 - gap * (perRow - 1)) / perRow), buttonHeight),
 		FillDirection = Enum.FillDirection.Horizontal,
-		Padding = UDim.new(0, 6),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = strip,
 	})
-	local width = math.floor((656 - 6 * (#Rarity.LIST - 1)) / #Rarity.LIST)
 	for rarity in Rarity.LIST do
 		local button: TextButton
 		button = UIKit.button({
 			LayoutOrder = rarity,
-			Size = UDim2.fromOffset(width, 50),
 			TextSize = 15,
 			ZIndex = 12,
 			Parent = strip,
@@ -697,9 +702,10 @@ local function buildSell(gui: ScreenGui)
 		end)
 		rarityButtons[rarity] = button
 	end
-	sellList = verticalList(body, UDim2.fromOffset(0, 86), UDim2.new(1, 0, 1, -86))
+	local listTop = 26 + stripHeight + 10
+	sellList = verticalList(body, UDim2.fromOffset(0, listTop), UDim2.new(1, 0, 1, -listTop))
 	sellEmpty = UIKit.text({
-		Position = UDim2.fromOffset(0, 130),
+		Position = UDim2.fromOffset(0, listTop + 44),
 		Size = UDim2.new(1, 0, 0, 60),
 		Text = "Nothing to sell!\nPlaced dummies must be removed first.",
 		TextSize = 22,
@@ -710,7 +716,7 @@ local function buildSell(gui: ScreenGui)
 end
 
 -- Cette méthode permet de construire l'Index (onglets de rareté à gauche, titre et barre « x/3 », grille des
--- mannequins de la rareté, total « Unlocked: x / 21 » en bas, comme l'Index de 09) lorsque le HUD est construit.
+-- mannequins de la rareté, total « Unlocked: x / N » en bas, comme l'Index de 09) lorsque le HUD est construit.
 local function buildIndex(gui: ScreenGui)
 	local window = UIKit.window(gui, {
 		name = "Index",
@@ -729,17 +735,19 @@ local function buildIndex(gui: ScreenGui)
 		ZIndex = 11,
 		Parent = body,
 	})
+	-- Onglets à la hauteur de la colonne, quel que soit le nombre de raretés (11 depuis #94)
+	local tabGap = 4
 	UIKit.create("UIListLayout", {
-		Padding = UDim.new(0, 6),
+		Padding = UDim.new(0, tabGap),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = tabs,
 	})
 	for rarity, tier in Rarity.LIST do
 		indexTabs[rarity] = UIKit.button({
 			LayoutOrder = rarity,
-			Size = UDim2.new(1, 0, 0, 48),
+			Size = UDim2.new(1, 0, 1 / #Rarity.LIST, -tabGap),
 			BackgroundColor3 = tier.color:Lerp(Color3.new(0, 0, 0), 0.25),
-			TextSize = 18,
+			TextSize = if #Rarity.LIST > 8 then 15 else 18,
 			ZIndex = 12,
 			Parent = tabs,
 		}, function()

@@ -533,7 +533,7 @@ function RevealFx.banner(title: string, odds: number, color: Color3, duration: n
 	local line = UIKit.text({
 		Position = UDim2.fromOffset(0, 124 * s),
 		Size = UDim2.new(1, 0, 0, 56 * s),
-		Text = string.format('1 IN <font color="#%s">%s</font>', color:ToHex(), Format.thousands(odds)),
+		Text = string.format('1 IN <font color="#%s">%s</font>', color:ToHex(), Format.fullOdds(odds)),
 		TextSize = 50 * s,
 		StrokeThickness = 4,
 		ZIndex = 5,

@@ -380,7 +380,7 @@ local function hesitate(current: number)
 			local index = list[swap.form]
 			showForm(index, 0.92)
 			local step = a.sequence[index]
-			teaseOdds.Text = "1 IN " .. Format.short(step.odds)
+			teaseOdds.Text = Format.odds(step.odds)
 			teaseOdds.TextColor3 = Rarity.get(step.rarity).color:Lerp(Color3.new(1, 1, 1), 0.5)
 			UIKit.playSound("Click", 1.1 + 0.15 * swap.form)
 		end)
@@ -401,7 +401,7 @@ local function climb(from: number, to: number, duration: number, index: number, 
 		local value = Collection.climbOdds(from, to, t)
 		if value ~= last then
 			last = value
-			teaseOdds.Text = "1 IN " .. Format.short(value)
+			teaseOdds.Text = Format.odds(value)
 			local now = os.clock()
 			if now - lastTick >= TICK_GAP then
 				lastTick = now
@@ -506,7 +506,7 @@ local function revealTexts(a: Active, current: number)
 	UIKit.gradientText(nameLabel, Color3.new(1, 1, 1), tier.color:Lerp(Color3.new(1, 1, 1), 0.25))
 	newTag.Visible = prize.isNew == true
 	incomeLabel.Text = Format.money(prize.income) .. "/s"
-	revealOdds.Text = "1 IN " .. Format.short(prize.odds)
+	revealOdds.Text = Format.odds(prize.odds)
 	UIKit.openWindow(reveal, false)
 	UIKit.pop(nameLabel, 1.8)
 	if prize.isNew then
