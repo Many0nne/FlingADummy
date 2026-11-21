@@ -14,11 +14,13 @@ local Rarity = require(Shared.Rarity)
 local Tutorial = require(Shared.Tutorial)
 
 local ATTRIBUTE = BackpackPlan.TOOL_ATTRIBUTE
+local REORDER_GAP = 0.2 -- s entre le retrait et la remise des outils réordonnés (vue par la barre du client)
 
 local DummyTools = {}
 
--- Outils rangés par le serveur dans le Backpack courant, dans l'ordre où il les y a mis (= ordre de la barre)
-type State = { backpack: Instance?, sequence: { Tool } }
+-- Outils rangés par le serveur dans le Backpack courant, dans l'ordre où il les y a mis (= ordre de la barre) ;
+-- `busy` pendant qu'un réordonnancement attend de remettre ses outils, `again` = stock à resynchroniser ensuite
+type State = { backpack: Instance?, sequence: { Tool }, busy: boolean?, again: { Collection.Entry }? }
 local states: { [Player]: State } = {}
 
 -- Cette méthode permet de savoir si le joueur peut tenir un mannequin (au hub, ni sur la bande ni à l'entraînement, ni
@@ -76,6 +78,10 @@ function DummyTools.sync(player: Player, stock: { Collection.Entry })
 		state = { backpack = backpack, sequence = {} }
 		states[player] = state
 	end
+	if state.busy then
+		state.again = stock -- réordonnancement en cours : refait à la fin
+		return
+	end
 	-- Outils rangés, dans l'ordre où le serveur les a mis (un outil rendu au Backpack après un réordonnancement, tenu
 	-- pendant celui-ci, vient en dernier), puis celui que le joueur tient
 	local tools: { Tool } = {}
@@ -119,7 +125,16 @@ function DummyTools.sync(player: Player, stock: { Collection.Entry })
 			table.insert(current, key)
 		end
 	end
-	if #plan.add == 0 and BackpackPlan.sameSequence(current, plan.sequence) then
+	-- Un outil retiré (posé, vendu) laisse un trou dans la barre, que le prochain outil ajouté comblerait hors ordre :
+	-- la barre est recalée à partir du premier trou
+	local hole = #state.sequence + 1
+	for index, tool in state.sequence do
+		if removed[tool] or tool.Parent == nil then
+			hole = index
+			break
+		end
+	end
+	if #plan.add == 0 and hole > #state.sequence and BackpackPlan.sameSequence(current, plan.sequence) then
 		return
 	end
 	for _, entry in plan.add do
@@ -137,7 +152,7 @@ function DummyTools.sync(player: Player, stock: { Collection.Entry })
 		end
 	end
 	local kept = 0
-	while kept < #current and current[kept + 1] == plan.sequence[kept + 1] do
+	while kept < #current and kept < hole - 1 and current[kept + 1] == plan.sequence[kept + 1] do
 		kept += 1
 	end
 	for index = kept + 1, #ordered do
@@ -145,10 +160,29 @@ function DummyTools.sync(player: Player, stock: { Collection.Entry })
 			ordered[index].Parent = nil
 		end
 	end
-	for index = kept + 1, #ordered do
-		ordered[index].Parent = backpack
-	end
 	state.sequence = ordered
+	-- La barre du client ne voit pas un retrait suivi d'une remise dans la même frame (mesuré en Studio : ordre
+	-- inchangé) : les outils reviennent après REORDER_GAP, et une synchronisation demandée entre-temps attend
+	state.busy = true
+	task.delay(REORDER_GAP, function()
+		state.busy = false
+		if states[player] ~= state or state.backpack ~= backpack or backpack.Parent == nil then
+			return
+		end
+		for index = kept + 1, #ordered do
+			local tool = ordered[index]
+			if tool.Parent == nil then
+				pcall(function()
+					tool.Parent = backpack -- détruit entre-temps : ignoré
+				end)
+			end
+		end
+		local again = state.again
+		state.again = nil
+		if again then
+			DummyTools.sync(player, again)
+		end
+	end)
 end
 
 -- Cette méthode permet de déséquiper aussitôt un mannequin que le joueur équipe alors qu'il ne peut pas le tenir
