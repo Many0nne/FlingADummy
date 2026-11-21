@@ -135,8 +135,8 @@ function DummyFamilies.specs(drawn: { Spec }): { Spec }
 			tops[dummy.rarity] = dummy
 		end
 	end
-	-- Bas de chaque rareté (cote et revenu) : celui des raretés au-delà de Secret, sinon son mannequin dessiné le plus
-	-- courant
+	-- Cette méthode permet de donner le bas d'une rareté (cote et revenu : début de sa plage au-delà de Secret, sinon son
+	-- mannequin dessiné le plus courant) lorsque l'on place les générés de la rareté précédente.
 	local function floorOf(rarity: number): (number?, number?)
 		local range = DummyFamilies.RANGES[rarity]
 		if range then

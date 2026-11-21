@@ -44,7 +44,9 @@ local function makeTool(entry: Collection.Entry): Tool
 		Rarity.get(dummy.rarity).name,
 		Format.money(Collection.income(entry))
 	)
-	tool.TextureId = Assets.uri(Assets.DUMMY_ICONS[dummy.id] or Assets.RARITY_ICONS[dummy.rarity]) or ""
+	-- Raretés au-delà de Secret sans icône publiée (#96) : celle de Secret en attendant
+	local rarityIcon = Assets.RARITY_ICONS[math.min(dummy.rarity, #Assets.RARITY_ICONS)]
+	tool.TextureId = Assets.uri(Assets.DUMMY_ICONS[dummy.id] or rarityIcon) or ""
 	tool.RequiresHandle = false
 	tool.CanBeDropped = false
 	tool.ManualActivationOnly = true

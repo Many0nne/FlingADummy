@@ -550,13 +550,14 @@ function DummyShape.addAccessories(model: Model, parts: { [string]: BasePart }, 
 			local offset = CFrame.new(def.offset * scale)
 			accessory.CFrame = carrier.CFrame * offset
 			accessory.Color = variant.accessoryColor or (variant.accessoryColors or {})[name] or def.color
-			accessory.Material = variant.accessoryMaterial or def.material
+			local material = variant.accessoryMaterial or def.material
+			accessory.Material = material
 			accessory.Transparency = def.transparency or 0
 			accessory.Massless = true
 			accessory.CanCollide = false
 			accessory.CanQuery = false
 			accessory.CanTouch = false
-			accessory.CastShadow = def.material ~= Enum.Material.Neon
+			accessory.CastShadow = material ~= Enum.Material.Neon
 			accessory:SetAttribute("Accessory", true)
 			attachAddon(accessory, carrier, offset, def, scale)
 			accessory.Parent = model

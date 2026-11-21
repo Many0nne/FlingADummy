@@ -37,7 +37,7 @@ function Format.short(n: number): string
 		return sign .. tostring(value)
 	end
 	if value == math.huge or value >= 1000 ^ (#SUFFIXES + 1) then
-		return sign .. (if value == math.huge then "inf" else string.format("%.2g", value))
+		return sign .. (if value == math.huge then "inf" else (string.gsub(string.format("%.2g", value), "e%+", "e")))
 	end
 	-- Rang par le logarithme, corrigé d'un cran si l'arrondi du logarithme tombe à côté (999.999… ou 1000.000…)
 	local tier = math.clamp(math.floor(math.log10(value) / 3), 1, #SUFFIXES)
@@ -91,27 +91,31 @@ function Format.fullOdds(n: number): string
 end
 
 -- Cette méthode permet d'écrire la CHANCE finale d'un lancer (`X1.36`, deux décimales jusqu'à 100, une jusqu'à 1 000,
--- abrégée au-delà : `X12.3K` ; au moins X1.00) lorsque le mannequin arrêté l'affiche au-dessus de lui.
+-- abrégée au-delà : `X12.3K` ; au moins X1.00) lorsque le mannequin arrêté l'affiche au-dessus de lui ; le format se
+-- choisit sur la valeur arrondie (99.996 s'écrit X100.0, 999.96 s'écrit X1K).
 function Format.multiplier(chance: number): string
 	local value = math.max(1, chance)
-	if value >= 1000 then
-		return "X" .. Format.short(value)
-	elseif value >= 100 then
-		return string.format("X%.1f", value)
+	local hundredths = math.floor(value * 100 + 0.5) / 100
+	if hundredths < 100 then
+		return string.format("X%.2f", hundredths)
 	end
-	return string.format("X%.2f", value)
+	local tenths = math.floor(value * 10 + 0.5) / 10
+	if tenths < 1000 then
+		return string.format("X%.1f", tenths)
+	end
+	return "X" .. Format.short(tenths)
 end
 
 -- Cette méthode permet d'écrire le multiplicateur de chance d'un mannequin à lancer comme les graines de 09 (`1.0x`,
 -- `1.25x`, `2.0x` : au moins une décimale, au plus deux ; entier dès 10 : `13x`, `135x` ; abrégé dès 1 000 : `1.5Kx`)
--- lorsque la boutique ou la bannière CHANCE l'affichent.
+-- lorsque la boutique ou la bannière CHANCE l'affichent ; le format se choisit sur la valeur arrondie.
 function Format.luck(multiplier: number): string
-	if multiplier >= 1000 then
-		return Format.short(multiplier) .. "x"
-	elseif multiplier >= 10 then
-		return string.format("%d", math.floor(multiplier + 0.5)) .. "x"
+	local hundredths = math.floor(multiplier * 100 + 0.5) / 100
+	if hundredths >= 10 then
+		local whole = math.floor(multiplier + 0.5)
+		return (if whole >= 1000 then Format.short(whole) else tostring(whole)) .. "x"
 	end
-	local text = string.format("%.2f", multiplier)
+	local text = string.format("%.2f", hundredths)
 	if string.sub(text, -1) == "0" then
 		text = string.sub(text, 1, -2)
 	end

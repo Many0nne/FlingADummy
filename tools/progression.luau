@@ -58,11 +58,13 @@ local function simulate(seed: number, seconds: number): { [string]: number }
 	local draws = 0
 	local marks: { [string]: number } = {}
 
+	-- Cette méthode permet de noter l'instant où un palier est atteint pour la première fois lorsque la simulation avance.
 	local function mark(key: string)
 		if marks[key] == nil then
 			marks[key] = t
 		end
 	end
+	-- Cette méthode permet de donner le revenu de la base ($/s) lorsque le temps de jeu avance.
 	local function income(): number
 		local total = 0
 		for _, value in base do
@@ -70,7 +72,8 @@ local function simulate(seed: number, seconds: number): { [string]: number }
 		end
 		return total
 	end
-	-- Pose le mannequin s'il est parmi les plus rentables, vend le reste (2 min de revenu)
+	-- Cette méthode permet de poser un mannequin gagné s'il est parmi les plus rentables, et de vendre le moins rentable
+	-- (2 min de revenu) lorsque la base déborde après un tirage.
 	local function receive(entry)
 		local value = Collection.income(entry)
 		table.insert(base, value)
@@ -81,6 +84,8 @@ local function simulate(seed: number, seconds: number): { [string]: number }
 			money += (table.remove(base) :: number) * GameConfig.SELL_MINUTES * 60
 		end
 	end
+	-- Cette méthode permet d'acheter tout ce qui est abordable, le moins cher d'abord (équipement, mannequin à lancer,
+	-- présentoir), lorsque l'argent change.
 	local function shop()
 		while true do
 			local options = {}

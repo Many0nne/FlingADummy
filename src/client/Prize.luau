@@ -47,8 +47,19 @@ local BLACK = Color3.fromRGB(12, 12, 16)
 local SKIP_ACTION = "PrizeSkip" -- Espace / A de la manette pendant le tirage : passe, sans faire sauter l'avatar
 local STORM = Color3.fromRGB(120, 90, 200) -- teinte du ciel assombri pendant le suspense (neutre : ne trahit pas la rareté)
 -- Exclamation de chaque palier selon la rareté du candidat (« Super chanceux ! », « Chance incroyable ! » de 01)
-local EXCLAIM =
-	{ "Hmm…", "Lucky!", "Super lucky!", "Incredible luck!", "LEGENDARY LUCK!", "MYTHIC LUCK!", "SECRET!!!" }
+local EXCLAIM = {
+	"Hmm…",
+	"Lucky!",
+	"Super lucky!",
+	"Incredible luck!",
+	"LEGENDARY LUCK!",
+	"MYTHIC LUCK!",
+	"SECRET!!!",
+	"DIVINE!!!",
+	"CELESTIAL!!!",
+	"ETHEREAL!!!",
+	"INFINITY!!!",
+}
 
 local Prize = {}
 
@@ -591,7 +602,8 @@ local function playSecret(a: Active, current: number)
 	if current ~= token then
 		return
 	end
-	RevealFx.banner("SECRET!!", a.prize.odds, color, durations.Banner)
+	-- « SECRET!! », « DIVINE!! »… : la rareté gagnée (séquence du secret jouée dès Secret, #94)
+	RevealFx.banner(string.upper(Rarity.get(a.prize.rarity).name) .. "!!", a.prize.odds, color, durations.Banner)
 	RevealFx.confetti(color, a.plan.confetti)
 	task.wait(durations.Banner)
 	if current == token then

@@ -66,7 +66,7 @@ base, il rapporte des $/s, seule source d'argent.
    Common 2,8 s, Epic 7,1 s, Legendary 11,1 s, Secret 20,6 s jusqu'au portail. Passable au clic (ou Espace) après 1 s.
    **Annonce** à partir de Legendary : bandeau en haut pour tous les joueurs et ligne dans le chat, envoyés à la fin du
    résultat du gagnant (personne ne lui gâche son tirage). Test : attribut `DebugPrize` (Studio, contexte Server) =
-   rareté 1-7, son nom ou « id:taille », imposé au prochain tirage.
+   rareté 1-11, son nom ou « id:taille », imposé au prochain tirage.
 7. **Poser** : de retour au hub, panneau « Place your Crash Dummy! » en bas au centre (rendu 3D). **Première pose à la
    main** (étape du tutoriel) : flèche et chevrons vers un présentoir libre de sa base, présentoirs libres en
    surbrillance, invite « Place » (E). Le mannequin gagné va d'abord au **stock** (inventaire) et dans la **barre

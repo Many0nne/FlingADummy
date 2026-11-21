@@ -804,10 +804,12 @@ UIKit.CARD_GAP = 10 -- écart entre deux cartes d'une rangée qui défile
 
 -- Cette méthode permet de faire défiler une rangée de cartes jusqu'à la carte `order` (la précédente reste visible à
 -- gauche) lorsque une boutique s'ouvre : avec 12 équipements ou 20 mannequins (#94), le prochain achat est loin.
+-- Différé d'une image (fenêtre tout juste visible, tailles pas encore à jour) ; la rangée borne elle-même la position.
 function UIKit.scrollToCard(row: ScrollingFrame, order: number)
 	local x = math.max(0, (order - 2) * (UIKit.CARD_WIDTH + UIKit.CARD_GAP))
-	local maxX = math.max(0, row.AbsoluteCanvasSize.X - row.AbsoluteWindowSize.X)
-	row.CanvasPosition = Vector2.new(math.min(x, maxX), 0)
+	task.defer(function()
+		row.CanvasPosition = Vector2.new(x, 0)
+	end)
 end
 
 -- Cette méthode permet de créer une carte d'objet (nom, rareté, rendu 3D, statistique, bouton d'action) dans une

@@ -77,8 +77,9 @@ Training.GEARS = {
 } :: { Gear }
 
 -- Suite des équipements (#94) : gain × GAIN_STEP et prix × PRICE_STEP par palier depuis Cosmic, couleur et matériau
--- d'une palette de Shared.DummyFamilies, mannequin un peu plus grand à chaque palier (provisoire, recalé par #15 ;
--- courbe et temps estimés dans docs/design.md, section « Progression longue »).
+-- d'une palette de Shared.DummyFamilies, à la taille de Cosmic (0,9 : plus grand, le mannequin soulevé traverserait la
+-- tête, AnimationData.TRAIN) ; provisoire, recalé par #15 (courbe et temps estimés dans docs/design.md, section
+-- « Progression longue »).
 Training.EXTENDED = { "ruby", "emerald", "plasma", "omega", "infinite" }
 Training.GAIN_STEP = 4
 Training.PRICE_STEP = 3.5
@@ -91,7 +92,6 @@ do
 		assert(palette, "Training : palette inconnue " .. paletteId)
 		gain = DummyFamilies.nice(gain * Training.GAIN_STEP)
 		cost = DummyFamilies.nice(cost * Training.PRICE_STEP)
-		scale = math.min(scale + 0.03, 0.9) -- au-delà, le mannequin soulevé traverse la tête (AnimationData.TRAIN)
 		table.insert(Training.GEARS, {
 			name = palette.name .. " Dummy",
 			gain = gain,

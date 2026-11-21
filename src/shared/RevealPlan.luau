@@ -275,7 +275,7 @@ function RevealPlan.parseAnnouncement(data: any): Announcement?
 	return { userId = userId, player = data.player, name = data.name, rarity = data.rarity, odds = data.odds }
 end
 
--- Cette méthode permet de donner le mannequin imposé par `DebugPrize` (rareté 1-7, son nom ou « id:taille » ; nil si
+-- Cette méthode permet de donner le mannequin imposé par `DebugPrize` (rareté 1-11, son nom ou « id:taille » ; nil si
 -- absent ou illisible) lorsque le serveur tire en Studio.
 function RevealPlan.debugEntry(value: any, roll: () -> number): Collection.Entry?
 	local rarity: number? = nil
