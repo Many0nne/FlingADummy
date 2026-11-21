@@ -154,8 +154,10 @@ local function updateLabel(slot: Slot, player: Player?)
 	label.title.Text = text.title
 	label.income.Text = text.income
 	label.power.Text = text.power
-	label.avatar.Visible = player ~= nil
-	label.avatar.Image = if player then string.format(HEADSHOT, player.UserId) else ""
+	-- Joueurs de test de Studio (UserId négatif) : pas de portrait
+	local portrait = player ~= nil and player.UserId > 0
+	label.avatar.Visible = portrait
+	label.avatar.Image = if player and portrait then string.format(HEADSHOT, player.UserId) else ""
 end
 
 -- Cette méthode permet d'habiller la base au palier visuel de ses présentoirs achetés (Shared.BaseLook) et d'y faire

@@ -482,37 +482,29 @@ function Props.build(kind: string, parent: Instance, at: CFrame, rng: Random, so
 end
 
 -- Cette méthode permet de poser une barrière en blocs au style `style` (bois par défaut) de `from` à `to` lorsque l'on
--- clôture une base ; `skipStart` : coin déjà posé par le tronçon voisin. Renvoie le haut de chaque poteau.
-function Props.fence(
-	parent: Instance,
-	from: Vector3,
-	to: Vector3,
-	style: BaseLook.Fence?,
-	skipStart: boolean?
-): { Vector3 }
+-- clôture une base ; `skipStart` : pas de poteau en `from` (coin déjà posé par le tronçon voisin).
+function Props.fence(parent: Instance, from: Vector3, to: Vector3, style: BaseLook.Fence?, skipStart: boolean?)
 	local look = style or BaseLook.FENCES.wood
 	local delta = to - from
 	local length = delta.Magnitude
 	local count = math.max(1, math.floor(length / 6 + 0.5))
 	local frame = CFrame.lookAt(from, to)
 	local h, w = look.height, look.width
-	local tops = {}
 	for i = if skipStart then 1 else 0, count do
 		local at = frame * CFrame.new(0, 0, -length * i / count)
 		Build.block(parent, Vector3.new(w, h, w), at * CFrame.new(0, h / 2, 0), look.post)
-		local top = h
 		if look.cap then
 			-- Chapeau plus large que le poteau (faces décalées : pas de faces coplanaires)
-			Build.block(parent, Vector3.new(w + 0.4, 0.6, w + 0.4), at * CFrame.new(0, h + 0.3, 0), look.cap)
-			top += 0.6
+			local cap = BaseLook.CAP_HEIGHT
+			local side = w + 2 * BaseLook.CAP_OVERHANG
+			Build.block(parent, Vector3.new(side, cap, side), at * CFrame.new(0, h + cap / 2, 0), look.cap)
 		end
-		table.insert(tops, (at * CFrame.new(0, top, 0)).Position)
 	end
-	-- Lisses moins épaisses que les poteaux, à 36 % et 73 % de leur hauteur
+	-- Lisses en retrait des poteaux, à 36 % et 73 % de leur hauteur
 	for _, y in { h * 0.36, h * 0.73 } do
-		Build.block(parent, Vector3.new(w * 0.57, 0.9, length), frame * CFrame.new(0, y, -length / 2), look.rail)
+		local size = Vector3.new(w * BaseLook.RAIL_RATIO, 0.9, length)
+		Build.block(parent, size, frame * CFrame.new(0, y, -length / 2), look.rail)
 	end
-	return tops
 end
 
 -- Décor des paliers de base (#61, Shared.BaseLook) : lanternes, massifs de fleurs, drapeaux, arche d'entrée

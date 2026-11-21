@@ -892,8 +892,7 @@ function CourseBuilder.styleBase(slot: Slot, tier: number)
 	local hx, hz = CourseLayout.BASE_SIZE.X / 2, CourseLayout.BASE_SIZE.Z / 2
 	local inward = CourseLayout.entranceSide(slot.index)
 	local gate, corners = baseFence(folder, slot, fence)
-	local postTop = fence.height + (if fence.cap then 0.6 else 0)
-	local lift = Vector3.new(0, postTop, 0)
+	local lift = Vector3.new(0, BaseLook.postTop(fence), 0)
 	-- Arche d'entrée : les lanternes de l'entrée montent sur son linteau
 	local gateTops = { gate[1] + lift, gate[2] + lift }
 	if look.arch then

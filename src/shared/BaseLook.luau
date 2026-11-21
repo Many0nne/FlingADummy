@@ -42,6 +42,15 @@ BaseLook.FENCES = {
 	},
 } :: { [string]: Fence }
 
+BaseLook.RAIL_RATIO = 0.57 -- largeur des lisses / largeur des poteaux (en retrait : pas de faces coplanaires)
+BaseLook.CAP_HEIGHT = 0.6 -- épaisseur du chapeau d'un poteau
+BaseLook.CAP_OVERHANG = 0.2 -- débord du chapeau de chaque côté du poteau
+
+-- Cette méthode permet de donner la hauteur du haut d'un poteau (chapeau compris) lorsque l'on y pose une lanterne.
+function BaseLook.postTop(fence: Fence): number
+	return fence.height + (if fence.cap then BaseLook.CAP_HEIGHT else 0)
+end
+
 -- Palier visuel d'une base. `plot` : sol (nil = couleur de la place, en tapis) ; `lanterns` : 0, 2 (entrée) ou
 -- 6 (entrée et coins) ; `flowers` : massifs fleuris le long des clôtures ; `flags` : drapeaux à la couleur de la place
 -- aux quatre coins ; `arch` : arche d'entrée à la couleur de la place.

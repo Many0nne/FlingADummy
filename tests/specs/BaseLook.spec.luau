@@ -36,6 +36,10 @@ return function(T, Loader)
 				tostring(look.flags),
 				tostring(look.arch),
 				tostring(fence.shine),
+				tostring(fence.post),
+				tostring(fence.rail),
+				tostring(fence.cap),
+				tostring(fence.height),
 			}, "|")
 		end
 
@@ -60,10 +64,19 @@ return function(T, Loader)
 			for tier = 1, #BaseLook.BASE_TIERS do
 				local _, fence = BaseLook.base(tier)
 				T.expect(fence ~= nil, "clôture connue au palier " .. tier)
-				-- Lisses plus étroites que les poteaux : pas de faces coplanaires
-				T.expect(fence.width * 0.57 < fence.width - 0.1, "lisses en retrait au palier " .. tier)
+				T.expectEqual(BaseLook.postTop(fence), fence.height + (if fence.cap then BaseLook.CAP_HEIGHT else 0))
 			end
 		end)
+		T.it(
+			"garde lisses et chapeaux décalés des poteaux (pas de faces coplanaires, écart de 0,05 stud au moins)",
+			function()
+				for name, fence in BaseLook.FENCES do
+					local railGap = fence.width * (1 - BaseLook.RAIL_RATIO) / 2
+					T.expect(railGap >= 0.05, "lisses en retrait des poteaux : " .. name)
+					T.expect(BaseLook.CAP_OVERHANG >= 0.05, "chapeaux débordants : " .. name)
+				end
+			end
+		)
 		T.it("borne le palier demandé", function()
 			T.expectEqual(BaseLook.base(0).name, BaseLook.BASE_TIERS[1].name)
 			T.expectEqual(BaseLook.base(99).name, BaseLook.BASE_TIERS[#BaseLook.BASE_TIERS].name)
