@@ -74,7 +74,28 @@ return function(T, Loader)
 			for _, site in moon do
 				traps += if site.kind == "Trap" then 1 else 0
 			end
-			T.expect(traps >= 2, "dernière zone (750 m) : " .. traps .. " pièges")
+			T.expect(traps >= 2, "dernière zone (600 m) : " .. traps .. " pièges")
+		end)
+
+		T.it("ne déplace aucun site avant 2,4 km quand la piste passe à 6 km (#97)", function()
+			for index, zone in Zones.LIST do
+				if zone.start >= 2400 then
+					break
+				end
+				local before = TrackPlan.zoneSites(index, 2400)
+				local after = TrackPlan.zoneSites(index, LENGTH)
+				T.expectEqual(#after, #before)
+				for k, site in before do
+					T.expectEqual(after[k].z, site.z)
+					T.expectEqual(after[k].name, site.name)
+				end
+			end
+		end)
+
+		T.it("pose les sites de la piste prolongée jusqu'au bout, sans dépasser 6 km", function()
+			local last = sites[#sites]
+			T.expectEqual(last.zone, #Zones.LIST)
+			T.expect(last.z > LENGTH - 50 and last.z <= LENGTH - TrackPlan.END_GAP, "dernier site à " .. last.z)
 		end)
 	end)
 

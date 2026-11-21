@@ -13,9 +13,29 @@ return function(T, Loader)
 		known[name] = true
 	end
 
+	-- Pièges habillés : `builders.<Nom> =` dans Server.TrapProps
+	local dressed = {}
+	for name in string.gmatch(fs.readFile("src/server/TrapProps.luau"), "builders%.(%w+) =") do
+		dressed[name] = true
+	end
+	local Damage = loader:require("src/shared/Damage")
+
+	T.describe("Zones.LIST (habillage)", function()
+		T.it("habille le piège de chaque thème et nomme la cause de chaque crash (obstacles, piège)", function()
+			for _, zone in Zones.LIST do
+				T.expect(dressed[zone.trap], zone.name .. " : piège sans habillage " .. zone.trap)
+				T.expect(Damage.CAUSE_LABELS[zone.trap] ~= nil, zone.name .. " : cause du piège " .. zone.trap)
+				for _, name in zone.obstacles do
+					T.expect(Damage.CAUSE_LABELS[name] ~= nil, zone.name .. " : cause de l'obstacle " .. name)
+				end
+			end
+		end)
+	end)
+
 	T.describe("Zones.LIST", function()
-		T.it("compte une douzaine de thèmes, dans l'ordre, sur la piste", function()
-			T.expect(#Zones.LIST >= 11 and #Zones.LIST <= 13, "thèmes : " .. #Zones.LIST)
+		T.it("compte douze thèmes jusqu'à 2,4 km et six de plus jusqu'à 6 km, dans l'ordre, sur la piste", function()
+			T.expectEqual(#Zones.LIST, 18)
+			T.expectEqual(GameConfig.COURSE_LENGTH, 6000)
 			T.expectEqual(Zones.LIST[1].start, 0)
 			for i = 2, #Zones.LIST do
 				T.expect(Zones.LIST[i].start > Zones.LIST[i - 1].start, Zones.LIST[i].name .. " après la précédente")
@@ -36,6 +56,36 @@ return function(T, Loader)
 				end
 			end
 			T.expect(inFirstKm >= 8, "thèmes avant 1 km : " .. inFirstKm)
+		end)
+
+		T.it("garde la Moon Base de 1 650 à 2 400 m, puis un thème tous les 600 m jusqu'au bout (#97)", function()
+			local moon = Zones.LIST[12]
+			T.expectEqual(moon.name, "Moon Base")
+			T.expectEqual(moon.start, 1650)
+			T.expectEqual(moon.chance, 10)
+			local names = { "Mars", "Crystal Cave", "Neon City", "Sky Kingdom", "Haunted Castle", "Galaxy" }
+			for k, name in names do
+				local zone = Zones.LIST[12 + k]
+				T.expectEqual(zone.name, name)
+				T.expectEqual(zone.start, 2400 + (k - 1) * 600)
+			end
+			T.expectEqual(Zones.finish(#Zones.LIST, GameConfig.COURSE_LENGTH) - Zones.LIST[#Zones.LIST].start, 600)
+		end)
+
+		T.it("monte la CHANCE de × 18 à × 60 sur la piste prolongée (× 27 à 3,6 km, × 40 à 4,8 km)", function()
+			T.expectEqual(Zones.at(2400).chance, 18)
+			T.expectEqual(Zones.at(3600).chance, 27)
+			T.expectEqual(Zones.at(4800).chance, 40)
+			T.expectEqual(Zones.FINAL_CHANCE, 60)
+			-- Progression régulière : même rapport (± 5 %) d'un thème au suivant, bout de piste compris
+			local ratios = {}
+			for i = 13, #Zones.LIST do
+				local nextChance = if i < #Zones.LIST then Zones.LIST[i + 1].chance else Zones.FINAL_CHANCE
+				table.insert(ratios, nextChance / Zones.LIST[i].chance)
+			end
+			for _, ratio in ratios do
+				T.expect(math.abs(ratio - ratios[1]) / ratios[1] <= 0.05, string.format("rapport %.3f", ratio))
+			end
 		end)
 
 		T.it("fait monter la CHANCE d'une zone à la suivante, jusqu'à FINAL_CHANCE", function()

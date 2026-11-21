@@ -5,7 +5,7 @@ local GameConfig = {
 	SLOT_COUNT          = 4,      -- places par serveur (MaxPlayers du projet Rojo) : base, appareil, colonne d'obstacles
 	SLOT_SPACING        = 14,     -- largeur d'une colonne d'obstacles (points de lancer de test), axe X (studs)
 	TRACK_WIDTH         = 80,     -- largeur du fond du canyon (studs)
-	COURSE_LENGTH       = 2400,   -- longueur de la piste, axe +Z (studs = mètres affichés)
+	COURSE_LENGTH       = 6000,   -- longueur de la piste, axe +Z (studs = mètres affichés ; 2 400 avant #97)
 	SIDE_WALL_HEIGHT    = 260,    -- paroi invisible au-dessus des gradins : garde les mannequins dans le canyon
 	HUB_WIDTH           = 180,    -- hub (bases et leurs appareils) derrière la zone de lancer, axe X
 	HUB_DEPTH           = 130,    -- profondeur du hub, axe -Z, depuis l'arrière de la zone de lancer

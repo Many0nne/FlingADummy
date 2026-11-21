@@ -73,6 +73,18 @@ Damage.CAUSE_LABELS = {
 	ToySoldiers = "Knocked down toy soldiers",
 	Satellites = "Crashed into a satellite",
 	Rover = "Smashed into a moon rover",
+	MarsRocks = "Crashed into Mars rocks",
+	Lander = "Wrecked a Mars lander",
+	CrystalClusters = "Shattered giant crystals",
+	AmethystWall = "Hit an amethyst wall",
+	Taxis = "Smashed into a taxi",
+	ArcadeCabinets = "Toppled arcade machines",
+	CloudPuffs = "Burst through the clouds",
+	HotAirBalloons = "Popped a hot air balloon",
+	Pumpkins = "Splattered the pumpkins",
+	Coffins = "Crashed into coffins",
+	Asteroids = "Hit an asteroid",
+	UFOs = "Smashed into a UFO",
 	-- Pièges
 	Trampoline = "Bounced off a trampoline",
 	Fan = "Blown away by a giant fan",
@@ -86,6 +98,12 @@ Damage.CAUSE_LABELS = {
 	Cannon = "Fired from a confetti cannon",
 	JackBox = "Popped by a jack-in-the-box",
 	Booster = "Blasted through a booster ring",
+	Geyser = "Launched by a dust geyser",
+	Bumper = "Pinged off a crystal bumper",
+	Laser = "Zapped by a laser gate",
+	Rainbow = "Slid off a rainbow",
+	Ghost = "Spooked by a ghost",
+	Wormhole = "Warped through a wormhole",
 }
 local CAUSE_LABELS = Damage.CAUSE_LABELS
 

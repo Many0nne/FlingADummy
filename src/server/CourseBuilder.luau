@@ -1098,12 +1098,63 @@ local function buildHub(parent: Instance, slots: { Slot })
 	spawn.Parent = parent
 end
 
+-- Cette méthode permet de dresser l'arche d'arrivée au bout de la piste (ligne à damier au sol, deux piliers, bandeau à
+-- damier noir et blanc, panneau « FINISH » à la couleur du dernier thème) lorsque la piste est construite ; tout est
+-- traversable : le mannequin passe sous l'arche et finit contre la paroi du bout (#97).
+local function buildFinish(parent: Instance)
+	local half = GameConfig.TRACK_WIDTH / 2
+	local z = GameConfig.COURSE_LENGTH
+	local model = Instance.new("Model")
+	model.Name = "FinishArch"
+	local tiles = 20
+	local tile = GameConfig.TRACK_WIDTH / tiles
+	for row = 0, 1 do
+		for col = 0, tiles - 1 do
+			Build.decor({
+				Name = "FinishLine",
+				Size = Vector3.new(tile, 0.1, 1.6),
+				Position = Vector3.new(-half + (col + 0.5) * tile, 0.05, z + (row - 0.5) * 1.6),
+				Color = if (row + col) % 2 == 0 then COLORS.line else rgb(30, 30, 35),
+				Parent = model,
+			})
+		end
+	end
+	local height = 24
+	local pillarX = half - 3
+	for _, side in { -1, 1 } do
+		Build.block(model, Vector3.new(3, height, 3), CFrame.new(side * pillarX, height / 2, z), COLORS.line, false)
+		Build.block(model, Vector3.new(4, 1.2, 4), CFrame.new(side * pillarX, height + 0.6, z), COLORS.pad, false)
+	end
+	-- Bandeau à damier entre les piliers, deux rangées
+	local span = 2 * pillarX - 3
+	local count = 16
+	local width = span / count
+	for row = 0, 1 do
+		for col = 0, count - 1 do
+			Build.block(
+				model,
+				Vector3.new(width, 1.6, 1.2),
+				CFrame.new(-span / 2 + (col + 0.5) * width, height - 0.8 - row * 1.6, z),
+				if (row + col) % 2 == 0 then COLORS.line else rgb(30, 30, 35),
+				false
+			)
+		end
+	end
+	local last = Zones.LIST[#Zones.LIST]
+	local board = Build.block(model, Vector3.new(30, 6, 1), CFrame.new(0, height - 6.4, z), last.color, false)
+	Build.surfaceText(board, Enum.NormalId.Front, string.format("FINISH  %d KM", GameConfig.COURSE_LENGTH / 1000))
+	model.Parent = parent
+end
+
 -- Cette méthode permet de construire la piste (sol de chaque zone, parois en gradins à ses couleurs, décor au pied des
--- parois, ligne et panneaux d'entrée de zone, paroi de bout de piste) lorsque le serveur démarre.
-local function buildTrack(parent: Instance)
+-- parois, ligne et panneaux d'entrée de zone, arche d'arrivée, paroi de bout de piste) lorsque le serveur démarre ;
+-- renvoie le temps de construction de chaque zone (ms), pour le journal.
+local function buildTrack(parent: Instance): { string }
 	local half = GameConfig.TRACK_WIDTH / 2
 	local length = GameConfig.COURSE_LENGTH
+	local timings = {}
 	for index, zone in Zones.LIST do
+		local started = os.clock()
 		local folder = Instance.new("Folder")
 		folder.Name = "Zone" .. index
 		local zoneStart = zone.start
@@ -1145,7 +1196,9 @@ local function buildTrack(parent: Instance)
 			end
 		end
 		folder.Parent = parent
+		table.insert(timings, string.format("%s %.0f", zone.name, (os.clock() - started) * 1000))
 	end
+	buildFinish(parent)
 	-- Paroi de bout de piste, en gradins tournés vers le départ
 	local last = Zones.LIST[#Zones.LIST]
 	terraces(parent, Vector3.new(half, 0, END_Z), Vector3.new(-half, 0, END_Z), -Vector3.zAxis, last, 1, 1)
@@ -1194,6 +1247,7 @@ local function buildTrack(parent: Instance)
 		CanQuery = false,
 		Parent = parent,
 	})
+	return timings
 end
 
 -- Cette méthode permet de créer les places des joueurs (position, couleur, repères) avant que le décor ne les habille
@@ -1233,17 +1287,33 @@ function CourseBuilder.build(): Course
 		end
 	end
 	setupLighting()
+	local started = os.clock()
 	local course = Instance.new("Folder")
 	course.Name = "Course"
 	local slots = newSlots()
 	buildHub(course, slots)
 	buildLaunchZone(course)
-	buildTrack(course)
+	local hubTime = os.clock() - started
+	local zoneTimes = buildTrack(course)
+	local trackTime = os.clock() - started - hubTime
 	local dummies = Instance.new("Folder")
 	dummies.Name = "Dummies"
 	dummies.Parent = course
 	course.Parent = Workspace
+	local obstaclesStarted = os.clock()
 	Obstacles.build(course)
+	-- Coût du décor généré (#97) : temps par étape et par zone, nombre d'instances
+	print(
+		string.format(
+			"[Course] construit en %.0f ms (hub %.0f, piste %.0f, obstacles %.0f), %d instances ; zones (ms) : %s",
+			(os.clock() - started) * 1000,
+			hubTime * 1000,
+			trackTime * 1000,
+			(os.clock() - obstaclesStarted) * 1000,
+			#course:GetDescendants(),
+			table.concat(zoneTimes, ", ")
+		)
+	)
 	if not DummyShape.isMeshed() then
 		local connection
 		connection = ReplicatedStorage.ChildAdded:Connect(function(child)

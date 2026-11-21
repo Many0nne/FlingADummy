@@ -43,6 +43,15 @@ return function(T, Loader)
 			T.expectNear(Economy.zoneChance(1e9), Zones.FINAL_CHANCE, 1e-9)
 			T.expectNear(Economy.zoneChance(-50), 1)
 		end)
+		T.it("garde la courbe d'avant #97 jusqu'à 2,4 km (Moon Base de × 10 à × 18), puis × 60 à 6 km", function()
+			-- Ancienne courbe : Moon Base de 1 650 m (× 10) au bout de la piste de 2,4 km (× 18)
+			for d = 1650, 2400, 50 do
+				T.expectNear(Economy.zoneChance(d), 10 + 8 * (d - 1650) / 750, 1e-9)
+			end
+			T.expectNear(Economy.zoneChance(3600), 27, 1e-9)
+			T.expectNear(Economy.zoneChance(4800), 40, 1e-9)
+			T.expectNear(Economy.zoneChance(6000), 60, 1e-9)
+		end)
 	end)
 
 	T.describe("Economy.chance", function()

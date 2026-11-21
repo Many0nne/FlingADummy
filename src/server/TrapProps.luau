@@ -458,6 +458,209 @@ builders.Booster = function(model, at, box)
 	halo.CastShadow = false
 end
 
+-- Cette méthode permet de poser une pièce allumée pendant la phase active du piège (Traps.POWER_PART : néon à `color`)
+-- lorsque l'on habille un piège à cycle ; `fade` : transparence allumée d'une pièce qui disparaît éteinte (faisceau).
+local function power(parent: Instance, at: CFrame, size: Vector3, offset: Vector3, color: Color3, fade: number?): Part
+	local p = put(parent, at, size, offset, Traps.POWER_OFF)
+	p.Name = Traps.POWER_PART
+	p.Material = Enum.Material.Metal -- même état que l'extinction côté client (Client.TrapMotion)
+	p.MaterialVariant = ""
+	p.CastShadow = false
+	p:SetAttribute("PowerColor", color)
+	if fade then
+		p:SetAttribute(Traps.POWER_FADE, fade)
+		p.Transparency = 1
+	end
+	return p
+end
+
+-- Cette méthode permet de creuser un geyser martien (cheminée de rochers rouille, bouche qui rougeoie et panache de
+-- poussière pendant l'éruption, Shared.Traps.CYCLES) dans la boîte lorsque la piste est construite.
+builders.Geyser = function(model, at, box)
+	local rust, dark = rgb(175, 80, 45), rgb(120, 55, 35)
+	for i = 0, 5 do
+		local angle = i * math.pi / 3
+		local h = if i % 2 == 0 then 2.4 else 1.6
+		put(
+			model,
+			at * CFrame.Angles(0, angle, 0),
+			Vector3.new(3, h, 2),
+			Vector3.new(0, h / 2, 3.4),
+			if i % 2 == 0 then rust else dark
+		)
+	end
+	-- Bouche et panache : allumés pendant l'éruption seulement (chaque client, horloge du serveur)
+	local vent = moving(model, at, "Bob", Vector3.yAxis, 0.3, Traps.CYCLES.Geyser.period)
+	local mouth = power(vent, at, Vector3.new(4.4, 0.4, 4.4), Vector3.new(0, 0.3, 0), rgb(255, 140, 40))
+	power(vent, at, Vector3.new(3.4, box.size.Y - 2, 3.4), Vector3.new(0, box.size.Y / 2, 0), rgb(240, 170, 110), 0.55)
+	particles(mouth, {
+		Texture = "rbxasset://textures/particles/smoke_main.dds",
+		Color = ColorSequence.new(rgb(235, 150, 95)),
+		Transparency = NumberSequence.new(0.3, 1),
+		Size = NumberSequence.new(3, 9),
+		Lifetime = NumberRange.new(0.8, 1.2),
+		Rate = 40,
+		Speed = NumberRange.new(28, 40),
+		SpreadAngle = Vector2.new(10, 10),
+		EmissionDirection = Enum.NormalId.Top,
+		Enabled = false,
+	})
+end
+
+-- Cette méthode permet de dresser un massif de cristaux rebondissant (socle de roche, cristaux inclinés vers l'avant,
+-- pointes lumineuses qui pulsent) dans la boîte lorsque la piste est construite.
+builders.Bumper = function(model, at, box)
+	local colors = { rgb(120, 235, 255), rgb(200, 120, 255), rgb(255, 130, 220) }
+	put(model, at, Vector3.new(11.6, 1.2, box.size.Z), Vector3.new(0, 0.6, 0), rgb(80, 60, 140))
+	local pulse = moving(model, at, "Bob", Vector3.yAxis, 0.5, 1)
+	for i = 0, 4 do
+		local x = (i - 2) * 2.3
+		local h = 5 + (i % 2) * 2
+		-- Inclinés vers l'avant de la piste (+Z), comme une rampe qui renvoie le mannequin
+		local crystal = put(
+			model,
+			at * CFrame.new(x, 1.2, -1) * CFrame.Angles(math.rad(25), 0, 0),
+			Vector3.new(2, h, 2),
+			Vector3.new(0, h / 2, 0),
+			colors[i % #colors + 1]
+		)
+		crystal.Transparency = 0.15
+		crystal.Reflectance = 0.1
+		glow(
+			pulse,
+			at * CFrame.new(x, 1.2, -1) * CFrame.Angles(math.rad(25), 0, 0),
+			Vector3.new(1.2, 1, 1.2),
+			Vector3.new(0, h + 0.5, 0),
+			colors[(i + 1) % #colors + 1]
+		)
+	end
+end
+
+-- Cette méthode permet de monter un portique laser (montants noirs à liserés roses, quatre faisceaux rouges qui ne
+-- grillent que pendant leur phase allumée, Shared.Traps.CYCLES) en travers de la boîte lorsque la piste est construite.
+builders.Laser = function(model, at, box)
+	local top = box.size.Y + 1
+	-- Montants à ±6,2 studs (1,2 de large) : rien ne touche le portique de la colonne voisine (14 studs plus loin)
+	for _, side in { -1, 1 } do
+		put(model, at, Vector3.new(1.2, top, 1.4), Vector3.new(side * 6.2, top / 2, 0), BLACK)
+		glow(model, at, Vector3.new(0.3, top - 1, 0.3), Vector3.new(side * 5.45, top / 2, -0.55), rgb(255, 60, 200))
+	end
+	put(model, at, Vector3.new(13.6, 1.2, 1.4), Vector3.new(0, top + 0.6, 0), BLACK)
+	local beams = moving(model, at, "Bob", Vector3.yAxis, 0, Traps.CYCLES.Laser.period)
+	for i = 0, 3 do
+		local beam =
+			power(beams, at, Vector3.new(11.6, 0.35, 0.35), Vector3.new(0, 1.5 + i * 3.4, 0), rgb(255, 40, 60), 0.05)
+		if i == 0 then
+			particles(beam, {
+				Texture = "rbxasset://textures/particles/sparkles_main.dds",
+				Color = ColorSequence.new(rgb(255, 120, 140)),
+				LightEmission = 1,
+				Size = NumberSequence.new(0.6, 0),
+				Lifetime = NumberRange.new(0.2, 0.4),
+				Rate = 30,
+				Speed = NumberRange.new(4, 8),
+				SpreadAngle = Vector2.new(180, 180),
+				Enabled = false,
+			})
+		end
+	end
+end
+
+-- Cette méthode permet de poser un toboggan arc-en-ciel (sept bandes inclinées qui montent vers l'avant, piliers et
+-- nuages aux deux bouts) dans la boîte lorsque la piste est construite.
+builders.Rainbow = function(model, at, box)
+	local colors = {
+		rgb(255, 60, 60),
+		rgb(255, 150, 40),
+		rgb(255, 225, 50),
+		rgb(80, 210, 80),
+		rgb(60, 160, 255),
+		rgb(90, 90, 230),
+		rgb(170, 90, 230),
+	}
+	local rise, run = box.size.Y - 2, box.size.Z
+	local slope = CFrame.new(0, rise / 2, 0) * CFrame.Angles(-math.atan2(rise, run), 0, 0)
+	local length = math.sqrt(rise * rise + run * run)
+	for i, color in colors do
+		put(model, at * slope, Vector3.new(1.6, 0.6, length), Vector3.new((i - 4) * 1.6, 0, 0), color)
+	end
+	for _, side in { -1, 1 } do
+		put(model, at, Vector3.new(1, rise, 1), Vector3.new(side * 5, rise / 2, run / 2 - 0.5), WHITE)
+	end
+	for _, z in { -run / 2, run / 2 } do
+		for i = -1, 1 do
+			local y = if z > 0 then rise else 0.8
+			put(model, at, Vector3.new(3, 2.4, 3), Vector3.new(i * 4.2, y + 0.4, z), WHITE)
+		end
+	end
+end
+
+-- Cette méthode permet de creuser une tombe hantée (stèle, terre retournée, fantôme blanc qui jaillit puis redescend,
+-- Shared.Traps.CYCLES) dans la boîte lorsque la piste est construite.
+builders.Ghost = function(model, at, box)
+	local stone = rgb(140, 135, 150)
+	local back = box.size.Z / 2 - 1
+	put(model, at, Vector3.new(5, 6, 1.2), Vector3.new(0, 3, back), stone)
+	put(model, at, Vector3.new(3.4, 1.4, 1.2), Vector3.new(0, 6.7, back), stone)
+	put(model, at, Vector3.new(1, 3, 0.3), Vector3.new(0, 4, back - 0.75), rgb(90, 85, 100))
+	put(model, at, Vector3.new(2.6, 0.3, 0.3), Vector3.new(0, 4.6, back - 0.75), rgb(90, 85, 100))
+	put(model, at, Vector3.new(9, 0.5, 5), Vector3.new(0, 0.25, -0.5), rgb(85, 60, 45))
+	-- Fantôme : jaillit d'un coup puis redescend lentement (même mouvement que le diable en boîte)
+	local ghost = moving(model, at, "Press", Vector3.yAxis, 8, Traps.CYCLES.Ghost.period)
+	local body = put(ghost, at, Vector3.new(3.6, 4, 2.4), Vector3.new(0, 1.5, -0.5), WHITE)
+	body.Transparency = 0.2
+	local head = put(ghost, at, Vector3.new(3, 2.6, 2.4), Vector3.new(0, 4.8, -0.5), WHITE)
+	head.Transparency = 0.2
+	for _, side in { -1, 1 } do
+		put(ghost, at, Vector3.new(0.6, 0.9, 0.3), Vector3.new(side * 0.7, 5, -1.8), BLACK)
+		put(ghost, at, Vector3.new(1.6, 0.8, 0.8), Vector3.new(side * 2.4, 3, -1), WHITE)
+	end
+	put(ghost, at, Vector3.new(1, 0.6, 0.3), Vector3.new(0, 4.1, -1.8), BLACK)
+end
+
+-- Cette méthode permet de dresser un portail de trou de ver (anneau à 12 pans violet et noir posé sur un socle, spirale
+-- néon qui tourne, poussière d'étoiles aspirée) en travers de la boîte lorsque la piste est construite.
+builders.Wormhole = function(model, at, box)
+	local violet, magenta = rgb(110, 60, 220), rgb(255, 80, 220)
+	local sides = 12
+	local radius = math.min(box.size.X, box.size.Y) / 2 - 0.6
+	local hub = at * CFrame.new(0, box.size.Y / 2 - 0.5, 0)
+	local chord = 2 * radius * math.sin(math.pi / sides) + 0.3
+	for i = 0, sides - 1 do
+		local angle = CFrame.Angles(0, 0, 2 * math.pi * i / sides)
+		put(
+			model,
+			hub * angle,
+			Vector3.new(chord, 1.2, 1.6),
+			Vector3.new(0, radius, 0),
+			if i % 2 == 0 then violet else BLACK
+		)
+	end
+	put(model, at, Vector3.new(10, 0.6, 3), Vector3.new(0, 0.3, 0), rgb(40, 35, 90))
+	-- Spirale : trois bras néon qui tournent autour de l'axe du portail
+	local spiral = moving(model, hub, "Spin", Vector3.zAxis, 0, 1.5)
+	for arm = 0, 2 do
+		for k = 1, 3 do
+			local angle = CFrame.Angles(0, 0, 2 * math.pi * arm / 3 + k * 0.5)
+			glow(spiral, hub * angle, Vector3.new(1.2, 0.5, 0.3), Vector3.new(0, k * (radius - 1) / 3, 0), magenta)
+		end
+	end
+	local disc = glow(model, hub, Vector3.new(radius * 1.6, radius * 1.6, 0.2), Vector3.zero, violet)
+	disc.Transparency = 0.6
+	disc.CastShadow = false
+	particles(disc, {
+		Texture = "rbxasset://textures/particles/sparkles_main.dds",
+		Color = ColorSequence.new(magenta, WHITE),
+		LightEmission = 1,
+		Size = NumberSequence.new(0.8, 0),
+		Lifetime = NumberRange.new(0.5, 0.9),
+		Rate = 20,
+		Speed = NumberRange.new(-8, -4),
+		SpreadAngle = Vector2.new(60, 60),
+		EmissionDirection = Enum.NormalId.Back,
+	})
+end
+
 -- Cette méthode permet d'habiller le piège d'une boîte (TrackPlan.trapBox) sous `parent` lorsque la piste est
 -- construite ; un modèle par colonne.
 function TrapProps.build(box: TrapBox, parent: Instance)
