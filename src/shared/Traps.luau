@@ -13,7 +13,7 @@ export type Kind = {
 	depth: number, -- profondeur de la boîte, axe Z (studs)
 	keep: number, -- part de la vitesse horizontale gardée
 	forward: number, -- vitesse ajoutée vers l'avant de la piste (+Z, studs/s)
-	side: number, -- vitesse donnée sur le côté, vers l'extérieur de la colonne (studs/s)
+	side: number, -- vitesse donnée dans le sens de la poussée du piège (`Traps.push`, rondin) (studs/s)
 	up: number, -- vitesse verticale minimale vers le haut ; négative : vitesse imposée vers le bas (presse)
 	restitution: number, -- part de la vitesse verticale d'arrivée renvoyée vers le haut (rebond)
 	spin: number, -- rotation donnée au mannequin (rad/s, axe vertical)
@@ -31,7 +31,7 @@ Traps.KINDS = {
 	-- Ferme : ventilateur géant incliné, souffle vers l'avant et vers le haut
 	Fan        = { label = "WHOOSH!",   sound = "Gust",   burst = "Wind",     height = 26,  depth = 14,
 	               keep = 1,    forward = 25,  side = 0,  up = 30,  restitution = 0,   spin = 0,  bones = 1 },
-	-- Forêt : rondin qui balance entre deux troncs, frappe de côté et coupe l'élan
+	-- Forêt : rondin qui balance dans l'axe de la piste, pousse dans son sens (`side` : au plus bas) et coupe l'élan
 	SwingLog   = { label = "WHACK!",    sound = "Whack",  burst = "Chips",    height = 16,  depth = 6,
 	               keep = 0.75, forward = 0,   side = 35, up = 25,  restitution = 0,   spin = 6,  bones = 2 },
 	-- Plage : vague qui emporte le mannequin au ras du sol
@@ -66,22 +66,103 @@ Traps.KINDS = {
 Traps.MOTION_TAG = "TrapMotion" -- pièce mobile d'un piège (pale, rondin, presse…), animée par chaque client
 Traps.MOTION_RANGE = 500 -- un client n'anime que les pièges à moins de 500 studs de sa caméra
 
--- Presse : cycle commun à l'animation (clients) et au déclenchement (serveur), horloge du serveur partagée
--- (workspace:GetServerTimeNow) ; elle n'écrase que pendant la descente et tant que le plateau est encore bas.
-Traps.PRESS_PERIOD = 2.4
-Traps.PRESS_ACTIVE = { 0.13, 0.5 } -- part du cycle où la presse écrase (plateau à plus de 70 % de sa descente)
+-- Cycles des pièges calés sur leur animation (#33, #79) : chaque client anime la pièce mobile (Client.TrapMotion) et le
+-- serveur décide s'il agit avec la même horloge (workspace:GetServerTimeNow) et le même décalage de phase (`phaseOffset`
+-- de la boîte du piège). `from`/`to` : part du cycle où le piège agit ; le rondin, lui, agit quand il passe en bas.
+-- stylua: ignore
+Traps.CYCLES = {
+	Press    = { period = 2.4, from = 0.13, to = 0.5  }, -- plateau à plus de 70 % de sa descente
+	JackBox  = { period = 1.8, from = 0.11, to = 0.65 }, -- diable sorti à plus de la moitié de sa course
+	Magnet   = { period = 3,   from = 0,    to = 0.4  }, -- électroaimant allumé (plaque lumineuse, étincelles)
+	SwingLog = { period = 2.2, from = 0,    to = 1    }, -- voir `swingHits`
+} :: { [string]: { period: number, from: number, to: number } }
+
+-- Rondin : balance de ±SWING_AMPLITUDE degrés au bout d'un bras de SWING_ARM studs, pivot (poutre) à SWING_PIVOT studs
+-- du sol ; il frappe un torse à moins de SWING_HIT studs de son axe (demi-épaisseur du rondin et du torse), et seulement
+-- tant que son centre est à moins de SWING_REACH studs du milieu de la boîte, dans l'axe de la piste.
+Traps.SWING_AMPLITUDE = 50
+Traps.SWING_ARM = 15
+Traps.SWING_PIVOT = 17.5 -- au plus bas, le rondin rase le sol (centre à 2,5 studs) : il frappe un mannequin couché
+Traps.SWING_REACH = 5
+Traps.SWING_HIT = 4
+
+Traps.POWER_PART = "Power" -- pièce d'une pièce mobile allumée seulement pendant la phase active (plaque de l'aimant)
+Traps.POWER_OFF = Color3.fromRGB(55, 60, 70) -- pièce `POWER_PART` éteinte ; allumée : attribut PowerColor, néon
 
 -- Cette méthode permet de donner le décalage de phase d'un piège posé en (`x`, `z`) lorsque le client l'anime ou que
--- le serveur vérifie s'il écrase : deux pièges voisins ne battent pas en même temps, et tous voient la même phase.
+-- le serveur vérifie s'il agit : deux pièges voisins ne battent pas en même temps, et tous voient la même phase.
 function Traps.phaseOffset(x: number, z: number): number
 	return (x * 0.13 + z * 0.071) % 1
 end
 
--- Cette méthode permet de savoir si la presse posée en (`x`, `z`) écrase à l'instant `now` (horloge du serveur)
--- lorsqu'un mannequin entre dans sa boîte ; plateau en haut, il passe dessous.
-function Traps.pressActive(now: number, x: number, z: number): boolean
-	local phase = (now / Traps.PRESS_PERIOD + Traps.phaseOffset(x, z)) % 1
-	return phase >= Traps.PRESS_ACTIVE[1] and phase <= Traps.PRESS_ACTIVE[2]
+-- Cette méthode permet de donner la phase (0 à 1) du cycle du piège `kind` à l'instant `now` (horloge du serveur)
+-- lorsque l'on anime ou déclenche un piège de décalage `offset` ; 0 pour un piège sans cycle.
+function Traps.phase(kind: string, now: number, offset: number): number
+	local cycle = Traps.CYCLES[kind]
+	if not cycle then
+		return 0
+	end
+	return (now / cycle.period + offset) % 1
+end
+
+-- Cette méthode permet de donner l'angle du rondin (radians, autour de l'axe X du pivot) à la phase `phase` lorsque
+-- l'on cherche où il est et dans quel sens il va ; même formule que le mouvement "Swing" de `Traps.motion`.
+local function swingAngle(phase: number): number
+	return math.rad(Traps.SWING_AMPLITUDE) * math.sin(2 * math.pi * phase)
+end
+
+-- Cette méthode permet de savoir si le rondin, à la phase `phase`, est assez bas pour toucher la boîte lorsque le
+-- serveur vérifie un passage : son centre est à -SWING_ARM * sin(angle) studs du milieu, dans l'axe de la piste.
+function Traps.swingReach(phase: number): boolean
+	return math.abs(Traps.SWING_ARM * math.sin(swingAngle(phase))) <= Traps.SWING_REACH
+end
+
+-- Cette méthode permet de donner la position du centre du rondin (Y au-dessus du sol, Z depuis le milieu du piège) à la
+-- phase `phase` lorsque l'on cherche s'il touche le torse ; même géométrie que l'habillage (Server.TrapProps).
+function Traps.swingCenter(phase: number): Vector3
+	local angle = swingAngle(phase)
+	return Vector3.new(0, Traps.SWING_PIVOT - Traps.SWING_ARM * math.cos(angle), -Traps.SWING_ARM * math.sin(angle))
+end
+
+-- Cette méthode permet de savoir si le rondin, à la phase `phase`, frappe un torse posé en `at` (repère du piège : pied
+-- au sol, milieu de la boîte) lorsque le serveur vérifie un passage ; la largeur (X) est celle de la boîte.
+function Traps.swingHits(phase: number, at: Vector3): boolean
+	if not Traps.swingReach(phase) then
+		return false
+	end
+	local center = Traps.swingCenter(phase)
+	return Vector2.new(at.Y - center.Y, at.Z - center.Z).Magnitude <= Traps.SWING_HIT
+end
+
+-- Cette méthode permet de donner le sens et la vitesse du rondin dans l'axe de la piste (-1 à 1, +1 = vers l'avant à
+-- pleine vitesse, au plus bas) à la phase `phase` lorsqu'il frappe le mannequin.
+function Traps.swingPush(phase: number): number
+	-- Centre du rondin : z = -ARM * sin(angle) ; dérivée normalisée par sa valeur au plus bas
+	return -math.cos(swingAngle(phase)) * math.cos(2 * math.pi * phase)
+end
+
+-- Cette méthode permet de savoir si le piège `kind` (décalage `offset`) agit à l'instant `now` (horloge du serveur)
+-- lorsqu'un mannequin entre dans sa boîte ; `at` = torse dans le repère du piège (rondin : il doit le toucher ; sans
+-- `at`, il suffit que le rondin passe dans la boîte). Un piège sans cycle agit toujours.
+function Traps.active(kind: string, now: number, offset: number, at: Vector3?): boolean
+	local cycle = Traps.CYCLES[kind]
+	if not cycle then
+		return true
+	end
+	local phase = Traps.phase(kind, now, offset)
+	if kind == "SwingLog" then
+		return if at then Traps.swingHits(phase, at) else Traps.swingReach(phase)
+	end
+	return phase >= cycle.from and phase <= cycle.to
+end
+
+-- Cette méthode permet de donner la poussée horizontale du piège `kind` (direction pondérée, multipliée ensuite par
+-- son `side`) à l'instant `now` lorsqu'il se déclenche : le rondin pousse dans le sens où il balance.
+function Traps.push(kind: string, now: number, offset: number): Vector3
+	if kind == "SwingLog" then
+		return Vector3.new(0, 0, Traps.swingPush(Traps.phase(kind, now, offset)))
+	end
+	return Vector3.zero
 end
 
 -- Mouvements : "Spin" tourne autour de `axis`, "Swing" balance de ±`amplitude` degrés, "Bob" monte et descend de
@@ -106,11 +187,12 @@ function Traps.motion(motion: string, t: number, axis: Vector3, amplitude: numbe
 end
 
 -- Cette méthode permet de calculer la vitesse du mannequin après le piège `kind` lorsqu'il le déclenche avec la
--- vitesse `velocity` ; `outward` (±1) = côté de la colonne où il passe (le rondin le pousse vers l'extérieur).
-function Traps.react(kind: string, velocity: Vector3, outward: number): Vector3
+-- vitesse `velocity` ; `push` = poussée horizontale du piège (`Traps.push`), multipliée par son `side`.
+function Traps.react(kind: string, velocity: Vector3, push: Vector3): Vector3
 	local def = Traps.KINDS[kind]
 	local horizontal = Vector3.new(velocity.X, 0, velocity.Z) * def.keep
-		+ Vector3.new(outward * def.side, 0, def.forward)
+		+ Vector3.new(push.X, 0, push.Z) * def.side
+		+ Vector3.new(0, 0, def.forward)
 	local vertical = if def.up < 0 then def.up else math.max(def.up, math.abs(velocity.Y) * def.restitution)
 	return horizontal + Vector3.new(0, vertical, 0)
 end
