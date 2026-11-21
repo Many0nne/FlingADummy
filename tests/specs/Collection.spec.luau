@@ -139,6 +139,22 @@ return function(T, Loader)
 			T.expectNear(giant, Collection.SIZES[#Collection.SIZES].scale * Collection.RARITY_SCALE[7], 1e-6)
 			T.expectEqual(#Collection.RARITY_SCALE, #Rarity.LIST)
 		end)
+		T.it("plafonne l'échelle sur un présentoir, sans toucher les petites", function()
+			T.expectNear(Collection.displayScale({ id = "king", size = 1 }), Collection.RARITY_SCALE[7], 1e-6)
+			T.expectNear(
+				Collection.displayScale({ id = "king", size = #Collection.SIZES }),
+				Collection.DISPLAY_SCALE_MAX,
+				1e-6
+			)
+		end)
+		T.it("écarte les effets posés au sol d'un mannequin porté en main", function()
+			local standing = Collection.variant({ id = "king", size = 1 })
+			local carried = Collection.variant({ id = "king", size = 1 }, true)
+			T.expect(#carried.effects < #standing.effects, "moins d'effets en main")
+			for _, effect in carried.effects do
+				T.expect(effect.kind ~= "beam", "pas de colonne de lumière en main")
+			end
+		end)
 	end)
 
 	T.describe("Collection.baseIncome", function()

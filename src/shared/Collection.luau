@@ -73,6 +73,9 @@ Collection.SIZES = {
 -- Échelle du modèle par rareté (indice de Shared.Rarity), multipliée par celle de la taille : plus rare, plus grand
 -- (comme les arbres de plus en plus grands de la référence 09)
 Collection.RARITY_SCALE = { 1, 1.1, 1.2, 1.32, 1.46, 1.62, 1.8 }
+-- Échelle maximale sur un présentoir de la base (un Giant Secret, ×4,1, déborderait sur ses voisins) ; le tirage et
+-- la main gardent l'échelle entière
+Collection.DISPLAY_SCALE_MAX = 2.5
 
 Collection.STARTER = "crash" -- premier mannequin, garanti au premier lancer
 Collection.PROMPT_TAG = "DisplayPrompt" -- invites « Place » des présentoirs (attributs Slot, Display)
@@ -211,14 +214,21 @@ function Collection.scale(entry: Entry): number
 	return (if size then size.scale else 1) * (rarity or 1)
 end
 
+-- Cette méthode permet de donner l'échelle d'une entrée posée sur un présentoir de la base (celle de Collection.scale,
+-- plafonnée à DISPLAY_SCALE_MAX : les présentoirs sont à 9 studs les uns des autres) lorsque la base est rendue.
+function Collection.displayScale(entry: Entry): number
+	return math.min(Collection.scale(entry), Collection.DISPLAY_SCALE_MAX)
+end
+
 -- Cette méthode permet de donner la déclinaison du modèle d'une entrée (couleur du corps et par pièce, matériau,
 -- pièces masquées, pièces ajoutées, effets du modèle : Shared.DummyModels, puis thème et aura de rareté :
--- Shared.DummyAura) lorsque l'on construit son modèle (Shared.DummyShape).
-function Collection.variant(entry: Entry): { [string]: any }
+-- Shared.DummyAura) lorsque l'on construit son modèle (Shared.DummyShape) ; `carried` (porté en main) écarte les
+-- effets de l'aura posés au sol.
+function Collection.variant(entry: Entry, carried: boolean?): { [string]: any }
 	local dummy = byId[entry.id] or byId[Collection.STARTER]
 	local look = DummyModels.LOOKS[dummy.id]
 	local effects = table.clone(look.effects or {})
-	for _, effect in DummyAura.effects(dummy.id, dummy.rarity) do
+	for _, effect in DummyAura.effects(dummy.id, dummy.rarity, carried) do
 		table.insert(effects, effect)
 	end
 	return {

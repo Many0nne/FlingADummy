@@ -104,7 +104,7 @@ Comme 01 et 09 : le lancer fait le lien entre les deux.
 - **Tailles** : Normal (×1 revenu), Big (×1,5, 1 en 8), Huge (×3, 1 en 60), Giant (×8, 1 en 500) ; modèle agrandi.
 - **Spectacle par rareté** (#66) : chaque mannequin a son modèle (`Shared.DummyModels`, pièces ajoutées de plus en
   plus folles). Le modèle grandit avec la rareté (×1 Common à ×1,8 Secret, `Collection.RARITY_SCALE`, multiplié par
-  la taille). Effets (`Shared.DummyAura`) : thème propre dès Uncommon (notes, bulles, réacteur, flocons…), puis aura
+  la taille ; plafonné à ×2,5 sur un présentoir, `Collection.DISPLAY_SCALE_MAX`). Effets (`Shared.DummyAura`) : thème propre dès Uncommon (notes, bulles, réacteur, flocons…), puis aura
   de la couleur de la rareté : éclats dès Rare, onde au sol et lumière dès Epic, flaque de lumière et poussières
   montantes dès Legendary, gloire de rayons dès Mythic, colonne de lumière et gerbe d'étoiles en Secret. Les
   particules ne se rendent pas dans les fenêtres (ViewportFrame) : les vignettes montrent le modèle seul.

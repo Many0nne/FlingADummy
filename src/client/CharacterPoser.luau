@@ -313,7 +313,7 @@ local function update(player: Player, state: State)
 		local entry = Inventory.parseKey(key) :: Collection.Entry
 		local scale = AnimationData.CARRY_SCALE * Collection.scale(entry)
 		setVisual(state, "Carry" .. key .. shape, function()
-			return DummyShape.buildVisual(scale, Collection.variant(entry) :: DummyShape.Variant)
+			return DummyShape.buildVisual(scale, Collection.variant(entry, true) :: DummyShape.Variant)
 		end)
 		if state.visual then
 			state.visual:PivotTo(carryFrame(character, root, scale))

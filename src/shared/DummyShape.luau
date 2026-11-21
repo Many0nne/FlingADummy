@@ -299,8 +299,10 @@ function DummyShape.buildPieces(model: Model, scale: number, variant: Variant?):
 		p.CFrame = CFrame.new(piece.position * scale)
 		p.Material = DummyShape.applyMaterial(p, variant) -- avant la couleur : retire l'atlas si besoin
 		p.Color = DummyShape.colorOf(piece, p, variant)
-		if variant and variant.hidden and table.find(variant.hidden, piece.name) then
-			p.Transparency = 1 -- pièce remplacée par une pièce ajoutée (queue du fantôme)
+		-- Pièce remplacée par une pièce ajoutée (queue du fantôme) : masquée seulement si les maillages des pièces
+		-- ajoutées sont là, sinon le mannequin en blocs perdrait ses jambes sans rien à leur place
+		if variant and variant.hidden and table.find(variant.hidden, piece.name) and DummyShape.isMeshed() then
+			p.Transparency = 1
 		end
 		p.Parent = model
 		parts[piece.name] = p
@@ -328,8 +330,15 @@ function DummyShape.fxOffset(base: CFrame, scale: number, t: number, spin: Vecto
 end
 
 -- Cette méthode permet de souder une pièce ajoutée à sa pièce porteuse lorsque l'on la pose : soudure fixe, ou Weld
--- nommé FX_WELD et étiquette FX_TAG si elle tourne ou flotte (attributs lus par Client.DummyFx).
-local function attachAddon(accessory: BasePart, carrier: BasePart, offset: CFrame, def: DummyModels.Addon)
+-- nommé FX_WELD et étiquette FX_TAG si elle tourne ou flotte (attributs lus par Client.DummyFx ; position de repos et
+-- amplitude du flottement à l'échelle de construction `scale`).
+local function attachAddon(
+	accessory: BasePart,
+	carrier: BasePart,
+	offset: CFrame,
+	def: DummyModels.Addon,
+	scale: number
+)
 	if def.spin or def.bob then
 		local weld = Instance.new("Weld")
 		weld.Name = DummyShape.FX_WELD
@@ -342,7 +351,7 @@ local function attachAddon(accessory: BasePart, carrier: BasePart, offset: CFram
 			accessory:SetAttribute("FxSpin", def.spin.axis.Unit * def.spin.speed)
 		end
 		if def.bob then
-			accessory:SetAttribute("FxBob", Vector2.new(def.bob.amplitude, def.bob.period))
+			accessory:SetAttribute("FxBob", Vector2.new(def.bob.amplitude * scale, def.bob.period))
 		end
 		accessory:AddTag(DummyShape.FX_TAG)
 	else
@@ -482,7 +491,7 @@ function DummyShape.addAccessories(model: Model, parts: { [string]: BasePart }, 
 			accessory.CanTouch = false
 			accessory.CastShadow = def.material ~= Enum.Material.Neon
 			accessory:SetAttribute("Accessory", true)
-			attachAddon(accessory, carrier, offset, def)
+			attachAddon(accessory, carrier, offset, def, scale)
 			accessory.Parent = model
 		end
 	end

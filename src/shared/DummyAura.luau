@@ -125,12 +125,22 @@ DummyAura.THEMES = {
 	cosmic = { particles("stars", "Torso", Vector3.new(0, 1, 1.7), Color3.fromRGB(255, 200, 255), Color3.fromRGB(150, 220, 255), { rate = 0.8 }) },
 } :: { [string]: { Effect } }
 
+-- Cette méthode permet de savoir si un effet est posé au sol (onde, flaque, poussières, brume, colonne de lumière)
+-- lorsque l'on habille un mannequin porté en main, où le sol est loin sous lui.
+function DummyAura.isGrounded(effect: Effect): boolean
+	return effect.kind == "beam" or effect.offset == GROUND
+end
+
 -- Cette méthode permet de donner tous les effets ajoutés d'un mannequin (thème, puis aura de sa rareté) lorsque l'on
--- construit sa déclinaison.
-function DummyAura.effects(id: string, rarity: number): { Effect }
-	local effects = table.clone(DummyAura.THEMES[id] or {})
-	for _, effect in DummyAura.rarity(rarity, Rarity.get(rarity).color) do
-		table.insert(effects, effect)
+-- construit sa déclinaison ; `carried` (porté en main) écarte les effets posés au sol.
+function DummyAura.effects(id: string, rarity: number, carried: boolean?): { Effect }
+	local effects: { Effect } = {}
+	for _, list in { DummyAura.THEMES[id] or {}, DummyAura.rarity(rarity, Rarity.get(rarity).color) } do
+		for _, effect in list do
+			if not (carried and DummyAura.isGrounded(effect)) then
+				table.insert(effects, effect)
+			end
+		end
 	end
 	return effects
 end

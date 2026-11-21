@@ -133,7 +133,7 @@ local function buildStanding(entry: Collection.Entry, ground: Vector3, silhouett
 	local scale = Collection.scale(entry)
 	local variant: any = Collection.variant(entry)
 	if silhouette then
-		variant = { color = BLACK, accessories = variant.accessories, accessoryColor = BLACK }
+		variant = { color = BLACK, accessories = variant.accessories, accessoryColor = BLACK, hidden = variant.hidden }
 	end
 	local model = DummyShape.buildVisual(scale, variant)
 	if silhouette then
