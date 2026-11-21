@@ -551,8 +551,8 @@ local function buildReveal()
 	}, finish)
 end
 
--- Cette méthode permet de construire le panneau « Place your … » (rendu 3D, titre, consigne, bouton AUTO) en bas au
--- centre lorsque le client démarre.
+-- Cette méthode permet de construire le panneau « Place your … » (rendu 3D, titre, consigne ; tutoriel seulement) et le
+-- bouton AUTO compact, en bas au centre, lorsque le client démarre.
 local function buildPlacePanel()
 	placePanel = UIKit.create("Frame", {
 		Name = "PlaceDummy",
@@ -639,8 +639,8 @@ local function canPlace(): boolean
 	return player:GetAttribute("LaneState") == "Ready" and player:GetAttribute("Action") == nil and not showing
 end
 
--- Cette méthode permet d'afficher ou de masquer le panneau « Place your … » (et son rendu 3D) lorsque le mannequin en
--- main ou l'état du joueur changent.
+-- Cette méthode permet d'afficher le panneau « Place your … » pendant l'étape « Place » du tutoriel, ou le bouton AUTO
+-- près de sa base ensuite, lorsque le mannequin en main ou l'état du joueur changent.
 local function refreshPanel()
 	local entry = pendingEntry()
 	local ready = entry ~= nil and canPlace()
@@ -736,7 +736,7 @@ function Prize.init(localPlayer: Player, createdRemotes: Remotes.Remotes, screen
 		bindPrompt(prompt)
 	end
 	CollectionService:GetInstanceAddedSignal(Collection.PROMPT_TAG):Connect(bindPrompt)
-	for _, attribute in { "PendingDummy", "LaneState", "Action", "Slot" } do
+	for _, attribute in { "PendingDummy", "LaneState", "Action", "Slot", "Tutorial" } do
 		player:GetAttributeChangedSignal(attribute):Connect(function()
 			lastPromptRefresh = 0
 			refreshPrompts()
