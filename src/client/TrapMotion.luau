@@ -24,6 +24,7 @@ type Mover = {
 	kind: string?, -- piège (Shared.Traps.KINDS) de la pièce mobile
 	power: { BasePart }, -- pièces allumées pendant la phase active
 	lit: boolean?, -- état affiché des pièces `power`
+	parked: boolean?, -- remise au repos depuis qu'elle est hors de portée de la caméra
 }
 
 local movers: { [Model]: Mover } = {}
@@ -102,8 +103,14 @@ local function step()
 			setPower(mover, Traps.active(mover.kind, now, mover.offset))
 		end
 		if (mover.home.Position - eye).Magnitude > Traps.MOTION_RANGE then
+			-- Hors de portée : pièce remise une fois au repos (fantôme rentré sous terre), pas figée en plein mouvement
+			if not mover.parked then
+				model:PivotTo(mover.home)
+				mover.parked = true
+			end
 			continue
 		end
+		mover.parked = false
 		local t = now + mover.offset * mover.period
 		model:PivotTo(mover.home * Traps.motion(mover.motion, t, mover.axis, mover.amplitude, mover.period))
 	end

@@ -12,4 +12,12 @@ function SkyClock.target(current: number, night: boolean, day: number): number
 	return if current % 24 >= day then 24 else 0
 end
 
+SkyClock.DAWN = 5 -- entre minuit et l'aube, le ciel est déjà de nuit
+
+-- Cette méthode permet de savoir si l'heure `clock` est après minuit (ciel de nuit) lorsqu'un tirage rare veut
+-- assombrir le ciel vers le soir (Client.RevealFx) : fondre de là vers 19-24 h repasserait par tout le jour.
+function SkyClock.isAfterMidnight(clock: number): boolean
+	return clock % 24 < SkyClock.DAWN
+end
+
 return SkyClock

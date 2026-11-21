@@ -13,6 +13,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local DummyShape = require(Shared:WaitForChild("DummyShape"))
 local Format = require(Shared:WaitForChild("Format"))
 local RevealPlan = require(Shared:WaitForChild("RevealPlan"))
+local SkyClock = require(Shared:WaitForChild("SkyClock"))
 
 local UIKit = require(script.Parent.UIKit)
 
@@ -112,15 +113,16 @@ function RevealFx.darkenSky(color: Color3, night: boolean, time: number)
 	if not grading then
 		grading = UIKit.create("ColorCorrectionEffect", { Name = "RevealDark", Parent = Lighting })
 	end
+	local lightGoal: { [string]: any } = {
+		Brightness = if night then 0.6 else 1.4,
+		OutdoorAmbient = Color3.fromRGB(70, 60, 95),
+	}
+	-- Ciel déjà de nuit (Galaxy, Client.ZoneSky) : on garde l'heure, un fondu de minuit vers le soir passerait par le jour
+	if not SkyClock.isAfterMidnight(Lighting.ClockTime) then
+		lightGoal.ClockTime = if night then 23.9 else 19.6
+	end
 	local goals: { { any } } = {
-		{
-			Lighting,
-			{
-				ClockTime = if night then 23.9 else 19.6,
-				Brightness = if night then 0.6 else 1.4,
-				OutdoorAmbient = Color3.fromRGB(70, 60, 95),
-			},
-		},
+		{ Lighting, lightGoal },
 		{ grading, { TintColor = color:Lerp(WHITE, 0.7), Contrast = 0.15, Brightness = -0.04 } },
 	}
 	if atmosphere then

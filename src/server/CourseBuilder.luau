@@ -29,6 +29,7 @@ local SEGMENT_LENGTH = 400 -- longueur maximale d'une pièce de sol ou de paroi 
 local CAP_THICKNESS = Drips.CAP_THICKNESS
 local CAP_OVERHANG = 1 -- l'herbe déborde du bord de chaque marche
 local END_Z = GameConfig.COURSE_LENGTH + 40 -- fond du canyon, derrière la paroi de bout de piste
+local FINISH_CLEARANCE = 12 -- pas de décor au pied des parois à moins de 12 studs avant l'arche d'arrivée (piliers)
 local STATION_HEIGHT = 1.4 -- hauteur du podium de l'appareil d'entraînement
 local STATION_SPOT = 0.6 -- avance de la place de l'avatar devant le centre du podium (le râtelier est derrière)
 local RACK_SCALE = 0.5 -- taille des mannequins suspendus au râtelier (sans se toucher)
@@ -1165,14 +1166,16 @@ local function buildTrack(parent: Instance): { string }
 		local grow = if index == 1 then -1 else 0
 		terraces(folder, Vector3.new(half, 0, wallStart), Vector3.new(half, 0, wallEnd), -Vector3.xAxis, zone, grow, 0)
 		terraces(folder, Vector3.new(-half, 0, wallEnd), Vector3.new(-half, 0, wallStart), Vector3.xAxis, zone, 0, grow)
-		-- Décor au pied des parois (traversable : le mannequin ne s'y accroche pas)
+		-- Décor au pied des parois (traversable : le mannequin ne s'y accroche pas), arrêté avant les piliers de l'arche
+		-- d'arrivée qui sont dans sa rangée
+		local footEnd = if index == #Zones.LIST then length - FINISH_CLEARANCE else zoneEnd
 		for _, side in { -1, 1 } do
 			local x = side * (half - 4)
 			scatter(
 				folder,
 				zone,
 				Vector3.new(x, 0, math.max(zoneStart, 8)),
-				Vector3.new(x, 0, zoneEnd),
+				Vector3.new(x, 0, footEnd),
 				22,
 				Vector3.xAxis,
 				1.5,

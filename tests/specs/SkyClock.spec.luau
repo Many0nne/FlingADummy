@@ -22,4 +22,14 @@ return function(T, Loader)
 			end
 		end)
 	end)
+
+	T.describe("SkyClock.isAfterMidnight", function()
+		T.it("repère la nuit de la Galaxy (minuit), pas le soir de l'orage ni le plein jour", function()
+			T.expect(SkyClock.isAfterMidnight(0), "minuit")
+			T.expect(SkyClock.isAfterMidnight(24), "minuit (24)")
+			T.expect(not SkyClock.isAfterMidnight(DAY), "plein jour")
+			-- Orage puis nuit du secret (19,6 h puis 23,9 h) : le fondu avance, il doit rester permis
+			T.expect(not SkyClock.isAfterMidnight(19.6), "soir de l'orage")
+		end)
+	end)
 end
