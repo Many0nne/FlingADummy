@@ -302,15 +302,23 @@ end
 -- Effet d'un piège : nouvelle vitesse (Shared.Traps.react, recalée comme référence pour ne pas compter de choc),
 -- rotation du corps, os cassés, cause du crash et annonce aux clients.
 
--- Cette méthode permet de déclencher le piège `box` (une fois par vol) lorsque le torse traverse sa boîte.
-local function triggerTrap(flight: Flight, box: TrackPlan.TrapBox, position: Vector3)
+-- Cette méthode permet de donner la phase du piège `box` à l'instant `now` pour la trace [Trap] (Studio) lorsqu'il
+-- est traversé ; « - » pour un piège sans cycle.
+local function phaseLabel(box: TrackPlan.TrapBox, now: number): string
+	if not Traps.CYCLES[box.kind] then
+		return "-"
+	end
+	return string.format("%.2f", Traps.phase(box.kind, now, Traps.phaseOffset(box.x, box.z)))
+end
+
+-- Cette méthode permet de déclencher le piège `box` (une fois par vol) lorsque le torse traverse sa boîte à l'instant
+-- `now` (horloge du serveur, celle qui a décidé que le piège agit).
+local function triggerTrap(flight: Flight, box: TrackPlan.TrapBox, position: Vector3, now: number)
 	flight.traps[box.site] = true
 	flight.lastTrap = { kind = box.kind, at = os.clock() }
 	local def = Traps.KINDS[box.kind]
 	local before = flight.torso.AssemblyLinearVelocity
-	local now = Workspace:GetServerTimeNow()
-	local offset = Traps.phaseOffset(box.x, box.z)
-	local after = Traps.react(box.kind, before, Traps.push(box.kind, now, offset))
+	local after = Traps.react(box.kind, before, Traps.push(box.kind, now, Traps.phaseOffset(box.x, box.z)))
 	-- Rotation du corps entier autour du torse (chaque membre suit), pas de chaque membre sur lui-même
 	local spin = Vector3.new(0, def.spin, 0)
 	local center = flight.torso.Position
@@ -332,11 +340,11 @@ local function triggerTrap(flight: Flight, box: TrackPlan.TrapBox, position: Vec
 	if RunService:IsStudio() then
 		print(
 			string.format(
-				"[Trap] %s colonne %d à %.0f m, phase %.2f : %.0f → %.0f studs/s",
+				"[Trap] %s colonne %d à %.0f m, phase %s : %.0f → %.0f studs/s",
 				box.kind,
 				box.column,
 				box.z,
-				Traps.phase(box.kind, now, offset),
+				phaseLabel(box, now),
 				before.Magnitude,
 				after.Magnitude
 			)
@@ -360,19 +368,19 @@ local function checkTraps(flight: Flight, previous: Vector3, position: Vector3)
 			and box.z - half <= maxZ
 			and Traps.crosses(box.center, box.size, previous, position)
 		then
-			local now, offset = Workspace:GetServerTimeNow(), Traps.phaseOffset(box.x, box.z)
-			if Traps.active(box.kind, now, offset) then
-				triggerTrap(flight, box, position)
+			local now = Workspace:GetServerTimeNow()
+			if Traps.active(box.kind, now, Traps.phaseOffset(box.x, box.z)) then
+				triggerTrap(flight, box, position, now)
 			elseif RunService:IsStudio() and not flight.traps[-box.site] then
 				-- Trace de vérification (Studio) : un passage hors phase, une fois par vol et par piège
 				flight.traps[-box.site] = true
 				print(
 					string.format(
-						"[Trap] %s colonne %d à %.0f m, phase %.2f : hors phase, rien",
+						"[Trap] %s colonne %d à %.0f m, phase %s : hors phase, rien",
 						box.kind,
 						box.column,
 						box.z,
-						Traps.phase(box.kind, now, offset)
+						phaseLabel(box, now)
 					)
 				)
 			end
