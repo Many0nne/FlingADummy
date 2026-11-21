@@ -45,6 +45,8 @@ export type Variant = {
 	hidden: { string }?,
 	accessories: { string }?,
 	accessoryColor: Color3?,
+	accessoryColors: { [string]: Color3 }?, -- couleur par pièce ajoutée (variantes générées, Shared.DummyFamilies)
+	accessoryMaterial: Enum.Material?, -- matériau de toutes les pièces ajoutées (variantes générées)
 	effects: { DummyModels.Effect }?,
 	blocks: { Block }?,
 }
@@ -547,14 +549,17 @@ function DummyShape.addAccessories(model: Model, parts: { [string]: BasePart }, 
 		if accessory then
 			local offset = CFrame.new(def.offset * scale)
 			accessory.CFrame = carrier.CFrame * offset
-			accessory.Color = variant.accessoryColor or def.color
-			accessory.Material = def.material
+			accessory.Color = variant.accessoryColor or (variant.accessoryColors or {})[name] or def.color
+			-- Une vitre (casque de scaphandre, visière, verres) reste en verre sous une palette de variante générée
+			local seeThrough = def.material == Enum.Material.Glass or (def.transparency or 0) > 0
+			local material = if seeThrough then def.material else variant.accessoryMaterial or def.material
+			accessory.Material = material
 			accessory.Transparency = def.transparency or 0
 			accessory.Massless = true
 			accessory.CanCollide = false
 			accessory.CanQuery = false
 			accessory.CanTouch = false
-			accessory.CastShadow = def.material ~= Enum.Material.Neon
+			accessory.CastShadow = material ~= Enum.Material.Neon
 			accessory:SetAttribute("Accessory", true)
 			attachAddon(accessory, carrier, offset, def, scale)
 			accessory.Parent = model

@@ -10,24 +10,34 @@ return function(T, Loader)
 	local LIST = ThrowDummies.LIST
 
 	T.describe("ThrowDummies.LIST (catalogue)", function()
-		T.it("5 ou 6 mannequins, le premier offert, prix et chance strictement croissants", function()
-			T.expect(#LIST >= 5 and #LIST <= 6, "taille " .. #LIST)
+		T.it("le premier offert, prix et chance strictement croissants, jusqu'à 100-150x (#94)", function()
+			T.expectEqual(ThrowDummies.SHOWCASE, 6)
+			T.expect(#LIST >= 15, "taille " .. #LIST)
 			T.expectEqual(LIST[1].cost, 0)
 			T.expectEqual(LIST[1].luck, 1)
 			for i = 2, #LIST do
 				T.expect(LIST[i].cost > LIST[i - 1].cost, "prix " .. i)
 				T.expect(LIST[i].luck > LIST[i - 1].luck, "chance " .. i)
 			end
+			T.expect(LIST[#LIST].luck >= 100 and LIST[#LIST].luck <= 150, "dernier : " .. LIST[#LIST].luck)
 		end)
-		T.it("prix calés sur les graines de 09 : ×10 à ×25 entre deux mannequins", function()
-			for i = 3, #LIST do
+		T.it("mannequins dessinés : prix calés sur les graines de 09, ×10 à ×25 entre deux", function()
+			for i = 3, ThrowDummies.SHOWCASE do
 				local ratio = LIST[i].cost / LIST[i - 1].cost
 				T.expect(ratio >= 10 and ratio <= 25, "rapport " .. i .. " : " .. ratio)
 			end
 		end)
-		T.it("chaque mannequin a un comportement en vol distinct (un seul réglage propre par mannequin)", function()
+		T.it("suite générée : prix de Rocket × (chance / 3) ^ PRICE_EXPONENT, arrondi à 2 chiffres", function()
+			local rocket = LIST[ThrowDummies.SHOWCASE]
+			for i = ThrowDummies.SHOWCASE + 1, #LIST do
+				local expected = rocket.cost * (LIST[i].luck / rocket.luck) ^ ThrowDummies.PRICE_EXPONENT
+				T.expect(math.abs(LIST[i].cost / expected - 1) < 0.05, LIST[i].id .. " : " .. LIST[i].cost)
+			end
+		end)
+		T.it("mannequins dessinés : chacun a un comportement en vol distinct (un seul réglage propre)", function()
 			local seen = {}
-			for i, dummy in LIST do
+			for i = 1, ThrowDummies.SHOWCASE do
+				local dummy = LIST[i]
 				T.expect(not seen[dummy.behavior], "comportement en double : " .. dummy.behavior)
 				seen[dummy.behavior] = true
 				local physics = dummy.physics
@@ -52,6 +62,24 @@ return function(T, Loader)
 					own -= 1 -- le caoutchouc : physique et rebond forment un seul comportement
 				end
 				T.expectEqual(own, if i == 1 then 0 else 1, dummy.id)
+			end
+		end)
+		T.it("suite générée : comportement et physique d'un mannequin dessiné, sans les cumuler", function()
+			local byBehavior = {}
+			for i = 2, ThrowDummies.SHOWCASE do
+				byBehavior[LIST[i].behavior] = LIST[i]
+			end
+			for i = ThrowDummies.SHOWCASE + 1, #LIST do
+				local dummy = LIST[i]
+				local base = byBehavior[dummy.behavior]
+				T.expect(base ~= nil, dummy.id .. " : comportement " .. dummy.behavior)
+				T.expectEqual(dummy.physics, base.physics, dummy.id .. " physique")
+				T.expectEqual(dummy.boneFactor, base.boneFactor, dummy.id .. " os")
+				T.expectEqual(dummy.lift, base.lift, dummy.id .. " portance")
+				T.expectEqual(dummy.thrust, base.thrust, dummy.id .. " poussée")
+				T.expectEqual(dummy.bounce, base.bounce, dummy.id .. " rebond")
+				T.expectEqual(#(dummy.blocks or {}), #(base.blocks or {}), dummy.id .. " blocs")
+				T.expect(string.find(dummy.name, base.name, 1, true) ~= nil, dummy.name)
 			end
 		end)
 		T.it("identifiants et noms uniques, couleur de carte pour chacun", function()
@@ -140,7 +168,7 @@ return function(T, Loader)
 			local base = Economy.chance({ distance = 300, bones = 4, smashed = 6 })
 			for _, dummy in LIST do
 				local c = Economy.chance({ distance = 300, bones = 4, smashed = 6, luck = dummy.luck })
-				T.expectNear(c.total, math.floor(base.total * dummy.luck * 100 + 0.5) / 100, 0.011, dummy.id)
+				T.expectNear(c.total, base.total * dummy.luck, 0.006 * dummy.luck + 0.006, dummy.id)
 				T.expectEqual(c.luck, dummy.luck)
 			end
 		end)

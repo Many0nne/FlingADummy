@@ -6,11 +6,12 @@
 --      couleur de la rareté.
 --   3. Legendary / Mythic : ciel qui s'assombrit, rayons et colonne de lumière sur la silhouette, cote qui grimpe
 --      longtemps, explosion de particules, forte secousse.
---   4. Secret : palier 3, puis séquence complète (CINEMATIC).
+--   4. Secret et au-delà (Divine … Infinity, #94) : palier 3, puis séquence complète (CINEMATIC).
 -- Logique pure (paliers, durées, hésitation, phrase, annonce serveur, délai de fin forcée, rareté forcée en Studio) ;
 -- la mise en scène est dans Client.Prize et Client.RevealFx.
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Collection = require(Shared:WaitForChild("Collection"))
+local DummyFamilies = require(Shared:WaitForChild("DummyFamilies"))
 local DummyModels = require(Shared:WaitForChild("DummyModels"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Inventory = require(Shared:WaitForChild("Inventory"))
@@ -72,11 +73,18 @@ RevealPlan.SECRET_LINES = {
 	cosmic = "THE STARS HAVE ALIGNED...",
 } :: { [string]: string }
 RevealPlan.SECRET_LINE_DEFAULT = "SOMETHING LEGENDARY APPROACHES..."
+-- Phrase des raretés au-delà de Secret (#94, indice de Shared.Rarity), avant celle de la famille du mannequin généré
+RevealPlan.RARITY_LINES = {
+	[8] = "THE HEAVENS HAVE OPENED...",
+	[9] = "A NEW STAR IS BORN...",
+	[10] = "REALITY BEGINS TO BEND...",
+	[11] = "THERE IS NO END...",
+} :: { [number]: string }
 
 -- Cette méthode permet de donner l'indice du palier de mise en scène (1 à 4) d'une rareté lorsque le tirage se joue.
 function RevealPlan.tierOf(rarity: number): number
 	local index = math.clamp(math.floor(rarity), 1, #Rarity.LIST)
-	if index >= 7 then
+	if index >= Rarity.SECRET then
 		return 4
 	end
 	return math.ceil(index / 2)
@@ -206,9 +214,20 @@ function RevealPlan.teaseEffects(rarity: number, color: Color3): { DummyModels.E
 	} :: { any }
 end
 
--- Cette méthode permet de donner la phrase de l'écran noir d'un secret lorsque sa séquence commence.
+-- Cette méthode permet de donner la phrase de l'écran noir d'un secret lorsque sa séquence commence : la sienne, sinon
+-- celle de sa rareté au-delà de Secret, sinon celle de sa famille (mannequin généré, « golden_void » → void).
 function RevealPlan.secretLine(id: string): string
-	return RevealPlan.SECRET_LINES[id] or RevealPlan.SECRET_LINE_DEFAULT
+	local own = RevealPlan.SECRET_LINES[id]
+	if own then
+		return own
+	end
+	local dummy = Collection.get(id)
+	local byRarity = dummy and RevealPlan.RARITY_LINES[dummy.rarity]
+	if byRarity then
+		return byRarity
+	end
+	local family = DummyFamilies.parse(id)
+	return (family and RevealPlan.SECRET_LINES[family]) or RevealPlan.SECRET_LINE_DEFAULT
 end
 
 -- Cette méthode permet de donner le début de `text` écrit au bout de `elapsed` s (TYPE_RATE lettres par seconde,
@@ -256,7 +275,7 @@ function RevealPlan.parseAnnouncement(data: any): Announcement?
 	return { userId = userId, player = data.player, name = data.name, rarity = data.rarity, odds = data.odds }
 end
 
--- Cette méthode permet de donner le mannequin imposé par `DebugPrize` (rareté 1-7, son nom ou « id:taille » ; nil si
+-- Cette méthode permet de donner le mannequin imposé par `DebugPrize` (rareté 1-11, son nom ou « id:taille » ; nil si
 -- absent ou illisible) lorsque le serveur tire en Studio.
 function RevealPlan.debugEntry(value: any, roll: () -> number): Collection.Entry?
 	local rarity: number? = nil

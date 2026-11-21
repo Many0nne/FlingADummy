@@ -24,16 +24,74 @@ return function(T, Loader)
 	end
 
 	T.describe("Collection.DUMMIES", function()
-		T.it("une vingtaine de mannequins, toutes les raretés de Common à Secret", function()
-			T.expect(#Collection.DUMMIES >= 20, "au moins 20 mannequins")
-			local seen = {}
+		T.it(
+			"catalogue étendu (#94) : toutes les raretés de Common à Infinity, au moins 4 mannequins chacune",
+			function()
+				T.expect(#Collection.DUMMIES >= 60, "au moins 60 mannequins : " .. #Collection.DUMMIES)
+				local perRarity = {}
+				for _, dummy in Collection.DUMMIES do
+					perRarity[dummy.rarity] = (perRarity[dummy.rarity] or 0) + 1
+					T.expectEqual(Collection.get(dummy.id), dummy)
+				end
+				for index = 1, #Rarity.LIST do
+					T.expect((perRarity[index] or 0) >= 4, "rareté " .. Rarity.LIST[index].name)
+				end
+			end
+		)
+		T.it("sauvegardes : les 21 mannequins dessinés gardent leur identifiant, rareté, revenu et cote", function()
+			-- stylua: ignore
+			local saved = {
+				crash = { 1, 4, 2 }, rookie = { 1, 5, 3 }, traffic = { 1, 6, 5 },
+				mint = { 2, 15, 10 }, biker = { 2, 22, 15 }, nerd = { 2, 30, 25 },
+				ocean = { 3, 70, 60 }, hero = { 3, 100, 100 }, pilot = { 3, 150, 150 },
+				ice = { 4, 400, 500 }, toxic = { 4, 550, 800 }, royal = { 4, 700, 1200 },
+				gold = { 5, 2500, 4000 }, lava = { 5, 3500, 7000 }, diamond = { 5, 5000, 10000 },
+				galaxy = { 6, 20000, 40000 }, ghost = { 6, 30000, 70000 }, neon = { 6, 40000, 100000 },
+				king = { 7, 150000, 500000 }, void = { 7, 200000, 1000000 }, cosmic = { 7, 300000, 2000000 },
+			}
+			local count = 0
+			for id, values in saved do
+				local dummy = Collection.get(id)
+				T.expect(dummy ~= nil, id .. " toujours au catalogue")
+				T.expectEqual(dummy.rarity, values[1], id .. " rareté")
+				T.expectEqual(dummy.income, values[2], id .. " revenu")
+				T.expectEqual(dummy.n, values[3], id .. " cote")
+				T.expect(Collection.isEntry({ id = id, size = 4 }), id .. " entrée valide")
+				count += 1
+			end
+			T.expectEqual(count, #Collection.DRAWN)
+		end)
+		T.it("identifiants et noms uniques", function()
+			local ids, names = {}, {}
 			for _, dummy in Collection.DUMMIES do
-				seen[dummy.rarity] = true
-				T.expectEqual(Collection.get(dummy.id), dummy)
+				T.expect(not ids[dummy.id], "id en double : " .. dummy.id)
+				T.expect(not names[dummy.name], "nom en double : " .. dummy.name)
+				T.expect(
+					string.match(dummy.id, "^[%w_]+$") ~= nil,
+					"id lisible dans une clé « id:taille » : " .. dummy.id
+				)
+				ids[dummy.id], names[dummy.name] = true, true
 			end
-			for index = 1, #Rarity.LIST do
-				T.expect(seen[index] == true, "rareté " .. Rarity.LIST[index].name)
+		end)
+		T.it("cotes et revenus strictement croissants dans l'ordre du catalogue (rareté puis cote)", function()
+			local list = Collection.DUMMIES
+			for i = 2, #list do
+				local a, b = list[i - 1], list[i]
+				T.expect(b.rarity >= a.rarity, "ordre des raretés : " .. b.id)
+				T.expect(b.n > a.n, string.format("cote %s (%s) > %s (%s)", b.id, b.n, a.id, a.n))
+				T.expect(b.income > a.income, string.format("revenu %s (%s) > %s (%s)", b.id, b.income, a.id, a.income))
+				local oddsA = Collection.odds({ id = a.id, size = 1 })
+				local oddsB = Collection.odds({ id = b.id, size = 1 })
+				T.expect(oddsB > oddsA, "cote affichée " .. b.id)
 			end
+		end)
+		T.it("cotes jusqu'à 10^14 en taille normale, 10^16 à 10^18 en Giant (« 1 IN 300Qa » de 09)", function()
+			local top = Collection.DUMMIES[#Collection.DUMMIES]
+			T.expectEqual(top.rarity, #Rarity.LIST)
+			local normal = Collection.odds({ id = top.id, size = 1 })
+			local giant = Collection.odds({ id = top.id, size = #Collection.SIZES })
+			T.expect(normal >= 1e13 and normal <= 1e15, "normal " .. normal)
+			T.expect(giant >= 1e16 and giant <= 1e18, "giant " .. giant)
 		end)
 		T.it("plus rare = cote et revenu plus hauts (revenu ×3 à ×10 d'une rareté à l'autre)", function()
 			local byRarity = {}
@@ -78,7 +136,7 @@ return function(T, Loader)
 			local p = Collection.probabilities(1)
 			T.expectEqual(Collection.odds({ id = "cosmic", size = 1 }), math.floor(1 / p.cosmic + 0.5))
 			T.expect(Collection.odds({ id = "cosmic", size = 1 }) >= 1000000, "Secret ≥ 1 M")
-			T.expect(Collection.odds({ id = "crash", size = 1 }) <= 3, "Common courant")
+			T.expect(Collection.odds({ id = "crash", size = 1 }) <= 4, "Common courant")
 			T.expect(Collection.odds({ id = "crash", size = 3 }) > Collection.odds({ id = "crash", size = 1 }), "Huge")
 		end)
 	end)
@@ -86,7 +144,7 @@ return function(T, Loader)
 	T.describe("Collection.draw", function()
 		T.it("essaie du plus rare au plus courant : un tirage de 0 donne le plus rare", function()
 			local entry = Collection.draw(1, rolls({ 0, 0.999 }))
-			T.expectEqual(entry.id, "cosmic")
+			T.expectEqual(entry.id, Collection.DUMMIES[#Collection.DUMMIES].id)
 		end)
 		T.it("tous les essais ratés : le plus courant, taille normale", function()
 			local entry = Collection.draw(1, rolls({}))

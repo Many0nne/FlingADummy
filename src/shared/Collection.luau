@@ -7,6 +7,7 @@
 -- exactes se calculent (Collection.probabilities) pour l'affichage. La taille se tire de même, à chance ^ 0,5.
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local DummyAura = require(Shared:WaitForChild("DummyAura"))
+local DummyFamilies = require(Shared:WaitForChild("DummyFamilies"))
 local DummyModels = require(Shared:WaitForChild("DummyModels"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 
@@ -15,7 +16,7 @@ local Collection = {}
 export type Dummy = {
 	id: string,
 	name: string,
-	rarity: number, -- indice dans Shared.Rarity (1 Common … 7 Secret)
+	rarity: number, -- indice dans Shared.Rarity (1 Common … 7 Secret … 11 Infinity)
 	income: number, -- $/s en taille Normal
 	n: number, -- « 1 en n » de base : probabilité min(1, chance / n) quand vient son tour
 }
@@ -30,8 +31,9 @@ export type Size = {
 export type Entry = { id: string, size: number }
 
 
+-- Mannequins dessinés (modèles de #66) ; le catalogue complet y ajoute les mannequins générés (Shared.DummyFamilies)
 -- stylua: ignore
-Collection.DUMMIES = {
+Collection.DRAWN = {
 	-- Common
 	{ id = "crash",    name = "Crash Dummy",    rarity = 1, income = 4,       n = 2 },
 	{ id = "rookie",   name = "Rookie Dummy",   rarity = 1, income = 5,       n = 3 },
@@ -62,6 +64,19 @@ Collection.DUMMIES = {
 	{ id = "cosmic",   name = "Cosmic Dummy",   rarity = 7, income = 300000,  n = 2000000 },
 } :: { Dummy }
 
+-- Catalogue complet (#94) : dessinés puis générés (famille × palette), par rareté puis cote croissante. Les dessinés
+-- restent en tête de leur rareté, dans leur ordre.
+Collection.DUMMIES = table.clone(Collection.DRAWN)
+for _, spec in DummyFamilies.specs(Collection.DRAWN) do
+	table.insert(Collection.DUMMIES, spec)
+end
+table.sort(Collection.DUMMIES, function(a, b)
+	if a.rarity ~= b.rarity then
+		return a.rarity < b.rarity
+	end
+	return a.n < b.n
+end)
+
 -- stylua: ignore
 Collection.SIZES = {
 	{ name = "",      income = 1,   scale = 1,    n = 1 },
@@ -72,7 +87,7 @@ Collection.SIZES = {
 
 -- Échelle du modèle par rareté (indice de Shared.Rarity), multipliée par celle de la taille : plus rare, plus grand
 -- (comme les arbres de plus en plus grands de la référence 09)
-Collection.RARITY_SCALE = { 1, 1.1, 1.2, 1.32, 1.46, 1.62, 1.8 }
+Collection.RARITY_SCALE = { 1, 1.1, 1.2, 1.32, 1.46, 1.62, 1.8, 1.86, 1.92, 1.98, 2.05 }
 -- Échelle maximale sur un présentoir de la base (un Giant Secret, ×4,1, déborderait sur ses voisins) ; le tirage et
 -- la main gardent l'échelle entière
 Collection.DISPLAY_SCALE_MAX = 2.5
@@ -220,13 +235,35 @@ function Collection.displayScale(entry: Entry): number
 	return math.min(Collection.scale(entry), Collection.DISPLAY_SCALE_MAX)
 end
 
+-- Looks des mannequins générés, construits à la demande (famille × palette)
+local generatedLooks: { [string]: any } = {}
+
+-- Cette méthode permet de donner le look d'un mannequin (dessiné : Shared.DummyModels ; généré : famille × palette,
+-- Shared.DummyFamilies) lorsque l'on construit son modèle.
+function Collection.look(id: string): any
+	local drawn = DummyModels.LOOKS[id]
+	if drawn then
+		return drawn
+	end
+	local cached = generatedLooks[id]
+	if cached then
+		return cached
+	end
+	local family, palette = DummyFamilies.parse(id)
+	local look = if family and palette
+		then DummyFamilies.look(family, palette)
+		else DummyModels.LOOKS[Collection.STARTER]
+	generatedLooks[id] = look
+	return look
+end
+
 -- Cette méthode permet de donner la déclinaison du modèle d'une entrée (couleur du corps et par pièce, matériau,
 -- pièces masquées, pièces ajoutées, effets du modèle : Shared.DummyModels, puis thème et aura de rareté :
 -- Shared.DummyAura) lorsque l'on construit son modèle (Shared.DummyShape) ; `carried` (porté en main) écarte les
 -- effets de l'aura posés au sol.
 function Collection.variant(entry: Entry, carried: boolean?): { [string]: any }
 	local dummy = byId[entry.id] or byId[Collection.STARTER]
-	local look = DummyModels.LOOKS[dummy.id]
+	local look = Collection.look(dummy.id)
 	local effects = {}
 	for _, effect in look.effects or {} do
 		if not (carried and DummyAura.isGrounded(effect)) then
@@ -242,6 +279,8 @@ function Collection.variant(entry: Entry, carried: boolean?): { [string]: any }
 		pieceColors = look.pieceColors,
 		hidden = look.hidden,
 		accessories = look.accessories,
+		accessoryColors = look.accessoryColors,
+		accessoryMaterial = look.accessoryMaterial,
 		effects = if #effects > 0 then effects else nil,
 	}
 end

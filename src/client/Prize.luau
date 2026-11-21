@@ -47,8 +47,19 @@ local BLACK = Color3.fromRGB(12, 12, 16)
 local SKIP_ACTION = "PrizeSkip" -- Espace / A de la manette pendant le tirage : passe, sans faire sauter l'avatar
 local STORM = Color3.fromRGB(120, 90, 200) -- teinte du ciel assombri pendant le suspense (neutre : ne trahit pas la rareté)
 -- Exclamation de chaque palier selon la rareté du candidat (« Super chanceux ! », « Chance incroyable ! » de 01)
-local EXCLAIM =
-	{ "Hmm…", "Lucky!", "Super lucky!", "Incredible luck!", "LEGENDARY LUCK!", "MYTHIC LUCK!", "SECRET!!!" }
+local EXCLAIM = {
+	"Hmm…",
+	"Lucky!",
+	"Super lucky!",
+	"Incredible luck!",
+	"LEGENDARY LUCK!",
+	"MYTHIC LUCK!",
+	"SECRET!!!",
+	"DIVINE!!!",
+	"CELESTIAL!!!",
+	"ETHEREAL!!!",
+	"INFINITY!!!",
+}
 
 local Prize = {}
 
@@ -380,7 +391,7 @@ local function hesitate(current: number)
 			local index = list[swap.form]
 			showForm(index, 0.92)
 			local step = a.sequence[index]
-			teaseOdds.Text = "1 IN " .. Format.short(step.odds)
+			teaseOdds.Text = Format.odds(step.odds)
 			teaseOdds.TextColor3 = Rarity.get(step.rarity).color:Lerp(Color3.new(1, 1, 1), 0.5)
 			UIKit.playSound("Click", 1.1 + 0.15 * swap.form)
 		end)
@@ -401,7 +412,7 @@ local function climb(from: number, to: number, duration: number, index: number, 
 		local value = Collection.climbOdds(from, to, t)
 		if value ~= last then
 			last = value
-			teaseOdds.Text = "1 IN " .. Format.short(value)
+			teaseOdds.Text = Format.odds(value)
 			local now = os.clock()
 			if now - lastTick >= TICK_GAP then
 				lastTick = now
@@ -506,7 +517,7 @@ local function revealTexts(a: Active, current: number)
 	UIKit.gradientText(nameLabel, Color3.new(1, 1, 1), tier.color:Lerp(Color3.new(1, 1, 1), 0.25))
 	newTag.Visible = prize.isNew == true
 	incomeLabel.Text = Format.money(prize.income) .. "/s"
-	revealOdds.Text = "1 IN " .. Format.short(prize.odds)
+	revealOdds.Text = Format.odds(prize.odds)
 	UIKit.openWindow(reveal, false)
 	UIKit.pop(nameLabel, 1.8)
 	if prize.isNew then
@@ -591,7 +602,8 @@ local function playSecret(a: Active, current: number)
 	if current ~= token then
 		return
 	end
-	RevealFx.banner("SECRET!!", a.prize.odds, color, durations.Banner)
+	-- « SECRET!! », « DIVINE!! »… : la rareté gagnée (séquence du secret jouée dès Secret, #94)
+	RevealFx.banner(string.upper(Rarity.get(a.prize.rarity).name) .. "!!", a.prize.odds, color, durations.Banner)
 	RevealFx.confetti(color, a.plan.confetti)
 	task.wait(durations.Banner)
 	if current == token then

@@ -3,6 +3,7 @@
 -- physique de chacun. Logique pure, partagée par le serveur (validation, vol) et le client (boutique, mannequin tenu).
 -- Distincts des mannequins de collection (Shared.Collection) : on les possède une fois pour toutes, on en lance un.
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local DummyFamilies = require(Shared:WaitForChild("DummyFamilies"))
 local DummyShape = require(Shared:WaitForChild("DummyShape"))
 local Tutorial = require(Shared:WaitForChild("Tutorial"))
 
@@ -235,6 +236,87 @@ ThrowDummies.LIST = {
 		thrustTime = 1,
 	},
 } :: { Dummy }
+
+-- Mannequins dessinés exposés sur le stand SHOP du hub (plateaux et vitrine, Server.Props.shopStand) : les suivants
+-- ne sont que dans la boutique
+ThrowDummies.SHOWCASE = #ThrowDummies.LIST
+
+-- Suite du catalogue (#94), jusqu'à 135x comme les graines de Throw a Seed : chacun reprend le comportement et la
+-- physique d'un mannequin dessiné (rebond, verre, lest, ailes, réacteur, sans les cumuler) sous une palette de
+-- Shared.DummyFamilies (« Ruby Rubber Dummy »). Prix : celui de Rocket × (chance / 3) ^ PRICE_EXPONENT, arrondi à
+-- 2 chiffres : le revenu ne monte plus que comme le nombre de tirages × la CHANCE (pas de renaissance encore), des prix
+-- × 6 à chaque niveau seraient hors d'atteinte (provisoire, recalé par #15 ; courbe et temps estimés par le joueur
+-- simulé tools/progression.luau, dans docs/design.md, section « Progression longue »).
+-- stylua: ignore
+ThrowDummies.EXTENDED = {
+	{ luck = 4,   base = "rubber", palette = "ruby" },
+	{ luck = 5,   base = "glass",  palette = "emerald" },
+	{ luck = 6.5, base = "steel",  palette = "sapphire" },
+	{ luck = 8,   base = "glider", palette = "amber" },
+	{ luck = 10,  base = "rocket", palette = "golden" },
+	{ luck = 13,  base = "rubber", palette = "frost" },
+	{ luck = 17,  base = "glass",  palette = "magma" },
+	{ luck = 22,  base = "steel",  palette = "shadow" },
+	{ luck = 30,  base = "glider", palette = "radiant" },
+	{ luck = 40,  base = "rocket", palette = "starlight" },
+	{ luck = 55,  base = "rubber", palette = "nebula" },
+	{ luck = 75,  base = "glass",  palette = "plasma" },
+	{ luck = 100, base = "glider", palette = "quantum" },
+	{ luck = 135, base = "rocket", palette = "infinite" },
+}
+ThrowDummies.PRICE_EXPONENT = 1.8
+
+-- Cette méthode permet de construire un mannequin de la suite du catalogue (comportement de `base`, couleurs et
+-- matériau de la palette, blocs teintés) lorsque le catalogue se construit.
+local function extend(base: Dummy, spec: { luck: number, base: string, palette: string }, cost: number): Dummy
+	local palette = DummyFamilies.PALETTES[spec.palette]
+	assert(palette, "ThrowDummies : palette inconnue " .. spec.palette)
+	local blocks: { Block }? = nil
+	if base.blocks then
+		local tinted: { Block } = {}
+		for _, block in base.blocks do
+			local copy = table.clone(block)
+			copy.color = block.color:Lerp(palette.accent, palette.tint)
+			copy.material = palette.accessoryMaterial or block.material
+			table.insert(tinted, copy)
+		end
+		blocks = tinted
+	end
+	local pieceColors: { [string]: Color3 }? = nil
+	if base.pieceColors then
+		local colors: { [string]: Color3 } = {}
+		for piece, color in base.pieceColors do
+			colors[piece] = color:Lerp(palette.accent, palette.tint)
+		end
+		pieceColors = colors
+	end
+	local dummy = table.clone(base)
+	dummy.id = spec.palette .. "_" .. base.id
+	dummy.name = palette.name .. " " .. base.name
+	dummy.cost = cost
+	dummy.luck = spec.luck
+	dummy.color = palette.body
+	-- Le verre et le lest gardent leur matière (comportement lisible), les autres prennent celle de la palette
+	dummy.material = base.material or palette.material
+	dummy.pieceColors = pieceColors
+	dummy.blocks = blocks
+	dummy.card = palette.body:Lerp(Color3.new(1, 1, 1), 0.35)
+	return dummy
+end
+
+do
+	local byId: { [string]: Dummy } = {}
+	for _, dummy in ThrowDummies.LIST do
+		byId[dummy.id] = dummy
+	end
+	local last = ThrowDummies.LIST[#ThrowDummies.LIST]
+	for _, spec in ThrowDummies.EXTENDED do
+		local base = byId[spec.base]
+		assert(base, "ThrowDummies : mannequin de base inconnu " .. spec.base)
+		local cost = DummyFamilies.nice(last.cost * (spec.luck / last.luck) ^ ThrowDummies.PRICE_EXPONENT)
+		table.insert(ThrowDummies.LIST, extend(base, spec, cost))
+	end
+end
 
 -- Cette méthode permet de donner le mannequin `index` du catalogue (borné) lorsque l'on lance, affiche ou valide.
 function ThrowDummies.get(index: number): Dummy

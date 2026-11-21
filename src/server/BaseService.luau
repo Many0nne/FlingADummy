@@ -270,7 +270,7 @@ function BaseService.award(player: Player, luck: number): Prize?
 	local roll = function()
 		return rng:NextNumber()
 	end
-	-- Studio : DebugPrize impose le prochain tirage (rareté 1-7 ou son nom, ou « id:taille »), puis s'efface
+	-- Studio : DebugPrize impose le prochain tirage (rareté 1-11 ou son nom, ou « id:taille »), puis s'efface
 	-- (même au premier tirage, à la place du mannequin garanti)
 	local debugValue = if RunService:IsStudio() then player:GetAttribute("DebugPrize") else nil
 	local forced = if debugValue ~= nil then RevealPlan.debugEntry(debugValue, roll) else nil
@@ -543,7 +543,7 @@ end
 -- DebugGive = « id:taille » ajoute ce mannequin comme s'il venait d'être gagné ; DebugEquip = « id:taille » équipe
 -- son outil du Backpack (« » déséquipe) ; DebugInventory = « Action » ou
 -- « Action|argument » (actions de BaseService.act). DebugPrize (lu par BaseService.award au prochain tirage, pas
--- ici) : rareté 1-7 ou son nom (« Secret ») ou « id:taille », impose le mannequin gagné par le prochain lancer.
+-- ici) : rareté 1-11 ou son nom (« Secret », « Divine ») ou « id:taille », impose le mannequin gagné par le prochain lancer.
 local function bindDebug(player: Player)
 	player:GetAttributeChangedSignal("DebugPlace"):Connect(function()
 		local value = player:GetAttribute("DebugPlace")

@@ -21,7 +21,7 @@ return function(T, Loader)
 
 	T.describe("RevealPlan.tierOf", function()
 		T.it("regroupe les raretés par deux, le secret seul", function()
-			local expected = { 1, 1, 2, 2, 3, 3, 4 }
+			local expected = { 1, 1, 2, 2, 3, 3, 4, 4, 4, 4, 4 }
 			for rarity, tier in expected do
 				T.expectEqual(RevealPlan.tierOf(rarity), tier, Rarity.LIST[rarity].name)
 			end
@@ -145,14 +145,28 @@ return function(T, Loader)
 	end)
 
 	T.describe("RevealPlan.secretLine et typed", function()
-		T.it("une phrase propre à chaque secret", function()
+		T.it("une phrase propre à chaque secret, à sa rareté au-delà de Secret ou à sa famille (#94)", function()
 			T.expectEqual(RevealPlan.secretLine("king"), "THE CRASH KINGDOM HAS FOUND ITS KING...")
 			for _, dummy in Collection.DUMMIES do
-				if dummy.rarity == 7 then
+				if dummy.rarity == 7 and table.find(Collection.DRAWN, dummy) then
 					T.expect(RevealPlan.SECRET_LINES[dummy.id] ~= nil, dummy.id .. " a sa phrase")
 				end
+				if dummy.rarity >= 7 then
+					T.expect(
+						RevealPlan.secretLine(dummy.id) ~= RevealPlan.SECRET_LINE_DEFAULT,
+						dummy.id .. " a une phrase"
+					)
+				end
 			end
+			T.expectEqual(RevealPlan.secretLine("golden_void"), RevealPlan.SECRET_LINES.void)
+			T.expectEqual(RevealPlan.secretLine("radiant_king"), RevealPlan.RARITY_LINES[8])
 			T.expectEqual(RevealPlan.secretLine("inconnu"), RevealPlan.SECRET_LINE_DEFAULT)
+			for _, line in RevealPlan.RARITY_LINES do
+				T.expect(
+					#line / RevealPlan.TYPE_RATE < RevealPlan.CINEMATIC[1].duration - 0.8,
+					line .. " : lue au moins 0,8 s"
+				)
+			end
 		end)
 		T.it("écrit la phrase lettre à lettre, en entier à la fin", function()
 			local text = "THE KING"
@@ -220,7 +234,7 @@ return function(T, Loader)
 			T.expect(entry ~= nil and entry.id == "king" and entry.size == 3, "king:3")
 		end)
 		T.it("valeur absente ou illisible : tirage normal", function()
-			for _, value in { nil, 0, 8, "nope", "king:9", true } do
+			for _, value in { nil, 0, #Rarity.LIST + 1, "nope", "king:99", true } do
 				T.expectEqual(RevealPlan.debugEntry(value, fixed(0)), nil, tostring(value))
 			end
 		end)

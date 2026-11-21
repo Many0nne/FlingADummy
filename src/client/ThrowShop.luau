@@ -28,6 +28,7 @@ local remotes: Remotes.Remotes
 local hooks: Hooks
 local frame: Frame
 local cards: { UIKit.Card } = {}
+local row: ScrollingFrame
 local meshed: number? = nil -- étape des maillages des rendus déjà construits
 local knownTier = math.huge -- mannequins possédés au chargement : les achats suivants s'annoncent
 
@@ -86,6 +87,15 @@ local function setAction(card: UIKit.Card, text: string, color: Color3, enabled:
 	card.action.Text = text
 	card.action.BackgroundColor3 = color
 	card.action:SetAttribute("Disabled", not enabled)
+end
+
+-- Cette méthode permet de faire défiler la boutique jusqu'au mannequin à acheter (le dernier s'ils sont tous possédés)
+-- lorsque la fenêtre s'ouvre.
+function ThrowShop.scrollToNext()
+	if row then
+		local owned = levels()
+		UIKit.scrollToCard(row, math.min(owned + 1, #ThrowDummies.LIST))
+	end
 end
 
 -- Cette méthode permet de rafraîchir les cartes (équipé, possédé, prix jaune ou rouge, cadenas) lorsque l'argent, les
@@ -156,7 +166,7 @@ function ThrowShop.init(
 		size = Vector2.new(880, 440),
 	}, onClose)
 	frame = window.frame
-	local row = UIKit.create("ScrollingFrame", {
+	row = UIKit.create("ScrollingFrame", {
 		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
@@ -170,7 +180,7 @@ function ThrowShop.init(
 	})
 	UIKit.create("UIListLayout", {
 		FillDirection = Enum.FillDirection.Horizontal,
-		Padding = UDim.new(0, 10),
+		Padding = UDim.new(0, UIKit.CARD_GAP),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		VerticalAlignment = Enum.VerticalAlignment.Center,
 		Parent = row,
