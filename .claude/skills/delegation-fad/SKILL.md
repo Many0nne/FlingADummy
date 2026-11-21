@@ -26,7 +26,7 @@ Depuis la racine du checkout principal :
 | Classe | Critere | Exemples |
 |---|---|---|
 | `sans-studio` | verifiable par `check.sh`, tests Lune, `rojo build`, Blender `-b` | doc, outillage, logique pure testee (`src/shared`), economie chiffree |
-| `studio` | verification en jeu (MCP, `DebugLaunch`, capture) ou avis de l'utilisateur dans Studio | carte, lancer, game feel, UI, mannequin, cinematique |
+| `studio` | verification en jeu (MCP, `DebugLaunch`, capture) | carte, lancer, game feel, UI, mannequin, cinematique |
 
 Doute : `studio`. Indiquer la classe dans le rapport de `/triage` et en tete du brief (`Studio : oui/non`).
 
@@ -34,8 +34,8 @@ Doute : `studio`. Indiquer la classe dans le rapport de `/triage` et en tete du 
 
 - Au plus **2 taches `studio`** en cours en meme temps : une qui verifie dans Studio pendant que l'autre code.
 - Les taches `sans-studio` ne comptent pas dans cette limite.
-- Une tache `studio` qui attend l'avis de l'utilisateur garde le verrou : elle compte jusqu'a son retour. Lancer la
-  suivante seulement quand une des deux a libere Studio (thread ferme, ou `-StudioStatus` montre un autre detenteur).
+- Aucune tache n'attend l'avis de l'utilisateur (fonctionnement en sprints, `CLAUDE.md` section « Sprints ») : le verrou
+  ne se garde que le temps des verifications de la tache elle-meme.
 - Taches qui touchent les memes fichiers (ex. `ThrowController`, `FlightCamera`) : en sequence, pas en parallele.
 
 ## 4. Ce que le brief d'une tache `studio` impose
@@ -49,8 +49,9 @@ Ajouter au brief, section regles :
   captures, mesures avant/apres), puis `-ReleaseStudio` immediatement. Pas de reservation « pour voir » en cours de tache.
 - Verification qui echoue : liberer Studio, corriger hors Studio, puis une nouvelle reservation (2 au plus ; au-dela,
   statut `BLOQUE` avec ce qui echoue).
-- Avis de l'utilisateur necessaire : regrouper toutes les questions dans une seule demande, faite pendant la reservation
-  finale (protocole : port Rojo connecte, etapes, quoi observer), et garder le verrou jusqu'a la reponse.
+- Jamais de demande de test ou d'avis en jeu a l'utilisateur : trancher (choix signale en une ligne), merger CI verte, et
+  decrire le changement dans la section « Pour la sprint review » du compte rendu. Une vraie decision de design peut se
+  poser dans le thread, sans garder Studio pendant l'attente.
 - `-WaitStudio` expire (code 2) : ne pas renvoyer la verification a l'utilisateur par defaut ; noter dans le compte rendu
   ce qui reste a verifier en jeu et le scenario exact, statut `BLOQUE`.
 
@@ -60,3 +61,6 @@ Le script de worktree autorise la session a ecrire dans `worktrees/.briefs` et `
 fin du brief, sans script de contournement. Si l'ecriture est quand meme refusee : verifier que
 `.claude/settings.local.json` du worktree liste bien ces dossiers (sinon relancer `.\scripts\fad-worktree.ps1 <branche> -NoUp`
 depuis la racine), puis relancer la session (le fichier n'est lu qu'au demarrage) ; ne pas contourner par un script.
+
+Le compte rendu se termine par une section **« Pour la sprint review »** (3 a 5 lignes) : ce qui change pour le joueur,
+comment le voir en jeu, quoi observer. Le thread qui delegue la reprend telle quelle dans la liste de la sprint review.
