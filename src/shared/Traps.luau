@@ -60,7 +60,7 @@ Traps.KINDS = {
 	               keep = 0.7,  forward = 0,   side = 0,  up = 105, restitution = 0,   spin = 5,  bones = 1 },
 	-- Base lunaire : anneau propulseur, énorme poussée vers l'avant
 	Booster    = { label = "BOOST!",    sound = "Rocket", burst = "Sparks",   height = nil, depth = 6,
-	               keep = 1,    forward = 70, side = 0,  up = 25,  restitution = 0,   spin = 0,  bones = 1 },
+	               keep = 1,    forward = 70,  side = 0,  up = 25,  restitution = 0,   spin = 0,  bones = 1 },
 } :: { [string]: Kind }
 
 Traps.MOTION_TAG = "TrapMotion" -- pièce mobile d'un piège (pale, rondin, presse…), animée par chaque client

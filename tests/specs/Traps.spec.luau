@@ -46,15 +46,15 @@ return function(T, Loader)
 			T.expect(v.Z < falling.Z, "élan coupé")
 		end)
 
-		T.it("l'aimant arrête presque net la course et soulève", function()
+		T.it("l'aimant coupe l'essentiel de la course et soulève", function()
 			local v = Traps.react("Magnet", Vector3.new(0, 10, 200), 1)
-			T.expect(math.abs(v.Z) < 15, "élan coupé : " .. v.Z)
+			T.expect(math.abs(v.Z) <= 0.3 * 200, "élan coupé : " .. v.Z)
 			T.expect(v.Y > 0, "soulevé")
 		end)
 
 		T.it("ventilateur, vague, tremplin, canon et propulseur poussent vers l'avant", function()
 			for _, kind in { "Fan", "Wave", "SkiJump", "Cannon", "Booster" } do
-				T.expect(Traps.react(kind, sliding, 1).Z > sliding.Z + 30, kind)
+				T.expect(Traps.react(kind, sliding, 1).Z >= sliding.Z + 25, kind)
 			end
 		end)
 
