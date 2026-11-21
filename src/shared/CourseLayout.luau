@@ -30,6 +30,8 @@ CourseLayout.BAND_SHINE_TAG = "LaunchBandShine" -- dégradé du reflet de la ban
 CourseLayout.MERCHANT_TAG = "HubMerchant" -- marchand en blocs (il se balance et salue)
 CourseLayout.SPIN_TAG = "HubSpin" -- modèle qui tourne sur lui-même (pièce géante, tête de l'enseigne)
 CourseLayout.SELL_BURST_TAG = "SellBurst" -- émetteur de pièces du stand SELL (attribut Sales : une vente de plus)
+-- Confettis d'une base ou d'un appareil d'entraînement (attribut Upgrades : un présentoir ou un Training Gear acheté)
+CourseLayout.UPGRADE_BURST_TAG = "UpgradeBurst"
 
 -- Couleur de chaque place (base, appareil) : on retrouve ses affaires d'un coup d'œil
 CourseLayout.SLOT_COLORS = {

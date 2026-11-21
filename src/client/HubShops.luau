@@ -1,6 +1,7 @@
 -- Stands du hub côté client (#68, décor construit par Server.Props) : invite du stand SHOP (ouvre la boutique des
 -- mannequins à lancer), mannequins à lancer exposés sur les plateaux qui tournent, marchands qui se balancent et
--- saluent, pièce géante et tête d'enseigne qui tournent, éclat de pièces au-dessus du comptoir SELL à chaque vente.
+-- saluent, pièce géante et tête d'enseigne qui tournent, éclat de pièces au-dessus du comptoir SELL à chaque vente,
+-- confettis d'une base ou d'un appareil d'entraînement à chaque présentoir ou Training Gear acheté.
 -- Tout est local à chaque client (rien n'est répliqué).
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -99,6 +100,22 @@ local function bindBurst(part: Instance)
 	end)
 end
 
+-- Cette méthode permet de faire jaillir les confettis d'une base ou d'un appareil (quart du nombre en mouvement réduit)
+-- lorsque le serveur compte un présentoir ou un Training Gear acheté (attribut Upgrades).
+local function bindUpgrade(part: Instance)
+	if not part:IsA("BasePart") then
+		return
+	end
+	part:GetAttributeChangedSignal("Upgrades"):Connect(function()
+		local share = if UIKit.reducedMotion() then 0.25 else 1
+		for _, emitter in part:GetChildren() do
+			if emitter:IsA("ParticleEmitter") then
+				emitter:Emit(math.ceil(((emitter:GetAttribute("Count") :: number?) or 30) * share))
+			end
+		end
+	end)
+end
+
 -- Cette méthode permet d'ouvrir la boutique lorsque le joueur déclenche l'invite du stand SHOP.
 local function bindShopPrompt(prompt: Instance)
 	if prompt:IsA("ProximityPrompt") then
@@ -177,6 +194,7 @@ function HubShops.init()
 		[CourseLayout.SPIN_TAG] = addSpinner,
 		[CourseLayout.MERCHANT_TAG] = addMerchant,
 		[CourseLayout.SELL_BURST_TAG] = bindBurst,
+		[CourseLayout.UPGRADE_BURST_TAG] = bindUpgrade,
 		[ThrowDummies.SHOP_TAG] = bindShopPrompt,
 	}
 	for tag, bind in bindings do
