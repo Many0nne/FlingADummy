@@ -1,8 +1,8 @@
 -- Animations des avatars (R15) et mannequins décoratifs : le joueur local joue les clips de Shared.AnimationData
 -- (tenu, entraînement, lancer) sur son Animator, qui les réplique et pilote aussi bien les Motor6D que les
 -- AnimationConstraint des avatars récents. Chaque client pose, pour tous les joueurs, le mannequin tenu sur la main
--- droite ou le mannequin d'entraînement (celui du palier d'équipement) couché sur les deux mains, d'après les attributs
--- et la position des mains.
+-- droite, le mannequin d'entraînement (celui du palier d'équipement) couché sur les deux mains, ou le mannequin de
+-- collection porté devant la poitrine (outil du Backpack équipé, #54), d'après les attributs, l'outil et les mains.
 local KeyframeSequenceProvider = game:GetService("KeyframeSequenceProvider")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -12,8 +12,11 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AnimationData = require(Shared:WaitForChild("AnimationData"))
 local Assets = require(Shared:WaitForChild("Assets"))
+local BackpackPlan = require(Shared:WaitForChild("BackpackPlan"))
+local Collection = require(Shared:WaitForChild("Collection"))
 local DummyShape = require(Shared:WaitForChild("DummyShape"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
+local Inventory = require(Shared:WaitForChild("Inventory"))
 local Training = require(Shared:WaitForChild("Training"))
 
 local HELD_SCALE = 0.6
@@ -234,6 +237,23 @@ local function updateReleased(now: number)
 	end
 end
 
+-- Cette méthode permet de donner la clé « id:taille » du mannequin de collection que tient un personnage (outil du
+-- Backpack équipé) lorsque l'on pose le mannequin porté ; nil s'il n'en tient pas.
+local function carriedKey(character: Model?): string?
+	if not character then
+		return nil
+	end
+	for _, child in character:GetChildren() do
+		if child:IsA("Tool") then
+			local key = child:GetAttribute(BackpackPlan.TOOL_ATTRIBUTE)
+			if type(key) == "string" and Inventory.parseKey(key) then
+				return key
+			end
+		end
+	end
+	return nil
+end
+
 -- Cette méthode permet de jouer les clips en boucle du joueur local selon son action et de clore son lancer
 -- lorsque Heartbeat tourne.
 local function updateLocal(action: any, now: number)
@@ -252,6 +272,20 @@ local function updateLocal(action: any, now: number)
 	end
 	setLooping("Hold", action == "Holding" and current == nil)
 	setLooping("Train", action == "Training")
+	setLooping("Carry", action == nil and current == nil and carriedKey(localPlayer.Character) ~= nil)
+end
+
+-- Cette méthode permet de calculer où poser le mannequin porté (debout devant la poitrine, entre les deux mains, pieds
+-- au-dessus du sol) lorsque le personnage tient un mannequin de collection.
+local function carryFrame(character: Model, root: BasePart, scale: number): CFrame
+	local left = character:FindFirstChild("LeftHand") :: BasePart?
+	local right = character:FindFirstChild("RightHand") :: BasePart?
+	local hands = if left and right
+		then (left.Position + right.Position) / 2
+		else (root.CFrame * CFrame.new(0, 0.4, -1)).Position
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local ground = if humanoid then root.Position.Y - humanoid.HipHeight - root.Size.Y / 2 else nil
+	return AnimationData.carryFrame(hands, root.CFrame.LookVector, scale, ground)
 end
 
 -- Cette méthode permet de mettre à jour le mannequin décoratif d'un joueur lorsque Heartbeat tourne.
@@ -281,6 +315,17 @@ local function update(player: Player, state: State)
 		end)
 		if state.visual then
 			state.visual:PivotTo(liftFrame(character, root, gear.scale))
+		end
+	elseif action == nil and carriedKey(character) then
+		-- Mannequin de collection porté (outil équipé), à l'échelle de sa taille
+		local key = carriedKey(character) :: string
+		local entry = Inventory.parseKey(key) :: Collection.Entry
+		local scale = AnimationData.CARRY_SCALE * Collection.SIZES[entry.size].scale
+		setVisual(state, "Carry" .. key .. shape, function()
+			return DummyShape.buildVisual(scale, Collection.variant(entry) :: DummyShape.Variant)
+		end)
+		if state.visual then
+			state.visual:PivotTo(carryFrame(character, root, scale))
 		end
 	else
 		setVisual(state, nil)

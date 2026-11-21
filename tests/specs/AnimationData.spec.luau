@@ -179,6 +179,56 @@ return function(T, Loader, Lib)
 		end)
 	end)
 
+	T.describe("AnimationData.CARRY (mannequin porté, tests/lib/R15Rig)", function()
+		local clip = AnimationData.CARRY
+		local Collection = loader:require("src/shared/Collection")
+		local CHEST_FRONT = -0.45 -- face avant du haut du torse R15, repère de HumanoidRootPart (Z)
+		local GROUND = -3 -- sol sous un avatar R15 type (HipHeight 2 + demi-hauteur de HumanoidRootPart)
+
+		T.it("haut du corps seulement : ni bassin ni jambes (marche et saut libres)", function()
+			for name in AnimationData.animatedParts(clip) do
+				T.expect(not string.find(name, "Leg") and not string.find(name, "Foot"), "jambe animée : " .. name)
+				T.expect(name ~= "LowerTorso", "bassin animé")
+			end
+		end)
+
+		-- Cette méthode permet de donner le milieu des mains (repère de HumanoidRootPart) à une keyframe du clip.
+		local function handsAt(poses)
+			local right = R15Rig.partFrame("RightHand", poses, AnimationData.toCFrame).Position
+			local left = R15Rig.partFrame("LeftHand", poses, AnimationData.toCFrame).Position
+			return right, left
+		end
+
+		T.it("mains devant la poitrine, symétriques, à hauteur du torse", function()
+			for _, keyframe in AnimationData.filledKeyframes(clip) do
+				local right, left = handsAt(keyframe.poses)
+				T.expectNear(right.X, -left.X, 0.05, "t = " .. keyframe.t .. " : symétrie")
+				T.expectNear(right.Y, left.Y, 0.05, "t = " .. keyframe.t .. " : même hauteur")
+				T.expect(right.Z < CHEST_FRONT - 0.4, "t = " .. keyframe.t .. " : mains devant, " .. tostring(right))
+				T.expect(right.Y > -0.3 and right.Y < 1, "t = " .. keyframe.t .. " : hauteur du torse, " .. right.Y)
+				T.expect(right.X - left.X < 2, "t = " .. keyframe.t .. " : mains rapprochées, " .. (right.X - left.X))
+			end
+		end)
+
+		T.it("le mannequin porté (toutes tailles) reste devant la poitrine et au-dessus du sol", function()
+			for _, keyframe in AnimationData.filledKeyframes(clip) do
+				local right, left = handsAt(keyframe.poses)
+				local hands = (right + left) / 2
+				for index, size in Collection.SIZES do
+					local scale = AnimationData.CARRY_SCALE * size.scale
+					local frame = AnimationData.carryFrame(hands, Vector3.new(0, 0, -1), scale, GROUND)
+					local back = frame.Position.Z + 0.55 * scale
+					T.expect(
+						back < CHEST_FRONT,
+						string.format("taille %d : dos à %.2f, poitrine à %.2f", index, back, CHEST_FRONT)
+					)
+					T.expect(frame.Position.Y - 3.82 * scale >= GROUND, "taille " .. index .. " : pieds dans le sol")
+					T.expect(frame.LookVector.Z < -0.99, "taille " .. index .. " : tourné comme le personnage")
+				end
+			end
+		end)
+	end)
+
 	T.describe("assets/anim/export (fichiers publiés)", function()
 		T.it(
 			"correspondent aux clips (keyframes, marqueur Release) : sinon relancer tools/build-anims et republier",

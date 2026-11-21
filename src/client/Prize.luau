@@ -5,15 +5,18 @@
 -- (« Lucky! 1 IN 10 » → « Super lucky! 1 IN 150 »), puis roulement (la silhouette tremble) et révélation : éclair
 -- plein écran, mannequin en couleurs qui grossit, rayons ; rareté, nom, « NEW! », $/s et cote une seule fois, en haut
 -- au centre (comme 09) ; bouton GO BACK. De retour au hub, panneau « Place your … » en bas au centre : la première
--- pose se fait à la main (tutoriel : flèche vers un présentoir libre, invite « Place »), ensuite le bouton AUTO
--- apparaît quand le joueur est dans sa base ou tout près.
+-- pose se fait à la main (tutoriel : flèche vers un présentoir libre, invite « Place »). Ensuite la pose s'appuie sur
+-- la barre d'outils (#54) : mannequin équipé près d'un présentoir libre → invite « Place » ; le bouton AUTO, dans sa
+-- base ou tout près, pose le mannequin tenu, sinon le dernier gagné. La barre d'outils n'apparaît qu'au hub, libre.
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local BackpackPlan = require(Shared:WaitForChild("BackpackPlan"))
 local Collection = require(Shared:WaitForChild("Collection"))
 local CourseLayout = require(Shared:WaitForChild("CourseLayout"))
 local DummyShape = require(Shared:WaitForChild("DummyShape"))
@@ -71,12 +74,47 @@ local placeViewport: ViewportFrame
 local placeAuto: TextButton
 local placeKey: string? = nil
 local lastPromptRefresh = 0
+local backpackShown: boolean? = nil -- barre d'outils Roblox affichée (dernier état demandé)
 local glows: { [Instance]: Highlight } = {} -- présentoirs libres en surbrillance pendant qu'on tient un mannequin
 
 -- Cette méthode permet de relire le dernier mannequin gagné encore à poser (« id:taille », il est dans le stock)
 -- lorsque l'attribut PendingDummy change ; nil s'il n'y en a pas ou qu'il est illisible.
 local function pendingEntry(): Collection.Entry?
 	return Inventory.parseKey(player:GetAttribute("PendingDummy"))
+end
+
+-- Cette méthode permet de donner le mannequin que le joueur tient (outil du Backpack équipé) lorsque les invites
+-- « Place » et le bouton AUTO se mettent à jour ; nil s'il n'en tient pas.
+local function heldEntry(): Collection.Entry?
+	local character = player.Character
+	if not character then
+		return nil
+	end
+	for _, child in character:GetChildren() do
+		if child:IsA("Tool") then
+			local entry = Inventory.parseKey(child:GetAttribute(BackpackPlan.TOOL_ATTRIBUTE))
+			if entry then
+				return entry
+			end
+		end
+	end
+	return nil
+end
+
+-- Cette méthode permet de savoir si la première pose du tutoriel reste à faire (panneau « Place your … », pose à la
+-- main du dernier gagné) lorsque le panneau et les invites se mettent à jour.
+local function firstPlacePending(): boolean
+	return Tutorial.current((player:GetAttribute("Tutorial") :: number?) or 0) == "Place"
+end
+
+-- Cette méthode permet de donner le mannequin que l'invite « Place » et AUTO poseraient lorsque l'on les met à jour :
+-- celui que le joueur tient, sinon le dernier gagné (AUTO, et invite pendant la première pose du tutoriel).
+local function toPlace(): (Collection.Entry?, boolean)
+	local held = heldEntry()
+	if held then
+		return held, true
+	end
+	return pendingEntry(), false
 end
 
 -- Cette méthode permet de trouver le sol sous le point d'atterrissage (piste, gradins) lorsque le mannequin gagné
@@ -645,16 +683,23 @@ end
 -- Cette méthode permet d'afficher le panneau « Place your … » pendant l'étape « Place » du tutoriel, ou le bouton AUTO
 -- près de sa base ensuite, lorsque le mannequin en main ou l'état du joueur changent.
 local function refreshPanel()
+	local free = canPlace()
+	-- Barre d'outils (Backpack) seulement au hub, libre : ni pendant la jauge, le vol, le tirage ou l'entraînement
+	if free ~= backpackShown then
+		backpackShown = free
+		pcall(StarterGui.SetCoreGuiEnabled, StarterGui, Enum.CoreGuiType.Backpack, free)
+	end
 	local entry = pendingEntry()
-	local ready = entry ~= nil and canPlace()
-	local firstPlace = Tutorial.current((player:GetAttribute("Tutorial") :: number?) or 0) == "Place"
+	local ready = entry ~= nil and free
+	local firstPlace = firstPlacePending()
 	local visible = ready and firstPlace
 	-- Hors tutoriel : seul le bouton AUTO compact, dans sa base ou tout près
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local slot = player:GetAttribute("Slot")
 	local near = root ~= nil and typeof(slot) == "number" and CourseLayout.isNearBase(slot, root.Position)
-	placeAuto.Visible = ready and near and not firstPlace
+	-- AUTO pose le mannequin tenu, sinon le dernier gagné
+	placeAuto.Visible = free and toPlace() ~= nil and near and not firstPlace
 	if visible and entry then
 		local key = Inventory.key(entry)
 		if key ~= placeKey then
@@ -681,8 +726,9 @@ local function refreshPrompts()
 		return
 	end
 	lastPromptRefresh = os.clock()
-	local entry = pendingEntry()
-	local open = entry ~= nil and canPlace()
+	-- Hors tutoriel, l'invite pose le mannequin tenu ; pendant la première pose, aussi le dernier gagné (panneau)
+	local entry, held = toPlace()
+	local open = entry ~= nil and canPlace() and (held or firstPlacePending())
 	local name = if entry then Collection.label(entry) else ""
 	for _, prompt in myPrompts() do
 		local display = prompt.Parent :: Instance

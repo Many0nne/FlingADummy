@@ -43,6 +43,11 @@ Assets.ICONS = {
 	music = 120854274168520,
 } :: { [string]: number }
 
+-- Icônes des mannequins dans la barre d'outils (Backpack, #54), une par rareté (indice de Shared.Rarity) : buste du
+-- mannequin à la couleur de la rareté (assets/icons/export/rarity<N>.png). 0 = pas encore publiée : la barre affiche
+-- le nom du mannequin
+Assets.RARITY_ICONS = { 0, 0, 0, 0, 0, 0, 0 } :: { number }
+
 -- Cette méthode permet de donner l'URI d'un asset publié lorsque l'on le charge ; nil s'il n'est pas publié.
 function Assets.uri(id: number?): string?
 	if not id or id == 0 then

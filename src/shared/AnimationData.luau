@@ -135,6 +135,49 @@ AnimationData.TRAIN = {
 	},
 } :: Clip
 
+-- Mannequin de collection porté (outil du Backpack, #54) : tenu debout devant la poitrine, les deux mains sur ses
+-- flancs, avant-bras pliés devant ; buste un peu en arrière pour le poids, respiration lente. Haut du corps seulement :
+-- les jambes gardent la marche et le saut.
+AnimationData.CARRY_SCALE = 0.42 -- échelle du mannequin porté, taille normale (× échelle de sa taille)
+AnimationData.CARRY_LIFT = 0.2 -- hauteur du centre du torse au-dessus du milieu des mains, par unité d'échelle
+AnimationData.CARRY_GRIP = 0.25 -- les mains prennent le mannequin de flanc, à tant de studs de son dos
+local DUMMY_HALF_DEPTH = 0.55 -- demi-épaisseur du torse du mannequin, échelle 1 (Shared.DummyShape)
+local DUMMY_FEET = 3.82 -- du centre du torse au bas des pieds, échelle 1
+
+local CARRY_A = {
+	UpperTorso = { 5, 0, 0 },
+	Head = { -4, 0, 0 },
+	RightUpperArm = { 30, 0, -50 },
+	RightLowerArm = { 80, 0, 0 },
+	RightHand = { 0, 0, 0 },
+	LeftUpperArm = { 30, 0, 50 },
+	LeftLowerArm = { 80, 0, 0 },
+	LeftHand = { 0, 0, 0 },
+}
+local CARRY_B = {
+	UpperTorso = { 7, 0, 0 },
+	Head = { -3, 0, 0 },
+	RightUpperArm = { 27, 0, -50 },
+	RightLowerArm = { 83, 0, 0 },
+	RightHand = { 0, 0, 0 },
+	LeftUpperArm = { 27, 0, 50 },
+	LeftLowerArm = { 83, 0, 0 },
+	LeftHand = { 0, 0, 0 },
+}
+
+AnimationData.CARRY = {
+	name = "Carry",
+	length = 2,
+	loop = true,
+	priority = "Action",
+	markers = {},
+	keyframes = {
+		{ t = 0, ease = "CubicV2", dir = "InOut", poses = CARRY_A },
+		{ t = 1, ease = "CubicV2", dir = "InOut", poses = CARRY_B },
+		{ t = 2, ease = "CubicV2", dir = "InOut", poses = CARRY_A },
+	},
+} :: Clip
+
 -- Lancer : depuis la pose tenue, élan (jambe avant levée, buste tourné et cambré, bras droit armé derrière la tête),
 -- puis fouetté (bassin et buste pivotent, bras droit projette vers l'avant et le haut), lâcher au marqueur Release,
 -- accompagnement (bras qui retombe en travers), retour.
@@ -288,7 +331,26 @@ AnimationData.THROW = {
 	},
 } :: Clip
 
-AnimationData.CLIPS = { AnimationData.HOLD, AnimationData.TRAIN, AnimationData.THROW }
+AnimationData.CLIPS = { AnimationData.HOLD, AnimationData.TRAIN, AnimationData.THROW, AnimationData.CARRY }
+
+-- Cette méthode permet de calculer où poser le mannequin porté (debout, tourné comme le personnage, centre du torse
+-- un peu au-dessus du milieu des mains, dos contre les mains) lorsque le personnage le porte ; `ground` (hauteur du sol
+-- sous le personnage) relève les grands mannequins pour que leurs pieds ne s'y enfoncent pas.
+function AnimationData.carryFrame(hands: Vector3, forward: Vector3, scale: number, ground: number?): CFrame
+	local flat = Vector3.new(forward.X, 0, forward.Z)
+	flat = if flat.Magnitude > 0.05 then flat.Unit else Vector3.new(0, 0, -1)
+	local center = hands
+		+ Vector3.new(0, AnimationData.CARRY_LIFT * scale, 0)
+		+ flat * (DUMMY_HALF_DEPTH * scale - AnimationData.CARRY_GRIP)
+	if ground then
+		local lowest = ground + DUMMY_FEET * scale + 0.1
+		if center.Y < lowest then
+			center = Vector3.new(center.X, lowest, center.Z)
+		end
+	end
+	local up = Vector3.new(0, 1, 0)
+	return CFrame.fromMatrix(center, flat:Cross(up), up) -- face avant (-Z) vers `flat`
+end
 
 -- Cette méthode permet de construire la CFrame d'une pose (rotation en degrés, décalage en studs) lorsque l'on
 -- génère une KeyframeSequence.

@@ -1,7 +1,8 @@
 -- Base du joueur : mannequins de collection gagnés au lancer (tirage « 1 en N », Shared.Collection), gardés en stock
 -- (Shared.Inventory) et posés sur les présentoirs de sa base, qui versent leur revenu chaque seconde : seule source
--- d'argent du jeu. Le dernier gagné est proposé à la pose (attribut `PendingDummy`, invite « Place » ou bouton AUTO) ;
--- un nouveau lancer l'ajoute simplement au stock, rien ne se perd. Fenêtres de collection (remote Inventory) : poser,
+-- d'argent du jeu. Chaque mannequin du stock est un outil du Backpack (Server.DummyTools) : équipé près d'un
+-- présentoir libre, il se pose par l'invite « Place » ou le bouton AUTO ; sans mannequin équipé, ils posent le dernier
+-- gagné (attribut `PendingDummy`, première pose du tutoriel). Un nouveau lancer l'ajoute au stock, rien ne se perd. Fenêtres de collection (remote Inventory) : poser,
 -- retirer, vendre, « Place best ». Pad « 6 > 7 » devant la base : achat du présentoir suivant. Le serveur publie la
 -- collection dans des attributs du joueur (Stock, BaseDummies, Displays, DummyIndex) que le client affiche. Les
 -- mannequins posés sont construits par le serveur, visibles de tous.
@@ -10,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage.Shared
+local BackpackPlan = require(Shared.BackpackPlan)
 local Collection = require(Shared.Collection)
 local CourseLayout = require(Shared.CourseLayout)
 local DummyShape = require(Shared.DummyShape)
@@ -20,6 +22,7 @@ local Rarity = require(Shared.Rarity)
 local Tutorial = require(Shared.Tutorial)
 
 local CourseBuilder = require(script.Parent.CourseBuilder)
+local DummyTools = require(script.Parent.DummyTools)
 local PlayerData = require(script.Parent.PlayerData)
 
 type Slot = CourseBuilder.Slot
@@ -200,6 +203,7 @@ local function refresh(player: Player, force: boolean?)
 	player:SetAttribute("Displays", data.displays)
 	player:SetAttribute("DummyIndex", Inventory.encodeIndex(data.index))
 	player:SetAttribute("PendingDummy", if data.last then Inventory.key(data.last) else nil)
+	DummyTools.sync(player, data.stock) -- un outil du Backpack par mannequin du stock
 end
 
 -- Cette méthode permet d'ajouter au stock (et à l'Index) un mannequin gagné, proposé ensuite à la pose, lorsque le
@@ -258,17 +262,28 @@ local function canAuto(player: Player): boolean
 		and CourseLayout.isNearBase(slot.index, root.Position - (root.AssemblyLinearVelocity * 0.3))
 end
 
--- Cette méthode permet de poser le dernier mannequin gagné lorsque le joueur choisit un présentoir libre (`display`,
--- ce qui compte pour le tutoriel) ou clique sur AUTO près de sa base (`display` nil : Inventory.autoTarget ; base
--- pleine et rien de moins rentable, il reste au stock et le panneau se ferme) ; `force` (serveur) passe outre ces
--- conditions. Renvoie true si quelque chose a changé.
+-- Cette méthode permet de poser le mannequin que le joueur tient (outil équipé), sinon le dernier gagné, lorsque le
+-- joueur choisit un présentoir libre (`display`, ce qui compte pour le tutoriel) ou clique sur AUTO près de sa base
+-- (`display` nil : Inventory.autoTarget ; base pleine et rien de moins rentable, il reste au stock) ; `force`
+-- (serveur) passe outre ces conditions. Le mannequin posé quitte la main et le Backpack. Renvoie true si quelque chose
+-- a changé.
 function BaseService.place(player: Player, display: any, force: boolean?): boolean
 	local data = PlayerData.collection(player)
-	local last = data and data.last
-	if not data or not last or not player:GetAttribute("DataReady") then
+	if not data or not player:GetAttribute("DataReady") then
 		return false
 	end
-	local position = Inventory.findStock(data, Inventory.key(last))
+	local held, heldKey = DummyTools.equipped(player)
+	local key = if heldKey and Inventory.findStock(data, heldKey)
+		then heldKey
+		elseif data.last then Inventory.key(data.last)
+		else nil
+	if not key then
+		return false
+	end
+	if key ~= heldKey then
+		held = nil -- le mannequin posé n'est pas celui que le joueur tient : il le garde en main
+	end
+	local position = Inventory.findStock(data, key)
 	if not position then
 		data.last = nil
 		refresh(player)
@@ -278,13 +293,27 @@ function BaseService.place(player: Player, display: any, force: boolean?): boole
 		if not force and not canAuto(player) then
 			return false
 		end
-		Inventory.place(data, position, nil)
+		if not Inventory.place(data, position, nil) then
+			-- Base pleine et rien de moins rentable : il reste au stock ; tenu, il reste en main, sinon AUTO se ferme
+			if held then
+				return false
+			end
+			data.last = nil
+			refresh(player)
+			return true
+		end
 	elseif not Inventory.place(data, position, display) then
 		return false -- présentoir occupé, pas acheté ou invalide : la pose à la main ne remplace rien
 	else
 		PlayerData.tutorialStep(player, "Place") -- seule une pose à la main compte (première pose du tutoriel)
 	end
-	data.last = nil
+	if data.last and Inventory.key(data.last) == key then
+		data.last = nil
+	end
+	-- L'outil tenu part avec le mannequin posé (la synchronisation retirerait sinon un doublon rangé)
+	if held then
+		held:Destroy()
+	end
 	refresh(player)
 	return true
 end
@@ -373,6 +402,10 @@ local function track(player: Player)
 	end
 	slotOf[player] = slot
 	player:SetAttribute("Income", 0)
+	DummyTools.track(player, function()
+		local data = PlayerData.collection(player)
+		return if data and player:GetAttribute("DataReady") then data.stock else nil
+	end)
 	if RunService:IsStudio() then
 		-- Mesures du démarrage (cibles #13) : premier mannequin gagné < 25 s, premier équipement < 1 min
 		local joined = os.clock()
@@ -427,7 +460,8 @@ end
 
 -- Cette méthode permet de brancher en Studio les attributs de test (MCP) lorsque le joueur arrive : DebugPlace = n
 -- pose le dernier gagné sur le présentoir n (comme l'invite), toute autre valeur avec AUTO sans condition ;
--- DebugGive = « id:taille » ajoute ce mannequin comme s'il venait d'être gagné ; DebugInventory = « Action » ou
+-- DebugGive = « id:taille » ajoute ce mannequin comme s'il venait d'être gagné ; DebugEquip = « id:taille » équipe
+-- son outil du Backpack (« » déséquipe) ; DebugInventory = « Action » ou
 -- « Action|argument » (actions de BaseService.act).
 local function bindDebug(player: Player)
 	player:GetAttributeChangedSignal("DebugPlace"):Connect(function()
@@ -443,6 +477,29 @@ local function bindDebug(player: Player)
 		player:SetAttribute("DebugGive", nil)
 		if entry and data and player:GetAttribute("DataReady") then
 			receive(player, data, entry)
+		end
+	end)
+	player:GetAttributeChangedSignal("DebugEquip"):Connect(function()
+		local key = player:GetAttribute("DebugEquip")
+		if key == nil then
+			return
+		end
+		player:SetAttribute("DebugEquip", nil)
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		local backpack = player:FindFirstChildOfClass("Backpack")
+		if not humanoid or not backpack then
+			return
+		end
+		if key == "" then
+			humanoid:UnequipTools()
+			return
+		end
+		for _, tool in backpack:GetChildren() do
+			if tool:IsA("Tool") and tool:GetAttribute(BackpackPlan.TOOL_ATTRIBUTE) == key then
+				humanoid:EquipTool(tool)
+				return
+			end
 		end
 	end)
 	player:GetAttributeChangedSignal("DebugInventory"):Connect(function()
@@ -484,6 +541,7 @@ function BaseService.init(builtSlots: { Slot }, placeRemote: RemoteEvent, invent
 	Players.PlayerRemoving:Connect(function(player)
 		local slot = slotOf[player]
 		slotOf[player] = nil
+		DummyTools.forget(player)
 		if slot then
 			render(slot, nil)
 		end
