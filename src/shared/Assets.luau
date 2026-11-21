@@ -209,8 +209,8 @@ Assets.ICONS = {
 } :: { [string]: number }
 
 -- Icônes des mannequins dans la barre d'outils (Backpack, #54), une par rareté (indice de Shared.Rarity) : buste du
--- mannequin à la couleur de la rareté (assets/icons/export/rarity<N>.png). 0 = pas encore publiée : la barre affiche
--- le nom du mannequin
+-- mannequin à la couleur de la rareté (assets/icons/export/rarity<N>.png, 1 à 11). 0 = pas encore publiée : la barre
+-- affiche le nom du mannequin
 Assets.RARITY_ICONS = {
 	121103961543132,
 	136941604812875,
@@ -219,6 +219,10 @@ Assets.RARITY_ICONS = {
 	84656443866104,
 	92332277678523,
 	90361378631041,
+	99381986878911,
+	102759953883809,
+	74237753302550,
+	72391142061301,
 } :: { number }
 
 -- Icônes propres à chaque mannequin dans la barre d'outils (id de Shared.Collection → image) : buste tiré de son
@@ -246,6 +250,50 @@ Assets.DUMMY_ICONS = {
 	king = 120316901726030,
 	void = 120742303032790,
 	cosmic = 76033331940352,
+	-- Mannequins générés (#96 : famille × palette, aperçus de build_collection.py --generated)
+	amber_royal = 134989711375093,
+	angelic_ghost = 82022547856433,
+	angelic_hero = 137275639842644,
+	angelic_royal = 99864274687568,
+	aurora_ghost = 102442056090054,
+	aurora_royal = 108023627685531,
+	cherry_biker = 125230697808664,
+	emerald_ocean = 140655968957491,
+	frost_lava = 114216737822711,
+	frost_neon = 122416534018556,
+	golden_galaxy = 115400490160503,
+	golden_void = 73868852602866,
+	grape_mint = 86344006389097,
+	infinite_cosmic = 78863259734266,
+	infinite_king = 137377033651171,
+	infinite_neon = 123048957962420,
+	magma_cosmic = 129005895265265,
+	magma_ghost = 96260455893818,
+	nebula_galaxy = 87547858097782,
+	nebula_king = 100586652321962,
+	omega_ghost = 86395202148664,
+	omega_void = 136649792721106,
+	pink_rookie = 118687986622826,
+	plasma_neon = 74369176861707,
+	plasma_void = 70550198164312,
+	prism_diamond = 77832677703014,
+	prism_ice = 126958267038284,
+	quantum_cosmic = 79603371702769,
+	radiant_diamond = 99319609522475,
+	radiant_galaxy = 133218521640647,
+	radiant_king = 103940228457867,
+	ruby_diamond = 104239826878498,
+	ruby_hero = 114110871277517,
+	ruby_toxic = 130548470647670,
+	sapphire_pilot = 102720344606820,
+	shadow_gold = 115046563489253,
+	shadow_ice = 87873141669641,
+	shadow_king = 80790777683188,
+	solar_galaxy = 78684761615528,
+	starlight_cosmic = 113060208131912,
+	starlight_hero = 107615529807106,
+	starlight_void = 105598141000128,
+	tangerine_nerd = 104835345728817,
 } :: { [string]: number }
 
 -- Cette méthode permet de donner l'URI d'un asset publié lorsque l'on le charge ; nil s'il n'est pas publié.

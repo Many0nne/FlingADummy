@@ -175,6 +175,9 @@ local function buildStanding(entry: Collection.Entry, ground: Vector3, silhouett
 			if part:IsA("BasePart") then
 				part.Color = BLACK
 				part.Material = Enum.Material.SmoothPlastic
+				if part.Transparency < 1 then
+					part.Transparency = 0 -- vitres et champs de force translucides (DummyShape.addonFinish) : forme pleine
+				end
 			elseif part:IsA("SurfaceAppearance") or part:IsA("SurfaceGui") then
 				part:Destroy()
 			end

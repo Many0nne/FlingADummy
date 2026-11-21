@@ -111,7 +111,8 @@ return function(T, Loader)
 				accessories = { "biker_Visor" },
 				accessoryMaterial = roblox.Enum.Material.Neon,
 			})
-			T.expectEqual(visor.biker_Visor.Material, roblox.Enum.Material.Glass, "une vitre reste en verre")
+			T.expectEqual(visor.biker_Visor.Material, roblox.Enum.Material.SmoothPlastic, "une vitre garde sa matière")
+			T.expect(visor.biker_Visor.Transparency >= DummyShape.SEE_THROUGH.Glass.min, "vitre translucide")
 		end)
 		T.it("clone les MeshPart à la taille du gabarit et à l'échelle", function()
 			local model = DummyShape.buildVisual(0.5)
@@ -154,11 +155,52 @@ return function(T, Loader)
 				T.expectNear((helmet.CFrame.Position - expected).Magnitude, 0, 1e-5, "position du casque")
 				T.expectNear((helmet.Size - def.size).Magnitude, 0, 1e-5, "taille du casque")
 				local visor = model:FindFirstChild("biker_Visor")
-				T.expectEqual(visor.Material, roblox.Enum.Material.Glass)
+				T.expectEqual(visor.Material, roblox.Enum.Material.SmoothPlastic, "verre rendu en plastique (#89)")
 				T.expect(visor.Transparency > 0, "visière transparente")
 				T.expect(helmet:FindFirstChildOfClass("WeldConstraint") ~= nil, "soudure fixe")
 			end
 		)
+		T.it("tourne d'un demi-tour les maillages de la tête et des pièces ajoutées, pas le torse (#89)", function()
+			local model = DummyShape.buildVisual(1, { accessories = { "ocean_Portholes", "hero_Cape" } })
+			T.expectNear(model.Torso.CFrame.LookVector.Z, -1, 1e-5, "torse : pivot du modèle inchangé")
+			T.expectNear(model.Head.CFrame.LookVector.Z, 1, 1e-5, "tête retournée")
+			T.expectNear(model.LeftUpperArm.CFrame.LookVector.Z, 1, 1e-5, "membre retourné")
+			for _, name in { "ocean_Portholes", "hero_Cape" } do
+				local def = DummyShape.ACCESSORIES[name]
+				local part = model[name]
+				T.expectNear(part.CFrame.LookVector.Z, 1, 1e-5, name .. " retourné")
+				local carrier = model[def.piece]
+				local expected = DummyShape.designFrame(carrier).Position + def.offset
+				T.expectNear(
+					(part.CFrame.Position - expected).Magnitude,
+					0,
+					1e-5,
+					name .. " : boîte au décalage du gabarit"
+				)
+			end
+			-- Décalage du hublot vers l'avant (-Z) gardé malgré le demi-tour de la tête
+			T.expect(model.ocean_Portholes.CFrame.Position.Z < model.Head.CFrame.Position.Z, "hublots devant la tête")
+		end)
+		T.it("pose effets et blocs au décalage du gabarit sur une pièce retournée", function()
+			local effect = {
+				kind = "particles",
+				preset = "sparkle",
+				piece = "Head",
+				offset = Vector3.new(0.5, 1, -0.8),
+				color = Color3.new(1, 1, 1),
+			}
+			local block =
+				{ piece = "Head", size = Vector3.one, offset = Vector3.new(0, 0, -1), color = Color3.new(1, 0, 0) }
+			local model = DummyShape.buildVisual(1, { effects = { effect }, blocks = { block } })
+			local world = model.Head.CFrame * model.Head.Fx1.Position
+			T.expectNear((world - (model.Head.CFrame.Position + effect.offset)).Magnitude, 0, 1e-5, "effet")
+			T.expectNear(
+				(model.Block.CFrame.Position - (model.Head.CFrame.Position + block.offset)).Magnitude,
+				0,
+				1e-5,
+				"bloc"
+			)
+		end)
 		T.it("impose la couleur de la silhouette aux pièces ajoutées", function()
 			local black = Color3.new(0, 0, 0)
 			local model = DummyShape.buildVisual(1, { accessories = { "rookie_Helmet" }, accessoryColor = black })
@@ -175,6 +217,11 @@ return function(T, Loader)
 			local base = ring:GetAttribute("FxBase")
 			T.expectNear((base.Position - DummyShape.ACCESSORIES.gold_CoinRing.offset * 2).Magnitude, 0, 1e-5)
 			T.expectNear(ring:GetAttribute("FxSpin").Magnitude, DummyShape.ACCESSORIES.gold_CoinRing.spin.speed, 1e-4)
+			-- Pièce retournée (MESH_FLIP) : l'axe Z du gabarit devient -Z dans son repère, sens de rotation gardé
+			local disc = DummyShape.buildVisual(1, { accessories = { "void_AccretionHot" } }).void_AccretionHot
+			local def = DummyShape.ACCESSORIES.void_AccretionHot
+			local world = disc.CFrame:VectorToWorldSpace(disc:GetAttribute("FxSpin"))
+			T.expectNear((world - def.spin.axis.Unit * def.spin.speed).Magnitude, 0, 1e-3, "axe de rotation du gabarit")
 		end)
 		T.it("flotte d'une amplitude à l'échelle de construction", function()
 			local def = DummyShape.ACCESSORIES.ghost_LanternFlame
@@ -279,11 +326,16 @@ return function(T, Loader)
 			end
 		end)
 		T.it(
-			"a une icône publiée pour chaque mannequin dessiné (barre d'outils ; les générés : celle de leur rareté)",
+			"a une icône publiée pour chaque mannequin, dessiné ou généré, et pour chaque rareté (barre d'outils)",
 			function()
-				for _, dummy in Collection.DRAWN do
+				for _, dummy in Collection.DUMMIES do
 					local id = Assets.DUMMY_ICONS[dummy.id]
 					T.expect(type(id) == "number" and id > 0, dummy.id .. " a son icône")
+				end
+				local Rarity = Loader.new():require("src/shared/Rarity")
+				T.expectEqual(#Assets.RARITY_ICONS, #Rarity.LIST)
+				for rarity, id in Assets.RARITY_ICONS do
+					T.expect(type(id) == "number" and id > 0, "rareté " .. rarity .. " a son icône")
 				end
 			end
 		)
@@ -348,6 +400,127 @@ return function(T, Loader)
 				end
 			end
 			T.expectEqual(beams, 1)
+		end)
+	end)
+
+	T.describe("Pièces visibles en jeu (#89)", function()
+		local DummyShape = load(templates)
+		local Collection = Loader.new():require("src/shared/Collection")
+		local ThrowDummies = Loader.new():require("src/shared/ThrowDummies")
+		local Models = Loader.new():require("src/shared/DummyModels")
+		local Material = roblox.Enum.Material
+
+		-- Cette méthode permet de donner les modèles à vérifier (mannequins de collection dessinés et générés, tenus et
+		-- posés, mannequins à lancer) lorsqu'un garde-fou les parcourt tous.
+		local function allModels(): { { name: string, model: any } }
+			local list = {}
+			for _, dummy in Collection.DUMMIES do
+				for _, carried in { false, true } do
+					local variant = Collection.variant({ id = dummy.id, size = 1 }, carried)
+					table.insert(list, { name = dummy.id, model = DummyShape.buildVisual(1, variant :: any) })
+				end
+			end
+			for index, dummy in ThrowDummies.LIST do
+				local variant = ThrowDummies.variant(index)
+				table.insert(list, { name = "lancer " .. dummy.id, model = DummyShape.buildVisual(1, variant :: any) })
+			end
+			return list
+		end
+
+		T.it(
+			"aucune pièce ajoutée en verre ni en champ de force, transparence bornée (dessinés, générés, à lancer)",
+			function()
+				local checked = 0
+				for _, item in allModels() do
+					for _, part in item.model:GetChildren() do
+						if part:IsA("BasePart") and part.Transparency < 1 then
+							checked += 1
+							local where = item.name .. " " .. part.Name
+							T.expect(
+								part.Transparency <= DummyShape.MAX_TRANSPARENCY,
+								where .. " : transparence " .. part.Transparency
+							)
+							if part:GetAttribute("Accessory") then
+								T.expect(
+									DummyShape.SEE_THROUGH[part.Material.Name] == nil,
+									where .. " : " .. part.Material.Name
+								)
+							end
+						end
+					end
+				end
+				T.expect(checked > 1000, "pièces vérifiées : " .. checked)
+			end
+		)
+
+		T.it("rend le hublot du scaphandre et le casque spatial translucides mais visibles", function()
+			for _, id in { "ocean", "emerald_ocean", "galaxy", "golden_galaxy" } do
+				local model = DummyShape.buildVisual(1, Collection.variant({ id = id, size = 1 }) :: any)
+				for _, part in model:GetChildren() do
+					if string.find(part.Name, "Portholes") or string.find(part.Name, "SpaceHelmet") then
+						T.expectEqual(part.Material, Material.SmoothPlastic, id .. " " .. part.Name)
+						T.expect(part.Transparency >= 0.25 and part.Transparency <= 0.5, id .. " " .. part.Name)
+					end
+				end
+			end
+		end)
+
+		T.it("donne au champ de force un plastique translucide (fantôme : queue, cape)", function()
+			local material, transparency = DummyShape.addonFinish(Models.ADDONS.ghost_GhostTail, nil)
+			T.expectEqual(material, Material.SmoothPlastic)
+			T.expectEqual(transparency, DummyShape.SEE_THROUGH.ForceField.min)
+			local neon, glow =
+				DummyShape.addonFinish(Models.ADDONS.galaxy_PlanetRing, { accessoryMaterial = Material.Foil })
+			T.expectEqual(neon, Material.Neon, "un anneau translucide garde son néon sous une palette")
+			T.expectEqual(glow, Models.ADDONS.galaxy_PlanetRing.transparency)
+		end)
+
+		T.it("ne laisse aucune pièce ajoutée enfermée dans sa pièce porteuse (cachée sur le modèle)", function()
+			local boxes = {}
+			for _, piece in DummyShape.PIECES do
+				boxes[piece.name] = piece.size
+			end
+			for name, def in Models.ADDONS do
+				local half, carrier = def.size / 2, boxes[def.piece] / 2
+				local lo, hi = def.offset - half, def.offset + half
+				local outside = lo.X < -carrier.X
+					or lo.Y < -carrier.Y
+					or lo.Z < -carrier.Z
+					or hi.X > carrier.X
+					or hi.Y > carrier.Y
+					or hi.Z > carrier.Z
+				T.expect(outside, name .. " dépasse de " .. def.piece)
+			end
+			for _, dummy in ThrowDummies.LIST do
+				for i, block in dummy.blocks or {} do
+					local half, carrier = block.size / 2, boxes[block.piece] / 2
+					local lo, hi = block.offset - half, block.offset + half
+					T.expect(
+						lo.Z < -carrier.Z
+							or hi.Z > carrier.Z
+							or lo.X < -carrier.X
+							or hi.X > carrier.X
+							or lo.Y < -carrier.Y
+							or hi.Y > carrier.Y,
+						dummy.id .. " bloc " .. i
+					)
+				end
+			end
+		end)
+
+		T.it("remplace en fenêtre (ViewportFrame) le verre et le champ de force du corps par du néon", function()
+			for _, id in { "diamond", "ghost", "radiant_diamond", "magma_ghost" } do
+				local model = DummyShape.buildVisual(1, Collection.variant({ id = id, size = 1 }) :: any)
+				DummyShape.viewportSafe(model)
+				for _, part in model:GetDescendants() do
+					if part:IsA("BasePart") then
+						T.expect(DummyShape.SEE_THROUGH[part.Material.Name] == nil, id .. " " .. part.Name)
+					end
+				end
+			end
+			local glass = DummyShape.buildVisual(1, ThrowDummies.variant(3) :: any)
+			DummyShape.viewportSafe(glass)
+			T.expectEqual(glass.Torso.Material, Material.Neon)
 		end)
 	end)
 
