@@ -1,7 +1,7 @@
--- Données du joueur : argent, Throw Power, équipement, niveaux, record et muet musique, portés par des attributs du
--- Player (répliqués au client), recopiés dans les leaderstats ; collection (stock, présentoirs de la base et
--- présentoirs achetés, Index : Shared.Inventory) gardée côté serveur. Le tout est sauvegardé en DataStore (migration
--- des sauvegardes de #13 par Inventory.read).
+-- Données du joueur : argent, Throw Power, équipement, niveaux, record, muet musique et renaissances, portés par des
+-- attributs du Player (répliqués au client), recopiés dans les leaderstats ; collection (stock, présentoirs de la base
+-- et présentoirs achetés, Index : Shared.Inventory) gardée côté serveur. Le tout est sauvegardé en DataStore (migration
+-- des sauvegardes de #13 par Inventory.read). Renaissance (Shared.Rebirth) et remise à zéro de Studio (DebugWipe).
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,6 +10,7 @@ local Workspace = game:GetService("Workspace")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local Inventory = require(ReplicatedStorage.Shared.Inventory)
+local Rebirth = require(ReplicatedStorage.Shared.Rebirth)
 local ThrowDummies = require(ReplicatedStorage.Shared.ThrowDummies)
 local Training = require(ReplicatedStorage.Shared.Training)
 local Tutorial = require(ReplicatedStorage.Shared.Tutorial)
@@ -28,6 +29,7 @@ local DEFAULTS = {
 	MusicOff = false, -- musique de fond coupée (bouton du HUD, Client.Music)
 	ThrowTier = 1, -- mannequins à lancer possédés : les ThrowTier premiers du catalogue (Shared.ThrowDummies)
 	ThrowEquipped = 1, -- mannequin à lancer équipé (tenu et lancé)
+	Rebirths = 0, -- renaissances faites (Shared.Rebirth : CHANCE × 2 chacune)
 }
 
 -- Collection d'un joueur : stock, présentoirs, Index (Shared.Inventory)
@@ -41,6 +43,7 @@ local collections: { [Player]: CollectionData } = {}
 local musicChangedAt: { [Player]: number } = {}
 local musicWanted: { [Player]: boolean } = {} -- dernier choix reçu, appliqué à la fin du délai
 local musicScheduled: { [Player]: boolean } = {}
+local resetListeners: { (Player) -> () } = {} -- prévenus quand la collection d'un joueur est remplacée (DebugWipe)
 local MUSIC_COOLDOWN = 0.25 -- s entre deux changements du muet musique (attribut répliqué à tout le serveur)
 
 -- Cette méthode permet de construire la clé DataStore d'un joueur lorsque l'on lit ou écrit ses données.
@@ -94,6 +97,8 @@ local function load(player: Player)
 				local owned, equipped = ThrowDummies.sanitize(data.ThrowTier, data.ThrowEquipped)
 				player:SetAttribute("ThrowTier", owned)
 				player:SetAttribute("ThrowEquipped", equipped)
+				-- Renaissances : entier borné (sauvegarde antérieure à #108 : 0)
+				player:SetAttribute("Rebirths", Rebirth.read(data.Rebirths))
 				-- Sauvegarde antérieure au tutoriel : étapes déduites de la progression
 				if type(data.Tutorial) ~= "number" then
 					player:SetAttribute("Tutorial", Tutorial.infer(data))
@@ -239,6 +244,58 @@ function PlayerData.setMusicOff(player: Player, off: any)
 		musicScheduled[player] = true
 		task.delay(delay, apply)
 	end
+end
+
+-- Cette méthode permet de faire renaître le joueur lorsque le client le demande (fenêtre REBIRTH) : le serveur
+-- valide le chargement, l'état (au hub, ni en vol ni jauge ouverte) et la condition (Shared.Rebirth.missing), puis
+-- remet la progression à zéro et compte la renaissance. Renvoie le nouveau nombre de renaissances, nil si refusée.
+function PlayerData.rebirth(player: Player): number?
+	if player:GetAttribute("DataReady") ~= true then
+		return nil
+	end
+	local state = player:GetAttribute("LaneState")
+	if (state ~= nil and state ~= "Ready") or player:GetAttribute("Action") == "Holding" then
+		return nil
+	end
+	local result = Rebirth.apply({
+		gearTier = (player:GetAttribute("GearTier") :: number?) or 1,
+		money = (player:GetAttribute("Money") :: number?) or 0,
+		rebirths = Rebirth.read(player:GetAttribute("Rebirths")),
+	})
+	if not result then
+		return nil
+	end
+	-- Compteur en dernier : l'interface qui le suit lit des valeurs déjà remises à zéro
+	for key, value in result do
+		if key ~= "Rebirths" then
+			player:SetAttribute(key, value)
+		end
+	end
+	player:SetAttribute("Rebirths", result.Rebirths)
+	return result.Rebirths
+end
+
+-- Cette méthode permet d'être prévenu quand la collection d'un joueur est remplacée (DebugWipe) lorsque un service
+-- (la base) doit se reconstruire.
+function PlayerData.onReset(listener: (Player) -> ())
+	table.insert(resetListeners, listener)
+end
+
+-- Cette méthode permet de remettre toute la sauvegarde d'un joueur à l'état d'un nouveau joueur (renaissances,
+-- collection, tutoriel et records compris) lorsque l'on teste dans Studio (attribut DebugWipe, #95) ; la sauvegarde
+-- vide est écrite à son départ comme d'habitude.
+function PlayerData.wipe(player: Player)
+	if player:GetAttribute("DataReady") ~= true then
+		return
+	end
+	for key, value in DEFAULTS do
+		player:SetAttribute(key, value)
+	end
+	collections[player] = Inventory.new()
+	for _, listener in resetListeners do
+		listener(player)
+	end
+	print("[PlayerData] DebugWipe : " .. player.Name .. " repart comme un nouveau joueur")
 end
 
 -- Cette méthode permet d'ajouter de la Throw Power lorsque l'avatar franchit un niveau d'entraînement.

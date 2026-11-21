@@ -12,6 +12,7 @@ export type Stats = {
 	bones: number,
 	smashed: number,
 	luck: number?, -- multiplicateur du mannequin lancé (Shared.ThrowDummies), 1 par défaut
+	rebirth: number?, -- multiplicateur des renaissances du lanceur (Shared.Rebirth.luck), 1 par défaut
 }
 
 export type Chance = {
@@ -21,6 +22,7 @@ export type Chance = {
 	bonesBonus: number, -- part ajoutée par les os cassés (0,03 = + 3 %)
 	smashBonus: number, -- part ajoutée par les objets détruits
 	luck: number, -- multiplicateur du mannequin lancé
+	rebirth: number, -- multiplicateur des renaissances
 	total: number, -- chance finale, arrondie au centième
 }
 
@@ -51,13 +53,14 @@ end
 
 -- Cette méthode permet de calculer la CHANCE d'un lancer (et son détail pour l'écran de résultat) lorsque le
 -- mannequin vole ou s'est arrêté : chance des zones × (1 + bonus des os + bonus de la casse) × multiplicateur du
--- mannequin lancé.
+-- mannequin lancé × multiplicateur des renaissances.
 function Economy.chance(stats: Stats): Chance
 	local distance = math.max(0, math.floor(stats.distance))
 	local zoneChance = Economy.zoneChance(stats.distance)
 	local bonesBonus = math.max(0, stats.bones) * GameConfig.CHANCE_PER_BONE
 	local smashBonus = math.max(0, stats.smashed) * GameConfig.CHANCE_PER_SMASH
 	local luck = math.max(1, stats.luck or 1)
+	local rebirth = math.max(1, stats.rebirth or 1)
 	return {
 		distance = distance,
 		zone = Zones.indexAt(distance),
@@ -65,7 +68,8 @@ function Economy.chance(stats: Stats): Chance
 		bonesBonus = bonesBonus,
 		smashBonus = smashBonus,
 		luck = luck,
-		total = Economy.round(zoneChance * (1 + bonesBonus + smashBonus) * luck),
+		rebirth = rebirth,
+		total = Economy.round(zoneChance * (1 + bonesBonus + smashBonus) * luck * rebirth),
 	}
 end
 

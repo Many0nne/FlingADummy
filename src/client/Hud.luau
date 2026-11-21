@@ -1,10 +1,11 @@
--- HUD permanent au style des jeux de référence : boutons à icône (Index et Shop à gauche, Dummies à droite, pastille
--- « ! »), compteurs icône + valeur en bas à gauche (Throw Power, argent et revenu « +$N/s »), fenêtres à bandeau et
+-- HUD permanent au style des jeux de référence : boutons à icône (Index, Shop et Rebirth à gauche, Dummies à droite,
+-- pastille « ! »), compteurs icône + valeur en bas à gauche (Throw Power, argent et revenu « +$N/s »), fenêtres à bandeau et
 -- cartes d'objets (équipements d'entraînement ; collection, vente et Index : Client.CollectionWindows), barre
 -- d'entraînement avec STOP, « +N EXP » qui
 -- s'envole à chaque répétition, popups LEVEL UP! (Throw Power gagnée au niveau) / NEW EQUIPMENT!, popup « NEW GEAR! »
 -- qui propose l'équipement suivant dès qu'il est abordable (achat en un clic) et popup « NEW DUMMY! » qui annonce le
--- mannequin à lancer suivant abordable (bouton SHOP vers la boutique, Client.ThrowShop).
+-- mannequin à lancer suivant abordable (bouton SHOP vers la boutique, Client.ThrowShop). Fenêtre REBIRTH :
+-- Client.RebirthWindow.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
@@ -22,6 +23,7 @@ local UIMotion = require(Shared:WaitForChild("UIMotion"))
 local Overlay = require(Shared:WaitForChild("Overlay"))
 
 local CollectionWindows = require(script.Parent.CollectionWindows)
+local RebirthWindow = require(script.Parent.RebirthWindow)
 local ThrowShop = require(script.Parent.ThrowShop)
 local UIKit = require(script.Parent.UIKit)
 
@@ -136,6 +138,7 @@ local function toggle(name: string)
 		elseif name == "DummyShop" then
 			ThrowShop.scrollToNext()
 		end
+		RebirthWindow.refresh()
 	end
 	Hud.refresh()
 	CollectionWindows.refresh() -- les fenêtres de collection ne suivent que leurs attributs : rafraîchies à l'ouverture
@@ -206,15 +209,16 @@ local function buildCounters()
 	moneyLabel = counter(row, 2, "Money", "cash", C.white, C.yellow, Format.money)
 end
 
--- Cette méthode permet de construire les boutons à icône (Index et Shop à gauche avec reflet sur Shop, Dummies à
--- droite avec reflet) lorsque le HUD est construit ; ancrés au centre, ils grossissent sur place au survol.
+-- Cette méthode permet de construire les boutons à icône (Index, Shop et Rebirth à gauche avec reflet sur Shop,
+-- Dummies à droite avec reflet) lorsque le HUD est construit ; ancrés au centre, ils grossissent sur place au survol.
+-- Rebirth n'apparaît qu'après le premier lancer (Hud.refresh), comme le bouton Renaissance de la référence 12.
 local function buildButtons()
 	local gap = 22
 	local left = UIKit.create("Frame", {
 		Name = "Buttons",
 		AnchorPoint = Vector2.new(0, 0.5),
 		Position = UDim2.new(0, 14, 0.5, 0),
-		Size = UDim2.fromOffset(BUTTON_SIZE, BUTTON_SIZE * 2 + gap),
+		Size = UDim2.fromOffset(BUTTON_SIZE, BUTTON_SIZE * 3 + gap * 2),
 		BackgroundTransparency = 1,
 		Parent = root,
 	})
@@ -232,6 +236,14 @@ local function buildButtons()
 		Parent = left,
 	}, function()
 		toggle("Shop")
+	end)
+	anchors.Rebirth = UIKit.iconButton("rebirth", "Rebirth", BUTTON_SIZE, {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0, BUTTON_SIZE * 2.5 + gap * 2),
+		Visible = false,
+		Parent = left,
+	}, function()
+		toggle("Rebirth")
 	end)
 	anchors.Dummies = UIKit.iconButton("dummies", "Dummies", BUTTON_SIZE, {
 		AnchorPoint = Vector2.new(1, 0.5),
@@ -633,6 +645,10 @@ function Hud.refresh()
 	end
 	refreshOffer(money, gearCost)
 	ThrowShop.refresh()
+	-- Bouton Rebirth dès le premier lancer (objectif visible tôt), pastille quand la renaissance est possible
+	anchors.Rebirth.Visible = stat("Draws", 0) > 0 or stat("Rebirths", 0) > 0
+	UIKit.setBadge(anchors.Rebirth, if RebirthWindow.isReady() then "!" else nil)
+	RebirthWindow.checkReady()
 end
 
 -- Cette méthode permet de faire s'envoler « +N EXP » (EXP de l'équipement) au-dessus de la barre d'entraînement lorsque
@@ -1018,6 +1034,16 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 		UIKit.closeWindow(windows.DummyShop)
 		Hud.refresh()
 	end)
+	-- Fenêtre REBIRTH (bouton du menu de gauche)
+	windows.Rebirth = RebirthWindow.init(player, remotes, gui, {
+		popup = Hud.popup,
+		money = function()
+			return math.max(0, stat("Money", 0) - counters.Money.pending)
+		end,
+	}, function()
+		UIKit.closeWindow(windows.Rebirth)
+		Hud.refresh()
+	end)
 	buildTrainBar(onStop)
 	-- Fenêtre fermée (fin de l'animation) : l'offre masquée pendant qu'elle était à l'écran revient
 	for _, window in windows do
@@ -1026,9 +1052,19 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 
 	lastPower = stat("ThrowPower", GameConfig.START_POWER)
 	lastMoney = stat("Money", 0)
-	for _, attribute in { "GearTier", "Income", "ThrowTier" } do
+	for _, attribute in { "GearTier", "Income", "ThrowTier", "Draws" } do
 		player:GetAttributeChangedSignal(attribute):Connect(Hud.refresh)
 	end
+	-- Renaissance (ou DebugWipe) : progression remise à zéro, les paliers suivants s'annoncent de nouveau et les offres
+	-- fermées reviennent
+	player:GetAttributeChangedSignal("Rebirths"):Connect(function()
+		if seeded then
+			knownLevel = math.min(knownLevel, stat("TrainLevel", 1))
+			knownTier = math.min(knownTier, stat("GearTier", 1))
+			dismissedOffers = { Gear = {}, Dummy = {} }
+		end
+		Hud.refresh()
+	end)
 	player:GetAttributeChangedSignal("Money"):Connect(function()
 		local money = stat("Money", 0)
 		-- Le revenu de la base tombe tout seul chaque seconde (pas de « +N » volant) ; un achat entame les gains en vol
@@ -1074,6 +1110,9 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 	player:GetAttributeChangedSignal("TrainLevel"):Connect(function()
 		local level = stat("TrainLevel", 1)
 		if level <= knownLevel then
+			if seeded then
+				knownLevel = math.min(knownLevel, level) -- niveau remis à zéro (renaissance)
+			end
 			refreshTraining()
 			return
 		end
@@ -1098,6 +1137,10 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 	player:GetAttributeChangedSignal("GearTier"):Connect(function()
 		local tier = stat("GearTier", 1)
 		if tier <= knownTier then
+			-- Équipement remis à zéro (renaissance) : les achats suivants s'annoncent de nouveau
+			if seeded then
+				knownTier = math.min(knownTier, tier)
+			end
 			return
 		end
 		knownTier = tier
