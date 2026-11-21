@@ -8,6 +8,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Objectives = require(Shared:WaitForChild("Objectives"))
+local Overlay = require(Shared:WaitForChild("Overlay"))
 local Training = require(Shared:WaitForChild("Training"))
 local Tutorial = require(Shared:WaitForChild("Tutorial"))
 local UIMotion = require(Shared:WaitForChild("UIMotion"))
@@ -212,8 +213,15 @@ end
 -- Cette méthode permet d'animer le texte, la flèche et les chevrons à chaque image lorsque l'objectif est affiché.
 local function step()
 	updateHudAnchor()
-	-- Le popup « NEW GEAR! » dit déjà quoi faire : le texte se tait, la flèche désigne son bouton
-	label.Visible = current ~= nil and not Hud.isPopupShown() and not arrowOnOffer
+	-- Texte en haut au centre, à la place du popup d'offre : il se tait sous une fenêtre, un popup ou l'offre (qui dit
+	-- déjà quoi faire, la flèche désigne son bouton), puis revient sans rejouer son apparition (Shared.Overlay)
+	label.Visible = current ~= nil
+		and not arrowOnOffer
+		and Overlay.objective({
+			windowOpen = Hud.isWindowOpen(),
+			popupShown = Hud.isPopupShown(),
+			offerShown = Hud.isOfferShown(),
+		})
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")

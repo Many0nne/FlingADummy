@@ -157,7 +157,7 @@ L'équivalent des aliments de 01 et des graines de 09 : le mannequin qu'on lance
 - **Fenêtre « Dummy Shop »** (invite « Buy dummies » du stand SHOP, ou bouton SHOP du popup « NEW DUMMY! ») : bandeau
   rose, une carte par mannequin teintée à sa couleur comme les graines de 09 : nom, « 1.25x CHANCE » en jaune, rendu,
   comportement, bouton EQUIPPED / EQUIP (vert) / prix (jaune abordable, rouge sinon, refus « NOT ENOUGH MONEY! ») /
-  « 🔒 prix » pour ceux d'après. Quatre cartes visibles, la suite défile.
+  « 🔒 prix » pour ceux d'après. Quatre cartes par rangée, la suite défile vers le bas (#45).
 - **Popup « NEW DUMMY! »** (« Nouvelle graine débloquée ! » de 09 à 2:00) : même cadre que « NEW GEAR! » (un seul à la
   fois, l'équipement d'abord), bandeau rose, rendu, nom, prix et chance, bouton **SHOP** qui ouvre la boutique ; dès
   que le suivant est abordable, fermé il ne revient pas pour ce mannequin. Achat : popup « NEW DUMMY! » jaune.
@@ -470,9 +470,12 @@ Interface : section suivante.
   Rien pendant la jauge, le vol, le résultat et la séance d'entraînement. Cible du décor : triangle jaune au-dessus,
   chevrons jaunes au sol qui défilent vers elle. Logique dans `Shared.Tutorial` et `Shared.Objectives`.
 - **Popup « NEW GEAR! »** (comme « Nouvel équipement ! » de 09) : en haut au centre dès que l'équipement suivant est
-  abordable, écran libre (pas pendant la jauge, le vol, le résultat, ni boutique ouverte) : rendu 3D, nom, prix et gain,
+  abordable, écran libre (pas pendant la jauge, le vol, le résultat, ni fenêtre ou popup ouverts) : rendu 3D, nom, prix et gain,
   bouton vert UPGRADE qui achète en un clic, croix. Fermé, il ne revient pas pour ce palier, mais revient pour le
-  suivant. Tout au long du jeu, pas seulement au tutoriel.
+  suivant. Tout au long du jeu, pas seulement au tutoriel. Taille de celui de 09 (≈ un quart de la largeur).
+- **Superposition du haut de l'écran** (`Shared.Overlay`, #87, #62) : une fenêtre ouverte masque l'offre et le texte
+  de l'objectif ; un popup de palier ou un bandeau aussi ; l'offre masque le texte de l'objectif (la flèche reste).
+  Tout revient à la fermeture, sans rejouer le son.
 - **Cibles du décor** (point d'accroche pour la carte et la collection) : une `BasePart` avec le tag `ObjectiveTarget`
   et l'attribut `Objective` (`"Throw"`, `"Train"`…), plus `Slot` (place du lobby) ou `OwnerUserId` (joueur) si elle
   n'est pas partagée ; le joueur suit la plus proche de celles qui lui sont ouvertes. `Span` : cible allongée sur X,
@@ -481,8 +484,9 @@ Interface : section suivante.
 - **Fenêtres** : cadre sombre, bandeau dégradé (icône, titre), croix rouge ; cartes d'objets grises (nom, rareté
   colorée de `Shared.Rarity`, rendu 3D en `ViewportFrame`, statistique, bouton : prix vert / rouge, « EQUIPPED »).
   Shop = équipements d'entraînement ; Dummy Shop : section « Boutique de mannequins à lancer » ; Dummies (« My
-  Dummies »), vente et Index : section « Base et collection ». Les
-  listes de collection défilent verticalement (grille en `ScrollingFrame` Y, #45).
+  Dummies »), vente et Index : section « Base et collection ». Toutes les
+  listes défilent verticalement (#45) : boutiques en grille (`UIKit.cardGrid`, 3 cartes par rangée pour Training Gear,
+  4 pour Dummy Shop, ouvertes sur la rangée du prochain achat), lignes de collection et grille de l'Index.
 - **Jauge** : capsule verticale à contour noir, dégradé vert (haut) → rouge (bas), 4 traits, curseur blanc, `+N` à
   droite, « Click to throw! » dessous.
 - **Popups** : « LEVEL UP! » / « NEW EQUIPMENT! » jaunes à contour en haut au centre, sous-titre dessous.

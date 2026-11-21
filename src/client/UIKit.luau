@@ -799,26 +799,67 @@ function UIKit.showModel(viewport: ViewportFrame, model: Model?)
 end
 
 UIKit.CARD_WIDTH = 196 -- largeur d'une carte de boutique (px)
-UIKit.CARD_GAP = 10 -- écart entre deux cartes d'une rangée qui défile
+UIKit.CARD_HEIGHT = 300 -- hauteur d'une carte de boutique (px)
+UIKit.CARD_GAP = 10 -- écart entre deux cartes d'une grille qui défile
+local GRID_PAD = 4 -- marge haute et basse d'une grille de cartes (px)
+local GRID_PEEK = 20 -- px de la rangée précédente laissés visibles au-dessus de la carte visée
 
--- Cette méthode permet de faire défiler une rangée de cartes jusqu'à la carte `order` (la précédente reste visible à
--- gauche) lorsque une boutique s'ouvre (12 équipements, 20 mannequins depuis #94 : le prochain achat est loin).
-function UIKit.scrollToCard(row: ScrollingFrame, order: number)
-	local padding = row:FindFirstChildOfClass("UIPadding")
-	local left = if padding then padding.PaddingLeft.Offset else 0
-	local x = if order <= 2 then 0 else left + (order - 2) * (UIKit.CARD_WIDTH + UIKit.CARD_GAP)
-	-- Cette méthode permet de placer la rangée sur la carte visée lorsque la fenêtre s'affiche ou que la rangée s'élargit.
+-- Cette méthode permet de créer une grille de cartes à défilement vertical (`columns` cartes par rangée, centrées,
+-- comme les boutiques de 02 et 09) dans le corps d'une fenêtre lorsque une boutique est construite (#45).
+function UIKit.cardGrid(body: GuiObject, columns: number): ScrollingFrame
+	local grid = UIKit.create("ScrollingFrame", {
+		Name = "Cards",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollingDirection = Enum.ScrollingDirection.Y,
+		ScrollBarThickness = 6,
+		ScrollBarImageColor3 = UIKit.COLORS.white,
+		ZIndex = 11,
+		Parent = body,
+	})
+	UIKit.create("UIGridLayout", {
+		CellSize = UDim2.fromOffset(UIKit.CARD_WIDTH, UIKit.CARD_HEIGHT),
+		CellPadding = UDim2.fromOffset(UIKit.CARD_GAP, UIKit.CARD_GAP),
+		FillDirectionMaxCells = columns,
+		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = grid,
+	})
+	UIKit.create("UIPadding", {
+		PaddingTop = UDim.new(0, GRID_PAD),
+		PaddingBottom = UDim.new(0, GRID_PAD),
+		Parent = grid,
+	})
+	grid:SetAttribute("Columns", columns)
+	return grid
+end
+
+-- Cette méthode permet de faire défiler une grille de cartes jusqu'à la rangée de la carte `order` (un bout de la
+-- rangée précédente reste visible au-dessus) lorsque une boutique s'ouvre (12 équipements, 20 mannequins depuis #94).
+function UIKit.scrollToCard(grid: ScrollingFrame, order: number)
+	local columns = (grid:GetAttribute("Columns") :: number?) or 1
+	local rank = math.floor((order - 1) / columns)
+	local y = if rank == 0 then 0 else GRID_PAD + rank * (UIKit.CARD_HEIGHT + UIKit.CARD_GAP) - GRID_PEEK
+	-- Cette méthode permet de placer la grille sur la carte visée lorsque la fenêtre s'affiche ou que la grille grandit ;
+	-- CanvasPosition est en pixels d'écran : la position est ramenée à l'échelle du HUD (UIScale, mobile).
 	local function apply()
-		row.CanvasPosition = Vector2.new(x, 0)
+		local card = grid:FindFirstChild("Card" .. order) :: GuiObject?
+		local scale = if card and card.AbsoluteSize.Y > 0 then card.AbsoluteSize.Y / UIKit.CARD_HEIGHT else 1
+		grid.CanvasPosition = Vector2.new(0, y * scale)
 	end
-	-- Différé d'une image (fenêtre tout juste visible), puis repris quand la rangée jamais affichée a calculé sa
-	-- largeur : sinon la position serait bornée à 0
+	-- Différé d'une image (fenêtre tout juste visible), puis repris quand la grille jamais affichée a calculé sa
+	-- hauteur : sinon la position serait bornée à 0 ; reprise enfin quand le pop d'ouverture (UIScale de la fenêtre,
+	-- UIMotion.WINDOW_OPEN) est fini, l'échelle lue pendant l'animation étant fausse
 	task.defer(apply)
-	if row.AbsoluteCanvasSize.X <= row.AbsoluteWindowSize.X then
+	task.delay(UIMotion.WINDOW_OPEN[#UIMotion.WINDOW_OPEN].time + 0.05, apply)
+	if grid.AbsoluteCanvasSize.Y <= grid.AbsoluteWindowSize.Y then
 		local connection: RBXScriptConnection
-		connection = row:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(function()
+		connection = grid:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(function()
 			apply()
-			if row.AbsoluteCanvasSize.X > row.AbsoluteWindowSize.X then
+			if grid.AbsoluteCanvasSize.Y > grid.AbsoluteWindowSize.Y then
 				connection:Disconnect()
 			end
 		end)
@@ -834,7 +875,7 @@ function UIKit.card(parent: Instance, order: number, onAction: () -> ()): Card
 	local frame = UIKit.create("Frame", {
 		Name = "Card" .. order,
 		LayoutOrder = order,
-		Size = UDim2.fromOffset(UIKit.CARD_WIDTH, 300),
+		Size = UDim2.fromOffset(UIKit.CARD_WIDTH, UIKit.CARD_HEIGHT),
 		BackgroundColor3 = Color3.new(1, 1, 1),
 		ZIndex = 11,
 		Parent = parent,
@@ -846,11 +887,13 @@ function UIKit.card(parent: Instance, order: number, onAction: () -> ()): Card
 		Position = UDim2.fromOffset(4, 6),
 		Size = UDim2.new(1, -8, 0, 28),
 		TextSize = 24,
-		TextScaled = false,
+		-- Noms longs (« Nebula Rubber Dummy », #94) : réduits pour tenir dans la carte au lieu de déborder sur la voisine
+		TextScaled = true,
 		TextWrapped = false,
 		ZIndex = 12,
 		Parent = frame,
 	})
+	UIKit.create("UITextSizeConstraint", { MaxTextSize = 24, Parent = title })
 	local rarity = UIKit.text({
 		Position = UDim2.fromOffset(4, 34),
 		Size = UDim2.new(1, -8, 0, 18),
