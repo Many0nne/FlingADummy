@@ -8,7 +8,7 @@ local Zones = {}
 export type Zone = {
 	start: number, -- distance (m) où la zone commence
 	name: string,
-	color: Color3, -- bannière, panneaux, cadres des vitres
+	color: Color3, -- bannière, panneaux
 	chance: number, -- CHANCE en entrant dans la zone (elle monte vers celle de la suivante pendant la traversée)
 	ground: Color3, -- sol du canyon (le damier assombrit un carreau sur deux)
 	wall: Color3, -- parois en gradins

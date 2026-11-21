@@ -84,10 +84,8 @@ function FlightCamera.closeUp(root: BasePart, duration: number)
 	end)
 end
 
--- Cette méthode permet de suivre un mannequin lancé lorsque le serveur annonce le lancer ; la caméra avance avec la
--- vitesse du torse (position et point visé) et le lissage ne corrige que l'écart, d'où aucun retard même à grande
--- vitesse ; le cadrage
--- (Shared.FlightFraming) plonge vers la piste quand le mannequin monte.
+-- Cette méthode permet de suivre un mannequin lancé (cadrage Shared.FlightFraming, position et point visé qui avancent
+-- avec le torse, lissage de l'écart seul) lorsque le serveur annonce le lancer.
 function FlightCamera.follow(model: Model)
 	local torso = model:WaitForChild("Torso", 2) :: BasePart?
 	if not torso then

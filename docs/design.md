@@ -239,7 +239,7 @@ L'équivalent des aliments de 01 et des graines de 09 : le mannequin qu'on lance
 - **Obstacles partagés** (`Server.Obstacles`, plan dans `Shared.TrackPlan`) : dans chaque thème, les 2 ou 3 obstacles cassables du thème à
   tour de rôle (un site de plus que le minimum : il a remplacé la rangée de vitres retirée par #90) (`Server.ThemeObstacles`, un par colonne ou d'un seul tenant sur la largeur des colonnes) et son piège
   signature (section « Zones de la piste », un second piège dans les thèmes longs), sites espacés régulièrement
-  (≈ 35 m, 3 à 8 par thème).
+  (≈ 35 m, 4 à 9 par thème).
   Une pièce déplacée réapparaît à sa place **5 s après le dernier choc** subi par son obstacle, une par une de bas en haut
   (0,05 s d'écart), en grossissant depuis son centre ; jamais sur un mannequin posé dedans. Un objet projeté est compté
   pour le mannequin le plus proche (règles dans `Shared.ObstacleRules`).
