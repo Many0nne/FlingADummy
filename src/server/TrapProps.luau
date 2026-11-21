@@ -153,20 +153,33 @@ end
 
 -- Cette méthode permet de monter un rondin qui balance entre deux troncs (poutre, cordes, rondin rayé) au-dessus de la
 -- boîte lorsque la piste est construite.
-builders.SwingLog = function(model, at, box)
-	local top = box.size.Y + 3
+builders.SwingLog = function(model, at)
+	local top = Traps.SWING_PIVOT
 	local bark = rgb(125, 80, 40)
 	for _, side in { -1, 1 } do
 		put(model, at, Vector3.new(2, top, 2), Vector3.new(side * 6.5, top / 2, 0), bark)
 	end
 	put(model, at, Vector3.new(15, 1.6, 1.6), Vector3.new(0, top, 0), rgb(150, 95, 50))
-	-- Rondin suspendu : balance dans l'axe de la piste, entre les troncs (qu'il ne traverse pas) ; au passage il dévie le
-	-- mannequin vers l'extérieur de la colonne (Shared.Traps)
-	local swing = moving(model, at * CFrame.new(0, top, 0), "Swing", Vector3.xAxis, 50, 2.2)
+	-- Rondin suspendu : balance dans l'axe de la piste, entre les troncs (qu'il ne traverse pas) ; il ne frappe qu'en
+	-- passant en bas et pousse le mannequin dans le sens où il va (Shared.Traps.swingHits / swingPush)
+	local swing = moving(
+		model,
+		at * CFrame.new(0, top, 0),
+		"Swing",
+		Vector3.xAxis,
+		Traps.SWING_AMPLITUDE,
+		Traps.CYCLES.SwingLog.period
+	)
+	local logY = top - Traps.SWING_ARM
 	for _, x in { -3.5, 3.5 } do
-		put(swing, at, Vector3.new(0.4, top - 6, 0.4), Vector3.new(x, top - (top - 6) / 2, 0), rgb(235, 215, 165))
+		put(
+			swing,
+			at,
+			Vector3.new(0.4, top - logY - 1, 0.4),
+			Vector3.new(x, (top + logY + 1) / 2, 0),
+			rgb(235, 215, 165)
+		)
 	end
-	local logY = 5
 	put(swing, at, Vector3.new(10, 3, 3), Vector3.new(0, logY, 0), rgb(150, 95, 50))
 	for _, x in { -5.1, 5.1 } do
 		put(swing, at, Vector3.new(0.3, 2.6, 2.6), Vector3.new(x, logY, 0), rgb(230, 190, 130))
@@ -247,14 +260,15 @@ builders.Press = function(model, at, box)
 	put(model, at, Vector3.new(14.4, 2.4, 3), Vector3.new(0, top + 1.2, 0), YELLOW)
 	put(model, at, Vector3.new(10, 0.4, 8), Vector3.new(0, 0.2, 0), rgb(90, 90, 100))
 	-- Plateau et vérin : descendent jusqu'à poser le plateau sur la tôle du sol (amplitude négative sur Y)
-	local ram = moving(model, at * CFrame.new(0, top - 1, 0), "Press", Vector3.yAxis, -(top - 5), Traps.PRESS_PERIOD)
+	local ram =
+		moving(model, at * CFrame.new(0, top - 1, 0), "Press", Vector3.yAxis, -(top - 5), Traps.CYCLES.Press.period)
 	put(ram, at, Vector3.new(1.6, 3, 1.6), Vector3.new(0, top - 1.5, 0), METAL)
 	put(ram, at, Vector3.new(10, 1.6, 7.6), Vector3.new(0, top - 3.8, 0), rgb(110, 115, 125))
 	put(ram, at, Vector3.new(10.2, 0.4, 7.8), Vector3.new(0, top - 4.4, 0), RED)
 end
 
--- Cette méthode permet de monter un aimant de grue (pylône en treillis, flèche, câble, électroaimant rouge à voyant)
--- au-dessus de la boîte lorsque la piste est construite.
+-- Cette méthode permet de monter un aimant de grue (pylône en treillis, flèche, câble, électroaimant rouge dont la
+-- plaque s'allume pendant la phase active, Shared.Traps.CYCLES) au-dessus de la boîte lorsque la piste est construite.
 builders.Magnet = function(model, at, box)
 	local top = box.size.Y + 4
 	put(model, at, Vector3.new(2.4, top, 2.4), Vector3.new(6.2, top / 2, -2), YELLOW)
@@ -263,12 +277,30 @@ builders.Magnet = function(model, at, box)
 	end
 	put(model, at, Vector3.new(10, 1.8, 1.8), Vector3.new(2, top, -2), YELLOW)
 	put(model, at, Vector3.new(1.8, 1.8, 4), Vector3.new(-2.4, top, -0.2), YELLOW)
-	local magnet = moving(model, at * CFrame.new(-2.4, top, 0), "Swing", Vector3.zAxis, 6, 3)
+	local magnet = moving(model, at * CFrame.new(-2.4, top, 0), "Swing", Vector3.zAxis, 6, Traps.CYCLES.Magnet.period)
 	local cableLength = top - box.size.Y * 0.55
 	put(magnet, at, Vector3.new(0.3, cableLength, 0.3), Vector3.new(-2.4, top - cableLength / 2, 0), BLACK)
 	local bottom = top - cableLength
 	put(magnet, at, Vector3.new(6, 1.4, 6), Vector3.new(-2.4, bottom - 0.7, 0), RED)
-	glow(magnet, at, Vector3.new(6.2, 0.4, 6.2), Vector3.new(-2.4, bottom - 1.5, 0), rgb(120, 220, 255))
+	-- Plaque : éteinte au départ (de loin, hors de portée de l'animation), allumée à `PowerColor` (néon, étincelles) par
+	-- chaque client pendant la phase active seulement (Client.TrapMotion)
+	local plate = put(magnet, at, Vector3.new(6.2, 0.4, 6.2), Vector3.new(-2.4, bottom - 1.5, 0), Traps.POWER_OFF)
+	plate.Name = Traps.POWER_PART
+	plate.Material = Enum.Material.Metal -- même état que l'extinction côté client
+	plate.MaterialVariant = ""
+	plate:SetAttribute("PowerColor", rgb(120, 220, 255))
+	particles(plate, {
+		Texture = "rbxasset://textures/particles/sparkles_main.dds",
+		Color = ColorSequence.new(rgb(150, 235, 255)),
+		LightEmission = 1,
+		Size = NumberSequence.new(0.8, 0),
+		Lifetime = NumberRange.new(0.3, 0.6),
+		Rate = 30,
+		Speed = NumberRange.new(6, 12),
+		SpreadAngle = Vector2.new(60, 60),
+		EmissionDirection = Enum.NormalId.Bottom,
+		Enabled = false,
+	})
 end
 
 -- Cette méthode permet de construire un tremplin de saut à ski (rampe blanche en marches qui monte vers l'avant, rails
@@ -365,7 +397,7 @@ builders.JackBox = function(model, at)
 	put(model, at, Vector3.new(1.2, 0.4, 0.4), Vector3.new(3.6, 2.6, 0), YELLOW)
 	put(model, at, Vector3.new(0.4, 1.6, 0.4), Vector3.new(4.2, 2, 0), YELLOW)
 	put(model, at, Vector3.new(6.4, 0.4, 3), Vector3.new(0, 4.3, -1.6), rgb(255, 200, 50), Vector3.new(-60, 0, 0))
-	local jack = moving(model, at * CFrame.new(0, 4, 0), "Press", Vector3.yAxis, 4, 1.8)
+	local jack = moving(model, at * CFrame.new(0, 4, 0), "Press", Vector3.yAxis, 4, Traps.CYCLES.JackBox.period)
 	for k = 0, 3 do
 		put(jack, at, Vector3.new(1.6, 0.4, 1.6), Vector3.new(0, 1 + k * 0.6, 0), METAL)
 	end
@@ -374,22 +406,82 @@ builders.JackBox = function(model, at)
 	put(jack, at, Vector3.new(3.2, 1, 3.2), Vector3.new(0, 5.6, 0), rgb(120, 220, 110))
 end
 
--- Cette méthode permet de dresser un anneau propulseur (cadre en blocs lunaires, anneaux de néon cyan qui pulsent sur
--- toute la hauteur de la colonne) sur la boîte lorsque la piste est construite.
+-- Cette méthode permet de dresser un anneau propulseur (cerceau géant à 12 pans en blocs lunaires blancs et violets,
+-- néon cyan qui tourne à l'intérieur, flux de particules vers l'avant) en haut de la colonne, sur la ligne de vol des
+-- vitres, avec un pad au sol ; entre les deux, la colonne n'est que suggérée (halo translucide, étincelles qui montent).
 builders.Booster = function(model, at, box)
-	local frame = rgb(95, 75, 165)
-	local h = box.size.Y + 1
-	for _, side in { -1, 1 } do
-		put(model, at, Vector3.new(1.2, h, 1.6), Vector3.new(side * 6.4, h / 2, 0), frame)
+	local cyan = rgb(90, 230, 255)
+	local sides = 12
+	local radius = Traps.WIDTH / 2 - 0.4
+	local ringY = math.max(box.size.Y - radius - 2, radius + 4)
+	local hub = at * CFrame.new(0, ringY, 0) -- plan du cerceau : XY, face à la piste (+Z)
+	local chord = 2 * radius * math.sin(math.pi / sides) + 0.3
+	for i = 0, sides - 1 do
+		local angle = CFrame.Angles(0, 0, 2 * math.pi * i / sides)
+		put(
+			model,
+			hub * angle,
+			Vector3.new(chord, 1.4, 2),
+			Vector3.new(0, radius, 0),
+			if i % 2 == 0 then WHITE else rgb(150, 110, 240)
+		)
 	end
-	local pulse = moving(model, at, "Bob", Vector3.zAxis, 1.5, 0.6)
-	local rings = math.max(2, math.floor(h / 14))
-	for i = 1, rings do
-		local y = (i - 0.5) * h / rings
-		local ring = glow(pulse, at, Vector3.new(11.6, 0.6, 0.6), Vector3.new(0, y, 0), rgb(90, 230, 255))
-		ring.Transparency = 0.2
+	-- Néon intérieur : tourne d'un tour par seconde autour de l'axe du cerceau
+	local spinner = moving(model, hub, "Spin", Vector3.zAxis, 0, 1)
+	for i = 0, sides - 1 do
+		local angle = CFrame.Angles(0, 0, 2 * math.pi * (i + 0.5) / sides)
+		local inner = radius - 1.1
+		glow(
+			spinner,
+			hub * angle,
+			Vector3.new(2 * inner * math.sin(math.pi / sides) - 0.4, 0.6, 0.8),
+			Vector3.new(0, inner, 0),
+			cyan
+		)
 	end
-	glow(model, at, Vector3.new(11.6, 0.3, 4), Vector3.new(0, 0.15, 0), rgb(90, 230, 255))
+	local mouth = put(model, hub, Vector3.new(radius * 1.6, radius * 1.6, 0.2), Vector3.zero, cyan)
+	mouth.Transparency = 1
+	particles(mouth, {
+		Texture = "rbxasset://textures/particles/sparkles_main.dds",
+		Color = ColorSequence.new(cyan, WHITE),
+		LightEmission = 1,
+		Size = NumberSequence.new(1.2, 0),
+		Lifetime = NumberRange.new(0.4, 0.7),
+		Rate = 25,
+		Speed = NumberRange.new(40, 60),
+		SpreadAngle = Vector2.new(5, 5),
+		EmissionDirection = Enum.NormalId.Back, -- +Z local : vers l'avant de la piste
+	})
+	-- Pad au sol : rampe sombre à chevrons de néon, pour un mannequin qui arrive en roulant
+	put(model, at, Vector3.new(11.6, 0.4, box.size.Z), Vector3.new(0, 0.2, 0), rgb(60, 55, 80))
+	for _, dz in { -1.5, 1 } do
+		for _, side in { -1, 1 } do
+			glow(
+				model,
+				at,
+				Vector3.new(4.4, 0.2, 0.8),
+				Vector3.new(side * 1.9, 0.45, dz + 0.9),
+				cyan,
+				Vector3.new(0, side * 35, 0)
+			)
+		end
+	end
+	-- Colonne suggérée : halo translucide du pad au cerceau, étincelles qui montent
+	local halo =
+		glow(model, at, Vector3.new(radius * 1.4, ringY - radius, 0.4), Vector3.new(0, (ringY - radius) / 2, 0), cyan)
+	halo.Transparency = 0.9
+	halo.CastShadow = false
+	particles(halo, {
+		Texture = "rbxasset://textures/particles/sparkles_main.dds",
+		Color = ColorSequence.new(cyan),
+		LightEmission = 1,
+		Transparency = NumberSequence.new(0.2, 1),
+		Size = NumberSequence.new(0.8, 0.2),
+		Lifetime = NumberRange.new(1.5, 2.5),
+		Rate = 6,
+		Speed = NumberRange.new(10, 20),
+		EmissionDirection = Enum.NormalId.Top,
+	})
 end
 
 -- Cette méthode permet d'habiller le piège d'une boîte (TrackPlan.trapBox) sous `parent` lorsque la piste est
@@ -404,6 +496,17 @@ function TrapProps.build(box: TrapBox, parent: Instance)
 	model.Name = "Trap" .. box.kind
 	model:SetAttribute("Trap", box.kind)
 	builder(model, CFrame.new(box.x, 0, box.z), box)
+	-- Pièces mobiles : même piège et même phase que la boîte, que le serveur prend pour décider s'il agit
+	for _, child in model:GetChildren() do
+		if CollectionService:HasTag(child, Traps.MOTION_TAG) then
+			child:SetAttribute("Trap", box.kind)
+			child:SetAttribute("Phase", Traps.phaseOffset(box.x, box.z))
+			local cycle = Traps.CYCLES[box.kind]
+			if cycle then
+				child:SetAttribute("Period", cycle.period) -- l'animation bat au rythme où le serveur décide
+			end
+		end
+	end
 	model.Parent = parent
 end
 

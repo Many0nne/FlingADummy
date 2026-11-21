@@ -269,12 +269,16 @@ Panneaux d'entrée de zone : « FOREST x1.35 CHANCE ».
 **Pièges signatures** (`Shared.Traps`, habillage `Server.TrapProps`) : un par colonne d'obstacles, décor sans collision ;
 le serveur le déclenche quand le torse traverse sa boîte (trajet de la frame testé, une fois par vol et par piège,
 toutes colonnes confondues) et
-remplace la vitesse du mannequin (rebond, souffle, coup de côté, écrasement, arrachement, propulsion), casse 1 à 3 os
+remplace la vitesse du mannequin (rebond, souffle, coup de rondin, écrasement, arrachement, propulsion), casse 1 à 3 os
 sur les membres les plus proches et écrit la cause du crash (« Squashed by a hydraulic press », gardée pour les os
 cassés dans les 0,8 s qui suivent). Chaque client joue son
 son, sa gerbe de particules et son popup (« BOING! ») ; les pièces mobiles (pales, rondin, presse, diable, vague) sont
-animées par chaque client (`Client.TrapMotion`) sur l'horloge du serveur : la presse n'écrase que pendant sa descente,
-plateau levé le mannequin passe dessous.
+animées par chaque client (`Client.TrapMotion`) sur l'horloge du serveur, avec la phase que le serveur prend pour
+décider si le piège agit (`Traps.CYCLES`, `Traps.active`, #79) : la presse n'écrase que pendant sa descente, le diable
+n'éjecte que sorti, l'aimant n'arrache que plaque allumée (néon et étincelles), le rondin ne frappe que le torse qu'il
+touche, en passant en bas de son balancement, et pousse le mannequin dans l'axe de la piste, dans le sens où il va (vers l'avant ou en arrière).
+Hors de cette phase, le mannequin passe sans rien. L'anneau propulseur est un cerceau néon en haut de la colonne, sur la
+ligne de vol des vitres, avec un pad au sol ; entre les deux, un halo et des étincelles.
 
 ## Dégâts lisibles
 Chaque membre (10 pièces) suit les chocs : une variation brusque de vitesse au-delà d'un seuil casse un os (2 au-delà d'un

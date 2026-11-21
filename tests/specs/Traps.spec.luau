@@ -24,7 +24,7 @@ return function(T, Loader)
 		T.it("fait réagir le mannequin de façon différente d'un piège à l'autre", function()
 			local seen = {}
 			for kind in Traps.KINDS do
-				local v = Traps.react(kind, falling, 1)
+				local v = Traps.react(kind, falling, Vector3.zAxis)
 				local key = string.format("%.0f/%.0f/%.0f", v.X, v.Y, v.Z)
 				T.expect(not seen[key], kind .. " réagit comme " .. tostring(seen[key]))
 				seen[key] = kind
@@ -34,33 +34,36 @@ return function(T, Loader)
 
 	T.describe("Traps.react", function()
 		T.it("trampoline et lave renvoient vers le haut un mannequin qui tombe", function()
-			T.expect(Traps.react("Trampoline", falling, 1).Y >= 60, "trampoline")
-			local lava = Traps.react("Lava", Vector3.new(0, -120, 20), 1)
+			T.expect(Traps.react("Trampoline", falling, Vector3.zero).Y >= 60, "trampoline")
+			local lava = Traps.react("Lava", Vector3.new(0, -120, 20), Vector3.zero)
 			T.expectNear(lava.Y, 120, 1e-6) -- rebond complet au-delà du minimum
-			T.expect(Traps.react("Lava", sliding, 1).Y >= 80, "lave : rebond même sans chute")
+			T.expect(Traps.react("Lava", sliding, Vector3.zero).Y >= 80, "lave : rebond même sans chute")
 		end)
 
 		T.it("la presse écrase vers le sol et coupe l'élan", function()
-			local v = Traps.react("Press", falling, 1)
+			local v = Traps.react("Press", falling, Vector3.zero)
 			T.expect(v.Y < 0, "vers le bas")
 			T.expect(v.Z < falling.Z, "élan coupé")
 		end)
 
 		T.it("l'aimant coupe l'essentiel de la course et soulève", function()
-			local v = Traps.react("Magnet", Vector3.new(0, 10, 200), 1)
+			local v = Traps.react("Magnet", Vector3.new(0, 10, 200), Vector3.zero)
 			T.expect(math.abs(v.Z) <= 0.3 * 200, "élan coupé : " .. v.Z)
 			T.expect(v.Y > 0, "soulevé")
 		end)
 
 		T.it("ventilateur, vague, tremplin, canon et propulseur poussent vers l'avant", function()
 			for _, kind in { "Fan", "Wave", "SkiJump", "Cannon", "Booster" } do
-				T.expect(Traps.react(kind, sliding, 1).Z >= sliding.Z + 25, kind)
+				T.expect(Traps.react(kind, sliding, Vector3.zero).Z >= sliding.Z + 25, kind)
 			end
 		end)
 
-		T.it("le rondin pousse vers l'extérieur de la colonne", function()
-			T.expect(Traps.react("SwingLog", sliding, 1).X > 0, "à droite")
-			T.expect(Traps.react("SwingLog", sliding, -1).X < 0, "à gauche")
+		T.it("le rondin pousse dans l'axe de la piste, dans le sens de sa poussée", function()
+			local ahead = Traps.react("SwingLog", sliding, Vector3.zAxis)
+			local back = Traps.react("SwingLog", sliding, -Vector3.zAxis)
+			T.expectNear(ahead.X, 0, 1e-9)
+			T.expectNear(ahead.Z - back.Z, 2 * Traps.KINDS.SwingLog.side, 1e-9)
+			T.expect(back.Z < sliding.Z, "rondin qui revient : élan coupé")
 		end)
 	end)
 
@@ -101,19 +104,124 @@ return function(T, Loader)
 		end)
 	end)
 
-	T.describe("Traps.pressActive", function()
-		T.it("écrase pendant la descente seulement, au rythme de l'animation", function()
-			local offset = Traps.phaseOffset(0, 0)
-			T.expectEqual(offset, 0)
-			local period = Traps.PRESS_PERIOD
-			T.expect(Traps.pressActive(0.2 * period, 0, 0), "plateau en bas")
-			T.expect(not Traps.pressActive(0.8 * period, 0, 0), "plateau en remontée haute")
-			T.expect(not Traps.pressActive(0.01 * period, 0, 0), "plateau encore en haut")
-			-- Animation : plateau à plus de 70 % de sa descente pendant toute la fenêtre active
-			for phase = Traps.PRESS_ACTIVE[1], Traps.PRESS_ACTIVE[2], 0.01 do
-				local down = -Traps.motion("Press", phase * period, Vector3.yAxis, -1, period).Position.Y
+	-- Cette méthode permet de donner la position Y de la pièce animée du piège `kind` (Traps.motion, comme Client.TrapMotion)
+	-- à la phase de cycle `phase` lorsque l'on compare l'animation à la fenêtre active.
+	local function animated(kind, motion, phase, amplitude)
+		local period = Traps.CYCLES[kind].period
+		return Traps.motion(motion, phase * period, Vector3.yAxis, amplitude, period).Position.Y
+	end
+
+	T.describe("Traps.active", function()
+		T.it("donne la même phase que l'animation du client, décalage compris", function()
+			T.expectEqual(Traps.phaseOffset(0, 0), 0)
+			local offset = Traps.phaseOffset(14, 535)
+			local period = Traps.CYCLES.Magnet.period
+			local now = 1000.3
+			-- Client.TrapMotion : t = now + offset * period, phase = (t / period) % 1
+			T.expectNear(Traps.phase("Magnet", now, offset), ((now + offset * period) / period) % 1, 1e-9)
+			T.expectEqual(Traps.phase("Trampoline", now, offset), 0)
+		end)
+
+		T.it("la presse écrase pendant la descente seulement, au rythme de l'animation", function()
+			local period = Traps.CYCLES.Press.period
+			T.expect(Traps.active("Press", 0.2 * period, 0), "plateau en bas")
+			T.expect(not Traps.active("Press", 0.8 * period, 0), "plateau en remontée haute")
+			T.expect(not Traps.active("Press", 0.01 * period, 0), "plateau encore en haut")
+			-- Plateau à plus de 70 % de sa descente pendant toute la fenêtre active
+			for phase = Traps.CYCLES.Press.from, Traps.CYCLES.Press.to, 0.01 do
+				local down = -animated("Press", "Press", phase, -1)
 				T.expect(down >= 0.7, string.format("phase %.2f : plateau à %.0f %%", phase, down * 100))
 			end
+		end)
+
+		T.it("le diable n'éjecte que sorti à plus de la moitié de sa course", function()
+			local cycle = Traps.CYCLES.JackBox
+			for phase = 0, 0.995, 0.005 do
+				local out = animated("JackBox", "Press", phase, 1)
+				local active = Traps.active("JackBox", phase * cycle.period, 0)
+				if active then
+					T.expect(out >= 0.5, string.format("phase %.3f : sorti à %.0f %%", phase, out * 100))
+				elseif out >= 0.6 then
+					T.expect(false, string.format("phase %.3f : sorti à %.0f %% mais inactif", phase, out * 100))
+				end
+			end
+			T.expect(not Traps.active("JackBox", 0.9 * cycle.period, 0), "rentré")
+		end)
+
+		T.it("l'aimant n'agit que pendant sa phase allumée", function()
+			local cycle = Traps.CYCLES.Magnet
+			T.expect(Traps.active("Magnet", 0.2 * cycle.period, 0), "allumé")
+			T.expect(not Traps.active("Magnet", 0.7 * cycle.period, 0), "éteint")
+			T.expect(cycle.to - cycle.from < 0.6, "éteint une bonne partie du cycle")
+		end)
+
+		T.it("les pièges sans cycle agissent toujours", function()
+			for _, kind in { "Trampoline", "Fan", "Booster", "Lava" } do
+				T.expect(Traps.active(kind, 12.34, 0.5), kind)
+			end
+		end)
+
+		T.it("le rondin ne frappe que lorsqu'il passe dans la boîte, en bas de son balancement", function()
+			local period = Traps.CYCLES.SwingLog.period
+			local depth = Traps.KINDS.SwingLog.depth
+			local hits = 0
+			for phase = 0, 0.995, 0.005 do
+				-- Centre du rondin d'après l'animation (rotation autour de X du pivot, bras de SWING_ARM)
+				local swing = Traps.motion("Swing", phase * period, Vector3.xAxis, Traps.SWING_AMPLITUDE, period)
+				local log = swing * Vector3.new(0, -Traps.SWING_ARM, 0)
+				local active = Traps.active("SwingLog", phase * period, 0)
+				if active then
+					hits += 1
+					T.expect(
+						math.abs(log.Z) <= Traps.SWING_REACH + 1e-6,
+						string.format("phase %.3f : z %.1f", phase, log.Z)
+					)
+				else
+					T.expect(math.abs(log.Z) > depth / 2, string.format("phase %.3f : inactif dans la boîte", phase))
+				end
+			end
+			T.expect(hits > 20 and hits < 100, "partie active : " .. hits .. " / 200")
+		end)
+
+		T.it("le rondin ne frappe que le torse qu'il touche, à la position que montre l'animation", function()
+			local period = Traps.CYCLES.SwingLog.period
+			-- Centre d'après l'animation : rotation autour de X du pivot (SWING_PIVOT du sol), bras de SWING_ARM
+			for phase = 0, 0.995, 0.005 do
+				local swing = Traps.motion("Swing", phase * period, Vector3.xAxis, Traps.SWING_AMPLITUDE, period)
+				local center = Vector3.new(0, Traps.SWING_PIVOT, 0) + swing * Vector3.new(0, -Traps.SWING_ARM, 0)
+				T.expect(
+					(Traps.swingCenter(phase) - center).Magnitude < 1e-3, -- Vector3 en float32
+					string.format("phase %.3f : centre", phase)
+				)
+				local hit = Traps.active("SwingLog", phase * period, 0, center)
+				T.expectEqual(hit, Traps.swingReach(phase))
+			end
+			local low = Traps.swingCenter(0.5)
+			T.expectNear(low.Y, Traps.SWING_PIVOT - Traps.SWING_ARM, 1e-4)
+			T.expect(Traps.active("SwingLog", 0.5 * period, 0, low + Vector3.new(5, 2, 1)), "torse contre le rondin")
+			T.expect(not Traps.active("SwingLog", 0.5 * period, 0, low + Vector3.new(0, 9, 0)), "torse au-dessus")
+			T.expect(not Traps.active("SwingLog", 0.5 * period, 0, low + Vector3.new(0, 0, 5)), "torse devant")
+			T.expect(Traps.active("SwingLog", 0.5 * period, 0, Vector3.new(0, 0.5, 0)), "mannequin couché qui glisse")
+		end)
+
+		T.it("le rondin pousse dans le sens où il balance, à pleine force au plus bas", function()
+			local period = Traps.CYCLES.SwingLog.period
+			T.expectNear(Traps.swingPush(0.5), 1, 1e-9)
+			T.expectNear(Traps.swingPush(0), -1, 1e-9)
+			for _, phase in { 0.02, 0.48, 0.5, 0.53, 0.97, 0 } do
+				local before = Traps.motion("Swing", phase * period, Vector3.xAxis, Traps.SWING_AMPLITUDE, period)
+				local after =
+					Traps.motion("Swing", phase * period + 0.001, Vector3.xAxis, Traps.SWING_AMPLITUDE, period)
+				local dz = (after * Vector3.new(0, -Traps.SWING_ARM, 0)).Z
+					- (before * Vector3.new(0, -Traps.SWING_ARM, 0)).Z
+				local push = Traps.push("SwingLog", phase * period, 0)
+				T.expect(push.Z * dz > 0, string.format("phase %.2f : même sens", phase))
+				T.expectNear(push.X, 0, 1e-9)
+				if Traps.swingReach(phase) then
+					T.expect(math.abs(push.Z) > 0.8, string.format("phase %.2f : force %.2f", phase, push.Z))
+				end
+			end
+			T.expectEqual(Traps.push("Fan", 1, 0), Vector3.zero)
 		end)
 	end)
 

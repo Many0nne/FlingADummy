@@ -71,6 +71,7 @@ type Flight = {
 	worstImpact: { kind: string, dv: number, speed: number }?,
 	impacts: { Impact },
 	traps: { [number]: boolean }, -- pièges déjà déclenchés par ce vol (site de TrackPlan.TrapBox, toutes colonnes)
+	trapMisses: { [number]: boolean }, -- pièges traversés hors phase (trace Studio, une fois par vol et par piège)
 	lastTrap: { kind: string, at: number }?, -- dernier piège déclenché : cause des os cassés juste après
 }
 
@@ -170,6 +171,7 @@ local function startFlight(
 		worstImpact = nil,
 		impacts = {},
 		traps = {},
+		trapMisses = {},
 		lastTrap = nil,
 	}
 	return dummy, origin, speed
@@ -321,14 +323,23 @@ end
 -- Effet d'un piège : nouvelle vitesse (Shared.Traps.react, recalée comme référence pour ne pas compter de choc),
 -- rotation du corps, os cassés, cause du crash et annonce aux clients.
 
--- Cette méthode permet de déclencher le piège `box` (une fois par vol) lorsque le torse traverse sa boîte.
-local function triggerTrap(flight: Flight, box: TrackPlan.TrapBox, position: Vector3)
+-- Cette méthode permet de donner la phase du piège `box` à l'instant `now` pour la trace [Trap] (Studio) lorsqu'il
+-- est traversé ; « - » pour un piège sans cycle.
+local function phaseLabel(box: TrackPlan.TrapBox, now: number): string
+	if not Traps.CYCLES[box.kind] then
+		return "-"
+	end
+	return string.format("%.2f", Traps.phase(box.kind, now, Traps.phaseOffset(box.x, box.z)))
+end
+
+-- Cette méthode permet de déclencher le piège `box` (une fois par vol) lorsque le torse traverse sa boîte à l'instant
+-- `now` (horloge du serveur, celle qui a décidé que le piège agit).
+local function triggerTrap(flight: Flight, box: TrackPlan.TrapBox, position: Vector3, now: number)
 	flight.traps[box.site] = true
 	flight.lastTrap = { kind = box.kind, at = os.clock() }
 	local def = Traps.KINDS[box.kind]
 	local before = flight.torso.AssemblyLinearVelocity
-	local outward = if position.X >= box.x then 1 else -1
-	local after = Traps.react(box.kind, before, outward)
+	local after = Traps.react(box.kind, before, Traps.push(box.kind, now, Traps.phaseOffset(box.x, box.z)))
 	-- Rotation du corps entier autour du torse (chaque membre suit), pas de chaque membre sur lui-même
 	local spin = Vector3.new(0, def.spin, 0)
 	local center = flight.torso.Position
@@ -350,10 +361,11 @@ local function triggerTrap(flight: Flight, box: TrackPlan.TrapBox, position: Vec
 	if RunService:IsStudio() then
 		print(
 			string.format(
-				"[Trap] %s colonne %d à %.0f m : %.0f → %.0f studs/s",
+				"[Trap] %s colonne %d à %.0f m, phase %s : %.0f → %.0f studs/s",
 				box.kind,
 				box.column,
 				box.z,
+				phaseLabel(box, now),
 				before.Magnitude,
 				after.Magnitude
 			)
@@ -361,8 +373,27 @@ local function triggerTrap(flight: Flight, box: TrackPlan.TrapBox, position: Vec
 	end
 end
 
+-- Cette méthode permet de savoir si le piège `box` agit à l'instant `now` sur un torse allé de `previous` à `position`
+-- pendant la frame lorsqu'il traverse sa boîte ; le rondin doit toucher le torse en un point du trajet (4 points,
+-- ramenés dans la boîte ; rondin pris à `now` pour toute la frame, soit ≈ 0,5 stud d'écart au plus vite).
+local function trapActs(box: TrackPlan.TrapBox, now: number, previous: Vector3, position: Vector3): boolean
+	local offset = Traps.phaseOffset(box.x, box.z)
+	if box.kind ~= "SwingLog" then
+		return Traps.active(box.kind, now, offset)
+	end
+	local foot = Vector3.new(box.x, 0, box.z)
+	for step = 0, 3 do
+		local point = Traps.contact(box.center, box.size, previous:Lerp(position, step / 3))
+		if Traps.active(box.kind, now, offset, point - foot) then
+			return true
+		end
+	end
+	return false
+end
+
 -- Cette méthode permet de déclencher les pièges dont le torse a traversé la boîte entre deux frames lorsqu'il bouge
--- (passage à grande vitesse compris : le trajet est testé, pas seulement la position) ; une presse levée laisse passer.
+-- (passage à grande vitesse compris : le trajet est testé, pas seulement la position) ; un piège hors de sa phase
+-- active (presse levée, rondin loin du torse, diable rentré, aimant éteint : Shared.Traps.active) laisse passer.
 local function checkTraps(flight: Flight, previous: Vector3, position: Vector3)
 	if os.clock() - flight.startTime <= GameConfig.IMPACT_GRACE_TIME then
 		return
@@ -375,9 +406,23 @@ local function checkTraps(flight: Flight, previous: Vector3, position: Vector3)
 			and box.z + half >= minZ
 			and box.z - half <= maxZ
 			and Traps.crosses(box.center, box.size, previous, position)
-			and (box.kind ~= "Press" or Traps.pressActive(Workspace:GetServerTimeNow(), box.x, box.z))
 		then
-			triggerTrap(flight, box, position)
+			local now = Workspace:GetServerTimeNow()
+			if trapActs(box, now, previous, position) then
+				triggerTrap(flight, box, position, now)
+			elseif RunService:IsStudio() and not flight.trapMisses[box.site] then
+				-- Trace de vérification (Studio) : un passage hors phase, une fois par vol et par piège
+				flight.trapMisses[box.site] = true
+				print(
+					string.format(
+						"[Trap] %s colonne %d à %.0f m, phase %s : hors phase, rien",
+						box.kind,
+						box.column,
+						box.z,
+						phaseLabel(box, now)
+					)
+				)
+			end
 		end
 	end
 end
