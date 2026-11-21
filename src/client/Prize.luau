@@ -334,7 +334,7 @@ local function showReveal(prize: any, entry: Collection.Entry, ground: Vector3, 
 	glow = nil
 	local model = buildStanding(entry, ground, false)
 	worldModel = model
-	player:SetAttribute("PrizePhase", "Reveal")
+	player:SetAttribute("PrizePhase", if prize.isNew then "RevealNew" else "Reveal") -- fanfare : nouveau seulement
 	growIn(model)
 	ring(ground, scale)
 	burst(ground + Vector3.new(0, HEIGHT * scale / 2, 0), scale, Rarity.get(prize.rarity).color)

@@ -1,7 +1,7 @@
 -- Musique de fond (Client.Music) : pistes et logique pure du choix. Comme les références 01 et 09, la musique suit le
 -- moment de jeu : hub (base, entraînement, boutiques) = pistes joyeuses en rotation enchaînées en fondu ; vol du
--- mannequin = piste rythmée ; tirage = musique baissée pendant la silhouette, fanfare à la révélation, puis reprise
--- (au hub). Pistes de la bibliothèque audio Roblox sous licence (« APMOfficial », Courtesy of APM Music), gratuites et
+-- mannequin = piste rythmée ; tirage = musique baissée pendant la silhouette, fanfare à la révélation d'un mannequin
+-- pas encore découvert, puis reprise (au hub). Pistes de la bibliothèque audio Roblox sous licence (« APMOfficial », Courtesy of APM Music), gratuites et
 -- utilisables dans les jeux.
 local Music = {}
 
@@ -33,10 +33,10 @@ Music.SWITCH_FADE = 0.5 -- s d'une bascule de moment (le vol ne dure que quelque
 Music.DUCK = 0.25 -- part du volume gardée pendant la silhouette du tirage et la fanfare
 Music.FANFARE_MAX = 4.5 -- s : la fanfare s'efface au-delà, même si la piste dure plus
 
--- Cette méthode permet de déduire le moment musical lorsque `LaneState` ou la phase du tirage (`PrizePhase` local)
--- change ; `previous` = moment précédent (un résultat ne garde la piste du vol que s'il suit le vol).
+-- Cette méthode permet de déduire le moment musical lorsque `LaneState` ou la phase du tirage (`PrizePhase` local :
+-- Tease, Reveal, RevealNew) change ; `previous` = moment précédent (un résultat ne garde le vol que s'il suit le vol).
 function Music.mood(laneState: string?, prizePhase: string?, previous: Mood?): Mood
-	if prizePhase == "Reveal" then
+	if prizePhase == "Reveal" or prizePhase == "RevealNew" then
 		return "Reveal"
 	elseif prizePhase == "Tease" then
 		return "Tease"
@@ -46,6 +46,12 @@ function Music.mood(laneState: string?, prizePhase: string?, previous: Mood?): M
 		return if previous == "Flight" then "Flight" else "Hub"
 	end
 	return "Hub"
+end
+
+-- Cette méthode permet de savoir s'il faut jouer la fanfare lorsque le tirage révèle un mannequin : seulement s'il
+-- n'était pas encore découvert (phase « RevealNew »), pas pour un doublon.
+function Music.playsFanfare(prizePhase: string?): boolean
+	return prizePhase == "RevealNew"
 end
 
 -- Cette méthode permet de choisir la liste de fond d'un moment lorsque celui-ci change ; la silhouette garde la piste

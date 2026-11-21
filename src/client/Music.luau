@@ -108,7 +108,7 @@ local function playFanfare()
 end
 
 -- Cette méthode permet de recalculer le moment musical lorsque `LaneState` ou `PrizePhase` change : bascule de liste
--- de fond en fondu, fanfare à l'entrée dans la révélation.
+-- de fond en fondu, fanfare à l'entrée dans la révélation d'un mannequin nouveau.
 local function refresh()
 	if not started then
 		return
@@ -128,7 +128,11 @@ local function refresh()
 			else MusicRules.firstIndex("Hub", math.random())
 		play(wanted, i, MusicRules.SWITCH_FADE)
 	end
-	if mood == "Reveal" and previous ~= "Reveal" then
+	if
+		mood == "Reveal"
+		and previous ~= "Reveal"
+		and MusicRules.playsFanfare(player:GetAttribute("PrizePhase") :: string?)
+	then
 		playFanfare()
 	end
 end
