@@ -244,6 +244,12 @@ return function(T, Loader)
 				T.expect(type(id) == "number" and id > 0, name .. " publié")
 			end
 		end)
+		T.it("a une icône publiée pour chaque mannequin (barre d'outils)", function()
+			for _, dummy in Collection.DUMMIES do
+				local id = Assets.DUMMY_ICONS[dummy.id]
+				T.expect(type(id) == "number" and id > 0, dummy.id .. " a son icône")
+			end
+		end)
 		T.it("monte en spectacle avec la rareté (pièces ajoutées et effets, effets dès Legendary)", function()
 			local byRarity = {}
 			for _, dummy in Collection.DUMMIES do
