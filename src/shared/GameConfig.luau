@@ -39,7 +39,8 @@ local GameConfig = {
 	START_POWER         = 10,     -- Throw Power de départ
 	REP_TIME            = 0.8,    -- durée d'une répétition (s)
 	LEVEL_BASE_EXP      = 3,      -- EXP du premier niveau d'entraînement (3 répétitions avec l'équipement de départ)
-	LEVEL_EXP_GROWTH    = 1.2,    -- EXP demandée × 1,2 par niveau
+	LEVEL_EXP_GROWTH    = 1.2,    -- EXP demandée × 1,2 par niveau…
+	LEVEL_MAX_REPS      = 5,      -- … plafonnée à 5 répétitions de l'équipement du joueur (#15 : niveaux de 4 s au plus)
 
 	-- CHANCE du lancer (le lancer ne rapporte pas d'argent : il fait gagner un mannequin de collection)
 	CHANCE_PER_BONE     = 0.02,   -- + 2 % de chance par os cassé
@@ -51,7 +52,8 @@ local GameConfig = {
 	SELL_MINUTES        = 2,      -- prix de vente d'un mannequin (stand SELL, inventaire) : 2 min de son revenu
 	INVENTORY_MAX       = 200,    -- mannequins en stock au plus ; au-delà, le moins rentable est vendu d'office
 	DISPLAY_START       = 6,      -- présentoirs d'une base neuve
-	DISPLAY_PRICES      = { 1000, 5000, 25000, 100000 }, -- présentoirs 7 à 10 (pad « 6 > 7 » devant la base)
+	-- Présentoirs 7 à 10 (pad « 6 > 7 » devant la base) : achetés vers 10 min, 30 min, 1 h et 2,5 h de jeu (#15)
+	DISPLAY_PRICES      = { 450e3, 7e6, 70e6, 3e9 },
 
 	-- Dégâts
 	BONE_IMPACT_DV      = 70,     -- variation de vitesse d'un membre en une frame qui casse un os (studs/s)

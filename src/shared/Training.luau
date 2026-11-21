@@ -16,7 +16,9 @@ export type Gear = {
 	scale: number, -- taille du mannequin soulevé
 }
 
--- Paliers d'équipement : prix ×6 à ×17, gain ×3 à ×4,5 par palier (réglés sur le rythme de Throw a Seed)
+-- Paliers d'équipement : gain ×3 à ×4,5 par palier ; prix calés par le joueur simulé (#15, tools/progression.luau) pour
+-- un achat (équipement, mannequin à lancer ou présentoir) toutes les 1 à 5 min la première heure, puis de plus en plus
+-- espacés, sans mur : le ratio « prix du suivant / revenu » ne double jamais d'un achat au suivant
 Training.GEARS = {
 	{
 		name = "Wooden Dummy",
@@ -37,7 +39,7 @@ Training.GEARS = {
 	{
 		name = "Iron Dummy",
 		gain = 10,
-		cost = 1500,
+		cost = 8000,
 		color = Color3.fromRGB(110, 115, 125),
 		material = Enum.Material.DiamondPlate,
 		scale = 0.65,
@@ -45,7 +47,7 @@ Training.GEARS = {
 	{
 		name = "Gold Dummy",
 		gain = 40,
-		cost = 25000,
+		cost = 120000,
 		color = Color3.fromRGB(255, 200, 40),
 		material = Enum.Material.Foil,
 		scale = 0.7,
@@ -53,7 +55,7 @@ Training.GEARS = {
 	{
 		name = "Diamond Dummy",
 		gain = 160,
-		cost = 150000,
+		cost = 800000,
 		color = Color3.fromRGB(120, 230, 255),
 		material = Enum.Material.Glass,
 		scale = 0.75,
@@ -61,7 +63,7 @@ Training.GEARS = {
 	{
 		name = "Neon Dummy",
 		gain = 700,
-		cost = 2000000,
+		cost = 1800000,
 		color = Color3.fromRGB(255, 70, 200),
 		material = Enum.Material.Neon,
 		scale = 0.8,
@@ -69,33 +71,38 @@ Training.GEARS = {
 	{
 		name = "Cosmic Dummy",
 		gain = 3000,
-		cost = 25000000,
+		cost = 4500000,
 		color = Color3.fromRGB(110, 60, 255),
 		material = Enum.Material.ForceField,
 		scale = 0.9,
 	},
 } :: { Gear }
 
--- Suite des équipements (#94) : gain × GAIN_STEP et prix × PRICE_STEP par palier depuis Cosmic, couleur et matériau
--- d'une palette de Shared.DummyFamilies, à la taille de Cosmic (0,9 : plus grand, le mannequin soulevé traverserait la
--- tête, AnimationData.TRAIN) ; provisoire, recalé par #15 (courbe et temps estimés dans docs/design.md, section
--- « Progression longue »).
-Training.EXTENDED = { "ruby", "emerald", "plasma", "omega", "infinite" }
+-- Suite des équipements (#94) : gain × GAIN_STEP par palier depuis Cosmic, couleur et matériau d'une palette de
+-- Shared.DummyFamilies, à la taille de Cosmic (0,9 : plus grand, le mannequin soulevé traverserait la tête,
+-- AnimationData.TRAIN) ; prix calés par #15 (le dernier, condition de la renaissance, vient après la plupart des
+-- mannequins à lancer : courbe dans docs/design.md, section « Progression longue »).
+-- stylua: ignore
+Training.EXTENDED = {
+	{ palette = "ruby",     cost = 20e6 },
+	{ palette = "emerald",  cost = 50e6 },
+	{ palette = "plasma",   cost = 300e6 },
+	{ palette = "omega",    cost = 1.8e9 },
+	{ palette = "infinite", cost = 50e9 },
+}
 Training.GAIN_STEP = 4
-Training.PRICE_STEP = 3.5
 
 do
 	local last = Training.GEARS[#Training.GEARS]
-	local gain, cost, scale = last.gain, last.cost, last.scale
-	for _, paletteId in Training.EXTENDED do
-		local palette = DummyFamilies.PALETTES[paletteId]
-		assert(palette, "Training : palette inconnue " .. paletteId)
+	local gain, scale = last.gain, last.scale
+	for _, spec in Training.EXTENDED do
+		local palette = DummyFamilies.PALETTES[spec.palette]
+		assert(palette, "Training : palette inconnue " .. spec.palette)
 		gain = DummyFamilies.nice(gain * Training.GAIN_STEP)
-		cost = DummyFamilies.nice(cost * Training.PRICE_STEP)
 		table.insert(Training.GEARS, {
 			name = palette.name .. " Dummy",
 			gain = gain,
-			cost = cost,
+			cost = spec.cost,
 			color = palette.body,
 			material = palette.material or Enum.Material.SmoothPlastic,
 			scale = scale,
@@ -106,17 +113,20 @@ end
 -- `exp` : EXP accumulée dans le niveau en cours (barre « x / y »)
 export type Progress = { level: number, exp: number }
 
--- Cette méthode permet de donner l'EXP qui remplit le niveau `level` lorsque la barre est affichée ou le niveau franchi.
-function Training.expForLevel(level: number): number
-	return math.ceil(GameConfig.LEVEL_BASE_EXP * GameConfig.LEVEL_EXP_GROWTH ^ (level - 1))
+-- Cette méthode permet de donner l'EXP qui remplit le niveau `level` avec l'équipement du palier `tier` lorsque la barre
+-- est affichée ou le niveau franchi : × LEVEL_EXP_GROWTH par niveau, plafonnée à LEVEL_MAX_REPS répétitions de
+-- l'équipement (#15 : un niveau ne dure jamais plus de quelques secondes, comme les 3-5 répétitions de 01 et 09).
+function Training.expForLevel(level: number, tier: number?): number
+	local needed = math.ceil(GameConfig.LEVEL_BASE_EXP * GameConfig.LEVEL_EXP_GROWTH ^ (level - 1))
+	return math.min(needed, GameConfig.LEVEL_MAX_REPS * Training.gear(tier or 1).gain)
 end
 
 -- Cette méthode permet de compter une répétition faite avec l'équipement du palier `tier` lorsque REP_TIME s'est écoulé ;
 -- renvoie la progression (EXP en trop reportée, plusieurs niveaux possibles) et la Throw Power des niveaux franchis.
 function Training.completeRep(progress: Progress, tier: number): (Progress, number)
 	local level, exp, power = progress.level, progress.exp + Training.gear(tier).gain, 0
-	while exp >= Training.expForLevel(level) do
-		local needed = Training.expForLevel(level)
+	while exp >= Training.expForLevel(level, tier) do
+		local needed = Training.expForLevel(level, tier)
 		exp -= needed
 		power += needed
 		level += 1

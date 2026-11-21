@@ -12,6 +12,31 @@ return function(T, Loader)
 				T.expect(Training.expForLevel(level + 1) >= Training.expForLevel(level), "niveau " .. level)
 			end
 		end)
+		T.it(
+			"plafonnée à LEVEL_MAX_REPS répétitions de l'équipement (#15 : un niveau ne dure jamais longtemps)",
+			function()
+				for tier = 1, #Training.GEARS do
+					local gain = Training.GEARS[tier].gain
+					for _, level in { 1, 10, 30, 100, 1000 } do
+						local needed = Training.expForLevel(level, tier)
+						T.expect(
+							needed <= GameConfig.LEVEL_MAX_REPS * gain,
+							string.format("palier %d niveau %d", tier, level)
+						)
+					end
+					T.expectEqual(Training.expForLevel(1000, tier), GameConfig.LEVEL_MAX_REPS * gain)
+				end
+				-- Niveau 30 au bois : 594 répétitions (≈ 8 min) avant #15, LEVEL_MAX_REPS maintenant
+				local progress = { level = 30, exp = 0 }
+				local reps = 0
+				repeat
+					local power
+					progress, power = Training.completeRep(progress, 1)
+					reps += 1
+				until power > 0
+				T.expectEqual(reps, GameConfig.LEVEL_MAX_REPS)
+			end
+		)
 	end)
 
 	T.describe("Training.completeRep (EXP de l'équipement, puissance au niveau)", function()
@@ -79,16 +104,15 @@ return function(T, Loader)
 			T.expectEqual(Training.gear(99), Training.GEARS[#Training.GEARS])
 		end)
 		T.it(
-			"prolongé (#94) : les 7 paliers d'origine inchangés, puis gain × GAIN_STEP et prix × PRICE_STEP",
+			"prolongé (#94) : les 7 paliers d'origine, puis gain × GAIN_STEP et le prix de sa ligne de EXTENDED",
 			function()
 				T.expectEqual(#Training.GEARS, 7 + #Training.EXTENDED)
 				T.expectEqual(Training.GEARS[7].name, "Cosmic Dummy")
 				T.expectEqual(Training.GEARS[7].gain, 3000)
-				T.expectEqual(Training.GEARS[7].cost, 25000000)
 				for tier = 8, #Training.GEARS do
 					local gear, before = Training.GEARS[tier], Training.GEARS[tier - 1]
 					T.expect(math.abs(gear.gain / before.gain / Training.GAIN_STEP - 1) < 0.05, gear.name .. " gain")
-					T.expect(math.abs(gear.cost / before.cost / Training.PRICE_STEP - 1) < 0.05, gear.name .. " prix")
+					T.expectEqual(gear.cost, Training.EXTENDED[tier - 7].cost, gear.name .. " prix")
 					T.expect(gear.scale <= 0.9, gear.name .. " : soulevé sans traverser la tête")
 				end
 			end
