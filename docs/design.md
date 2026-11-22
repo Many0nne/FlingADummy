@@ -395,7 +395,7 @@ médianes) :
 | Première renaissance | 11,5 h | 11,1 h | — |
 | Saut le plus fort du ratio d'achat | × 1,73 | × 1,67 | — |
 Puissance à 14 h : 137 B (11,8 B avant). Le rythme de 09 est tenu sur les 20 premières minutes ; ensuite les prix de #15
-(inchangés) bornent la montée des équipements : × 10 toutes les 10 à 16 min jusqu'à 100 M. La fin de piste arrive à 105 min
+(inchangés) bornent la montée des équipements (**cible × 10 toutes les 3,5 à 5 min manquée après 12 min**, écart connu : levier suivant = prix ou répétitions, hors périmètre de #129) : × 10 toutes les 10 à 16 min jusqu'à 100 M. La fin de piste arrive à 105 min
 (> 45 min) : pas de recalage de la renaissance, qui reste à 11,1 h (le prix en $ pilote le calendrier). Garde-fou
 `Progression.spec` : écart maximal entre deux achats de la première heure porté de 6 à 7 min (le 20e achat tombe à 375 s
 d'écart : les prix de #15 ne bougent pas, cause non investiguée ; l'écart de 5 à 7 min jusqu'à 1 h était déjà documenté).
