@@ -97,7 +97,7 @@ base, il rapporte des $/s, seule source d'argent.
 - **Équipements** (achetés avec l'argent) : mannequin en bois +1, pierre +3, fer +10, or +40, diamant +160, néon +700,
   cosmique +3 000 EXP par répétition ; prix 100 $, 8 K, 120 K, 800 K, 1,8 M, 4,5 M (#15). Suite (#94,
   `Training.EXTENDED`) : ruby, emerald, plasma, omega, infinite, gain × 4 par palier (+12 K à +3 M), prix $20M, $50M,
-  $300M, $1.8B, $50B (le dernier, condition de la renaissance, après la plupart des mannequins à lancer) ; section
+  $200M (#133), $1.8B, $50B (le dernier, condition de la renaissance, après la plupart des mannequins à lancer) ; section
   « Progression longue ».
 - Vitesse de lancer = 130 + 38 × ln(puissance / 10) studs/s (110 + 30 avant #113, qui borne la glissade) : la
   puissance explose (10 → 4,4 B), la distance monte régulièrement (≈ 140 m → 6 km).
@@ -263,22 +263,23 @@ dans la barre d'outils (icône de rareté jusqu'à Secret, nom au-delà).
 | Ruby Rubber | 4.0x | $12M | 24 min | 30 min | $84M, 73 min |
 | Emerald Glass | 5.0x | $25M | 31 min | 39 min | $130M, 100 min |
 | Sapphire Steel | 6.5x | $35M | 35 min | 44 min | $200M, 116 min |
-| Amber Glider | 8.0x | $110M ($120M avant #133) | 48 min | 61 min | $290M, 2,2 h |
-| Golden Rocket | 10x | $150M ($180M avant #133) | 53 min (54) | 69 min | $440M, 2,6 h |
-| Frost Rubber | 13x | $600M | 70 min (69) | 92 min | $700M, 2,9 h |
-| Magma Glass | 17x | $1B | 81 min (80) | 108 min | $1.1B, 3,6 h |
+| Amber Glider | 8.0x | $100M ($120M avant #133) | 47 min (48) | 61 min | $290M, 2,2 h |
+| Golden Rocket | 10x | $140M ($180M) | 52 min (54) | 69 min | $440M, 2,6 h |
+| Frost Rubber | 13x | $450M ($600M) | 66 min (69) | 92 min | $700M, 2,9 h |
+| Magma Glass | 17x | $1B | 77 min (80) | 108 min | $1.1B, 3,6 h |
 | Shadow Steel | 22x | $5B | 2,2 h | 2,9 h | $1.8B, 3,9 h |
 | Radiant Glider | 30x | $9B | 2,7 h | 3,4 h | $3.2B, 4,5 h |
 | Starlight Rocket | 40x | $15B | 3,2 h | 4,1 h | $5.3B, 5,3 h |
 | Nebula Rubber | 55x | $30B | 3,9 h (4,0) | 4,9 h | $9.4B, 6,0 h |
 | Plasma Glass | 75x | $80B | 5,9 h (6,1) | 6,8 h | $16B, 7,2 h |
-| Quantum Glider | 100x | $120B | 7,1 h (7,4) | 8,2 h | $28B, 7,9 h |
+| Quantum Glider | 100x | $120B | 7,2 h (7,4) | 8,2 h | $28B, 7,9 h |
 | Infinite Rocket | 135x | $200B | 8,6 h (8,8) | 9,2 h | $47B, 8,9 h |
 
 Atteint : joueur simulé rejoué par #133 (60 joueurs, 14 h, médianes ; gains de #129, comportements de #130), avant #133
 entre parenthèses quand il diffère. Prix calés par #15 (section « Rythme et économie ») : la règle Rocket × (chance /
 3)^1,8 de #94 laissait un trou de × 6 à × 12 entre les mannequins dessinés et les équipements ($300K → $2M → $4M →
-$25M), le « mur » de la review 2. Amber Glider et Golden Rocket baissés par #133 (section « Rythme et économie »).
+$25M), le « mur » de la review 2. Amber Glider, Golden Rocket et Frost Rubber baissés par #133 (section « Rythme et
+économie »).
 
 ### Training Gear : 12 paliers
 | Équipement | EXP / rép. | Prix | Atteint (simulé, #133) | Après #129 | Avant #15 |
@@ -291,14 +292,14 @@ $25M), le « mur » de la review 2. Amber Glider et Golden Rocket baissés par #
 | Cosmic | +35K (+3K) | $4.5M | 18 min | 21 min | $25M, 41 min |
 | Ruby | +140K (+12K) | $20M | 27 min | 30 min | $88M, 88 min |
 | Emerald | +560K (+48K) | $50M | 39 min | 42 min | $310M, 2,5 h |
-| Plasma | +2.2M (+190K) | $300M | 60 min | 66 min | $1.1B, 3,3 h |
-| Omega | +8.8M (+760K) | $1.8B | 93 min (94 avant #133) | 106 min | $3.9B, 4,9 h |
-| Infinite | +35M (+3M) | $50B | 4,9 h | 5,4 h | $14B, 6,6 h |
+| Plasma | +2.2M (+190K) | $200M ($300M avant #133) | 57 min (60) | 66 min | $1.1B, 3,3 h |
+| Omega | +8.8M (+760K) | $1.8B | 90 min (94) | 106 min | $3.9B, 4,9 h |
+| Infinite | +35M (+3M) | $50B | 4,8 h (4,9) | 5,4 h | $14B, 6,6 h |
 
 Puissance (gains de #129) : 1 K à 3 min, 100 K à 12 min, 1 M à 17 min, 100 M à 43 min, 10 B à 2,1 h (avant #129 :
 5 min, 21 min, 32 min, 85 min, 6,4 h ; avant #15 : 5 min, 20 min, 45 min, 3,2 h, 7,8 h). Avec la piste de 2,4 km, le bout était atteint dès ≈ 760 K de puissance et la puissance
 n'ajoutait ensuite que des os et des objets ; la piste de 6 km (#97) donne un but aux paliers prolongés (tableau
-« Fin de piste » ci-dessous). Bout de piste simulé à 58 min depuis #130 (inchangé par #133 ; 105 min après #129, 4,2 h
+« Fin de piste » ci-dessous). Bout de piste simulé à 57 min depuis #133 (58 min après #130, 105 min après #129, 4,2 h
 avant #129, 4,6 h avec le modèle de distance d'avant #113, 6,8 h avant #15), avec la distance recalée sur les vols
 mesurés par #113.
 
@@ -306,8 +307,8 @@ mesurés par #113.
 Retours de la review 2 (compte neuf) : les présentoirs s'achetaient trop vite (point 2 : les quatre en 7 min), et « à
 partir des premiers millions, il devient beaucoup plus dur de s'améliorer » (point 10 : 12.7K/s, prochaine
 amélioration à 25 M, soit 33 min d'attente). Objectif, calé sur 01 et 09 : premier achat en moins d'une minute, puis un
-achat (équipement, mannequin à lancer ou présentoir) toutes les 1 à 5 min la première heure, puis de plus en plus
-espacés, **sans mur** : le ratio « prix du prochain achat / revenu » (attente au revenu du moment, plancher 60 s) ne
+achat (équipement, mannequin à lancer ou présentoir) toutes les 1 à 5 min la première heure (6 min au plus depuis #133),
+puis de plus en plus espacés, **sans mur** : le ratio « prix du prochain achat / revenu » (attente au revenu du moment, plancher 60 s) ne
 fait jamais de saut de plus de × 2 d'un achat au suivant. Prix trouvés en calant chaque achat sur un calendrier cible
 (écarts de 45 s à 5 min la première heure, puis × 1,22 par achat), lissés et arrondis ; revenus étagés par rareté
 (section « CHANCE et tirage ») ; présentoirs vers 10 min, 30 min, 1 h et 2,5 h ; renaissance à $350B × 2^k.
@@ -320,10 +321,10 @@ après une renaissance compris ; depuis #130, distance du mannequin équipé ave
 | 5 min | 4 | $1K/s | 4.05K | Rare | 6, $432/s, 1.19K, Rare |
 | 10 min | 7 | $7.06K/s | 74.3K | Epic | 10, $2.18K/s, 15.3K, Epic |
 | 30 min | 15 | $117K/s | 25.1M | Legendary | 13, $18.7K/s, 339K, Legendary |
-| 60 min | 21 | $716K/s | 556M | Mythic | 15, $63.9K/s, 2.52M, Legendary |
-| 3 h | 28 | $7.55M/s | 30.3B | Secret | 23, $707K/s, 80.6M, Mythic |
-| 8 h | 33 | $37.9M/s | 297B | Divine | 33, $10.8M/s, 11B, Divine |
-| 14 h | 65 (1 renaissance) | $86.7M/s | 137B | Divine | 94 (2 renaissances), $34.8M/s, 9.23B, Divine |
+| 60 min | 22 | $727K/s | 655M | Mythic | 15, $63.9K/s, 2.52M, Legendary |
+| 3 h | 28 | $7.47M/s | 31.5B | Secret | 23, $707K/s, 80.6M, Mythic |
+| 8 h | 33 | $35.6M/s | 296B | Divine | 33, $10.8M/s, 11B, Divine |
+| 14 h | 65 (1 renaissance) | $94.8M/s | 125B | Divine | 94 (2 renaissances), $34.8M/s, 9.23B, Divine |
 
 Prix suivant / revenu, minute par minute (médiane, `lune run tools/progression 60 14 "" courbe.csv` pour la courbe
 complète) :
@@ -332,7 +333,7 @@ complète) :
 | Après #15 | 51 s | 2 min | 3 min | 3 min | 4 min | 5 min | 8 min | 23 min | 50 min | 66 min | 89 min | 110 min |
 | Après #129 | 51 s | 2 min | 2 min | 3 min | 3 min | 5 min | 9 min | 22 min | 51 min | 73 min | 96 min | 104 min |
 | Après #130 | 51 s | 2 min | 2 min | 2 min | 3 min | 4 min | 9 min | 23 min | 53 min | 77 min | 94 min | 92 min |
-| Après #133 | 51 s | 2 min | 2 min | 2 min | 3 min | 4 min | 9 min | 23 min | 53 min | 76 min | 98 min | 97 min |
+| Après #133 | 51 s | 2 min | 2 min | 2 min | 3 min | 4 min | 9 min | 25 min | 53 min | 72 min | 96 min | 96 min |
 | Avant #15 | 52 s | 68 s | 3 min | 8 min | 9 min | 22 min | 18 min | 18 min | 25 min | 38 min | 50 min | 29 min |
 
 Achat par achat (le moins cher d'abord : même ordre pour tous les joueurs ; ratio juste après l'achat ; rejoué après #133) :
@@ -356,56 +357,67 @@ Achat par achat (le moins cher d'abord : même ordre pour tous les joueurs ; rat
 | 16 | Emerald Glass Dummy | $25M | 31 min | 4 min | × 1,1 |
 | 17 | Sapphire Steel Dummy | $35M | 35 min | 5 min | × 1,2 |
 | 18 | Emerald Dummy | $50M | 39 min | 5 min | × 1,0 |
-| 19 | Présentoir 9 | $70M | 43 min | 7 min | × 1,2 |
-| 20 | Amber Glider Dummy | $110M ($120M avant #133) | 48 min | 6 min | × 0,9 |
-| 21 | Golden Rocket Dummy | $150M ($180M avant #133) | 53 min | 9 min | × 1,5 |
-| 22 | Plasma Dummy | $300M | 60 min | 12 min | × 1,3 |
-| 23 | Frost Rubber Dummy | $600M | 70 min | 14 min | × 1,2 |
-| 24 | Magma Glass Dummy | $1B | 81 min | 19 min | × 1,3 |
-| 25 | Omega Dummy | $1.8B | 93 min | 21 min | × 1,1 |
-| 26 | Présentoir 10 (Golden) | $3B | 113 min | 28 min | × 1,3 |
+| 19 | Présentoir 9 | $70M | 43 min | 6 min | × 1,1 |
+| 20 | Amber Glider Dummy | $100M ($120M avant #133) | 47 min | 6 min | × 1,0 |
+| 21 | Golden Rocket Dummy | $140M ($180M) | 52 min | 6 min | × 1,1 |
+| 22 | Plasma Dummy | $200M ($300M) | 57 min | 10 min | × 1,6 |
+| 23 | Frost Rubber Dummy | $450M ($600M) | 66 min | 16 min | × 1,6 |
+| 24 | Magma Glass Dummy | $1B | 77 min | 20 min | × 1,2 |
+| 25 | Omega Dummy | $1.8B | 90 min | 22 min | × 1,1 |
+| 26 | Présentoir 10 (Golden) | $3B | 110 min | 28 min | × 1,3 |
 | 27 | Shadow Steel Dummy | $5B | 2,2 h | 36 min | × 1,3 |
-| 28 | Radiant Glider Dummy | $9B | 2,7 h | 47 min | × 1,3 |
-| 29 | Starlight Rocket Dummy | $15B | 3,2 h | 60 min | × 1,3 |
-| 30 | Nebula Rubber Dummy | $30B | 3,9 h | 69 min | × 1,2 |
-| 31 | Infinite Dummy | $50B | 4,9 h | 70 min | × 1,0 |
+| 28 | Radiant Glider Dummy | $9B | 2,7 h | 42 min | × 1,2 |
+| 29 | Starlight Rocket Dummy | $15B | 3,2 h | 57 min | × 1,4 |
+| 30 | Nebula Rubber Dummy | $30B | 3,9 h | 72 min | × 1,2 |
+| 31 | Infinite Dummy | $50B | 4,8 h | 71 min | × 1,0 |
 | 32 | Plasma Glass Dummy | $80B | 5,9 h | 85 min | × 1,2 |
-| 33 | Quantum Glider Dummy | $120B | 7,1 h | 103 min | × 1,2 |
+| 33 | Quantum Glider Dummy | $120B | 7,2 h | 104 min | × 1,2 |
 | 34 | Infinite Rocket Dummy | $200B | 8,6 h | 2,2 h | × 1,3 |
-| | Renaissance 1 | $350B | 10,4 h (10,6 h avant #133, 11,1 h avant #130) | | |
+| | Renaissance 1 | $350B | 10,5 h (10,6 h avant #133, 11,1 h avant #130) | | |
 
 Saut le plus fort : **× 1,67** depuis #129 (× 1,69 avant, × 4,29 avant #15 : Steel Dummy à 11 min, 11 min d'attente pour le Glider ; puis
-× 3,3 au Glider, 32 min d'attente pour le Cosmic, le mur du point 10). 21 achats la première heure (19 avant #129, 15 avant #15, dont 10
-dans les 10 premières minutes). Les écarts approchent 5 min dès ≈ 45 min de jeu ; depuis #133, aucun ne dépasse
-**6 min** dans la première heure (garde-fou `Progression.spec`).
+× 3,3 au Glider, 32 min d'attente pour le Cosmic, le mur du point 10). 22 achats la première heure (21 avant #133, 19 avant #129, 15 avant #15, dont 10
+dans les 10 premières minutes). Les écarts approchent 5 min dès ≈ 40 min de jeu ; depuis #133, aucun ne dépasse
+**6 min** dans la première heure (médiane de 200 joueurs, garde-fou `Progression.spec`).
 
-**Écart entre deux achats de la première heure (#133).** Règle : 6 min (360 s) au plus. #129 avait porté la borne du
-test à 7 min (375 s au 20e achat). Relevé d'avant #133 (instants médians, s ; écart au précédent entre parenthèses) :
-| Achat | 15 joueurs (test) | 60 joueurs | 200 joueurs |
+**Écart entre deux achats de la première heure (#133).** Règle : un achat fait dans la première heure suit le
+précédent de 6 min (360 s) au plus. #129 avait porté la borne du test à 7 min (375 s au 20e achat). Relevé d'avant
+#133 (instants médians, s ; écart au précédent entre parenthèses) :
+| Achat | 15 joueurs (ancien test) | 60 joueurs | 200 joueurs |
 |---|---|---|---|
 | 18 Emerald Dummy ($50M) | 2475 | 2310 | 2295 |
 | 19 Présentoir 9 ($70M) | 2685 (210) | 2580 (270) | 2580 (285) |
 | 20 Amber Glider Dummy ($120M) | 3045 (**360**) | 2895 (315) | 2880 (300) |
 | 21 Golden Rocket Dummy ($180M) | 3405 (**360**) | 3240 (345) | 3255 (**375**) |
-| 22 Plasma Dummy ($300M) | 3840 (435, après 1 h) | 3615 (375, après 1 h) | 3645 (390, après 1 h) |
-Cause : le prix. L'Amber Glider coûte × 1,71 le présentoir 9 (plus forte marche de prix depuis la 25e minute : de
-$20M à $70M, × 1,25 à × 1,43), alors que le présentoir 9 n'ajoute au revenu que le 9e mannequin de la base, le moins
-rentable : le ratio « prix suivant / revenu » monte à 7 min juste après le présentoir, et le Golden Rocket coûte
-encore × 1,5 de plus. L'ordre d'achat du joueur simulé (le moins cher d'abord) n'y est pour rien : les
-trois achats suivants sont les moins chers restants, un vrai joueur les prend dans le même ordre. Correction : Amber
-Glider $110M (× 1,57) et Golden Rocket $150M (× 1,36), d'où la suite $35M → $50M → $70M → $110M → $150M → $300M.
-| Achat | 15 joueurs (test) | 60 joueurs | 200 joueurs |
+| 22 Plasma Dummy ($300M) | 3840 (435) | 3615 (375) | 3645 (390) |
+| 23 Frost Rubber Dummy ($600M) | 4560 (720) | 4155 (540) | 4215 (570) |
+Cause : les prix entre le présentoir 9 et le Plasma Dummy. Entre 43 et 60 min, deux achats seulement (Amber Glider
+× 1,71 le présentoir 9, la plus forte marche de prix depuis la 25e minute, où elles vont de × 1,25 à × 1,43 ; puis
+Golden Rocket × 1,5), alors que le présentoir 9 n'ajoute au revenu que le 9e mannequin de la base, le moins
+rentable : le ratio « prix suivant / revenu » monte à 7 min juste après le présentoir. Trois écarts de 5,7 min en
+moyenne, donc au-dessus de 6 min dès que le hasard des tirages retarde un achat. Le Plasma Dummy tombe à 60 min ± 1 :
+selon les graines, l'écart qui le précède (6 à 7 min) compte ou non dans la première heure. L'ordre d'achat du
+joueur simulé (le moins cher d'abord) n'y est pour rien : ce sont les moins chers restants, un vrai joueur les prend
+dans le même ordre. Baisser seulement l'Amber Glider et le Golden Rocket ne suffisait pas (essai à $110M et $150M :
+le Golden Rocket arrive plus tôt et l'attente du Plasma Dummy passe à 7,5 min). Correction : les quatre prix de la
+fenêtre, Amber Glider $100M (× 1,43), Golden Rocket $140M (× 1,4), Plasma Dummy $200M (× 1,43), Frost Rubber $450M
+(× 2,25 : avec $600M et le Plasma Dummy à $220M, 10,5 min d'attente et un saut du ratio jusqu'à × 1,98). Relevé
+d'après #133 :
+| Achat | 15 joueurs | 60 joueurs | 200 joueurs (test) |
 |---|---|---|---|
-| 20 Amber Glider Dummy ($110M) | 3015 (330) | 2865 (285) | 2865 (285) |
-| 21 Golden Rocket Dummy ($150M) | 3345 (330) | 3165 (300) | 3180 (315) |
-| 22 Plasma Dummy ($300M) | 3795 (450, après 1 h) | 3615 (450, après 1 h) | 3615 (435, après 1 h) |
-Le Plasma Dummy (équipement, $300M) reste à 60 min, premier achat de la deuxième heure : il arrive au même moment
-qu'avant, l'écart qui le précède passe de 6 à 7,5 min (le Golden Rocket est acheté plus tôt). Le baisser le ferait
-entrer dans la première heure avec 6 à 6,5 min d'écart et un saut du ratio jusqu'à × 1,9 : non retenu. Jalons
-inchangés à ± 3 % : Training Gear au même instant (Omega 93 min au lieu de 94), bout de piste à 58 min, première
-renaissance à 10,4 h (10,6 h) ; revenu à 60 min $716K/s ($758K/s, − 6 %) ; saut le plus fort du ratio × 1,67
-(inchangé). Bruit : avec d'autres graines (7 lots de 15 joueurs), le plus grand écart de la première heure varie de
-315 à 480 s, comme avant #133 (330 à 435 s) : le test garde les graines 1 à 15.
+| 19 Présentoir 9 ($70M) | 2685 (210) | 2580 (270) | 2580 (285) |
+| 20 Amber Glider Dummy ($100M) | 2985 (300) | 2835 (255) | 2835 (255) |
+| 21 Golden Rocket Dummy ($140M) | 3315 (330) | 3135 (300) | 3150 (315) |
+| 22 Plasma Dummy ($200M) | 3615 (300) | 3435 (300) | 3450 (300) |
+| 23 Frost Rubber Dummy ($450M) | 4230 (615) | 3945 (510) | 3945 (495) |
+La première heure finit sur le Plasma Dummy à 57 min ; l'attente suivante (Frost Rubber, 8 à 10 min) ouvre la
+deuxième heure, où les écarts s'allongent comme prévu (Magma Glass ≈ 11 min après). Bruit : la médiane de 15 joueurs
+déplace les instants de ± 60 s selon les graines (plus grand écart de la première heure de 330 à 435 s sur 7 lots de 15
+joueurs avant #133, 330 à 390 s sur 4 lots après) ; 330 à 420 s sur 4 lots de 200 joueurs avant, 300 à 315 s sur 3 lots
+après. Le garde-fou `Progression.spec` mesure donc la première heure sur 200 joueurs (75 min simulées, ≈ 1 s), et l'ancien
+réglage y échoue (375 s). Jalons (60 joueurs, 14 h) : Plasma Dummy 57 min (60, − 5 %), Omega 90 min (94, − 4 %),
+Infinite 4,8 h (4,9), bout de piste 57 min (58), première renaissance 10,5 h (10,6) ; revenu à 60 min $727K/s ($758K/s),
+puissance 655 M (557 M) ; saut le plus fort du ratio × 1,67 (inchangé).
 
 Écarts aux références : la puissance monte ≈ 3 fois moins vite que 09 (× 10 toutes les ≈ 8 min au lieu de 3,5 min) ;
 le revenu suit 01 jusqu'à ≈ 10 min ($3.3K/s), puis plus lentement (01 : 391K/s à 17 min). Mesuré en Studio (compte
@@ -435,7 +447,7 @@ Puissance à 14 h : 137 B (11,8 B avant). Le rythme de 09 est tenu sur les 20 pr
 (inchangés) bornent la montée des équipements (**cible × 10 toutes les 3,5 à 5 min manquée après 12 min**, écart connu : levier suivant = prix ou répétitions, hors périmètre de #129) : × 10 toutes les 10 à 16 min jusqu'à 100 M. La fin de piste arrive à 105 min
 (> 45 min) : pas de recalage de la renaissance, qui reste à 11,1 h (le prix en $ pilote le calendrier). Garde-fou
 `Progression.spec` : écart maximal entre deux achats de la première heure porté de 6 à 7 min (le 20e achat tombe à 375 s
-d'écart), puis ramené à 6 min par #133 (prix de l'Amber Glider et du Golden Rocket, section « Rythme et économie »).
+d'écart), puis ramené à 6 min par #133 (prix de l'Amber Glider au Frost Rubber, section « Rythme et économie »).
 Planche `entrainement.jpg` : les gains affichés sur l'appareil changent, à régénérer en Studio (manifeste déjà à jour).
 
 ### Repères comparés aux références
@@ -446,7 +458,7 @@ Planche `entrainement.jpg` : les gains affichés sur l'appareil changent, à ré
 | Deuxième projectile | 90 s (1.25x, $1.5K) | 1:42 (1.25x, $1.2K) | 1:27 (pomme) |
 | Puissance | 1K à 3 min, 100K à 12 min | 1.34K à 4 min, 114K à 11 min | 503 à 17 min |
 | Revenu | 1K/s à 6 min, 100K/s à 32 min | 2.19K/s à 3:36 | 1.08K/s vers 9 min, 391K/s à 17 min |
-| Projectile le plus fort | 135x à 9,2 h | 135x (durée inconnue) | non observé |
+| Projectile le plus fort | 135x à 8,6 h | 135x (durée inconnue) | non observé |
 | Cote la plus haute | 1 IN 100T (50Qa en Giant) | 1 IN 300Qa | non observé |
 | Collection | 64 mannequins, 11 raretés | 110 plantes, 10 raretés + Royal | non observé |
 

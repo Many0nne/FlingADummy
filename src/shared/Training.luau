@@ -81,13 +81,13 @@ Training.GEARS = {
 
 -- Suite des équipements (#94) : gain × GAIN_STEP par palier depuis Cosmic, couleur et matériau d'une palette de
 -- Shared.DummyFamilies, à la taille de Cosmic (0,9 : plus grand, le mannequin soulevé traverserait la tête,
--- AnimationData.TRAIN) ; prix calés par #15 (le dernier, condition de la renaissance, vient après la plupart des
--- mannequins à lancer : courbe dans docs/design.md, section « Progression longue »).
+-- AnimationData.TRAIN) ; prix calés par #15, Plasma recalé par #133 (le dernier, condition de la renaissance, vient
+-- après la plupart des mannequins à lancer : courbe dans docs/design.md, section « Progression longue »).
 -- stylua: ignore
 Training.EXTENDED = {
 	{ palette = "ruby",     cost = 20e6 },
 	{ palette = "emerald",  cost = 50e6 },
-	{ palette = "plasma",   cost = 300e6 },
+	{ palette = "plasma",   cost = 200e6 },
 	{ palette = "omega",    cost = 1.8e9 },
 	{ palette = "infinite", cost = 50e9 },
 }
