@@ -379,7 +379,8 @@ le revenu suit 01 jusqu'à ≈ 10 min ($3.3K/s), puis plus lentement (01 : 391K/
 neuf, 5 min pilotées par attributs : lancer jauge pleine, pose, 15 s d'entraînement, achats dès que possible) : Stone
 Dummy à 44 s, Rubber Dummy à 2:07, Iron Dummy à 2:54, Glass Dummy à 4:29 (simulé : 45 s, 90 s, 3 min, 4 min) ; revenu
 $548/s à 4:48 (simulé : $790/s à 5 min). Le Rubber Dummy rebondit bien plus loin que le modèle (1,2 à 1,9 km à
-161 de puissance, Rare dès 2:24) mais allonge la boucle (vols de 15 à 21 s).
+161 de puissance, Rare dès 2:24) mais allonge la boucle (vols de 15 à 21 s) : mesure d'avant #113 ; depuis #130, + 15 %
+de la portée naturelle et vols de 10 à 16 s.
 
 ### Gains des équipements calés sur 09 (#129)
 Le joueur simulé montait ≈ 2 fois moins vite que *Throw a Seed* (09) : #15 avait recalé les prix, pas les gains de
