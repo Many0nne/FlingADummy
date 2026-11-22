@@ -483,7 +483,9 @@ Dummy à même puissance et jauge), quelle que soit la puissance, sans passer le
   ≈ 40 studs/s (≈ 2,5 s de descente au lieu de 1,3). **Rubber** (+ 15 %) : 4 rebonds de hauteur fixe (≈ 35, 13, 4,5
   et 1,7 studs), élan rétabli à chaque rebond, pas de frein au sol entre deux rebonds ; rebond reconnu sur la chute la
   plus forte depuis le précédent (les membres touchent souvent avant le torse), au plus les 4 du plan (les petits
-  rebonds physiques ne comptent pas).
+  rebonds physiques ne comptent pas), au sol seulement (torse sous 6 studs), jamais plus haut que la
+  chute. Pièges : pendant leur poussée (0,5 s), ni rebond réglé ni portance ; après un piège, le Rubber rebondit
+  librement (physique).
 - Sol plat (test Lune, de 200 à 4,4 B de puissance) : Rubber + 14,5 %, Glider + 18,5 %, Rocket + 22,5 % à l'arrêt
   (part de la portée naturelle, plus la glissade du Rocket plus rapide).
 - **Mesures** (Studio, `DebugLaunchBots` avec `DebugBotsPower` et `DebugBotsDummy`, jauge pleine, 3 couloirs ; 6 à 9 vols
