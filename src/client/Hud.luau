@@ -64,7 +64,8 @@ local musicOff: Frame -- barre rouge en travers du bouton musique quand la musiq
 local windows: { [string]: Frame } = {}
 local gearCards: { UIKit.Card } = {}
 local gearRow: ScrollingFrame? -- rangée des cartes d'équipement (défile jusqu'au prochain achat à l'ouverture)
-local modelsStage: number? = nil -- étape des gabarits (DummyShape.meshStage) des rendus 3D des cartes déjà construits
+-- Étape des gabarits (DummyShape.meshStage, + 10 en mouvement réduit) des rendus 3D des cartes déjà construits
+local modelsStage: number? = nil
 local trainBar: Frame
 local leftColumn: Frame -- colonne Index / Shop / Rebirth, centrée verticalement
 local BUTTON_GAP = 22 -- écart vertical entre deux boutons de la colonne de gauche
@@ -476,17 +477,22 @@ end
 
 -- Cette méthode permet de construire le rendu 3D d'un équipement (look du palier, Shared.TrainingLook ; néon à la place
 -- du verre et du champ de force, qui ne se rendent pas en ViewportFrame) lorsqu'une carte ou le popup « NEW GEAR! »
--- l'affichent.
+-- l'affichent ; pièces ajoutées figées (anneaux, lunes) en mouvement réduit.
 local function gearModel(tier: number): Model
 	local model = DummyShape.buildVisual(1, TrainingLook.variant(tier, "viewport") :: DummyShape.Variant)
 	DummyShape.viewportSafe(model)
+	if UIKit.reducedMotion() then
+		for _, part in model:GetChildren() do
+			part:RemoveTag(DummyShape.FX_TAG)
+		end
+	end
 	return model
 end
 
 -- Cette méthode permet de (re)construire les rendus 3D des cartes (mannequins soulevés) lorsque une
 -- fenêtre s'ouvre pour la première fois ou que les maillages publiés viennent d'arriver.
 local function buildModels()
-	local stage = DummyShape.meshStage()
+	local stage = DummyShape.meshStage() + (if UIKit.reducedMotion() then 10 else 0)
 	if modelsStage == stage then
 		return
 	end

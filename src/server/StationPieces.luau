@@ -135,8 +135,9 @@ function BUILDERS.finials(model: Model, f: Frame, _look: BaseLook.StationLook)
 			Enum.PartType.Ball
 		)
 	end
+	-- Devant les manchons de corde de la traverse (1,05 stud de profondeur)
 	local width = f.postX * 2 - 2 * POST_HALF
-	piece(model, Vector3.new(width, 0.3, 0.12), rackAt(f, 0, f.barY + 0.28, -BAR_HALF - 0.06), GOLD, Enum.Material.Foil)
+	piece(model, Vector3.new(width, 0.3, 0.12), rackAt(f, 0, f.barY + 0.28, -BAR_HALF - 0.17), GOLD, Enum.Material.Foil)
 end
 
 -- Cette méthode permet de poser deux grappes de cristaux sur le podium (coin avant gauche, côté droit) lorsque
@@ -189,16 +190,17 @@ end
 -- l'appareil atteint le rubis.
 function BUILDERS.gems(model: Model, f: Frame, look: BaseLook.StationLook)
 	for _, side in SIDES do
-		gem(model, rackAt(f, side * 1.4, f.barY, -BAR_HALF - 0.06), 0.5, look.accent)
-		gem(model, rackAt(f, side * f.postX, 0.5, -PLINTH_HALF - 0.11), 0.4, look.accent)
+		gem(model, rackAt(f, side * 1.4, f.barY, -BAR_HALF - 0.32), 0.5, look.accent) -- devant le bandeau doré
+		gem(model, rackAt(f, side * (f.postX - PLINTH_SHIFT), 0.5, -PLINTH_HALF - 0.11), 0.4, look.accent)
 	end
 end
 
 -- Cette méthode permet de poser un blason doré à gemme au centre de la traverse lorsque l'appareil atteint l'émeraude.
 function BUILDERS.crest(model: Model, f: Frame, look: BaseLook.StationLook)
-	local at = rackAt(f, 0, f.barY + 0.25, -BAR_HALF - 0.12)
-	piece(model, Vector3.new(1.5, 1.7, 0.2), at, GOLD, Enum.Material.Foil)
-	piece(model, Vector3.new(1.1, 1.3, 0.1), at * CFrame.new(0, 0, -0.12), look.postDark)
+	-- Du bas de la traverse au-dessous de la planète, devant le bandeau doré
+	local at = rackAt(f, 0, f.barY + 0.3, -BAR_HALF - 0.35)
+	piece(model, Vector3.new(1.5, 1.5, 0.2), at, GOLD, Enum.Material.Foil)
+	piece(model, Vector3.new(1.1, 1.1, 0.1), at * CFrame.new(0, 0, -0.12), look.postDark)
 	gem(model, at * CFrame.new(0, 0.05, -0.2), 0.6, look.accent)
 end
 
