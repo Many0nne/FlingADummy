@@ -122,7 +122,11 @@ base, il rapporte des $/s, seule source d'argent.
   (remote `TrainingBoost`) et n'accepte que le clic de ce numéro, une fois, jusqu'à 0,5 s après la fin de l'affichage
   (latence) ; bonus accordé : attribut joueur `TrainBoostEnds` (temps serveur) lu par le HUD. Chiffres dans
   `GameConfig` (`BOOST_*`). Studio : `DebugBoost = true` fait apparaître le bouton, `DebugBoostClaim = <numéro>`
-  simule le clic du client (même validation), sortie « [Boost] ».
+  simule le clic du client (même validation), sortie « [Boost] ». Mesuré en Studio (joueur neuf, Iron Dummy, 30 s de
+  séance) : + 1 665 de puissance et d'EXP sans bonus (37 répétitions × 45), + 3 420 avec (38 × 90) ; première
+  apparition à 33,9 s d'entraînement, clics à 0,9 s et 2,3 s acceptés, clic tardif (« Late »), en double
+  (« Duplicate ») ou d'une apparition remplacée (« Unknown ») refusés, bonus fini à 30,01 s, séance arrêtée : bonus,
+  barre et contour retirés. Captures : `docs/captures/bonus-entrainement-119/`.
 - **Équipements** (achetés avec l'argent) : mannequin en bois +1, pierre +3, fer +10, or +40, diamant +160, néon +700,
   cosmique +3 000 EXP par répétition ; prix 100 $, 8 K, 120 K, 800 K, 1,8 M, 4,5 M (#15). Suite (#94,
   `Training.EXTENDED`) : ruby, emerald, plasma, omega, infinite, gain × 4 par palier (+12 K à +3 M), prix $20M, $50M,
