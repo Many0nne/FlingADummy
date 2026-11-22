@@ -93,6 +93,9 @@ local function particles(part: BasePart, props: { [string]: any })
 end
 
 local builders: { [string]: (model: Model, at: CFrame, box: TrapBox) -> () } = {}
+-- Blocs posés par site de piège (toutes colonnes) : les pièces de deux colonnes voisines qui se touchent ne scintillent
+-- pas (Build.within, #93)
+local siteAreas: { [number]: { any } } = {}
 
 -- Cette méthode permet de monter un trampoline (pieds noirs, cadre bleu, ressorts jaunes, toile noire qui ondule) dans la
 -- boîte lorsque la piste est construite.
@@ -676,7 +679,9 @@ function TrapProps.build(box: TrapBox, parent: Instance)
 	local model = Instance.new("Model")
 	model.Name = "Trap" .. box.kind
 	model:SetAttribute("Trap", box.kind)
-	builder(model, CFrame.new(box.x, 0, box.z), box)
+	-- D'un tenant avec les colonnes voisines du même piège : un bloc qui en affleure un autre ressort un peu (#93)
+	siteAreas[box.site] = siteAreas[box.site] or {}
+	Build.within(siteAreas[box.site], builder, model, CFrame.new(box.x, 0, box.z), box)
 	-- Pièces mobiles : même piège et même phase que la boîte, que le serveur prend pour décider s'il agit
 	for _, child in model:GetChildren() do
 		if CollectionService:HasTag(child, Traps.MOTION_TAG) then

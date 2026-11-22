@@ -117,14 +117,16 @@ end
 -- Cette méthode permet de construire un massif de fleurs colorées sur tiges (toujours traversable) lorsque l'on habille une zone.
 builders.flowers = function(parent, at, rng)
 	local colors = { rgb(255, 70, 70), rgb(255, 220, 40), WHITE, rgb(255, 120, 200), rgb(150, 110, 255) }
-	for _ = 1, rng:NextInteger(3, 6) do
+	for i = 1, rng:NextInteger(3, 6) do
 		local offset = Vector3.new(rng:NextNumber(-3, 3), 0, rng:NextNumber(-3, 3))
-		put(parent, at, Vector3.new(0.4, 1.6, 0.4), offset + Vector3.new(0, 0.8, 0), LEAF_DARK, false)
+		-- Tiges de trois hauteurs : deux fleurs qui se touchent n'ont pas le dessus dans le même plan (#93)
+		local stem = 1.6 + (i % 3) * 0.2
+		put(parent, at, Vector3.new(0.4, stem, 0.4), offset + Vector3.new(0, stem / 2, 0), LEAF_DARK, false)
 		put(
 			parent,
 			at,
 			Vector3.new(1, 1, 1),
-			offset + Vector3.new(0, 1.9, 0),
+			offset + Vector3.new(0, stem + 0.3, 0),
 			colors[rng:NextInteger(1, #colors)],
 			false
 		)
@@ -646,18 +648,23 @@ builders.gravestone = function(parent, at, _rng, solid)
 	put(parent, at, Vector3.new(0.4, 1.8, 0.2), Vector3.new(0, 2.6, -0.6), rgb(90, 85, 100), false)
 end
 
+local WEB_STEP = 0.06 -- écart de profondeur entre deux fils d'une toile qui se croisent
+
 -- Cette méthode permet de tendre une toile d'araignée (fils blancs en croix et en losange, araignée noire) lorsque
 -- l'on habille le château hanté.
 builders.spiderweb = function(parent, at)
 	local silk = rgb(235, 235, 245)
 	local center = Vector3.new(0, 7, 0)
-	for _, angle in { 0, 45, 90, 135 } do
-		put(parent, at, Vector3.new(10, 0.15, 0.15), center, silk, false, Vector3.new(0, 0, angle))
+	-- Fils à des profondeurs écartées de WEB_STEP (#93) : deux fils qui se croisent n'ont pas leurs faces dans le même plan
+	for i, angle in { 0, 45, 90, 135 } do
+		local depth = Vector3.new(0, 0, (i - 1) * WEB_STEP)
+		put(parent, at, Vector3.new(10, 0.15, 0.15), center + depth, silk, false, Vector3.new(0, 0, angle))
 	end
 	for _, r in { 2, 4 } do
 		for k = 0, 3 do
 			local a = math.rad(k * 90 + 45)
-			local offset = center + Vector3.new(math.cos(a) * r * 0.707, math.sin(a) * r * 0.707, 0)
+			local depth = Vector3.new(0, 0, (4 + k % 2) * WEB_STEP)
+			local offset = center + depth + Vector3.new(math.cos(a) * r * 0.707, math.sin(a) * r * 0.707, 0)
 			put(parent, at, Vector3.new(r * 1.41, 0.15, 0.15), offset, silk, false, Vector3.new(0, 0, k * 90 - 45))
 		end
 	end
@@ -734,9 +741,10 @@ function Props.fence(parent: Instance, from: Vector3, to: Vector3, style: BaseLo
 			Build.block(post, Vector3.new(side, cap, side), at * CFrame.new(0, h + cap / 2, 0), look.cap)
 		end
 	end
-	-- Lisses en retrait des poteaux, à 36 % et 73 % de leur hauteur
+	-- Lisses en retrait des poteaux, à 36 % et 73 % de leur hauteur, d'un poteau à l'autre (deux lisses d'un coin ne se
+	-- croisent pas dans son poteau)
 	for _, y in { h * 0.36, h * 0.73 } do
-		local size = Vector3.new(w * BaseLook.RAIL_RATIO, 0.9, length)
+		local size = Vector3.new(w * BaseLook.RAIL_RATIO, 0.9, length - w)
 		Build.block(lookPiece(parent, "Rail", 1), size, frame * CFrame.new(0, y, -length / 2), look.rail)
 	end
 end
@@ -1541,6 +1549,16 @@ function Props.signpost(parent: Instance, at: CFrame, text: string, color: Color
 	put(parent, at, Vector3.new(1.2, 9, 1.2), Vector3.new(0, 4.5, 0), WOOD_DARK, false)
 	local board = put(parent, at, Vector3.new(14, 4.5, 1), Vector3.new(0, 9, 0), color, false)
 	Build.surfaceText(board, Enum.NormalId.Front, text)
+end
+
+-- Chaque élément se pose d'un tenant : un bloc qui en affleure un autre du même élément ressort un peu (Build.settled,
+-- #93)
+for name, fn in Props :: any do
+	if type(fn) == "function" then
+		(Props :: any)[name] = function(...)
+			return Build.settled(fn, ...)
+		end
+	end
 end
 
 return Props

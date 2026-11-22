@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CourseLayout = require(ReplicatedStorage.Shared.CourseLayout)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local ObstacleRules = require(ReplicatedStorage.Shared.ObstacleRules)
 local Zones = require(ReplicatedStorage.Shared.Zones)
 local Build = require(script.Parent.Build)
 
@@ -91,7 +92,8 @@ local function eachColumn(kit: Kit, fn: (add: Add, x: number, column: number) ->
 end
 
 -- Cette méthode permet de monter un mur en quinconce sur toute la largeur des colonnes (`rows` rangées de blocs
--- `brick`, deux teintes alternées) lorsque l'on construit un mur de thème ; rien en porte-à-faux.
+-- `brick`, deux teintes alternées, demi-blocs aux bouts des rangées décalées : Shared.ObstacleRules.staggeredWall)
+-- lorsque l'on construit un mur de thème ; rien en porte-à-faux.
 local function staggeredWall(
 	kit: Kit,
 	z: number,
@@ -103,27 +105,22 @@ local function staggeredWall(
 	extra: { [string]: any }?
 )
 	local add = kit.group()
-	local step = brick.X + GAP
-	local count = math.floor(SPAN / step)
-	for row = 0, rows - 1 do
-		-- Rangée centrée sur la largeur des colonnes (la largeur d'un bloc ne divise pas toujours SPAN)
-		local margin = (SPAN - count * step) / 2
-		local offset = margin + (if row % 2 == 0 then 0 else step / 2)
-		for col = 0, count - 1 - row % 2 do
-			local x = -SPAN / 2 + step / 2 + col * step + offset
-			local y = brick.Y / 2 + row * (brick.Y + GAP)
-			block(
-				add,
-				"Block",
-				brick,
-				Vector3.new(x, y, z),
-				colors[(row + col) % #colors + 1],
-				density,
-				material,
-				nil,
-				extra
-			)
-		end
+	local col, row = 0, -1
+	for _, piece in ObstacleRules.staggeredWall(SPAN, brick, rows, GAP) do
+		-- Teintes alternées le long de chaque rangée, décalées d'une rangée à l'autre
+		col = if piece.row == row then col + 1 else 0
+		row = piece.row
+		block(
+			add,
+			"Block",
+			Vector3.new(piece.width, brick.Y, brick.Z),
+			Vector3.new(piece.x, piece.y, z),
+			colors[(row + col) % #colors + 1],
+			density,
+			material,
+			nil,
+			extra
+		)
 	end
 end
 

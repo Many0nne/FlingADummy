@@ -58,4 +58,74 @@ return function(T, Loader)
 			T.expectEqual(ObstacleRules.claimant(Vector3.new(0, 2, 90), {}), nil)
 		end)
 	end)
+
+	T.describe("ObstacleRules.staggeredWall (#114)", function()
+		local span = GameConfig.SLOT_COUNT * GameConfig.SLOT_SPACING
+		local gap = 0.04
+		-- Murs des thèmes (Server.ThemeObstacles : Wall, IceWall), puis d'autres largeurs de brique
+		local walls = {
+			{ brick = Vector3.new(3.96, 3, 2.5), rows = 7 },
+			{ brick = Vector3.new(4, 4, 3), rows = 4 },
+		}
+		for width = 2, 6, 0.37 do
+			table.insert(walls, { brick = Vector3.new(width, 2, 2), rows = 6 })
+		end
+
+		T.it("pose chaque brique sur celles de la rangée du dessous (centre au-dessus de leur appui)", function()
+			for _, wall in walls do
+				local bricks = ObstacleRules.staggeredWall(span, wall.brick, wall.rows, gap)
+				for _, brick in bricks do
+					if brick.row > 0 then
+						local low, high = math.huge, -math.huge
+						for _, under in bricks do
+							local overlap = math.min(brick.x + brick.width / 2, under.x + under.width / 2)
+								- math.max(brick.x - brick.width / 2, under.x - under.width / 2)
+							if under.row == brick.row - 1 and overlap > 0 then
+								low = math.min(low, under.x - under.width / 2)
+								high = math.max(high, under.x + under.width / 2)
+							end
+						end
+						T.expect(
+							brick.x >= low and brick.x <= high,
+							string.format(
+								"brique %.2f de la rangée %d en porte-à-faux (appui %.2f à %.2f)",
+								brick.x,
+								brick.row,
+								low,
+								high
+							)
+						)
+					end
+				end
+			end
+		end)
+
+		T.it("garde les rangées dans la largeur, sans briques qui se chevauchent", function()
+			for _, wall in walls do
+				local bricks = ObstacleRules.staggeredWall(span, wall.brick, wall.rows, gap)
+				local byRow = {}
+				for _, brick in bricks do
+					T.expect(math.abs(brick.x) + brick.width / 2 <= span / 2 + 1e-6, "hors des colonnes")
+					T.expect(brick.width >= wall.brick.X / 2 - gap, "brique trop étroite")
+					byRow[brick.row] = byRow[brick.row] or {}
+					table.insert(byRow[brick.row], brick)
+				end
+				for row = 0, wall.rows - 1 do
+					local list = byRow[row]
+					table.sort(list, function(a, b)
+						return a.x < b.x
+					end)
+					for i = 2, #list do
+						local space = (list[i].x - list[i].width / 2) - (list[i - 1].x + list[i - 1].width / 2)
+						T.expect(space >= gap - 1e-6, "briques collées rangée " .. row)
+					end
+					-- Rangées décalées aussi larges que les autres : demi-briques aux deux bouts
+					local first, last = list[1], list[#list]
+					local edge = byRow[0][1].x - byRow[0][1].width / 2
+					T.expect(math.abs((first.x - first.width / 2) - edge) < 1e-6, "bord gauche rangée " .. row)
+					T.expect(math.abs((last.x + last.width / 2) + edge) < 1e-6, "bord droit rangée " .. row)
+				end
+			end
+		end)
+	end)
 end

@@ -25,6 +25,10 @@ local function pathNode(path: string)
 					return pathNode(path .. "/" .. child)
 				end
 			end
+			-- `script.Parent.X` (modules serveur) : dossier du module
+			if name == "Parent" then
+				return pathNode(string.match(path, "^(.*)/[^/]*$") or ".")
+			end
 			return pathNode(path .. "/" .. name)
 		end,
 	})
@@ -98,6 +102,8 @@ function Loader:require(target: any)
 	if self.cache[file] == nil then
 		local env = {
 			game = self.game,
+			-- `script` : le module lui-même (X.luau → nœud X, X/init.luau → nœud X)
+			script = pathNode((string.gsub(string.gsub(file, "/init%.luau$", ""), "%.luau$", ""))),
 			require = function(t)
 				-- chemin relatif (outils hors Rojo, ex. tools/map) : depuis le dossier du module qui le demande
 				if type(t) == "string" and (string.sub(t, 1, 2) == "./" or string.sub(t, 1, 3) == "../") then

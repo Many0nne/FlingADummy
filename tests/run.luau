@@ -8,6 +8,8 @@ local roblox = require("@lune/roblox")
 
 local Loader = require("./lib/Loader")
 local BoosterRingSim = require("../tools/BoosterRingSim")
+local Coplanar = require("./lib/Coplanar")
+local DecorBuild = require("./lib/DecorBuild")
 local GeneratedLooks = require("../tools/GeneratedLooks")
 local Planches = require("../tools/Planches")
 local ProgressionSim = require("../tools/ProgressionSim")
@@ -18,6 +20,8 @@ local Test = require("./lib/Test")
 local Lib = {
 	R15Rig = R15Rig,
 	BoosterRingSim = BoosterRingSim,
+	Coplanar = Coplanar,
+	DecorBuild = DecorBuild,
 	GeneratedLooks = GeneratedLooks,
 	Planches = Planches,
 	ProgressionSim = ProgressionSim,
