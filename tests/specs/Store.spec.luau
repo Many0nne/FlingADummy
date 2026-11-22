@@ -68,9 +68,14 @@ return function(T, Loader)
 				end
 			end
 		end)
-		T.it("aucun produit créé : identifiants à 0, introuvables par identifiant Roblox", function()
+		T.it("articles créés (#172) : identifiant Roblox unique par type, retrouvé par Store.byAsset", function()
+			local seen = {}
 			for _, item in Store.ITEMS do
-				T.expectEqual(item.assetId, 0)
+				T.expect(item.assetId > 0, item.id .. " : identifiant Roblox renseigné")
+				local key = item.kind .. ":" .. item.assetId
+				T.expect(not seen[key], item.id .. " : identifiant déjà pris par " .. tostring(seen[key]))
+				seen[key] = item.id
+				T.expectEqual(Store.byAsset(item.kind, item.assetId), item)
 			end
 			T.expectEqual(Store.byAsset("Product", 0), nil)
 			T.expectEqual(Store.get("Nope"), nil)

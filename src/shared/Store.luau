@@ -2,8 +2,9 @@
 -- argent rapide, pack de démarrage), effets cumulés (CHANCE, revenu, EXP d'entraînement, présentoirs), minuteurs des
 -- boosts (décomptés seulement en jeu), montant de l'argent rapide, offre du pack de démarrage et reçus déjà attribués.
 -- Logique pure, partagée par le serveur (Server.StoreService : attribution, sauvegarde) et le client (Client.StoreWindow).
--- Les identifiants Roblox (`assetId`) valent 0 tant que le passe ou le produit n'est pas créé sur l'expérience : en
--- Studio, l'achat est alors simulé ; ailleurs, le bouton montre le prix mais n'achète rien.
+-- Les identifiants Roblox (`assetId`) sont ceux des passes et produits créés sur l'expérience (#172). Un nouvel article
+-- garde 0 tant qu'il n'est pas créé : en Studio, l'achat est alors simulé ; ailleurs, le bouton montre le prix mais
+-- n'achète rien.
 local Store = {}
 
 local rgb = Color3.fromRGB
@@ -74,46 +75,46 @@ local CASH = { rgb(140, 240, 120), rgb(40, 160, 70) }
 -- stylua: ignore
 Store.ITEMS = {
 	-- Packs
-	{ id = "StarterPack",  kind = "Product", section = "Packs",  name = "Starter Pack",   price = 99,  assetId = 0, icon = "🎁", colors = RED,
+	{ id = "StarterPack",  kind = "Product", section = "Packs",  name = "Starter Pack",   price = 99,  assetId = 3734877786, icon = "🎁", colors = RED,
 	  text = "2 Lucky Throws, 15 min 2x Luck, 15 min 2x Money, 2 h of cash" },
 	-- Passes de jeu
-	{ id = "Luck2x",       kind = "Pass",    section = "Passes", name = "2x Luck",        price = 249, assetId = 0, icon = "🍀", colors = GREEN,
+	{ id = "Luck2x",       kind = "Pass",    section = "Passes", name = "2x Luck",        price = 249, assetId = 2097060407, icon = "🍀", colors = GREEN,
 	  text = "2x luck on every throw" },
-	{ id = "Money2x",      kind = "Pass",    section = "Passes", name = "2x Money",       price = 199, assetId = 0, icon = "💰", colors = GOLD,
+	{ id = "Money2x",      kind = "Pass",    section = "Passes", name = "2x Money",       price = 199, assetId = 2096750455, icon = "💰", colors = GOLD,
 	  text = "2x income from your dummies" },
-	{ id = "VIP",          kind = "Pass",    section = "Passes", name = "VIP",            price = 99,  assetId = 0, icon = "👑", colors = PURPLE,
+	{ id = "VIP",          kind = "Pass",    section = "Passes", name = "VIP",            price = 99,  assetId = 2094204472, icon = "👑", colors = PURPLE,
 	  text = "+25% income, gold VIP badge" },
-	{ id = "StrongArms",   kind = "Pass",    section = "Passes", name = "Strong Arms",    price = 149, assetId = 0, icon = "💪", colors = RED,
+	{ id = "StrongArms",   kind = "Pass",    section = "Passes", name = "Strong Arms",    price = 149, assetId = 2092998634, icon = "💪", colors = RED,
 	  text = "2x EXP for every rep" },
-	{ id = "BigBase",      kind = "Pass",    section = "Passes", name = "Big Base",       price = 79,  assetId = 0, icon = "🏠", colors = SKY,
+	{ id = "BigBase",      kind = "Pass",    section = "Passes", name = "Big Base",       price = 79,  assetId = 2096444601, icon = "🏠", colors = SKY,
 	  text = "+10 displays in your base" },
-	{ id = "Rainbow",      kind = "Pass",    section = "Passes", name = "Rainbow Dummy",  price = 799, assetId = 0, icon = "🌈", colors = RAINBOW,
+	{ id = "Rainbow",      kind = "Pass",    section = "Passes", name = "Rainbow Dummy",  price = 799, assetId = 2097228437, icon = "🌈", colors = RAINBOW,
 	  text = "1.5x the luck of your best dummy (15x at least)" },
 	-- Boosts
-	{ id = "LuckPotion",   kind = "Product", section = "Boosts", name = "Luck Potion",    price = 39,  assetId = 0, icon = "🧪", colors = GREEN,
+	{ id = "LuckPotion",   kind = "Product", section = "Boosts", name = "Luck Potion",    price = 39,  assetId = 3734877812, icon = "🧪", colors = GREEN,
 	  text = "2x luck for 15 min", boost = "Luck2", seconds = 15 * 60 },
-	{ id = "MegaLuck",     kind = "Product", section = "Boosts", name = "Mega Luck Potion", price = 99, assetId = 0, icon = "🧪", colors = TEAL,
+	{ id = "MegaLuck",     kind = "Product", section = "Boosts", name = "Mega Luck Potion", price = 99, assetId = 3734877835, icon = "🧪", colors = TEAL,
 	  text = "5x luck for 15 min", boost = "Luck5", seconds = 15 * 60 },
-	{ id = "ServerLuck",   kind = "Product", section = "Boosts", name = "Server Luck",    price = 99,  assetId = 0, icon = "🌍", colors = SKY,
+	{ id = "ServerLuck",   kind = "Product", section = "Boosts", name = "Server Luck",    price = 99,  assetId = 3734877852, icon = "🌍", colors = SKY,
 	  text = "2x luck for everyone in the server for 30 min", seconds = 30 * 60 },
-	{ id = "LuckyThrow1",  kind = "Product", section = "Boosts", name = "Lucky Throw",    price = 19,  assetId = 0, icon = "🎲", colors = DICE,
+	{ id = "LuckyThrow1",  kind = "Product", section = "Boosts", name = "Lucky Throw",    price = 19,  assetId = 3734877874, icon = "🎲", colors = DICE,
 	  text = "Your next throw gets 50x luck", throws = 1 },
-	{ id = "LuckyThrow5",  kind = "Product", section = "Boosts", name = "5 Lucky Throws", price = 79,  assetId = 0, icon = "🎲", colors = DICE,
+	{ id = "LuckyThrow5",  kind = "Product", section = "Boosts", name = "5 Lucky Throws", price = 79,  assetId = 3734877898, icon = "🎲", colors = DICE,
 	  text = "50x luck on 5 throws", throws = 5 },
-	{ id = "LuckyThrow20", kind = "Product", section = "Boosts", name = "20 Lucky Throws", price = 249, assetId = 0, icon = "🎲", colors = DICE,
+	{ id = "LuckyThrow20", kind = "Product", section = "Boosts", name = "20 Lucky Throws", price = 249, assetId = 3734877914, icon = "🎲", colors = DICE,
 	  text = "50x luck on 20 throws", throws = 20 },
-	{ id = "MoneyBoost",   kind = "Product", section = "Boosts", name = "Money Boost",    price = 49,  assetId = 0, icon = "🧪", colors = GOLD,
+	{ id = "MoneyBoost",   kind = "Product", section = "Boosts", name = "Money Boost",    price = 49,  assetId = 3734877934, icon = "🧪", colors = GOLD,
 	  text = "2x income for 30 min", boost = "Money", seconds = 30 * 60 },
-	{ id = "TrainBoost",   kind = "Product", section = "Boosts", name = "Training Boost", price = 49,  assetId = 0, icon = "🧪", colors = RED,
+	{ id = "TrainBoost",   kind = "Product", section = "Boosts", name = "Training Boost", price = 49,  assetId = 3734877957, icon = "🧪", colors = RED,
 	  text = "2x training EXP for 30 min", boost = "Train", seconds = 30 * 60 },
 	-- Argent rapide
-	{ id = "CashSmall",    kind = "Product", section = "Cash",   name = "Small Cash",     price = 29,  assetId = 0, icon = "💵", colors = CASH,
+	{ id = "CashSmall",    kind = "Product", section = "Cash",   name = "Small Cash",     price = 29,  assetId = 3734877984, icon = "💵", colors = CASH,
 	  text = "30 min of income", minutes = 30 },
-	{ id = "CashMedium",   kind = "Product", section = "Cash",   name = "Medium Cash",    price = 99,  assetId = 0, icon = "💵", colors = CASH,
+	{ id = "CashMedium",   kind = "Product", section = "Cash",   name = "Medium Cash",    price = 99,  assetId = 3734878020, icon = "💵", colors = CASH,
 	  text = "3 h of income", minutes = 180 },
-	{ id = "CashLarge",    kind = "Product", section = "Cash",   name = "Large Cash",     price = 299, assetId = 0, icon = "💵", colors = CASH,
+	{ id = "CashLarge",    kind = "Product", section = "Cash",   name = "Large Cash",     price = 299, assetId = 3734878043, icon = "💵", colors = CASH,
 	  text = "12 h of income", minutes = 720 },
-	{ id = "CashHuge",     kind = "Product", section = "Cash",   name = "Huge Cash",      price = 799, assetId = 0, icon = "💵", colors = CASH,
+	{ id = "CashHuge",     kind = "Product", section = "Cash",   name = "Huge Cash",      price = 799, assetId = 3734878062, icon = "💵", colors = CASH,
 	  text = "48 h of income", minutes = 2880, best = true },
 } :: { Item }
 
