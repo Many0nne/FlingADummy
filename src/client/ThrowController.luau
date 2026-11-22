@@ -1,5 +1,5 @@
 -- Lancer : figé par le serveur sur la bande de lancer, le joueur voit une jauge verticale dont l'aiguille court toute
--- seule ; un clic (toucher, Espace) l'arrête (son et rebond), la cinématique démarre (gros plan, bandes noires),
+-- seule, caméra resserrée derrière l'épaule (Client.FlightCamera.band, #158) ; un clic (toucher, Espace) l'arrête (son et rebond), la cinématique démarre (gros plan, bandes noires),
 -- l'avatar joue son geste de lancer et le mannequin part au lâcher avec la valeur de la jauge (vérifiée par le
 -- serveur). Anime aussi le reflet de la bande, localement.
 local CollectionService = game:GetService("CollectionService")
@@ -8,7 +8,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CourseLayout = require(Shared:WaitForChild("CourseLayout"))
@@ -17,6 +16,7 @@ local Gauge = require(Shared:WaitForChild("Gauge"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local CharacterPoser = require(script.Parent.CharacterPoser)
+local FlightCamera = require(script.Parent.FlightCamera)
 local LaunchGhost = require(script.Parent.LaunchGhost)
 local ThrowCinematic = require(script.Parent.ThrowCinematic)
 local UIKit = require(script.Parent.UIKit)
@@ -125,17 +125,14 @@ local function currentValue(): number
 	return locked or Gauge.value(os.clock() - shownAt)
 end
 
--- Cette méthode permet de placer la caméra derrière l'avatar, vers la piste, lorsque le joueur est figé sur la bande
--- (le serveur l'a déjà tourné face à la piste).
-local function aimCamera()
+-- Cette méthode permet de resserrer la caméra derrière l'épaule, vers le bout de la piste (#158), lorsque le joueur
+-- est figé sur la bande (le serveur l'a déjà tourné face à la piste) ou y est remis en prise (lancer refusé).
+local function frameBand()
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-	if not root then
-		return
+	if root then
+		FlightCamera.band(root)
 	end
-	local position = root.Position
-	local camera = Workspace.CurrentCamera
-	camera.CFrame = CFrame.lookAt(position + Vector3.new(5, 7, -15), position + Vector3.new(0, 4, 25))
 end
 
 -- Cette méthode permet de faire glisser en boucle le reflet de la bande de lancer (un seul dégradé, animé par ce
@@ -197,6 +194,10 @@ local function trigger(): boolean
 				end
 				ThrowCinematic.abort()
 				CharacterPoser.handOff()
+				-- Toujours en prise : la caméra revient sur la bande depuis le gros plan ou le vol effacé
+				if player:GetAttribute("Action") == "Holding" then
+					frameBand()
+				end
 			end
 			locked = nil
 			refresh()
@@ -214,9 +215,10 @@ function refresh()
 		locked = nil
 		frame.Visible = true
 		UIKit.pop(frame, 0.6)
-		aimCamera()
+		frameBand()
 	elseif not holding and frame.Visible and not CharacterPoser.isThrowing() then
 		frame.Visible = false
+		FlightCamera.leaveBand() -- sorti de la bande sans lancer ; sans effet si le geste a pris la caméra
 	end
 end
 

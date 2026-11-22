@@ -1,12 +1,18 @@
--- Caméra du lancer et du vol : gros plan sur l'avatar pendant le geste (côté du bras qui lance, léger
--- rapprochement), puis suit le torse du mannequin lancé (arrière, côté, haut ; plongée qui suit l'altitude :
+-- Caméra du lancer et du vol : resserrée derrière l'épaule tant que le joueur tient le mannequin sur la bande (#158),
+-- gros plan sur l'avatar pendant le geste (côté du bras qui lance, léger rapprochement ; cadrages et fondus :
+-- Shared.ThrowFraming), puis suit le torse du mannequin lancé (arrière, côté, haut ; plongée qui suit l'altitude :
 -- Shared.FlightFraming), secousses proportionnelles aux chocs,
 -- coup de champ de vision au départ ; rend la caméra normale quand le couloir redevient prêt.
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
-local FlightFraming = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("FlightFraming"))
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local FlightFraming = require(Shared:WaitForChild("FlightFraming"))
+local GameConfig = require(Shared:WaitForChild("GameConfig"))
+local ThrowFraming = require(Shared:WaitForChild("ThrowFraming"))
+
+local UIKit = require(script.Parent.UIKit)
 
 local POSITION_SHARPNESS = 6 -- vitesse de rattrapage de la position (1/s)
 local FOCUS_SHARPNESS = 12 -- vitesse de rattrapage du point visé (1/s)
@@ -14,21 +20,21 @@ local SHAKE_DECAY = 6 -- extinction des secousses (1/s)
 local MAX_SHAKE = 2.5 -- amplitude maximale (studs)
 local BASE_FOV = 70
 local BIND_NAME = "FlightCamera"
-
--- Gros plan du lancer, dans le repère du personnage (X à droite, -Z devant) : départ, arrivée, point visé
-local CLOSE_FROM = Vector3.new(5.6, 2.9, -3.2)
-local CLOSE_TO = Vector3.new(4.5, 2.6, -2.5)
-local CLOSE_FOCUS = Vector3.new(0.5, 2.6, 0)
-local CLOSE_FOV = 50
-local CLOSE_ROLL = math.rad(-5)
 local SHOWCASE_PUSH = 6 -- durée du lent rapprochement sur le mannequin gagné (s)
 
 local FlightCamera = {}
 
 local player: Player
 local following = false
+local banded = false -- cadrage de la bande en cours (FlightCamera.band), jusqu'au geste ou à la sortie de bande
 local shake = 0
 local flightFocus: Vector3? = nil -- point visé par la caméra de vol à la dernière image (repris par un nouveau suivi)
+
+-- Cette méthode permet de donner la durée d'un fondu de la caméra (nulle en mouvement réduit : coupe directe) lorsqu'un
+-- cadrage de la bande ou du geste commence.
+local function fadeTime(duration: number): number
+	return if UIKit.reducedMotion() then 0 else duration
+end
 
 -- Cette méthode permet de rendre la caméra normale (suivie du personnage) lorsque le vol et son résultat sont finis,
 -- ou que le lancer n'a pas eu lieu.
@@ -37,6 +43,7 @@ function FlightCamera.stop()
 		return
 	end
 	following = false
+	banded = false
 	flightFocus = nil
 	RunService:UnbindFromRenderStep(BIND_NAME)
 	local camera = Workspace.CurrentCamera
@@ -63,14 +70,70 @@ function FlightCamera.punch()
 	}):Play()
 end
 
--- Cette méthode permet de cadrer l'avatar en gros plan pendant son geste de lancer (repère figé au départ, caméra
--- qui se rapproche en `duration` secondes, légère inclinaison) lorsque le joueur clique ; follow prend le relais.
-function FlightCamera.closeUp(root: BasePart, duration: number)
+-- Cette méthode permet de resserrer la caméra derrière l'épaule, regard vers le bout de la piste, en BAND_CAM_IN
+-- secondes depuis le cadrage courant lorsque le joueur se fige sur la bande ; à rappeler pour remettre en prise.
+function FlightCamera.band(root: BasePart)
+	local camera = Workspace.CurrentCamera
+	local fromView, fromFov = camera.CFrame, camera.FieldOfView
+	local fromFocus = ThrowFraming.focusOf(fromView, root.Position)
 	FlightCamera.stop()
 	following = true
-	local camera = Workspace.CurrentCamera
+	banded = true
 	camera.CameraType = Enum.CameraType.Scriptable
-	camera.FieldOfView = CLOSE_FOV
+	local duration = fadeTime(GameConfig.BAND_CAM_IN)
+	local start = os.clock()
+	RunService:BindToRenderStep(BIND_NAME, Enum.RenderPriority.Camera.Value + 1, function()
+		if not root.Parent then
+			FlightCamera.leaveBand() -- personnage mort ou réapparu sur la bande
+			return
+		end
+		local k = ThrowFraming.progress(os.clock() - start, duration)
+		local toPosition, toFocus = ThrowFraming.band(root.CFrame)
+		local position, focus = ThrowFraming.blend(fromView.Position, fromFocus, toPosition, toFocus, root.Position, k)
+		camera.CFrame = CFrame.lookAt(position, focus)
+		camera.FieldOfView = fromFov + (GameConfig.BAND_CAM_FOV - fromFov) * k
+	end)
+end
+
+-- Cette méthode permet de rendre la caméra libre en BAND_CAM_OUT secondes (fondu vers ce qu'elle calcule à chaque
+-- image) lorsque le joueur quitte la bande sans lancer ; sans effet hors du cadrage de la bande.
+function FlightCamera.leaveBand()
+	if not banded then
+		return
+	end
+	local camera = Workspace.CurrentCamera
+	local fromView, fromFov = camera.CFrame, camera.FieldOfView
+	FlightCamera.stop()
+	local duration = fadeTime(GameConfig.BAND_CAM_OUT)
+	if duration <= 0 then
+		return
+	end
+	-- Après la caméra libre (Camera), qui part du regard de la bande : le fondu mêle son calcul de l'image au cadrage
+	-- quitté ; stop l'interrompt
+	following = true
+	camera.FieldOfView = fromFov
+	local start = os.clock()
+	RunService:BindToRenderStep(BIND_NAME, Enum.RenderPriority.Camera.Value + 1, function()
+		local k = ThrowFraming.progress(os.clock() - start, duration)
+		camera.CFrame = fromView:Lerp(camera.CFrame, k)
+		camera.FieldOfView = fromFov + (BASE_FOV - fromFov) * k
+		if k >= 1 then
+			FlightCamera.stop()
+		end
+	end)
+end
+
+-- Cette méthode permet de cadrer l'avatar en gros plan pendant son geste de lancer (repère figé au départ, caméra
+-- qui se rapproche en `duration` secondes, légère inclinaison) lorsque le joueur clique ; part du cadrage courant (la
+-- bande) en THROW_CAM_BLEND secondes, sans saut ; follow prend le relais.
+function FlightCamera.closeUp(root: BasePart, duration: number)
+	local camera = Workspace.CurrentCamera
+	local fromView, fromFov = camera.CFrame, camera.FieldOfView
+	local fromFocus = ThrowFraming.focusOf(fromView, root.Position)
+	FlightCamera.stop()
+	following = true
+	camera.CameraType = Enum.CameraType.Scriptable
+	local blend = fadeTime(GameConfig.THROW_CAM_BLEND)
 	local base = root.CFrame
 	local start = os.clock()
 	RunService:BindToRenderStep(BIND_NAME, Enum.RenderPriority.Camera.Value + 1, function()
@@ -78,11 +141,13 @@ function FlightCamera.closeUp(root: BasePart, duration: number)
 			FlightCamera.stop() -- personnage mort ou réapparu pendant le geste
 			return
 		end
-		local k = math.clamp((os.clock() - start) / duration, 0, 1)
-		local eased = 1 - (1 - k) ^ 3
-		local position = base:PointToWorldSpace(CLOSE_FROM:Lerp(CLOSE_TO, eased))
-		local focus = base:PointToWorldSpace(CLOSE_FOCUS)
-		camera.CFrame = CFrame.lookAt(position, focus) * CFrame.Angles(0, 0, CLOSE_ROLL * eased)
+		local elapsed = os.clock() - start
+		local k = math.clamp(elapsed / duration, 0, 1)
+		local toPosition, toFocus, roll = ThrowFraming.closeUp(base, 1 - (1 - k) ^ 3)
+		local w = ThrowFraming.progress(elapsed, blend)
+		local position, focus = ThrowFraming.blend(fromView.Position, fromFocus, toPosition, toFocus, base.Position, w)
+		camera.CFrame = CFrame.lookAt(position, focus) * CFrame.Angles(0, 0, roll * w)
+		camera.FieldOfView = fromFov + (ThrowFraming.CLOSE_FOV - fromFov) * w
 	end)
 end
 

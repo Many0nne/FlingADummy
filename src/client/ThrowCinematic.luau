@@ -1,5 +1,5 @@
 -- Cinématique du lancer (joueur local), sur le modèle de Throw Food For Animals : bandes noires, gros plan sur
--- l'avatar (FlightCamera.closeUp), traînées de vitesse à l'écran pendant le fouetté et traînée sur la main qui lance ;
+-- l'avatar (FlightCamera.closeUp, qui part du cadrage de la bande sans saut, #158), traînées de vitesse à l'écran pendant le fouetté et traînée sur la main qui lance ;
 -- tout se retire quand le mannequin du serveur part (finish) ou, à défaut, après un délai.
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")

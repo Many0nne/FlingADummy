@@ -25,6 +25,14 @@ base, il rapporte des $/s, seule source d'argent.
 1. **Prendre le mannequin** : poser le pied n'importe où sur la bande de lancer ; le serveur fige l'avatar à cet endroit
    (à 3 studs des bords au plus près), face à la piste (écarté de 5 studs au moins d'un voisin déjà figé), et il tient un mannequin au-dessus de sa tête.
    Plus de déplacement ni de saut jusqu'au lancer (pas de sortie, comme les références).
+   **Caméra de prise** (#158, cadrage de 09 à la jauge) : dès qu'il est figé, la caméra se resserre en 0,35 s
+   derrière son épaule droite (2,2 studs à droite, 2 au-dessus et 10 derrière le HumanoidRootPart), regard parallèle
+   à la piste vers son bout, champ de vision 70 → 55 : avatar un peu à gauche du centre (≈ 38 % de la largeur),
+   mannequin au-dessus de sa tête, jauge à droite. La caméra est cadrée (le joueur ne la tourne plus) ; le fondu
+   tourne autour de l'avatar depuis la caméra libre (`Shared.ThrowFraming`). Sortie de bande sans lancer
+   (réapparition) : retour à la caméra libre en 0,25 s. Au clic, le gros plan du geste part de ce cadrage (fondu de
+   0,45 s autour de l'avatar, sans saut) ; lancer refusé : la caméra revient sur la bande. Mouvement réduit : coupes
+   directes. Valeurs : `GameConfig.BAND_CAM_*`, `THROW_CAM_BLEND`.
 2. **Jauge à 1 clic** : une jauge verticale apparaît, l'aiguille monte et descend seule (`+1` à `+20`) ; un clic, un toucher
    ou Espace l'arrête, avec un clic net et un petit rebond de la jauge, puis le whoosh au lâcher. Pas de zone PERFECT ni
    de bonus : le haut de la jauge est le max (`+20`), comme dans les jeux de référence. **Valeur vérifiée par le
