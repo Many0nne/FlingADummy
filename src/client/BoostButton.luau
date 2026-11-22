@@ -92,7 +92,8 @@ local function buildButton(gui: ScreenGui, onClick: () -> ())
 		Size = UDim2.fromOffset(RING, RING + 26),
 		BackgroundTransparency = 1,
 		Visible = false,
-		ZIndex = 20,
+		-- Sous les fenêtres du HUD (ZIndex 10 et plus) : une boutique ouverte le recouvre, il ne capte pas ses clics
+		ZIndex = 5,
 		Parent = gui,
 	})
 	local ring = UIKit.create("Frame", {
@@ -347,7 +348,8 @@ end
 -- barre de durée et avatar habillé pendant, tout retiré à la fin.
 local function onBoostChanged()
 	local ends = player:GetAttribute("TrainBoostEnds")
-	local active = TrainingBoost.displayMultiplier(ends, Workspace:GetServerTimeNow()) > 1
+	-- Attribut seul juge (retiré par le serveur dans l'image où le bonus finit) : barre et « +N EXP » doublé ensemble
+	local active = TrainingBoost.grantedMultiplier(ends) > 1
 	if not active then
 		shownEnds = nil
 		pill.Visible = false
@@ -382,7 +384,7 @@ local function onBoostChanged()
 		while shownEnds == ends do
 			local left = (ends :: number) - Workspace:GetServerTimeNow()
 			if left <= 0 then
-				onBoostChanged() -- fin vue avant l'attribut (séance encore ouverte) : barre retirée
+				pillLabel.Text = "2x 0:00" -- l'attribut retiré par le serveur cache la barre
 				break
 			end
 			pillLabel.Text = "2x " .. TrainingBoost.remainingText(left)

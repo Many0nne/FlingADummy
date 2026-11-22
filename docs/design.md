@@ -109,9 +109,9 @@ base, il rapporte des $/s, seule source d'argent.
   (plusieurs niveaux d'un coup avec un bon équipement). Le passage de niveau (« LEVEL UP! Throw Power +N ») donne autant
   de **Throw Power** que l'EXP qu'il demandait : puissance gagnée = EXP gagnée = gain × répétitions.
 - **Bouton « 2x TRAINING! »** (#119, retour de la sprint review 2, `Shared.TrainingBoost`, `Client.BoostButton`) :
-  toutes les 25 à 40 s d'entraînement (au hasard ; temps cumulé sur les séances du joueur, sinon des séances de 15 s
-  ne le verraient jamais), un gros bouton rond vert (icône de puissance, « 2x », bandeau « TRAINING! » jaune → orange)
-  surgit en rebond à un endroit au hasard du centre de l'écran (sous les popups du haut, au-dessus du STOP et de la
+  toutes les 25 à 40 s d'entraînement (au hasard ; temps cumulé sur les séances du joueur pendant sa visite du
+  serveur, sinon des séances de 15 s ne le verraient jamais), un gros bouton rond vert (icône de puissance, « 2x »,
+  bandeau « TRAINING! » jaune → orange ; sous les fenêtres du HUD si l'une est ouverte) surgit en rebond à un endroit au hasard du centre de l'écran (sous les popups du haut, au-dessus du STOP et de la
   barre d'EXP), avec un petit son, entouré d'un anneau jaune qui se vide en 3 s (boosts « x2 Training » de 01 et « x2
   Vitesse » de 02, gratuits ici). Cliqué à temps : **EXP par répétition × 2 pendant 30 s** (donc la Throw Power),
   popup vert « 2x TRAINING! / EXP x2 for 30s » et son, barre de durée dorée « 2x 0:24 » qui se vide à droite du STOP,

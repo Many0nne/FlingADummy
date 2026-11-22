@@ -175,11 +175,8 @@ return function(T, Loader)
 		end)
 
 		T.it("multiplicateur affiché par le client et temps restant", function()
-			T.expectEqual(TrainingBoost.displayMultiplier(nil, 100), 1)
-			T.expectEqual(TrainingBoost.displayMultiplier("x", 100), 1)
-			T.expectEqual(TrainingBoost.displayMultiplier(130, 100), GameConfig.BOOST_MULTIPLIER)
-			T.expectEqual(TrainingBoost.displayMultiplier(100, 100), 1)
-			-- « +N EXP » : attribut présent = répétition doublée, même juste après la fin vue par l'horloge du client
+			-- « +N EXP » et barre : attribut présent = répétition doublée, même juste après la fin vue par l'horloge du
+			-- client (le serveur le retire dans l'image où le bonus finit)
 			T.expectEqual(TrainingBoost.grantedMultiplier(99), GameConfig.BOOST_MULTIPLIER)
 			T.expectEqual(TrainingBoost.grantedMultiplier(nil), 1)
 			T.expectEqual(TrainingBoost.grantedMultiplier("x"), 1)

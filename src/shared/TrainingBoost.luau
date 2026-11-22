@@ -131,12 +131,6 @@ function TrainingBoost.multiplier(state: State): number
 	return if ends and state.clock < ends then GameConfig.BOOST_MULTIPLIER else 1
 end
 
--- Cette méthode permet de donner le multiplicateur affiché par le client (fin du bonus `endsAt` en temps serveur, nil
--- sans bonus) lorsque le HUD annonce une répétition ou dessine la barre de durée.
-function TrainingBoost.displayMultiplier(endsAt: unknown, now: number): number
-	return if typeof(endsAt) == "number" and now < endsAt then GameConfig.BOOST_MULTIPLIER else 1
-end
-
 -- Cette méthode permet de donner le multiplicateur de la répétition qui vient d'arriver (BOOST_MULTIPLIER tant que le
 -- serveur garde l'attribut TrainBoostEnds, qu'il retire dans l'image où le bonus finit) lorsque le HUD fait s'envoler
 -- son « +N EXP » ; pas de comparaison d'horloges, qui se tromperait sur les dernières répétitions du bonus.
