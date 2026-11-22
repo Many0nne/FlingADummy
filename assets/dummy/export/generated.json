@@ -153,9 +153,9 @@
   },
   "angelic_ghost": {
     "color": [
-      230,
-      225,
-      250
+      165,
+      120,
+      255
     ],
     "effects": [
       {
@@ -327,13 +327,35 @@
         "piece": "Head",
         "transparency": 0
       }
-    ]
+    ],
+    "pieces": {
+      "LeftLowerArm": [
+        255,
+        190,
+        40
+      ],
+      "LeftUpperArm": [
+        255,
+        190,
+        40
+      ],
+      "RightLowerArm": [
+        255,
+        190,
+        40
+      ],
+      "RightUpperArm": [
+        255,
+        190,
+        40
+      ]
+    }
   },
   "angelic_hero": {
     "color": [
-      230,
-      225,
-      250
+      110,
+      175,
+      255
     ],
     "effects": [
       {
@@ -422,9 +444,14 @@
         83
       ],
       "LeftLowerLeg": [
-        251,
-        185,
-        83
+        255,
+        190,
+        40
+      ],
+      "LeftUpperLeg": [
+        255,
+        190,
+        40
       ],
       "RightLowerArm": [
         251,
@@ -432,9 +459,14 @@
         83
       ],
       "RightLowerLeg": [
-        251,
-        185,
-        83
+        255,
+        190,
+        40
+      ],
+      "RightUpperLeg": [
+        255,
+        190,
+        40
       ]
     }
   },
@@ -588,7 +620,29 @@
         "piece": "RightUpperArm",
         "transparency": 0
       }
-    ]
+    ],
+    "pieces": {
+      "LeftLowerArm": [
+        255,
+        190,
+        40
+      ],
+      "LeftLowerLeg": [
+        255,
+        190,
+        40
+      ],
+      "RightLowerArm": [
+        255,
+        190,
+        40
+      ],
+      "RightLowerLeg": [
+        255,
+        190,
+        40
+      ]
+    }
   },
   "aurora_ghost": {
     "color": [
@@ -766,7 +820,29 @@
         "piece": "Head",
         "transparency": 0
       }
-    ]
+    ],
+    "pieces": {
+      "LeftLowerArm": [
+        110,
+        60,
+        230
+      ],
+      "LeftUpperArm": [
+        110,
+        60,
+        230
+      ],
+      "RightLowerArm": [
+        110,
+        60,
+        230
+      ],
+      "RightUpperArm": [
+        110,
+        60,
+        230
+      ]
+    }
   },
   "aurora_royal": {
     "color": [
@@ -918,7 +994,29 @@
         "piece": "RightUpperArm",
         "transparency": 0
       }
-    ]
+    ],
+    "pieces": {
+      "LeftLowerLeg": [
+        110,
+        60,
+        230
+      ],
+      "LeftUpperLeg": [
+        110,
+        60,
+        230
+      ],
+      "RightLowerLeg": [
+        110,
+        60,
+        230
+      ],
+      "RightUpperLeg": [
+        110,
+        60,
+        230
+      ]
+    }
   },
   "cherry_biker": {
     "color": [
@@ -3292,13 +3390,12 @@
         "preset": "motes"
       }
     ],
-    "material": "Foil",
     "parts": [
       {
         "color": [
-          242,
-          133,
-          227
+          114,
+          77,
+          211
         ],
         "material": "SmoothPlastic",
         "mesh": "galaxy_SpaceHelmet",
@@ -3307,9 +3404,9 @@
       },
       {
         "color": [
-          255,
-          128,
-          190
+          127,
+          72,
+          174
         ],
         "material": "Neon",
         "mesh": "galaxy_GoldVisor",
@@ -3318,9 +3415,9 @@
       },
       {
         "color": [
-          253,
-          137,
-          225
+          125,
+          81,
+          209
         ],
         "material": "Neon",
         "mesh": "galaxy_SuitCollar",
@@ -3329,9 +3426,9 @@
       },
       {
         "color": [
-          253,
-          137,
-          225
+          125,
+          81,
+          209
         ],
         "material": "Neon",
         "mesh": "galaxy_SuitPads",
@@ -3340,9 +3437,9 @@
       },
       {
         "color": [
-          255,
-          110,
-          216
+          127,
+          54,
+          200
         ],
         "material": "Neon",
         "mesh": "galaxy_SuitStripes",
@@ -3351,9 +3448,9 @@
       },
       {
         "color": [
-          253,
-          137,
-          225
+          125,
+          81,
+          209
         ],
         "material": "Neon",
         "mesh": "galaxy_LifePack",
@@ -3362,9 +3459,9 @@
       },
       {
         "color": [
-          222,
-          134,
-          227
+          94,
+          78,
+          211
         ],
         "material": "Neon",
         "mesh": "galaxy_PackLights",
@@ -3373,9 +3470,9 @@
       },
       {
         "color": [
-          255,
-          110,
-          216
+          127,
+          54,
+          200
         ],
         "material": "Neon",
         "mesh": "galaxy_PlanetRing",
@@ -3384,9 +3481,9 @@
       },
       {
         "color": [
-          255,
-          132,
-          192
+          127,
+          76,
+          176
         ],
         "material": "Neon",
         "mesh": "galaxy_RingRocks",
@@ -3395,9 +3492,9 @@
       },
       {
         "color": [
-          255,
-          132,
-          192
+          127,
+          76,
+          176
         ],
         "material": "Neon",
         "mesh": "galaxy_Moons",
@@ -3406,18 +3503,38 @@
       }
     ],
     "pieces": {
+      "LeftLowerArm": [
+        255,
+        130,
+        220
+      ],
+      "LeftLowerLeg": [
+        255,
+        130,
+        220
+      ],
+      "RightLowerArm": [
+        255,
+        130,
+        220
+      ],
+      "RightLowerLeg": [
+        255,
+        130,
+        220
+      ],
       "Torso": [
-        251,
-        135,
-        225
+        123,
+        79,
+        209
       ]
     }
   },
   "nebula_king": {
     "color": [
-      120,
-      60,
-      220
+      225,
+      55,
+      195
     ],
     "effects": [
       {
@@ -3650,7 +3767,29 @@
         "piece": "Head",
         "transparency": 0
       }
-    ]
+    ],
+    "pieces": {
+      "LeftLowerArm": [
+        75,
+        30,
+        150
+      ],
+      "LeftLowerLeg": [
+        75,
+        30,
+        150
+      ],
+      "RightLowerArm": [
+        75,
+        30,
+        150
+      ],
+      "RightLowerLeg": [
+        75,
+        30,
+        150
+      ]
+    }
   },
   "omega_ghost": {
     "color": [
@@ -4339,13 +4478,35 @@
         "piece": "RightLowerArm",
         "transparency": 0
       }
-    ]
+    ],
+    "pieces": {
+      "LeftLowerArm": [
+        80,
+        220,
+        255
+      ],
+      "LeftLowerLeg": [
+        80,
+        220,
+        255
+      ],
+      "RightLowerArm": [
+        80,
+        220,
+        255
+      ],
+      "RightLowerLeg": [
+        80,
+        220,
+        255
+      ]
+    }
   },
   "plasma_void": {
     "color": [
-      255,
-      50,
-      200
+      85,
+      60,
+      255
     ],
     "effects": [
       {
@@ -4545,13 +4706,35 @@
         "piece": "Torso",
         "transparency": 0
       }
-    ]
+    ],
+    "pieces": {
+      "LeftLowerLeg": [
+        255,
+        50,
+        200
+      ],
+      "LeftUpperLeg": [
+        255,
+        50,
+        200
+      ],
+      "RightLowerLeg": [
+        255,
+        50,
+        200
+      ],
+      "RightUpperLeg": [
+        255,
+        50,
+        200
+      ]
+    }
   },
   "prism_diamond": {
     "color": [
-      170,
-      215,
-      255
+      130,
+      70,
+      230
     ],
     "effects": [
       {
@@ -4617,7 +4800,6 @@
         "preset": "glint"
       }
     ],
-    "material": "Ice",
     "parts": [
       {
         "color": [
@@ -4674,7 +4856,29 @@
         "piece": "RightUpperArm",
         "transparency": 0.25
       }
-    ]
+    ],
+    "pieces": {
+      "LeftLowerArm": [
+        110,
+        230,
+        255
+      ],
+      "LeftUpperArm": [
+        110,
+        230,
+        255
+      ],
+      "RightLowerArm": [
+        110,
+        230,
+        255
+      ],
+      "RightUpperArm": [
+        110,
+        230,
+        255
+      ]
+    }
   },
   "prism_ice": {
     "color": [
@@ -4794,7 +4998,29 @@
         "piece": "RightLowerLeg",
         "transparency": 0
       }
-    ]
+    ],
+    "pieces": {
+      "LeftLowerArm": [
+        255,
+        140,
+        235
+      ],
+      "LeftLowerLeg": [
+        255,
+        140,
+        235
+      ],
+      "RightLowerArm": [
+        255,
+        140,
+        235
+      ],
+      "RightLowerLeg": [
+        255,
+        140,
+        235
+      ]
+    }
   },
   "quantum_cosmic": {
     "color": [
@@ -5046,6 +5272,26 @@
       }
     ],
     "pieces": {
+      "LeftLowerArm": [
+        170,
+        90,
+        255
+      ],
+      "LeftLowerLeg": [
+        170,
+        90,
+        255
+      ],
+      "RightLowerArm": [
+        170,
+        90,
+        255
+      ],
+      "RightLowerLeg": [
+        170,
+        90,
+        255
+      ],
       "Torso": [
         147,
         78,
@@ -5056,8 +5302,8 @@
   "radiant_diamond": {
     "color": [
       255,
-      220,
-      100
+      135,
+      105
     ],
     "effects": [
       {
@@ -5179,13 +5425,35 @@
         "piece": "RightUpperArm",
         "transparency": 0.25
       }
-    ]
+    ],
+    "pieces": {
+      "LeftLowerArm": [
+        255,
+        240,
+        225
+      ],
+      "LeftLowerLeg": [
+        255,
+        240,
+        225
+      ],
+      "RightLowerArm": [
+        255,
+        240,
+        225
+      ],
+      "RightLowerLeg": [
+        255,
+        240,
+        225
+      ]
+    }
   },
   "radiant_galaxy": {
     "color": [
       255,
-      220,
-      100
+      200,
+      60
     ],
     "effects": [
       {
@@ -5364,6 +5632,26 @@
       }
     ],
     "pieces": {
+      "LeftLowerArm": [
+        120,
+        200,
+        255
+      ],
+      "LeftLowerLeg": [
+        120,
+        200,
+        255
+      ],
+      "RightLowerArm": [
+        120,
+        200,
+        255
+      ],
+      "RightLowerLeg": [
+        120,
+        200,
+        255
+      ],
       "Torso": [
         252,
         218,
@@ -5374,8 +5662,8 @@
   "radiant_king": {
     "color": [
       255,
-      220,
-      100
+      180,
+      30
     ],
     "effects": [
       {
@@ -5441,6 +5729,7 @@
         "preset": "sparkle"
       }
     ],
+    "material": "Foil",
     "parts": [
       {
         "color": [
@@ -5607,7 +5896,29 @@
         "piece": "Head",
         "transparency": 0
       }
-    ]
+    ],
+    "pieces": {
+      "LeftLowerArm": [
+        205,
+        30,
+        55
+      ],
+      "LeftLowerLeg": [
+        205,
+        30,
+        55
+      ],
+      "RightLowerArm": [
+        205,
+        30,
+        55
+      ],
+      "RightLowerLeg": [
+        205,
+        30,
+        55
+      ]
+    }
   },
   "ruby_diamond": {
     "color": [
@@ -6795,9 +7106,9 @@
   },
   "starlight_cosmic": {
     "color": [
-      255,
-      160,
-      235
+      145,
+      90,
+      255
     ],
     "effects": [
       {
@@ -6866,9 +7177,9 @@
     "parts": [
       {
         "color": [
-          211,
-          99,
-          195
+          111,
+          59,
+          211
         ],
         "material": "Neon",
         "mesh": "cosmic_GalaxyDisc",
@@ -6877,9 +7188,9 @@
       },
       {
         "color": [
-          255,
-          110,
-          220
+          155,
+          70,
+          236
         ],
         "material": "Neon",
         "mesh": "cosmic_GalaxyArmsA",
@@ -6888,9 +7199,9 @@
       },
       {
         "color": [
-          222,
-          140,
-          227
+          122,
+          100,
+          243
         ],
         "material": "Neon",
         "mesh": "cosmic_GalaxyArmsB",
@@ -6899,9 +7210,9 @@
       },
       {
         "color": [
-          253,
-          145,
-          225
+          153,
+          105,
+          241
         ],
         "material": "Neon",
         "mesh": "cosmic_GalaxyStars",
@@ -6910,9 +7221,9 @@
       },
       {
         "color": [
-          255,
-          145,
-          216
+          155,
+          105,
+          232
         ],
         "material": "Neon",
         "mesh": "cosmic_GalaxyCore",
@@ -6921,9 +7232,9 @@
       },
       {
         "color": [
-          255,
-          135,
-          184
+          155,
+          95,
+          200
         ],
         "material": "Neon",
         "mesh": "cosmic_GalaxyRim",
@@ -6932,9 +7243,9 @@
       },
       {
         "color": [
-          222,
-          140,
-          227
+          122,
+          100,
+          243
         ],
         "material": "Neon",
         "mesh": "cosmic_RimGems",
@@ -6943,9 +7254,9 @@
       },
       {
         "color": [
-          255,
-          135,
-          184
+          155,
+          95,
+          200
         ],
         "material": "Neon",
         "mesh": "cosmic_StarCrown",
@@ -6954,9 +7265,9 @@
       },
       {
         "color": [
-          255,
-          110,
-          220
+          155,
+          70,
+          236
         ],
         "material": "Neon",
         "mesh": "cosmic_CrownGems",
@@ -6965,9 +7276,9 @@
       },
       {
         "color": [
-          255,
-          142,
-          194
+          155,
+          102,
+          210
         ],
         "material": "Neon",
         "mesh": "cosmic_CrownStar",
@@ -6976,9 +7287,9 @@
       },
       {
         "color": [
-          255,
-          135,
-          184
+          155,
+          95,
+          200
         ],
         "material": "Neon",
         "mesh": "cosmic_CosmicArmor",
@@ -6987,9 +7298,9 @@
       },
       {
         "color": [
-          222,
-          140,
-          227
+          122,
+          100,
+          243
         ],
         "material": "Neon",
         "mesh": "cosmic_ArmorGems",
@@ -6998,9 +7309,9 @@
       },
       {
         "color": [
-          255,
-          135,
-          184
+          155,
+          95,
+          200
         ],
         "material": "Neon",
         "mesh": "cosmic_PauldronL",
@@ -7009,9 +7320,9 @@
       },
       {
         "color": [
-          255,
-          135,
-          184
+          155,
+          95,
+          200
         ],
         "material": "Neon",
         "mesh": "cosmic_PauldronR",
@@ -7020,9 +7331,9 @@
       },
       {
         "color": [
-          226,
-          147,
-          221
+          126,
+          107,
+          237
         ],
         "material": "Neon",
         "mesh": "cosmic_CosmicMoons",
@@ -7031,9 +7342,9 @@
       },
       {
         "color": [
-          255,
-          110,
-          220
+          155,
+          70,
+          236
         ],
         "material": "Neon",
         "mesh": "cosmic_MoonRings",
@@ -7042,18 +7353,38 @@
       }
     ],
     "pieces": {
+      "LeftLowerLeg": [
+        255,
+        120,
+        220
+      ],
+      "LeftUpperLeg": [
+        255,
+        120,
+        220
+      ],
+      "RightLowerLeg": [
+        255,
+        120,
+        220
+      ],
+      "RightUpperLeg": [
+        255,
+        120,
+        220
+      ],
       "Torso": [
-        215,
-        102,
-        204
+        115,
+        62,
+        220
       ]
     }
   },
   "starlight_hero": {
     "color": [
       255,
-      160,
-      235
+      95,
+      185
     ],
     "effects": [
       {
@@ -7137,31 +7468,41 @@
     ],
     "pieces": {
       "LeftLowerArm": [
-        250,
-        104,
-        184
+        255,
+        235,
+        120
       ],
       "LeftLowerLeg": [
         250,
         104,
         184
       ],
+      "LeftUpperArm": [
+        255,
+        235,
+        120
+      ],
       "RightLowerArm": [
-        250,
-        104,
-        184
+        255,
+        235,
+        120
       ],
       "RightLowerLeg": [
         250,
         104,
         184
+      ],
+      "RightUpperArm": [
+        255,
+        235,
+        120
       ]
     }
   },
   "starlight_void": {
     "color": [
       255,
-      160,
+      185,
       235
     ],
     "effects": [
@@ -7361,7 +7702,29 @@
         "piece": "Torso",
         "transparency": 0
       }
-    ]
+    ],
+    "pieces": {
+      "LeftLowerLeg": [
+        45,
+        25,
+        70
+      ],
+      "LeftUpperLeg": [
+        45,
+        25,
+        70
+      ],
+      "RightLowerLeg": [
+        45,
+        25,
+        70
+      ],
+      "RightUpperLeg": [
+        45,
+        25,
+        70
+      ]
+    }
   },
   "tangerine_nerd": {
     "color": [

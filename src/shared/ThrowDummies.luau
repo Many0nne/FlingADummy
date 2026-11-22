@@ -4,6 +4,7 @@
 -- Distincts des mannequins de collection (Shared.Collection) : on les possède une fois pour toutes, on en lance un.
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local DummyFamilies = require(Shared:WaitForChild("DummyFamilies"))
+local DummyModels = require(Shared:WaitForChild("DummyModels"))
 local DummyShape = require(Shared:WaitForChild("DummyShape"))
 local Tutorial = require(Shared:WaitForChild("Tutorial"))
 
@@ -33,7 +34,9 @@ export type Dummy = {
 	color: Color3, -- corps
 	material: Enum.Material?,
 	pieceColors: { [string]: Color3 }?,
-	blocks: { Block }?,
+	blocks: { Block }?, -- pièces du comportement (ailes, réacteur, lest), une par mannequin dessiné
+	ornaments: { Block }?, -- signes de rang des derniers mannequins (couronne, auréole : RANKS)
+	effects: { DummyModels.Effect }?, -- éclats et lumière des derniers rangs (RANKS)
 	card: Color3, -- teinte de la carte de la boutique (cartes colorées par niveau, référence 09)
 	physics: Physics,
 	boneFactor: number, -- multiplie la violence des chocs pour casser les os (fragile > 1)
@@ -110,11 +113,11 @@ ThrowDummies.LIST = {
 		color = rgb(150, 235, 255),
 		material = Enum.Material.Glass,
 		blocks = {
-			-- Étiquette « FRAGILE » rouge sur le torse
+			-- Étiquette « FRAGILE » rouge sur le ventre, sous la cible du torse
 			{
 				piece = "Torso",
-				size = Vector3.new(1.4, 0.45, 0.1),
-				offset = Vector3.new(0, 0.3, -0.58),
+				size = Vector3.new(1.4, 0.38, 0.1),
+				offset = Vector3.new(0, -0.72, -0.58),
 				color = rgb(230, 40, 40),
 			},
 		},
@@ -265,6 +268,89 @@ ThrowDummies.EXTENDED = {
 	{ luck = 135, base = "rocket", palette = "infinite",    cost = 200e9 },
 }
 
+-- Signes de rang de la suite du catalogue (#127), comme les graines de plus en plus riches de Throw a Seed (09) : sans
+-- eux, Radiant Glider ou Infinite Rocket ressemblaient au Glider et au Rocket de départ. Chance minimale de chaque rang :
+-- 1 bandeau d'or et gemme au front, 2 couronne et éclats, 3 auréole de néon et lumière. En blocs (visibles dans les
+-- fenêtres, contrairement aux particules).
+ThrowDummies.RANKS = { 13, 30, 75 }
+
+local GOLD = rgb(255, 195, 45)
+
+-- Cette méthode permet de donner le rang d'un mannequin à lancer (0 : aucun signe, puis 1 à 3) selon sa chance `luck`
+-- lorsque l'on habille la suite du catalogue.
+function ThrowDummies.rank(luck: number): number
+	local rank = 0
+	for i, threshold in ThrowDummies.RANKS do
+		if luck >= threshold then
+			rank = i
+		end
+	end
+	return rank
+end
+
+-- Cette méthode permet de donner les blocs des signes de rang (repère de conception de la tête : avant vers -Z, tête de
+-- 1,5 stud) d'un mannequin de rang `rank` à la lueur `glow` lorsque l'on construit la suite du catalogue.
+local function ornaments(rank: number, glow: Color3): { Block }
+	local list: { Block } = {}
+	-- Cette méthode permet d'ajouter un bloc posé sur la tête lorsque l'on dresse la liste des signes.
+	local function add(size: Vector3, offset: Vector3, color: Color3, material: Enum.Material)
+		table.insert(list, { piece = "Head", size = size, offset = offset, color = color, material = material })
+	end
+	if rank >= 1 then
+		add(Vector3.new(1.62, 0.28, 1.62), Vector3.new(0, 0.5, 0), GOLD, Enum.Material.Foil) -- bandeau
+		add(Vector3.new(0.34, 0.26, 0.1), Vector3.new(0, 0.5, -0.84), glow, Enum.Material.Neon) -- gemme au front
+	end
+	if rank >= 2 then
+		for _, x in { -0.67, 0.67 } do
+			for _, z in { -0.67, 0.67 } do
+				add(Vector3.new(0.28, 0.42, 0.28), Vector3.new(x, 0.85, z), GOLD, Enum.Material.Foil) -- pointes
+			end
+		end
+		add(Vector3.new(0.3, 0.55, 0.28), Vector3.new(0, 0.9, -0.67), GOLD, Enum.Material.Foil) -- pointe du front
+	end
+	if rank >= 3 then
+		-- Auréole carrée au-dessus de la couronne
+		for _, z in { -0.62, 0.62 } do
+			add(Vector3.new(1.42, 0.2, 0.2), Vector3.new(0, 1.55, z), glow, Enum.Material.Neon)
+		end
+		for _, x in { -0.62, 0.62 } do
+			add(Vector3.new(0.2, 0.2, 1.04), Vector3.new(x, 1.55, 0), glow, Enum.Material.Neon)
+		end
+	end
+	return list
+end
+
+-- Cette méthode permet de donner les effets des signes de rang (éclats au rang 2, étoiles et lumière au rang 3, à la
+-- lueur `glow`) lorsque l'on construit la suite du catalogue ; nil sous le rang 2.
+local function rankEffects(rank: number, glow: Color3): { DummyModels.Effect }?
+	if rank < 2 then
+		return nil
+	end
+	local effects: { DummyModels.Effect } = {
+		{ kind = "particles", preset = "sparkle", piece = "Torso", offset = Vector3.zero, color = glow, color2 = GOLD },
+	}
+	if rank >= 3 then
+		table.insert(effects, {
+			kind = "particles",
+			preset = "stars",
+			piece = "Head",
+			offset = Vector3.new(0, 1.55, 0),
+			color = glow,
+			color2 = GOLD,
+			rate = 0.6,
+		})
+		table.insert(effects, {
+			kind = "light",
+			piece = "Torso",
+			offset = Vector3.new(0, 0, -1.5),
+			color = glow,
+			range = 10,
+			brightness = 1.5,
+		})
+	end
+	return effects
+end
+
 -- Cette méthode permet de construire un mannequin de la suite du catalogue (comportement de `base`, couleurs et
 -- matériau de la palette, blocs teintés) lorsque le catalogue se construit.
 local function extend(base: Dummy, spec: { luck: number, base: string, palette: string, cost: number }): Dummy
@@ -299,6 +385,9 @@ local function extend(base: Dummy, spec: { luck: number, base: string, palette: 
 	dummy.material = base.material or palette.material
 	dummy.pieceColors = pieceColors
 	dummy.blocks = blocks
+	local rank = ThrowDummies.rank(spec.luck)
+	dummy.ornaments = if rank > 0 then ornaments(rank, palette.glow) else nil
+	dummy.effects = rankEffects(rank, palette.glow)
 	dummy.card = palette.body:Lerp(Color3.new(1, 1, 1), 0.35)
 	return dummy
 end
@@ -435,19 +524,26 @@ function ThrowDummies.bounce(dummy: Dummy, before: Vector3, after: Vector3, forw
 end
 
 -- Cette méthode permet de donner la déclinaison d'affichage du mannequin `index` (Shared.DummyShape.Variant : couleur,
--- matériau, couleurs par pièce, blocs) lorsque le serveur le construit pour le lancer ou que le client l'affiche ;
--- `viewport` remplace le verre (invisible dans un ViewportFrame) par du néon.
+-- matériau, couleurs par pièce, blocs du comportement puis signes de rang, effets) lorsque le serveur le construit pour
+-- le lancer ou que le client l'affiche ; `viewport` remplace le verre (invisible dans un ViewportFrame) par du néon.
 function ThrowDummies.variant(index: number, viewport: boolean?): { [string]: any }
 	local dummy = ThrowDummies.get(index)
 	local material = dummy.material
 	if viewport and material == Enum.Material.Glass then
 		material = Enum.Material.Neon
 	end
+	local blocks = dummy.blocks
+	if dummy.ornaments then
+		local all: { Block } = table.clone(blocks or {})
+		table.move(dummy.ornaments, 1, #dummy.ornaments, #all + 1, all)
+		blocks = all
+	end
 	return {
 		color = dummy.color,
 		material = material,
 		pieceColors = dummy.pieceColors,
-		blocks = dummy.blocks,
+		blocks = blocks,
+		effects = if viewport then nil else dummy.effects, -- particules et lumière ne se rendent pas en fenêtre
 	}
 end
 

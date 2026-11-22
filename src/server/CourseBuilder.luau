@@ -451,18 +451,22 @@ local function rackDummy(parent: Instance, gear: Training.Gear, hook: CFrame)
 	for _, part in parts do
 		highest = math.max(highest, part.Position.Y + part.Size.Y / 2)
 	end
-	-- Pas de cibles de crash-test (mannequin en blocs) : ce mannequin-là ne se lance pas
+	-- Pas de cibles de crash-test peintes sur les blocs de repli : ce mannequin-là ne se lance pas. Maillé, il garde
+	-- visage et cibles de l'atlas (ou de sa coque sous un matériau, #126), comme tous les mannequins
 	for _, gui in parts.Torso:GetChildren() do
 		if gui:IsA("SurfaceGui") then
 			gui:Destroy()
 		end
 	end
-	for _, part in parts do
-		part.Anchored = true
-		part.CanCollide = false
-		part.CanQuery = false
-		part.CanTouch = false
-		part.CFrame = hook * CFrame.new(0, -highest, 0) * part.CFrame
+	-- Toutes les pièces du modèle, coques des marques comprises (#126 : visage sur un matériau d'équipement)
+	for _, part in model:GetChildren() do
+		if part:IsA("BasePart") then
+			part.Anchored = true
+			part.CanCollide = false
+			part.CanQuery = false
+			part.CanTouch = false
+			part.CFrame = hook * CFrame.new(0, -highest, 0) * part.CFrame
+		end
 	end
 	model.Parent = parent
 end
