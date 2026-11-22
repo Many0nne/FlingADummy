@@ -54,6 +54,8 @@ type Shown = { key: string, model: Model }
 
 local slots: { Slot } = {}
 local slotOf: { [Player]: Slot } = {}
+-- Joueurs arrivés avant que SlotService leur donne une place : connexion à l'attribut Slot, coupée au départ
+local waitingSlot: { [Player]: RBXScriptConnection } = {}
 local shown: { [number]: { [number]: Shown } } = {} -- mannequins posés, par place puis présentoir
 -- Palier visuel de chaque base, pour le propriétaire chargé qui l'a (confettis seulement s'il monte pour lui)
 local styled: { [number]: { player: Player, tier: number } } = {}
@@ -631,11 +633,20 @@ function BaseService.init(builtSlots: { Slot }, placeRemote: RemoteEvent, invent
 		refresh(player, true)
 	end)
 	Players.PlayerAdded:Connect(function(player)
-		-- SlotService pose l'attribut Slot dans son propre PlayerAdded : attendu s'il n'est pas encore là
-		if player:GetAttribute("Slot") == nil then
-			player:GetAttributeChangedSignal("Slot"):Wait()
+		-- SlotService pose l'attribut Slot dans son propre PlayerAdded : suivi sans attente bloquante (lobby plein : jamais)
+		if player:GetAttribute("Slot") ~= nil then
+			track(player)
+			return
 		end
-		track(player)
+		local connection = player:GetAttributeChangedSignal("Slot"):Connect(function()
+			local pending = waitingSlot[player]
+			waitingSlot[player] = nil
+			if pending then
+				pending:Disconnect()
+				track(player)
+			end
+		end)
+		waitingSlot[player] = connection
 	end)
 	for _, player in Players:GetPlayers() do
 		task.spawn(track, player)
@@ -643,6 +654,11 @@ function BaseService.init(builtSlots: { Slot }, placeRemote: RemoteEvent, invent
 	Players.PlayerRemoving:Connect(function(player)
 		local slot = slotOf[player]
 		slotOf[player] = nil
+		local pending = waitingSlot[player]
+		waitingSlot[player] = nil
+		if pending then
+			pending:Disconnect()
+		end
 		DummyTools.forget(player)
 		if slot then
 			render(slot, nil)
