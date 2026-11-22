@@ -4,7 +4,7 @@
 -- palier marqué d'un éclair blanc, d'étincelles, d'un anneau, d'une secousse et d'une exclamation colorée en haut
 -- (« Lucky! 1 IN 10 » → « Super lucky! 1 IN 150 »), puis roulement (la silhouette tremble) et révélation : éclair
 -- plein écran, mannequin en couleurs qui grossit, rayons ; rareté, nom, « NEW! », $/s et cote une seule fois, en haut
--- au centre (comme 09) ; bouton GO BACK. La mise en scène monte avec la rareté (#67, paliers : Shared.RevealPlan,
+-- au centre (comme 09) ; boutons THROW AGAIN (remise en prise sur la bande, #76) et GO BACK. La mise en scène monte avec la rareté (#67, paliers : Shared.RevealPlan,
 -- effets : Client.RevealFx) : révélation vive en Common ; silhouette qui hésite entre 2 ou 3 formes et confettis dès
 -- Rare ; ciel qui s'assombrit, rayons, cote qui grimpe longtemps, explosion et forte secousse dès Legendary ; séquence
 -- complète du secret (écran noir et phrase, décor dédié, portail, pièces, « SECRET!! »). Passable au clic après la
@@ -46,6 +46,8 @@ local AUTO_BOTTOM = 96 -- marge du bouton AUTO au bas de l'écran (px) : au-dess
 local BLACK = Color3.fromRGB(12, 12, 16)
 local SKIP_ACTION = "PrizeSkip" -- Espace / A de la manette pendant le tirage : passe, sans faire sauter l'avatar
 local STORM = Color3.fromRGB(120, 90, 200) -- teinte du ciel assombri pendant le suspense (neutre : ne trahit pas la rareté)
+local END_BUTTON = Vector2.new(250, 64) -- THROW AGAIN et GO BACK, même taille (≈ 3,9 : 1 comme 09)
+local END_GAP = 12 -- écart entre les deux boutons de fin (px)
 -- Exclamation de chaque palier selon la rareté du candidat (« Super chanceux ! », « Chance incroyable ! » de 01)
 local EXCLAIM = {
 	"Hmm…",
@@ -100,6 +102,7 @@ local newTag: TextLabel
 local incomeLabel: TextLabel
 local revealOdds: TextLabel
 local goBack: TextButton
+local throwAgain: TextButton
 local rays: Frame? = nil
 -- Panneau « Place your … »
 local placePanel: Frame
@@ -451,6 +454,7 @@ local function cleanup()
 	UIKit.closeWindow(tease, true)
 	UIKit.closeWindow(reveal, true)
 	goBack.Visible = false
+	throwAgain.Visible = false
 	skipHint.Visible = false
 end
 
@@ -462,6 +466,18 @@ local function finish()
 	end
 	cleanup()
 	remotes.ResultDone:FireServer()
+end
+
+-- Cette méthode permet de clore le tirage comme GO BACK puis de demander la remise en prise sur la bande (refusée :
+-- retour au hub) lorsque le joueur clique THROW AGAIN (#76).
+local function again()
+	if not showing then
+		return
+	end
+	cleanup()
+	-- Caméra coupée sur l'avatar, comme GO BACK : le fondu de la bande (Client.FlightCamera.band) part de là
+	FlightCamera.stop()
+	remotes.ThrowAgain:FireServer()
 end
 
 -- Cette méthode permet de faire apparaître le mannequin en couleurs sur `ground` (anneaux, éclair, sons ; confettis dès
@@ -541,6 +557,11 @@ local function revealTexts(a: Active, current: number)
 	UIKit.playSound("LevelUp")
 	goBack.Visible = true
 	UIKit.pop(goBack, 1.3)
+	-- THROW AGAIN masqué jusqu'à la première pose du tutoriel (le joueur doit d'abord rentrer poser son gagné)
+	throwAgain.Visible = Tutorial.canThrowAgain((player:GetAttribute("Tutorial") :: number?) or 0)
+	if throwAgain.Visible then
+		UIKit.pop(throwAgain, 1.3)
+	end
 	task.delay(a.plan.autoClose, function()
 		if current == token then
 			finish()
@@ -863,17 +884,47 @@ local function buildReveal()
 		ZIndex = 21,
 		Parent = reveal,
 	})
-	goBack = UIKit.button({
-		Name = "GoBack",
+	-- Boutons de fin, côte à côte en bas au centre comme 09 : THROW AGAIN (vert) à gauche de GO BACK (bleu), même
+	-- taille ; la rangée recentre GO BACK seul tant que THROW AGAIN est masqué (tutoriel)
+	local row = UIKit.create("Frame", {
+		Name = "RevealButtons",
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 1, -40),
-		Size = UDim2.fromOffset(220, 64),
-		Text = "GO BACK",
-		TextSize = 32,
+		Size = UDim2.fromOffset(2 * END_BUTTON.X + END_GAP, END_BUTTON.Y),
+		BackgroundTransparency = 1,
+		ZIndex = 21,
+		Parent = gui,
+	})
+	UIKit.create("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		VerticalAlignment = Enum.VerticalAlignment.Center,
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Padding = UDim.new(0, END_GAP),
+		Parent = row,
+	})
+	throwAgain = UIKit.button({
+		Name = "ThrowAgain",
+		LayoutOrder = 1,
+		Size = UDim2.fromOffset(END_BUTTON.X, END_BUTTON.Y),
+		Text = "THROW AGAIN",
+		TextSize = 30,
 		Shine = true,
 		Visible = false,
 		ZIndex = 21,
-		Parent = gui,
+		Parent = row,
+	}, again)
+	goBack = UIKit.button({
+		Name = "GoBack",
+		LayoutOrder = 2,
+		Size = UDim2.fromOffset(END_BUTTON.X, END_BUTTON.Y),
+		BackgroundColor3 = C.blue,
+		Text = "GO BACK",
+		TextSize = 30,
+		Shine = true,
+		Visible = false,
+		ZIndex = 21,
+		Parent = row,
 	}, finish)
 end
 

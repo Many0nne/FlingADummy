@@ -272,7 +272,8 @@ end
 function FlightCamera.init(localPlayer: Player)
 	player = localPlayer
 	player:GetAttributeChangedSignal("LaneState"):Connect(function()
-		if player:GetAttribute("LaneState") == "Ready" then
+		-- THROW AGAIN (#76) : le serveur remet en prise juste avant « Ready », le cadrage de la bande reste
+		if player:GetAttribute("LaneState") == "Ready" and not banded then
 			FlightCamera.stop()
 		end
 	end)
