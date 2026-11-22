@@ -240,6 +240,270 @@ def build_music():
     parent_all(objs, (0, 0, math.radians(-10)))
 
 
+def sphere(location, radius, mat, scale=(1, 1, 1), rotation=(0, 0, 0)):
+    """Cette methode permet de creer une sphere lisse (eventuellement aplatie) lorsque l'on modelise une icone."""
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=radius, location=location, segments=32, ring_count=16)
+    obj = bpy.context.active_object
+    obj.scale = scale
+    obj.rotation_euler = rotation
+    bpy.ops.object.transform_apply(scale=True, rotation=True)
+    obj.data.materials.append(mat)
+    for poly in obj.data.polygons:
+        poly.use_smooth = True
+    return obj
+
+
+def cylinder(location, radius, depth, mat, rotation=(0, 0, 0), vertices=32, bevel=0.0, radius2=None):
+    """Cette methode permet de creer un cylindre ou un cone (si radius2 est donne) lorsque l'on modelise une icone."""
+    if radius2 is None:
+        bpy.ops.mesh.primitive_cylinder_add(vertices=vertices, radius=radius, depth=depth, location=location)
+    else:
+        bpy.ops.mesh.primitive_cone_add(
+            vertices=vertices, radius1=radius, radius2=radius2, depth=depth, location=location
+        )
+    obj = bpy.context.active_object
+    obj.location = location  # le cone ignore parfois le parametre de l'operateur
+    obj.rotation_euler = rotation
+    bpy.ops.object.transform_apply(rotation=True)
+    if bevel > 0:
+        mod = obj.modifiers.new("Bevel", "BEVEL")
+        mod.width = bevel
+        mod.segments = 4
+        mod.limit_method = "NONE"
+    obj.data.materials.append(mat)
+    for poly in obj.data.polygons:
+        poly.use_smooth = True
+    return obj
+
+
+def star(location, outer, thickness, mat, points=5):
+    """Cette methode permet de creer une etoile epaisse face a la camera lorsque l'on modelise une icone."""
+    verts = []
+    for i in range(points * 2):
+        r = outer if i % 2 == 0 else outer * 0.45
+        a = math.pi / 2 + i * math.pi / points
+        verts.append((r * math.cos(a), 0, r * math.sin(a)))
+    mesh = bpy.data.meshes.new("Star")
+    mesh.from_pydata(verts, [], [list(range(len(verts)))])
+    obj = bpy.data.objects.new("Star", mesh)
+    bpy.context.collection.objects.link(obj)
+    obj.location = location
+    solid = obj.modifiers.new("Solid", "SOLIDIFY")
+    solid.thickness = thickness
+    solid.offset = 0
+    bevel = obj.modifiers.new("Bevel", "BEVEL")
+    bevel.width = thickness * 0.3
+    bevel.segments = 3
+    bevel.limit_method = "NONE"
+    obj.data.materials.append(mat)
+    return obj
+
+
+def arc_beads(center, radius, start, end, mat, bead, count=22):
+    """Cette methode permet de tracer un arc epais dans le plan XZ (chapelet de spheres) lorsque l'on modelise un
+    arc-en-ciel ou des fleches circulaires ; renvoie les spheres."""
+    out = []
+    for i in range(count + 1):
+        a = math.radians(start + (end - start) * i / count)
+        out.append(sphere((center[0] + radius * math.cos(a), center[1], center[2] + radius * math.sin(a)), bead, mat))
+    return out
+
+
+def build_clover():
+    """Cette methode permet de modeliser le trefle a quatre feuilles (feuilles en coeur arrondi, tige) lorsque l'icone
+    chance est rendue."""
+    green = material("Leaf", "#3FD64A")
+    light = material("Vein", "#8DF27A")
+    dark = material("Stem", "#1E9A38")
+    objs = []
+    for sx, sz in ((-1, 1), (1, 1), (-1, -1), (1, -1)):
+        objs.append(sphere((sx * 0.52, 0, sz * 0.52), 0.62, green, (1, 0.4, 1)))
+        objs.append(sphere((sx * 0.68, -0.12, sz * 0.7), 0.28, light, (1, 0.3, 1)))
+    objs.append(sphere((0, 0, 0), 0.34, dark, (1, 0.5, 1)))
+    objs.append(box((0.2, 0.2, 1.3), (0.55, 0, -1.45), dark, 0.06, (0, math.radians(35), 0)))
+    parent_all(objs, (0, 0, math.radians(-8)))
+
+
+def build_moneybag():
+    """Cette methode permet de modeliser le sac d'argent (sac dore, col noue, signe dollar) lorsque l'icone argent
+    des passes est rendue."""
+    sack = material("Sack", "#E9A12E")
+    tie = material("Tie", "#B8651B")
+    mark = material("Dollar", "#2FB84A", emission=0.2)
+    objs = [
+        sphere((0, 0, -0.35), 1.15, sack, (1.0, 0.8, 0.95)),
+        cylinder((0, 0, 0.78), 0.4, 0.55, sack, radius2=0.28),
+        box((0.9, 0.5, 0.2), (0, 0, 0.55), tie, 0.07),
+        sphere((-0.5, 0, 1.15), 0.34, sack, (1, 0.7, 1.15), (0, math.radians(-25), 0)),
+        sphere((0.5, 0, 1.15), 0.34, sack, (1, 0.7, 1.15), (0, math.radians(25), 0)),
+    ]
+    bpy.ops.object.text_add(location=(0, -0.95, -0.35), rotation=(math.radians(90), 0, 0))
+    text = bpy.context.active_object
+    text.data.body = "$"
+    text.data.size = 1.35
+    text.data.extrude = 0.05
+    text.data.align_x = "CENTER"
+    text.data.align_y = "CENTER"
+    text.data.materials.append(mark)
+    objs.append(text)
+    parent_all(objs, (math.radians(-6), 0, math.radians(8)))
+
+
+def build_crown():
+    """Cette methode permet de modeliser la couronne doree a trois pointes (bandeau, pointes, gemmes) lorsque l'icone
+    VIP est rendue."""
+    gold = material("Gold", "#FFC21E", roughness=0.25)
+    red = material("Ruby", "#FF2E5B", roughness=0.15, emission=0.3)
+    blue = material("Sapphire", "#2F8BFF", roughness=0.15, emission=0.3)
+    objs = [box((2.3, 0.7, 0.6), (0, 0, -0.55), gold, 0.1)]
+    for x, h in ((-0.95, 1.1), (0, 1.5), (0.95, 1.1)):
+        objs.append(cylinder((x, 0, -0.25 + h / 2), 0.42, h, gold, vertices=4, radius2=0.05, bevel=0.04))
+        objs.append(sphere((x, 0, -0.25 + h + 0.12), 0.2, red))
+    objs.append(sphere((-0.5, -0.38, -0.55), 0.17, blue))
+    objs.append(sphere((0.5, -0.38, -0.55), 0.17, blue))
+    objs.append(sphere((0, -0.38, -0.55), 0.2, red))
+    parent_all(objs, (math.radians(-6), 0, math.radians(-8)))
+
+
+def build_house():
+    """Cette methode permet de modeliser la maison (murs, toit rouge, porte, fenetre, cheminee) lorsque l'icone de la
+    base agrandie est rendue."""
+    wall = material("Wall", "#FFE2A0")
+    roof = material("Roof", "#E8453C")
+    door = material("Door", "#8A4B1F")
+    glass = material("Window", "#6FD2FF", emission=0.3)
+    objs = [
+        box((1.9, 1.5, 1.4), (0, 0, -0.5), wall, 0.07),
+        box((0.34, 0.34, 0.7), (0.65, 0, 0.95), roof, 0.05),
+        box((0.5, 0.06, 0.85), (-0.4, -0.76, -0.78), door, 0.03),
+        box((0.5, 0.06, 0.45), (0.45, -0.76, -0.4), glass, 0.03),
+    ]
+    bpy.ops.mesh.primitive_cylinder_add(vertices=3, radius=1.55, depth=1.7, rotation=(math.radians(90), 0, 0))
+    top = bpy.context.active_object
+    # Le premier sommet doit etre en haut (+Z) : le prisme est tourne autour de l'axe de l'extrusion (Y)
+    top.rotation_euler = (math.radians(90), 0, math.radians(0))
+    top.location = (0, 0, 0.45)
+    top.scale = (1.0, 1.0, 0.62)
+    bpy.ops.object.transform_apply(scale=True)
+    mod = top.modifiers.new("Bevel", "BEVEL")
+    mod.width = 0.1
+    mod.segments = 3
+    mod.limit_method = "NONE"
+    top.data.materials.append(roof)
+    objs.append(top)
+    parent_all(objs, (math.radians(8), 0, math.radians(-12)))
+
+
+def build_rainbow():
+    """Cette methode permet de modeliser l'arc-en-ciel (quatre bandes, deux nuages) lorsque l'icone du passe arc-en-ciel
+    est rendue."""
+    bands = ["#FF3B4F", "#FFC21E", "#3FD64A", "#2F8BFF"]
+    white = material("Cloud", "#FFFFFF", roughness=0.7)
+    for i, color in enumerate(bands):
+        arc_beads((0, 0, -0.55), 1.55 - i * 0.33, 0, 180, material("Band%d" % i, color), 0.17, count=60)
+    for x in (-1.3, 1.3):
+        for dx, dz, r in ((-0.25, 0.0, 0.35), (0.0, 0.18, 0.42), (0.28, 0.0, 0.34)):
+            sphere((x + dx * (1 if x > 0 else -1), -0.3, -0.62 + dz), r, white, (1, 0.7, 0.9))
+
+
+def build_potion():
+    """Cette methode permet de modeliser la potion (flacon rond, col, bouchon, bulles) lorsque l'icone des boosts est
+    rendue."""
+    liquid = material("Liquid", "#C04BFF", roughness=0.15, emission=0.25)
+    glass = material("Glass", "#E8F4FF", roughness=0.1)
+    cork = material("Cork", "#B8651B", roughness=0.7)
+    foam = material("Foam", "#F0B8FF", roughness=0.2)
+    objs = [
+        sphere((0, 0, -0.45), 1.05, liquid),
+        cylinder((0, 0, 0.55), 0.32, 0.8, glass, bevel=0.03),
+        cylinder((0, 0, 1.08), 0.42, 0.18, glass, bevel=0.04),
+        cylinder((0, 0, 1.38), 0.3, 0.5, cork, radius2=0.36, bevel=0.04),
+        sphere((-0.35, -0.85, -0.2), 0.2, foam, (1, 0.5, 1)),
+        sphere((0.3, -0.9, -0.7), 0.13, foam, (1, 0.5, 1)),
+    ]
+    parent_all(objs, (0, 0, math.radians(-12)))
+
+
+def build_globe():
+    """Cette methode permet de modeliser le globe (ocean bleu, continents verts, anneau) lorsque l'icone de la chance du
+    serveur est rendue."""
+    ocean = material("Ocean", "#2F8BFF", roughness=0.25)
+    land = material("Land", "#3FD64A")
+    ring = material("Ring", "#FFC21E", roughness=0.25)
+    objs = [sphere((0, 0, 0), 1.25, ocean)]
+    for x, z, sx, sz in ((-0.45, 0.35, 0.62, 0.5), (0.5, -0.2, 0.5, 0.7), (-0.2, -0.85, 0.4, 0.28), (0.55, 0.78, 0.3, 0.25)):
+        # Taches aplaties qui affleurent la surface (profondeur du point sur la sphere)
+        y = -math.sqrt(max(0.0, 1.25 ** 2 - x * x - z * z)) + 0.04
+        objs.append(sphere((x, y, z), 1, land, (sx, 0.12, sz)))
+    bpy.ops.mesh.primitive_torus_add(
+        major_radius=1.5, minor_radius=0.06, rotation=(math.radians(70), 0, math.radians(-20))
+    )
+    band = bpy.context.active_object
+    band.data.materials.append(ring)
+    for poly in band.data.polygons:
+        poly.use_smooth = True
+    objs.append(band)
+    parent_all(objs, (math.radians(-10), 0, math.radians(8)))
+
+
+def build_dice():
+    """Cette methode permet de modeliser le de (cube blanc arrondi, points violets sur trois faces) lorsque l'icone des
+    lancers chanceux est rendue."""
+    white = material("Die", "#F8F6FF", roughness=0.3)
+    pip = material("Pip", "#6A2BD0", roughness=0.3)
+    objs = [box((1.7, 1.7, 1.7), (0, 0, 0), white, 0.22)]
+    h = 0.85
+    spots = {
+        # face avant (-Y) : 3 points ; dessus (+Z) : 5 points ; droite (+X) : 2 points
+        "front": ((0, -h, 0), [(-0.45, 0.45), (0, 0), (0.45, -0.45)]),
+        "top": ((0, 0, h), [(-0.45, -0.45), (0.45, -0.45), (0, 0), (-0.45, 0.45), (0.45, 0.45)]),
+        "right": ((h, 0, 0), [(-0.4, 0.4), (0.4, -0.4)]),
+    }
+    for name, (origin, offsets) in spots.items():
+        for u, v in offsets:
+            if name == "front":
+                loc, scale = (origin[0] + u, origin[1] + 0.02, origin[2] + v), (1, 0.28, 1)
+            elif name == "top":
+                loc, scale = (origin[0] + u, origin[1] + v, origin[2] - 0.02), (1, 1, 0.28)
+            else:
+                loc, scale = (origin[0] - 0.02, origin[1] + u, origin[2] + v), (0.28, 1, 1)
+            objs.append(sphere(loc, 0.17, pip, scale))
+    parent_all(objs, (math.radians(32), math.radians(6), math.radians(-30)))
+
+
+def build_ticket():
+    """Cette methode permet de modeliser le ticket dore (encoches, etoile) lorsque l'icone des passes de jeu est
+    rendue."""
+    gold = material("Ticket", "#FFC21E", roughness=0.3)
+    red = material("Star", "#FF3C8C", roughness=0.3)
+    body = box((2.4, 0.3, 1.8), (0, 0, 0), gold, 0.12)
+    for x in (-1.25, 1.25):
+        cut = cylinder((x, 0, 0), 0.32, 1.0, gold, rotation=(math.radians(90), 0, 0), vertices=24)
+        cut.hide_render = True
+        mod = body.modifiers.new("Notch", "BOOLEAN")
+        mod.operation = "DIFFERENCE"
+        mod.object = cut
+    objs = [body, star((0, -0.18, 0), 0.6, 0.12, red)]
+    parent_all(objs, (math.radians(-8), 0, math.radians(-28)))
+
+
+def build_rebirth():
+    """Cette methode permet de modeliser les deux fleches circulaires violettes (renaissance) lorsque l'icone Rebirth
+    est rendue."""
+    purple = material("Arrow", "#B04BFF", roughness=0.25, emission=0.15)
+    radius = 1.15
+    for base in (20, 200):
+        arc_beads((0, 0, 0), radius, base, base + 130, purple, 0.17, count=50)
+        # Pointe : cone dont l'axe suit la tangente (sens trigonometrique) au bout de l'arc
+        a = math.radians(base + 130)
+        pos = Vector((radius * math.cos(a), 0, radius * math.sin(a)))
+        tangent = Vector((-math.sin(a), 0, math.cos(a)))
+        # Cree a l'origine (transform_apply cuit la position dans le maillage), tourne, puis deplace
+        head = cylinder((0, 0, 0), 0.55, 0.8, purple, vertices=16, radius2=0.0, bevel=0.05)
+        head.rotation_euler = tangent.to_track_quat("Z", "Y").to_euler()
+        head.location = pos + tangent * 0.3
+
+
 # Couleurs des raretes (Shared.Rarity, dans l'ordre) : icones des mannequins dans la barre d'outils (#54), puis les
 # raretes au-dela de Secret (#94 : Divine, Celestial, Ethereal, Infinity)
 RARITY_COLORS = ["#EBEBEB", "#5ADC5A", "#46A0FF", "#BE5AFF", "#FFBE28", "#FF466E", "#6EFFE1",
@@ -272,6 +536,17 @@ ICONS = {
     "cash": build_cash,
     "arrow": build_arrow,
     "music": build_music,
+    # Boutique Robux (#173) et bouton Rebirth (#111)
+    "clover": build_clover,
+    "moneybag": build_moneybag,
+    "crown": build_crown,
+    "house": build_house,
+    "rainbow": build_rainbow,
+    "potion": build_potion,
+    "globe": build_globe,
+    "dice": build_dice,
+    "ticket": build_ticket,
+    "rebirth": build_rebirth,
 }
 for _rank, _color in enumerate(RARITY_COLORS, start=1):
     ICONS["rarity%d" % _rank] = rarity_builder(_color)
@@ -401,8 +676,8 @@ def main():
     args = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
     names = args or list(ICONS)
     tiles = [render_icon(name) for name in names]
-    if not args:
-        write_sheet(tiles)
+    # Rendu partiel : planche separee (sheet_partial.png), la planche complete reste celle de tous les rendus
+    write_sheet(tiles, "sheet_partial.png" if args else "sheet.png")
 
 
 # Importable (assets/icons/dummy_icons.py reprend outline et write_sheet) : rendu seulement si lance directement
