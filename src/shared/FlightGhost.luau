@@ -1,11 +1,16 @@
 -- Départ du vol vu par le lanceur (#117, logique pure, testée). Le mannequin est simulé par le serveur : chez le client,
 -- un assemblage qui vient d'apparaître reste figé à sa première position le temps que le tampon d'interpolation du
--- moteur se remplisse (≈ 200 ms mesurées en Studio), puis il est affiché en retard. Le départ du vol étant décidé par
+-- moteur se remplisse (200 à 290 ms mesurées en Studio), puis il est affiché en retard. Le départ du vol étant décidé par
 -- le plan (Shared.FlightArc : arc, montée freinée, croisière, poussée, sans choc avant le premier contact), le client
 -- rejoue ce plan et affiche le mannequin en avance sur la copie répliquée : il quitte la main sans s'arrêter, puis
 -- son avance se résorbe en douceur jusqu'à rejoindre la copie du serveur (Client.LaunchGhost). L'avance est un écart
 -- de temps sur la trajectoire du plan, pas un lissage de position : distance, chocs et résultat restent ceux du
--- serveur.
+-- serveur. Trajectoire : gravité, comportement et contrôle FlightArc à chaque pas, comme Server.LaunchService, sans
+-- obstacle, jusqu'au premier contact. Le temps de la copie répliquée se retrouve d'après sa distance le long de la
+-- piste. Elle reprend la main quand l'avance est résorbée ou n'existe plus (le moteur la fait défiler ≈ 4 % plus vite
+-- pour réduire son retard), et, après une résorption forcée de BLEND_TIME, quand elle quitte le plan (choc, piège :
+-- la position fait foi, la vitesse vue par le client n'est pas celle de l'instant affiché), au premier contact ou
+-- passé TIMEOUT.
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local FlightArc = require(Shared:WaitForChild("FlightArc"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
@@ -14,7 +19,7 @@ local FlightGhost = {}
 
 FlightGhost.DT = 1 / 60 -- pas de la trajectoire simulée (celui du serveur)
 FlightGhost.HORIZON = 3 -- durée simulée au plus (s) : l'avance est résorbée bien avant
-FlightGhost.GAIN = 3 -- l'avance (s) ralentit l'affichage de GAIN × avance (1/s) : ≈ 55 % au plus lent, résorbée en ≈ 1,7 s
+FlightGhost.GAIN = 3 -- l'avance (s) ralentit l'affichage de GAIN × avance (1/s) : 47-55 % au plus lent, main rendue en 0,9-1,2 s (Studio)
 FlightGhost.MAX_RATE = 1.5 -- vitesse de rattrapage au plus, quand l'affichage est en retard sur la copie
 FlightGhost.MOVED = 0.5 -- la copie répliquée a quitté sa première position (studs) : elle est diffusée
 FlightGhost.DONE = 0.5 -- écart (studs) sous lequel l'affichage rend la main à la copie répliquée
@@ -32,9 +37,8 @@ export type Path = {
 	along: { number }, -- distance le long de la piste depuis le départ (croissante)
 }
 
--- Cette méthode permet de donner la trajectoire prévue d'un vol (gravité, comportement et contrôle FlightArc à chaque
--- pas, comme Server.LaunchService, sans obstacle) lorsqu'il part de `origin` à `velocity`, jusqu'au premier contact
--- ou `horizon` s ; `behavior` : mannequin lancé (Shared.ThrowDummies).
+-- Cette méthode permet de donner la trajectoire prévue d'un vol (mannequin lancé `behavior`) lorsqu'il part de `origin`
+-- à `velocity`, jusqu'au premier contact ou `horizon` s.
 function FlightGhost.path(
 	origin: Vector3,
 	velocity: Vector3,
@@ -111,9 +115,8 @@ function FlightGhost.sample(path: Path, time: number): (Vector3, Vector3)
 	return path.positions[a]:Lerp(path.positions[b], k), path.velocities[a]:Lerp(path.velocities[b], k)
 end
 
--- Cette méthode permet de retrouver le temps du vol (s après le lâcher) d'une position `position` d'après sa distance
--- le long de la piste lorsque l'on situe la copie répliquée sur la trajectoire ; vrai en second si elle est au-delà
--- de la trajectoire prévue.
+-- Cette méthode permet de retrouver le temps du vol d'une position (vrai en second : au-delà de la trajectoire)
+-- lorsque l'on situe la copie répliquée sur la trajectoire.
 function FlightGhost.timeAt(path: Path, position: Vector3): (number, boolean)
 	local along = (position - path.origin):Dot(path.flat)
 	local list = path.along
@@ -153,9 +156,8 @@ function FlightGhost.offset(path: Path, shown: number, replicated: number): Vect
 	return a - b
 end
 
--- Cette méthode permet de savoir si la copie répliquée a quitté le plan (choc, piège : position à plus de DEVIATION de
--- celle prévue à son temps `replicated`) lorsque l'on décide de rendre la main. La position, pas la vitesse : celle
--- que voit le client n'est pas forcément celle de l'instant affiché.
+-- Cette méthode permet de savoir si la copie répliquée (à `position`, temps `replicated`) est à plus de DEVIATION du
+-- plan lorsque l'on décide de rendre la main.
 function FlightGhost.deviates(path: Path, replicated: number, position: Vector3): boolean
 	local expected = FlightGhost.sample(path, replicated)
 	return (position - expected).Magnitude > FlightGhost.DEVIATION
@@ -187,12 +189,14 @@ function FlightGhost.new(): State
 	}
 end
 
--- Cette méthode permet de donner la vitesse du mannequin affiché (celle du plan au temps affiché, à la cadence du
--- temps affiché) lorsque la caméra prolonge son mouvement ; nil pendant la résorption forcée et après (vitesse de la
--- copie répliquée).
-function FlightGhost.velocity(path: Path, state: State): Vector3?
-	if state.done or state.fading then
-		return nil
+-- Cette méthode permet de donner la vitesse du mannequin affiché (copie répliquée à `replicated`) lorsque la caméra
+-- prolonge son mouvement : plan au temps affiché et à sa cadence, ou copie moins l'écart qui se résorbe.
+function FlightGhost.velocity(path: Path, state: State, replicated: Vector3): Vector3
+	if state.done then
+		return replicated
+	end
+	if state.fading then
+		return replicated - state.fadeFrom / FlightGhost.BLEND_TIME
 	end
 	local _, velocity = FlightGhost.sample(path, state.shown)
 	return velocity * state.rate
@@ -200,7 +204,6 @@ end
 
 -- Cette méthode permet d'avancer l'affichage anticipé d'une image de `dt` s (copie répliquée à `replicated`) et de
 -- donner le décalage à lui ajouter lorsque le client dessine le vol ; zéro une fois la main rendue (`state.done`).
--- Quand la copie quitte le plan (choc, premier contact, délai dépassé), l'écart restant se résorbe en BLEND_TIME.
 function FlightGhost.advance(path: Path, state: State, replicated: Vector3, dt: number): Vector3
 	if state.done then
 		return Vector3.zero

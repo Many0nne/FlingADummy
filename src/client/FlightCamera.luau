@@ -84,9 +84,8 @@ function FlightCamera.closeUp(root: BasePart, duration: number)
 	end)
 end
 
--- Cette méthode permet de suivre un mannequin lancé (cadrage Shared.FlightFraming, position et point visé qui avancent
--- avec le torse affiché, lissage de l'écart seul) lorsque le serveur annonce le lancer ; `shown` donne la position et
--- la vitesse du torse à l'écran quand ce n'est pas la copie répliquée (Client.LaunchGhost au départ, #117), nil sinon.
+-- Cette méthode permet de suivre un mannequin lancé (Shared.FlightFraming, lissage de l'écart seul) lorsque le serveur
+-- annonce le lancer ; `shown` : torse à l'écran s'il n'est pas la copie répliquée (Client.LaunchGhost, #117).
 function FlightCamera.follow(model: Model, shown: (() -> (Vector3?, Vector3?))?)
 	local torso = model:WaitForChild("Torso", 2) :: BasePart?
 	if not torso then
@@ -97,9 +96,9 @@ function FlightCamera.follow(model: Model, shown: (() -> (Vector3?, Vector3?))?)
 	shake = 0
 	local camera = Workspace.CurrentCamera
 	camera.CameraType = Enum.CameraType.Scriptable
-	-- Cette méthode permet de donner la position et la vitesse du torse à l'écran lorsque la caméra se place : la
-	-- vitesse prolongée doit être celle de ce qui est affiché (la copie répliquée, figée au départ à vitesse pleine,
-	-- se faisait dépasser par la caméra).
+	-- La vitesse prolongée doit être celle de ce qui est affiché : la copie répliquée, figée au départ à vitesse pleine,
+	-- se faisait dépasser par la caméra (#117)
+	-- Cette méthode permet de donner la position et la vitesse du torse à l'écran lorsque la caméra se place.
 	local function displayed(): (Vector3, Vector3)
 		local position, velocity
 		if shown then
@@ -117,7 +116,8 @@ function FlightCamera.follow(model: Model, shown: (() -> (Vector3?, Vector3?))?)
 		end
 		local target, velocity = displayed()
 		position += velocity * dt
-		local offset = FlightFraming.offset(target.Y, velocity.Magnitude) -- piste à y = 0
+		-- Distance du cadrage selon la vitesse réelle (répliquée) : pas de va-et-vient quand l'affichage ralentit au départ
+		local offset = FlightFraming.offset(target.Y, torso.AssemblyLinearVelocity.Magnitude) -- piste à y = 0
 		position = position:Lerp(target + offset, 1 - math.exp(-POSITION_SHARPNESS * dt))
 		-- Le point visé avance lui aussi avec le torse : sinon, en montée rapide, il traîne en dessous et le mannequin
 		-- sort par le haut de l'image (#88)

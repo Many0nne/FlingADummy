@@ -193,12 +193,21 @@ return function(T, Loader)
 				FlightGhost.advance(path, state, ORIGIN, dt) -- copie répliquée figée 0,2 s
 			end
 			local _, planned = FlightGhost.sample(path, state.shown)
-			local shown = FlightGhost.velocity(path, state)
-			T.expect(shown ~= nil, "vitesse affichée")
+			local replicated = launchVelocity(22e6)
+			local shown = FlightGhost.velocity(path, state, replicated)
 			T.expect(state.rate > 0.4 and state.rate < 0.8, "ralentie : " .. state.rate)
-			T.expectNear((shown :: Vector3).Magnitude, planned.Magnitude * state.rate, 1e-3)
+			T.expectNear(shown.Magnitude, planned.Magnitude * state.rate, 1e-3)
+			-- Résorption forcée : la copie répliquée moins l'écart qui se résorbe
+			state.fading = FlightGhost.BLEND_TIME
+			state.fadeFrom = Vector3.new(0, 0, 30)
+			local fading = FlightGhost.velocity(path, state, replicated)
+			T.expectNear(fading.Z, replicated.Z - 30 / FlightGhost.BLEND_TIME, 1e-3)
 			state.done = true
-			T.expect(FlightGhost.velocity(path, state) == nil, "nil après la main rendue")
+			T.expectEqual(
+				FlightGhost.velocity(path, state, replicated),
+				replicated,
+				"copie répliquée après le retour"
+			)
 		end)
 
 		T.it("rend la main quand la copie quitte le plan (choc)", function()

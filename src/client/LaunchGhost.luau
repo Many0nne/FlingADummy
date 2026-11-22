@@ -1,9 +1,11 @@
 -- Départ du vol du joueur local (#117) : le mannequin lancé est simulé par le serveur, et sa copie répliquée reste
--- figée à son apparition le temps que le tampon d'interpolation du moteur se remplisse (≈ 200 ms), puis s'affiche en
--- retard. Le lanceur voit à sa place une copie locale de ce mannequin (mêmes pièces, même pose, chaque image),
+-- figée à son apparition le temps que le tampon d'interpolation du moteur se remplisse (200 à 290 ms), puis s'affiche
+-- en retard. Le lanceur voit à sa place une copie locale de ce mannequin (mêmes pièces, même pose, chaque image),
 -- décalée sur la trajectoire du plan (Shared.FlightGhost) : elle quitte la main sans s'arrêter, puis son avance se
--- résorbe et la copie répliquée, masquée pour lui seul pendant ce temps, reprend la main (≈ 1,7 s au plus). Les
--- autres joueurs et le résultat du serveur ne changent pas.
+-- résorbe et la copie répliquée, masquée pour lui seul pendant ce temps, reprend la main (0,9 à 1,2 s mesurées). Au
+-- retour, la copie locale est masquée et ses effets coupés, puis retirée après la vie de ses particules. Les autres
+-- joueurs et le résultat du serveur ne changent pas.
+local Debris = game:GetService("Debris")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
@@ -12,8 +14,13 @@ local FlightGhost = require(Shared:WaitForChild("FlightGhost"))
 local ThrowDummies = require(Shared:WaitForChild("ThrowDummies"))
 
 local BIND_NAME = "LaunchGhost"
--- Effets de la copie répliquée coupés pendant l'affichage anticipé (la copie locale porte les siens)
+local FADE_OUT = 2 -- copie locale gardée, masquée, après le retour (s) : ses particules et sa traînée s'éteignent
+-- Effets de la copie répliquée coupés pendant l'affichage anticipé (la copie locale porte les siens) ; les surfaces
+-- et panneaux (cibles du torse en blocs, DummyShape.addTarget) restent visibles sur une pièce masquée
 local EFFECTS = {
+	SurfaceGui = true,
+	BillboardGui = true,
+	Highlight = true,
 	ParticleEmitter = true,
 	Trail = true,
 	Beam = true,
@@ -50,7 +57,15 @@ function LaunchGhost.stop()
 	end
 	active = nil
 	RunService:UnbindFromRenderStep(BIND_NAME)
-	current.copy:Destroy()
+	-- Copie masquée tout de suite, retirée plus tard : les particules déjà émises et la traînée finissent leur vie
+	for _, descendant in current.copy:GetDescendants() do
+		if descendant:IsA("BasePart") or descendant:IsA("Decal") then
+			descendant.LocalTransparencyModifier = 1
+		elseif EFFECTS[descendant.ClassName] then
+			(descendant :: any).Enabled = false
+		end
+	end
+	Debris:AddItem(current.copy, FADE_OUT)
 	for instance, value in current.hidden do
 		if instance.Parent then
 			(instance :: any).LocalTransparencyModifier = value
@@ -174,15 +189,14 @@ function LaunchGhost.start(model: Model, launch: any)
 	end
 end
 
--- Cette méthode permet de donner la position et la vitesse affichées du torse du mannequin du joueur local (copie
--- locale) lorsque la caméra de vol le cadre ; nil quand la copie répliquée est montrée telle quelle (vitesse : nil
--- aussi pendant la résorption forcée).
+-- Cette méthode permet de donner la position et la vitesse du torse affiché (copie locale) lorsque la caméra de vol le
+-- cadre ; nil quand la copie répliquée est montrée telle quelle.
 function LaunchGhost.torso(): (Vector3?, Vector3?)
 	local current = active
 	if not current or not current.shown then
 		return nil, nil
 	end
-	return current.shown, FlightGhost.velocity(current.path, current.state)
+	return current.shown, FlightGhost.velocity(current.path, current.state, current.torso.AssemblyLinearVelocity)
 end
 
 -- Cette méthode permet de retirer la copie locale sans attendre lorsque le joueur quitte le vol (retour au hub).
