@@ -137,7 +137,8 @@ end
 function CourseLayout.isNearBase(index: number, position: Vector3): boolean
 	local center = CourseLayout.basePosition(index)
 	local reach = CourseLayout.BASE_REACH
-	local side = math.min(reach, (CourseLayout.BASE_PITCH - CourseLayout.BASE_SIZE.X) / 2)
+	-- Un peu moins que le demi-passage : le milieu du passage n'est près d'aucune des deux bases
+	local side = math.min(reach, (CourseLayout.BASE_PITCH - CourseLayout.BASE_SIZE.X) / 2 - 0.5)
 	return math.abs(position.X - center.X) <= CourseLayout.BASE_SIZE.X / 2 + side
 		and math.abs(position.Z - center.Z) <= CourseLayout.BASE_SIZE.Z / 2 + reach
 end

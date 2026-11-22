@@ -76,7 +76,7 @@ base, il rapporte des $/s, seule source d'argent.
    d'outils** Roblox (#54) : un lancer suivant sans poser l'y laisse et y ajoute le nouveau, rien ne se perd ; le
    panneau montre le dernier gagné. Ensuite, la pose passe par la barre : mannequin **équipé** près d'un présentoir
    libre → invite « Place » ; le bouton **AUTO** (dans sa base ou à moins de 12 studs de sa clôture avant ou arrière,
-   4 sur les côtés : jamais depuis la base voisine, #120 ; vérifié aussi par le serveur) pose le mannequin tenu, sinon le dernier gagné.
+   3,5 sur les côtés : jamais depuis la base voisine, #120 ; vérifié aussi par le serveur) pose le mannequin tenu, sinon le dernier gagné.
 
 ## Mécanique secondaire : l'entraînement
 - Un appareil d'entraînement par joueur, devant sa base à côté de l'entrée (podium à tenons, râtelier de mannequins
@@ -702,7 +702,8 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
   `BestDistance`, « 3.6 km »), **INCOME** (revenu courant, « $12.3K/s »), **REBIRTHS**. Top 10 **global** : un
   `OrderedDataStore` par tableau (scores entiers, revenu borné à 2^53). Toutes les 60 s, le serveur écrit le score de
   chaque joueur dont la sauvegarde a été lue, s'il a changé (et au départ du joueur ou à l'arrêt du serveur ; un
-  score retombé sous 1 s'écrit 0 et efface l'ancien), relit le top de chaque tableau puis l'affiche, complété
+  score retombé sous 1 s'écrit 0 et efface l'ancien quand le classement en connaît un : écrit pendant la session ou
+  lu dans le top), relit le top de chaque tableau puis l'affiche, complété
   par les valeurs des joueurs du serveur (plus fraîches) ; un joueur chargé entre au tableau tout de suite. Bandeau
   « TOP 10 · ALL SERVERS » ; sans accès DataStore ou en cas d'erreur, repli sur les joueurs du serveur
   (« TOP 10 · THIS SERVER », signalé dans le journal `[Leaderboard]`). Valeur sous 1 (pas de record, revenu nul) :

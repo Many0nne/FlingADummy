@@ -34,6 +34,8 @@ local namesWarned = false -- échec de la recherche des noms déjà signalé
 -- rafraîchissement
 local leaving: { [Player]: boolean } = setmetatable({}, { __mode = "k" }) :: any
 local pending = 0 -- départs dont les écritures sont en cours (attendus à l'arrêt du serveur)
+local busy: { [Player]: boolean } = setmetatable({}, { __mode = "k" }) :: any -- écriture en cours, par joueur
+local writeWarning: string? = nil -- dernier échec d'écriture signalé (une fois par changement)
 
 -- Cette méthode permet de signaler dans le journal le passage au repli sur les joueurs du serveur (ou le retour au
 -- classement global) lorsque l'état change, sans répéter le même message à chaque rafraîchissement.
@@ -135,11 +137,18 @@ end
 -- est rafraîchi ou (`final`) que le joueur part ; seulement si sa sauvegarde a été lue (sinon ses valeurs par défaut
 -- écraseraient son vrai score), jamais pour les joueurs de test de Studio. Renvoie la raison d'un échec, nil sinon.
 local function writeScores(player: Player, final: boolean?): string?
-	if player.UserId <= 0 or not eligible[player] then
+	if player.UserId <= 0 or not eligible[player] or (leaving[player] and not final) then
 		return nil
 	end
+	-- Une écriture à la fois par joueur : celle du départ passe après celle du rafraîchissement en cours
+	while busy[player] do
+		task.wait(0.1)
+	end
+	busy[player] = true
 	local last = written[player] or {}
-	written[player] = last
+	if not final then
+		written[player] = last
+	end
 	local failure: string? = nil
 	for _, board in Leaderboard.BOARDS do
 		-- Le rafraîchissement laisse au départ les écritures d'un joueur qui part pendant qu'il écrit
@@ -160,6 +169,7 @@ local function writeScores(player: Player, final: boolean?): string?
 			end
 		end
 	end
+	busy[player] = nil
 	return failure
 end
 
@@ -201,11 +211,18 @@ end
 -- Cette méthode permet de relire le top global, d'écrire les scores des joueurs et de réafficher les tableaux
 -- lorsque l'horloge du classement tourne (toutes les REFRESH s) ; un échec est signalé une fois.
 local function refresh()
-	local failure = readTops()
+	report(readTops())
+	local failure: string? = nil
 	for _, player in Players:GetPlayers() do
 		failure = writeScores(player) or failure
 	end
-	report(failure)
+	-- Écriture refusée (quota) : les tableaux gardent le classement global, seul l'écrit attend le tour suivant
+	if failure ~= writeWarning then
+		writeWarning = failure
+		if failure then
+			warn("[Leaderboard] " .. failure .. " (nouvel essai au prochain rafraîchissement)")
+		end
+	end
 	renderAll()
 end
 
