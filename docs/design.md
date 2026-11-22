@@ -65,9 +65,13 @@ base, il rapporte des $/s, seule source d'argent.
    étincelles, anneau, secousse, contour à la couleur de la rareté, exclamation en haut (« Lucky! » → « Super lucky! »
    → « Incredible luck! », comme « Super chanceux ! » de 01), arrêt de 0,45 s, puis la cote repart. Puis roulement (1,1 s, la silhouette tremble de plus en plus) et révélation : éclair plein
    écran, mannequin en couleurs qui grossit, rayons ; en haut au centre, **une seule fois** : taille et rareté
-   (« BIG · RARE »), nom, « NEW! », $/s, cote ; bouton GO BACK (automatique après 5 à 8 s selon le palier ; le serveur
-   rend la main au plus tard 20 s après l'atterrissage, jusqu'à ≈ 41 s pour un secret : `RevealPlan.resultTime`). HUD du
-   hub masqué de l'atterrissage au GO BACK (#60).
+   (« BIG · RARE »), nom, « NEW! », $/s, cote ; en bas, comme 09, **THROW AGAIN** (vert) à gauche de **GO BACK** (bleu),
+   même taille. GO BACK ramène au hub (automatique après 5 à 8 s selon le palier ; le serveur rend la main au plus tard
+   20 s après l'atterrissage, jusqu'à ≈ 41 s pour un secret : `RevealPlan.resultTime`). THROW AGAIN (#76) rend la main de
+   la même façon, puis le serveur remet le joueur en prise sur la bande (`SlotService.holdAgain` : sa place s'il y est
+   encore figé, sinon une place libre près de lui ; jauge rouverte, cadrage de la bande) ; refusé (bande pleine, avatar
+   mort) : retour au hub, comme GO BACK. Masqué tant que la première pose du tutoriel n'est pas faite
+   (`Tutorial.canThrowAgain`). HUD du hub masqué de l'atterrissage au GO BACK (#60).
    **Spectacle par palier de rareté** (#67, `Shared.RevealPlan`, effets `Client.RevealFx`) : Common / Uncommon,
    révélation vive (double anneau, éclat, sons) ; Rare / Epic, la silhouette hésite entre 2 ou 3 formes pendant le
    roulement (1,8 s), confettis de la couleur de la rareté ; Legendary / Mythic, ciel qui s'assombrit dès la silhouette,

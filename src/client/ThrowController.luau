@@ -134,7 +134,8 @@ local function currentValue(): number
 end
 
 -- Cette méthode permet de resserrer la caméra derrière l'épaule, vers le bout de la piste (#158), lorsque le joueur
--- est figé sur la bande (le serveur l'a déjà tourné face à la piste) ou y est remis en prise (lancer refusé).
+-- est figé sur la bande (le serveur l'a déjà tourné face à la piste) ou y est remis en prise (lancer refusé, THROW
+-- AGAIN).
 local function frameBand()
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
