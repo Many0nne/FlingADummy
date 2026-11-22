@@ -142,7 +142,7 @@ ThrowDummies.LIST = {
 			-- Plaques de lest boulonnées sur le torse et les cuisses
 			{
 				piece = "Torso",
-				size = Vector3.new(2.15, 0.6, 1.25),
+				size = Vector3.new(2.2, 0.6, 1.3), -- 0,05 au-delà de la coque des marques du torse (#161)
 				offset = Vector3.new(0, -0.5, 0),
 				color = rgb(60, 64, 72),
 				material = Enum.Material.Metal,
@@ -304,16 +304,16 @@ local function ornaments(rank: number, glow: Color3): { Block }
 		table.insert(list, { piece = "Head", size = size, offset = offset, color = color, material = material })
 	end
 	if rank >= 1 then
-		add(Vector3.new(1.62, 0.28, 1.62), Vector3.new(0, 0.5, 0), GOLD, Enum.Material.Foil) -- bandeau
-		add(Vector3.new(0.34, 0.26, 0.1), Vector3.new(0, 0.5, -0.84), glow, Enum.Material.Neon) -- gemme au front
+		add(Vector3.new(1.7, 0.28, 1.7), Vector3.new(0, 0.5, 0), GOLD, Enum.Material.Foil) -- bandeau
+		add(Vector3.new(0.4, 0.4, 0.1), Vector3.new(0, 0.5, -0.84), glow, Enum.Material.Neon) -- gemme au front
 	end
 	if rank >= 2 then
-		for _, x in { -0.67, 0.67 } do
-			for _, z in { -0.67, 0.67 } do
+		for _, x in { -0.71, 0.71 } do
+			for _, z in { -0.71, 0.71 } do
 				add(Vector3.new(0.28, 0.42, 0.28), Vector3.new(x, 0.85, z), GOLD, Enum.Material.Foil) -- pointes
 			end
 		end
-		add(Vector3.new(0.3, 0.55, 0.28), Vector3.new(0, 0.9, -0.67), GOLD, Enum.Material.Foil) -- pointe du front
+		add(Vector3.new(0.3, 0.55, 0.28), Vector3.new(0, 0.9, -0.71), GOLD, Enum.Material.Foil) -- pointe du front
 	end
 	if rank >= 3 then
 		-- Auréole carrée au-dessus de la couronne
