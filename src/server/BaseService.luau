@@ -54,6 +54,8 @@ type Shown = { key: string, model: Model }
 
 local slots: { Slot } = {}
 local slotOf: { [Player]: Slot } = {}
+-- Joueurs arrivés avant que SlotService leur donne une place : connexion à l'attribut Slot, coupée au départ
+local waitingSlot: { [Player]: RBXScriptConnection } = {}
 local shown: { [number]: { [number]: Shown } } = {} -- mannequins posés, par place puis présentoir
 -- Palier visuel de chaque base, pour le propriétaire chargé qui l'a (confettis seulement s'il monte pour lui)
 local styled: { [number]: { player: Player, tier: number } } = {}
@@ -630,19 +632,40 @@ function BaseService.init(builtSlots: { Slot }, placeRemote: RemoteEvent, invent
 	PlayerData.onReset(function(player)
 		refresh(player, true)
 	end)
-	Players.PlayerAdded:Connect(function(player)
-		-- SlotService pose l'attribut Slot dans son propre PlayerAdded : attendu s'il n'est pas encore là
-		if player:GetAttribute("Slot") == nil then
-			player:GetAttributeChangedSignal("Slot"):Wait()
+	-- Cette méthode permet de suivre un joueur dès que SlotService lui a donné une place, sans attente bloquante
+	-- (lobby plein : jamais de place, la connexion est coupée au départ du joueur).
+	local function trackWhenSlotted(player: Player)
+		if typeof(player:GetAttribute("Slot")) == "number" then
+			task.spawn(track, player)
+			return
 		end
-		track(player)
-	end)
+		if waitingSlot[player] then
+			return
+		end
+		waitingSlot[player] = player:GetAttributeChangedSignal("Slot"):Connect(function()
+			if typeof(player:GetAttribute("Slot")) ~= "number" then
+				return
+			end
+			local pending = waitingSlot[player]
+			waitingSlot[player] = nil
+			if pending then
+				pending:Disconnect()
+				task.defer(track, player)
+			end
+		end)
+	end
+	Players.PlayerAdded:Connect(trackWhenSlotted)
 	for _, player in Players:GetPlayers() do
-		task.spawn(track, player)
+		trackWhenSlotted(player)
 	end
 	Players.PlayerRemoving:Connect(function(player)
 		local slot = slotOf[player]
 		slotOf[player] = nil
+		local pending = waitingSlot[player]
+		waitingSlot[player] = nil
+		if pending then
+			pending:Disconnect()
+		end
 		DummyTools.forget(player)
 		if slot then
 			render(slot, nil)
