@@ -329,7 +329,7 @@ le faisait monter toujours plus haut (≈ 590 studs à 4,4 B, carte vue de très
   | 10 K | 123 → 100 studs | 746-756 m → 1 149 m | 67-109 → 60-80 m | 823-865 m (± 2,5 %) | 1 210-1 265 m (± 2,3 %) |
   | 22 M | 356 → 100 | 2 245 m → 3 509-3 525 m | 253-1 116 → 66-121 m | 2 501-3 365 m (± 15 %) | 3 590-3 630 m (± 0,6 %) |
   | 360 M | 472 → 100 | 2 993 m → 4 726 m | 289-556 → 141-265 m | 3 282-3 548 m (± 4 %) | 4 867-4 991 m (± 1,3 %) ; 5 021-5 510 m après un piège |
-  | 4,4 B | 589 → 100 | 3 744 m → 5 720-6 008 m | 660-2 071 → 40-323 m | 4 400-5 819 m (± 14 %) | bout de piste, 6 sur 6 (trou de ver à 5 848 m) |
+  | 4,4 B | 589 → 100 | 3 744 m → 5 720-6 008 m | 660-2 071 → 40-323 m | 4 400-5 819 m (± 14 %) | 6 043-6 048 m (± 0,1 %) : bout de piste 6 sur 6, contre la paroi (trou de ver à 5 848 m) |
   Durée d'un vol à 4,4 B : 10 à 12 s (12 à 16,5 s avant). La vitesse de lancer est relevée (110 + 30 × ln → 130 +
   38 × ln) pour garder les paliers du modèle malgré la glissade raccourcie : 22 M → 3,6 km, 360 M → 4,8-5 km, 4,4 B →
   bout de piste.
