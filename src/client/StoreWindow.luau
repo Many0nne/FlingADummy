@@ -200,7 +200,8 @@ local function grid(items: { Store.Item }, order: number, columns: number)
 	})
 	UIKit.create("UIGridLayout", {
 		CellPadding = UDim2.fromOffset(GAP, GAP),
-		CellSize = UDim2.new(1 / columns, -GAP * (columns - 1) / columns, 0, CARD_HEIGHT),
+		-- 1 px de marge : l'arrondi des cellules en échelle renvoyait la dernière colonne à la ligne
+		CellSize = UDim2.new(1 / columns, -GAP * (columns - 1) / columns - 1, 0, CARD_HEIGHT),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = holder,
 	})
@@ -415,6 +416,10 @@ local function highlightTab()
 			current = section.id
 		end
 	end
+	-- Bas de la liste atteint : la dernière section (trop courte pour monter en haut) est la section affichée
+	if list.CanvasPosition.Y >= list.AbsoluteCanvasSize.Y - list.AbsoluteWindowSize.Y - 2 then
+		current = Store.SECTIONS[#Store.SECTIONS].id
+	end
 	for id, tab in tabs do
 		local stroke = tab:FindFirstChildOfClass("UIStroke")
 		if stroke then
@@ -575,11 +580,12 @@ local function refreshTimers()
 end
 
 -- Cette méthode permet de construire les minuteurs du HUD (colonne de badges en haut à gauche, sous les boutons de
--- Roblox) dans `parent` (le HUD permanent, masqué pendant le vol) lorsque le HUD est construit.
+-- Roblox, à droite de la colonne de boutons) dans `parent` (le HUD permanent, masqué pendant le vol) lorsque le HUD est construit.
 local function buildTimers(parent: Instance)
 	timers = UIKit.create("Frame", {
 		Name = "StoreTimers",
-		Position = UDim2.fromOffset(14, 64),
+		-- À droite de la colonne Index / Shop / Rebirth (92 px + marges), sous les boutons de Roblox
+		Position = UDim2.fromOffset(120, 64),
 		Size = UDim2.fromOffset(0, 0),
 		AutomaticSize = Enum.AutomaticSize.XY,
 		BackgroundTransparency = 1,
