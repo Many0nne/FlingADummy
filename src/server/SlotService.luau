@@ -234,10 +234,22 @@ function SlotService.init(builtSlots: { Slot })
 		-- La place libérée passe au plus ancien joueur en attente (#142), reposé dans le hub devant sa base
 		local next, index = queue:leave(player)
 		if next and index then
-			grant(next, index)
-			if next.Character and next.Character:FindFirstChild("HumanoidRootPart") then
-				next.Character:PivotTo(slots[index].spawn)
-			end
+			-- Après les autres PlayerRemoving (BaseService et TrainingService remettent la place à neuf pour le
+			-- joueur parti) : sinon ils effaceraient l'aspect que le nouveau propriétaire vient de recevoir
+			task.defer(function()
+				if next.Parent ~= Players then
+					return -- parti entre-temps : sa propre sortie a déjà rendu la place
+				end
+				grant(next, index)
+				local character = next.Character
+				if
+					character
+					and character:FindFirstChild("HumanoidRootPart")
+					and next:GetAttribute("Action") == nil
+				then
+					character:PivotTo(slots[index].spawn)
+				end
+			end)
 		end
 	end)
 	RunService.Heartbeat:Connect(function()
