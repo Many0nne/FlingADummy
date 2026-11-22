@@ -104,6 +104,7 @@ type Offer = {
 local offer: Offer
 local offerKind: string? = nil -- "Gear" | "Dummy"
 local offerTier: number? = nil
+local offerStage = 0 -- étape des gabarits (DummyShape.meshStage) du rendu 3D de l'offre affichée
 local soundedOffer: string? = nil
 local dismissedOffers: { [string]: { [number]: boolean } } = { Gear = {}, Dummy = {} }
 local OFFER_SCALE = 0.8 -- échelle du popup d'offre (440 × 136 dessiné, 352 × 109 affiché à 720 px de haut)
@@ -615,10 +616,16 @@ local function refreshOffer(money: number, cost: number?)
 			kind = if tier then "Dummy" else nil
 		end
 	end
+	local stage = DummyShape.meshStage()
 	if kind == offerKind and tier == offerTier then
+		if kind and tier and stage ~= offerStage then
+			-- Maillages arrivés pendant l'offre : rendu 3D refait avec les pièces ajoutées du look (#118), sans son
+			offerStage = stage
+			dressOffer(kind, tier)
+		end
 		return
 	end
-	offerKind, offerTier = kind, tier
+	offerKind, offerTier, offerStage = kind, tier, stage
 	if not kind or not tier then
 		UIKit.closeWindow(offer.frame, player:GetAttribute("LaneState") ~= "Ready")
 		return
