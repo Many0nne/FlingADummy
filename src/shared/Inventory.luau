@@ -379,7 +379,7 @@ function Inventory.displayPrice(displays: number): number?
 	return GameConfig.DISPLAY_PRICES[displays - GameConfig.DISPLAY_START + 1]
 end
 
--- Cette méthode permet d'acheter le présentoir suivant lorsque le joueur utilise le pad « 6 > 7 » avec `money` ;
+-- Cette méthode permet d'acheter le présentoir suivant lorsque le joueur utilise le pad « 8 > 9 » avec `money` ;
 -- renvoie le prix payé, nil si refusé (maximum atteint ou argent insuffisant).
 function Inventory.buyDisplay(data: Data, money: number): number?
 	local price = Inventory.displayPrice(data.displays)

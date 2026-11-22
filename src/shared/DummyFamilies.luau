@@ -146,8 +146,8 @@ DummyFamilies.PAIRS = {
 -- Cotes « 1 en n » des raretés au-delà de Secret (indice de Shared.Rarity → plus courant, plus rare) : les mannequins
 -- générés s'y répartissent en progression géométrique. Les raretés dessinées placent les leurs au-dessus de leurs
 -- mannequins dessinés, en dessous de la rareté suivante.
--- Deux décades par rareté (Divine : de 15 M à 300 M depuis #156) : « 1 IN 100T » au plus en taille normale, « 1 IN 50Qa »
--- en Giant.
+-- Deux décades par rareté, sauf le Divine (de 15 M à 300 M depuis #156, juste sous le Celestial) : « 1 IN 100T » au
+-- plus en taille normale, « 1 IN 50Qa » en Giant.
 DummyFamilies.RANGES = {
 	[8] = { 15e6, 3e8 }, -- × 3 depuis #156 (5 M à 100 M avant) : Divine vers 10 h de jeu
 	[9] = { 5e8, 1e10 },

@@ -74,7 +74,7 @@ local LABEL_GREEN = Color3.fromRGB(80, 215, 70) -- revenu (vert du HUD)
 local LABEL_CYAN = Color3.fromRGB(90, 205, 255) -- Throw Power (cyan du HUD)
 local LABEL_GOLD = Color3.fromRGB(255, 205, 60) -- record (#44)
 
--- Pad d'achat de présentoir devant la base (panneau « 6 > 7 » et prix, mis à jour par Server.BaseService)
+-- Pad d'achat de présentoir devant la base (panneau « 8 > 9 » et prix, mis à jour par Server.BaseService)
 export type Pad = { title: TextLabel, price: TextLabel, prompt: ProximityPrompt }
 
 -- Texte flottant au-dessus de la base (#91), rempli par Server.BaseService (Shared.BaseLook.label)
