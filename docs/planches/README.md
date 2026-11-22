@@ -11,7 +11,9 @@ Tout ce que le joueur peut obtenir, visible sans jouer, capturé dans le jeu (St
 
 `manifest.json` décrit chaque prise de vue et chaque case (texte, empreinte de l'apparence). Un test de
 `tools/check.sh` (`tests/specs/Planches.spec.luau`) le compare au catalogue : un mannequin, un palier ajouté ou retiré,
-un look ou un habillage modifié sans planches régénérées fait échouer la CI. Règle : `CLAUDE.md`, section Qualité.
+un look (`DummyModels`, `DummyFamilies`, auras) ou un habillage (`BaseLook`, `Training.GEARS`) modifié sans planches
+régénérées fait échouer la CI. Le code qui construit les modèles (`CourseBuilder`, `DummyShape`) n'est pas suivi :
+le modifier impose aussi de régénérer la planche. Règle : `CLAUDE.md`, section Qualité.
 
 ## Régénérer
 

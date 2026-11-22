@@ -31,6 +31,7 @@ CARD = (44, 47, 60)
 MUTED = (190, 200, 210)
 MAX_BYTES = 1_000_000  # une planche reste sous 1 Mo (qualite JPEG baissee au besoin)
 STATION_ASPECT = 4 / 3  # recadrage des prises de l'appareil (centre de l'image)
+MAX_SESSION = 2 * 3600  # s entre la premiere et la derniere capture d'une seance, au-dela : signale
 TOP_CROP = 0.07  # bandeau du haut retire des prises de base (boutons de Roblox en haut a gauche)
 
 
@@ -67,6 +68,8 @@ def option(args, flag, default):
     """Cette methode permet de lire une option « --flag valeur » lorsque la ligne de commande la donne."""
     if flag in args:
         i = args.index(flag)
+        if i + 1 >= len(args):
+            sys.exit(f"{flag} attend une valeur")
         value = args[i + 1]
         del args[i:i + 2]
         return value
@@ -95,12 +98,16 @@ def cmd_shots(args):
 
 def cmd_grab(args, folder, work):
     """Cette methode permet de ranger la derniere capture MCP sous le nom d'une prise lorsque l'on refait une prise."""
+    _, sheets = load_manifest()
+    names = {shot["name"] for sheet in sheets.values() for shot in sheet["shots"]}
+    if not args or args[0] not in names:
+        sys.exit("usage : grab <prise> (prises : python -I tools/planches.py shots)")
     shot = args[0]
     files = captures(folder)
     if not files:
         sys.exit(f"aucune capture dans {folder}")
     os.makedirs(work, exist_ok=True)
-    shutil.copyfile(files[-1], os.path.join(work, shot + ".png"))
+    shutil.copy2(files[-1], os.path.join(work, shot + ".png"))
     print(f"{shot} <- {os.path.basename(files[-1])}")
 
 
@@ -114,13 +121,17 @@ def cmd_collect(args, folder, work):
     if len(files) < len(shots):
         sys.exit(f"{len(shots)} prises attendues, {len(files)} captures dans {folder}")
     files = files[-len(shots):]
+    span = os.path.getmtime(files[-1]) - os.path.getmtime(files[0])
+    if span > MAX_SESSION:
+        print(f"ATTENTION : {span / 3600:.1f} h entre la premiere et la derniere capture : une capture manque-t-elle ? "
+              "(des captures d'une seance precedente seraient prises a sa place)")
     sizes = {Image.open(f).size for f in files}
     if len(sizes) > 1:
         sys.exit(f"captures de tailles differentes {sizes} : une capture en trop ou fenetre redimensionnee ? "
                  "Refaire les prises en cause avec « grab ».")
     os.makedirs(work, exist_ok=True)
     for shot, path in zip(shots, files):
-        shutil.copyfile(path, os.path.join(work, shot + ".png"))
+        shutil.copy2(path, os.path.join(work, shot + ".png"))
         print(f"{shot} <- {os.path.basename(path)}")
 
 

@@ -17,6 +17,7 @@ local player = Players.LocalPlayer
 local hiddenGuis: { ScreenGui } = {}
 local savedFov: number? = nil
 local coreSaved: { [Enum.CoreGuiType]: boolean }? = nil -- interface de Roblox avant la séance
+local topbarSaved = true -- barre du haut de Roblox avant la séance
 local token = 0 -- invalide une attente de cadrage dépassée par une nouvelle prise
 
 -- Cette méthode permet de cacher (ou de rendre) l'interface du joueur et son avatar lorsqu'une séance de prises de vue
@@ -31,6 +32,8 @@ local function hideScene(hidden: boolean)
 			end
 		end
 		coreSaved = saved
+		local ok, topbar = pcall(StarterGui.GetCore, StarterGui, "TopbarEnabled")
+		topbarSaved = if ok then topbar ~= false else true
 		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
 		pcall(StarterGui.SetCore, StarterGui, "TopbarEnabled", false)
 	elseif not hidden and coreSaved then
@@ -38,7 +41,7 @@ local function hideScene(hidden: boolean)
 			StarterGui:SetCoreGuiEnabled(kind, enabled)
 		end
 		coreSaved = nil
-		pcall(StarterGui.SetCore, StarterGui, "TopbarEnabled", true)
+		pcall(StarterGui.SetCore, StarterGui, "TopbarEnabled", topbarSaved)
 	end
 	if hidden then
 		-- Rescannée à chaque prise : une fenêtre ouverte pendant la séance (annonce, popup) est cachée aussi

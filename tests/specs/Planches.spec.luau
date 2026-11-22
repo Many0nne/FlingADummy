@@ -65,6 +65,15 @@ return function(T, Loader, Lib)
 			)
 		end)
 
+		T.it("un palier de base par présentoir acheté : la prise du dernier palier montre la base pleine", function()
+			local GameConfig = loader:require("src/shared/GameConfig")
+			local CourseLayout = loader:require("src/shared/CourseLayout")
+			T.expect(
+				#BaseLook.BASE_TIERS == CourseLayout.DISPLAY_MAX - GameConfig.DISPLAY_START + 1,
+				"paliers de base et présentoirs achetables décalés : PhotoStudio montrerait un pad « 11 / 10 »"
+			)
+		end)
+
 		T.it("retrouve une prise par son nom, rien pour un nom inconnu", function()
 			local lastBase, gears = #BaseLook.BASE_TIERS, #Training.GEARS
 			T.expect(PlanchePlan.find("base-" .. lastBase).items[1].key == lastBase, "dernier palier de base")
