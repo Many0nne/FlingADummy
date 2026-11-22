@@ -18,6 +18,7 @@ local Rebirth = require(Shared.Rebirth)
 local Remotes = require(Shared.Remotes)
 local RevealPlan = require(Shared.RevealPlan)
 local ThrowDummies = require(Shared.ThrowDummies)
+local ThrowStart = require(Shared.ThrowStart)
 local Traps = require(Shared.Traps)
 local Zones = require(Shared.Zones)
 
@@ -103,17 +104,11 @@ local function throwOrigin(player: Player?, slot: Slot): Vector3
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	-- Repère horizontal de l'avatar (là où sa main lâche le décoratif), sinon celui de la piste (la direction du
 	-- lancer est inclinée de LAUNCH_PITCH_DEG)
-	local look = if root then root.CFrame.LookVector else slot.direction
-	local flat = Vector3.new(look.X, 0, look.Z)
-	local forward = if flat.Magnitude > 1e-3 then flat.Unit else Vector3.zAxis
-	local right = forward:Cross(Vector3.yAxis)
-	local offset = Vector3.new(0, GameConfig.THROW_HEIGHT, 0)
-		+ forward * GameConfig.THROW_FORWARD
-		+ right * GameConfig.THROW_SIDE
+	-- (Shared.ThrowStart : même calcul chez le lanceur, qui affiche le départ dès le lâcher, #144)
 	if root then
-		return root.Position + offset
+		return ThrowStart.origin(root.Position, root.CFrame.LookVector)
 	end
-	return slot.launchPoint + Vector3.new(0, 3, 0) + offset
+	return ThrowStart.origin(slot.launchPoint + Vector3.new(0, 3, 0), slot.direction)
 end
 
 -- Cette méthode permet de lancer un mannequin neuf (le mannequin à lancer `thrownIndex` du catalogue, avec son modèle
@@ -128,7 +123,7 @@ local function startFlight(
 	thrownIndex: number,
 	rebirth: number
 ): (Model, Vector3, number)
-	local speed = Economy.launchSpeed(power) * Gauge.launchFactor(gauge)
+	local speed = ThrowStart.speed(power, gauge)
 	local dir = slot.direction
 	local origin = throwOrigin(owner, slot)
 	local flatDir = Vector3.new(dir.X, 0, dir.Z)
@@ -146,6 +141,10 @@ local function startFlight(
 	dummy:SetAttribute("LaunchVelocity", dir * speed)
 	dummy:SetAttribute("ThrownIndex", thrownIndex)
 	dummy:SetAttribute("Bounces", 0)
+	-- Lanceur : son client reconnaît le mannequin dès son arrivée et le masque derrière l'affichage anticipé (#144)
+	if owner then
+		dummy:SetAttribute("Owner", owner.UserId)
+	end
 	dummy.Parent = dummiesFolder
 
 	local spin =
@@ -264,7 +263,15 @@ end
 -- Cette méthode permet de tirer le mannequin d'un joueur lorsqu'il est figé sur la bande de lancer (ou que `force`
 -- vient de DebugLaunch) ; `gauge` vient du client, bornée puis vérifiée ici (sauf DebugLaunch).
 function LaunchService.launch(player: Player, gauge: any, force: boolean?)
+	-- Cette méthode permet de prévenir le lanceur d'un refus (son décoratif est parti au lâcher, #144) lorsque le
+	-- Launch du client ne lance rien.
+	local function refuse()
+		if not force then
+			remotes.LaunchRefused:FireClient(player)
+		end
+	end
 	if typeof(gauge) ~= "number" or gauge ~= gauge then
+		refuse()
 		return
 	end
 	gauge = math.clamp(gauge, 0, 1)
@@ -272,15 +279,18 @@ function LaunchService.launch(player: Player, gauge: any, force: boolean?)
 	local stopArrival = gaugeStops[player]
 	gaugeStops[player] = nil
 	if player:GetAttribute("LaneState") ~= "Ready" or not player:GetAttribute("DataReady") then
+		refuse()
 		return
 	end
 	local slot = SlotService.getSlot(player)
 	if not slot then
+		refuse()
 		return
 	end
 	if not force then
 		local openedAt = SlotService.gaugeOpenedAt(player)
 		if player:GetAttribute("Action") ~= "Holding" or not openedAt then
+			refuse()
 			return
 		end
 		gauge = verifiedGauge(player, gauge, openedAt, stopArrival)

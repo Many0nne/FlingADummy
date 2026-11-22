@@ -31,6 +31,8 @@ local lastComboTime = 0
 local lastCrowd = 0
 local wind: Sound
 local flyingTorso: BasePart? = nil
+local thrownAt = -math.huge -- os.clock() du lâcher anticipé du joueur local (#144) : souffle et coup déjà joués
+local THROWN_WINDOW = 2 -- l'annonce du lancer par le serveur arrive dans ce délai après le lâcher (s)
 
 -- Cette méthode permet de jouer un son à une position du monde lorsque survient un choc.
 local function playAt(name: string, position: Vector3, pitch: number?)
@@ -127,6 +129,10 @@ local function onImpact(impact: any)
 	local position: Vector3 = impact.position
 	local mine = impact.userId == player.UserId
 	if impact.kind == "Throw" then
+		if mine and os.clock() - thrownAt < THROWN_WINDOW then
+			thrownAt = -math.huge -- déjà joués au lâcher
+			return
+		end
 		playAt("Whoosh", position, 0.8)
 		if mine then
 			FlightCamera.punch()
@@ -174,6 +180,15 @@ local function onImpact(impact: any)
 			FlightCamera.shake(math.min((impact.value or 40) / 80, 1.2))
 		end
 	end
+end
+
+-- Cette méthode permet de jouer le souffle et le coup de champ de vision du lancer du joueur local dès le lâcher
+-- (départ anticipé, #144) ; l'annonce du serveur qui suit ne les rejoue pas.
+function Effects.thrown(position: Vector3)
+	thrownAt = os.clock()
+	playAt("Whoosh", position, 0.8)
+	FlightCamera.punch()
+	combo = 0
 end
 
 -- Cette méthode permet de faire suivre le souffle du vent au mannequin du joueur local (volume selon la vitesse)

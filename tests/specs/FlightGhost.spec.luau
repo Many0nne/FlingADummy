@@ -6,6 +6,7 @@ return function(T, Loader)
 	local FlightArc = loader:require("src/shared/FlightArc")
 	local FlightGhost = loader:require("src/shared/FlightGhost")
 	local GameConfig = loader:require("src/shared/GameConfig")
+	local Gauge = loader:require("src/shared/Gauge")
 	local ThrowDummies = loader:require("src/shared/ThrowDummies")
 
 	local G = GameConfig.GRAVITY
@@ -61,6 +62,90 @@ return function(T, Loader)
 				run.doneAt = t
 			end
 			t += dt
+		end
+		return run
+	end
+
+	export type Release = {
+		backward: number, -- plus grand recul d'une image à l'autre (studs, le long de la piste)
+		frozen: number, -- images où la position affichée n'avance pas (maintien à la main exclu)
+		firstMove: number?, -- temps (s) de la première image où le mannequin a quitté la main
+		firstStep: number, -- écart (studs) entre le décoratif lâché et la première image affichée
+		maxStep: number, -- plus grand déplacement d'une image (studs)
+		minRate: number, -- vitesse d'affichage la plus basse avant le retour (hors résorption forcée)
+		doneAt: number?, -- temps (s) du retour à la copie répliquée
+	}
+
+	-- Cette méthode permet de rejouer un lâcher anticipé vu par le lanceur (#144) : départ sur le plan prévu par le client
+	-- (`client`), départ du serveur reçu `rtt` s après le lâcher (recalage sur `server`), copie répliquée figée `buffer` s
+	-- de plus puis en retard (`catchUp` : défilement du moteur), relais du décoratif après TRANSITION ; `start` : écart
+	-- du décoratif lâché au point de départ prévu.
+	local function release(
+		client: FlightGhost.Path,
+		server: FlightGhost.Path,
+		rtt: number,
+		buffer: number,
+		fps: number,
+		start: Vector3?,
+		catchUp: number?
+	): Release
+		local hold = FlightGhost.hold(rtt)
+		local state = FlightGhost.new(hold, start)
+		local dt = 1 / fps
+		local run: Release = {
+			backward = 0,
+			frozen = 0,
+			firstMove = nil,
+			firstStep = 0,
+			maxStep = 0,
+			minRate = 1,
+			doneAt = nil,
+		}
+		local released = client.origin + (start or Vector3.zero)
+		local previous: Vector3? = nil
+		local path = client
+		local rebased, swapped = false, false
+		local t = 0
+		while t < 4 do
+			t += dt
+			if not rebased and t >= rtt then
+				FlightGhost.rebase(state, client, server)
+				path = server
+				rebased = true
+			end
+			if rebased and not swapped and FlightGhost.flying(state) >= FlightGhost.TRANSITION then
+				swapped = true
+			end
+			local position
+			local replicatedTime =
+				math.min(math.max(t - rtt - buffer, 0) * (catchUp or 1), FlightGhost.duration(server))
+			if swapped then
+				local replicated = FlightGhost.sample(server, replicatedTime)
+				position = replicated + FlightGhost.advance(server, state, replicated, dt)
+			else
+				position = FlightGhost.ahead(path, state, dt)
+			end
+			if not state.done and not state.fading and t > hold + dt then
+				run.minRate = math.min(run.minRate, state.rate)
+			end
+			if state.done and not run.doneAt then
+				run.doneAt = t
+			end
+			if previous then
+				local along = (position - server.origin):Dot(server.flat)
+				local before = (previous - server.origin):Dot(server.flat)
+				run.backward = math.max(run.backward, before - along)
+				if along - before < 1e-3 and t > hold + dt and replicatedTime < FlightGhost.duration(server) then
+					run.frozen += 1
+				end
+				run.maxStep = math.max(run.maxStep, (position - previous).Magnitude)
+			else
+				run.firstStep = (position - released).Magnitude
+			end
+			if not run.firstMove and (position - released).Magnitude > 0.05 then
+				run.firstMove = t
+			end
+			previous = position
 		end
 		return run
 	end
@@ -227,6 +312,111 @@ return function(T, Loader)
 			end
 			T.expect(state.done, "main rendue après BLEND_TIME")
 			T.expectEqual(after, Vector3.zero)
+		end)
+	end)
+
+	T.describe("Lâcher anticipé (#144)", function()
+		T.it("ralentit l'affichage sans descendre sous MIN_RATE, et le borne quand la copie n'arrive pas", function()
+			T.expectNear(FlightGhost.rate(0), 1, 1e-9)
+			T.expectNear(FlightGhost.rate(0.1), 1 - FlightGhost.GAIN * 0.1, 1e-9)
+			T.expectNear(FlightGhost.rate(0.3), FlightGhost.MIN_RATE, 1e-9)
+			T.expectNear(FlightGhost.rate(FlightGhost.MAX_LEAD - FlightGhost.FLOOR_FADE), FlightGhost.MIN_RATE, 1e-9)
+			T.expectNear(FlightGhost.rate(FlightGhost.MAX_LEAD), 0, 1e-9)
+			T.expectNear(FlightGhost.rate(-1), FlightGhost.MAX_RATE, 1e-9)
+		end)
+
+		T.it("ne maintient à la main qu'au-delà de RELEASE_LEAD_MAX de latence", function()
+			T.expectEqual(FlightGhost.hold(0), 0)
+			T.expectEqual(FlightGhost.hold(0.35), 0)
+			T.expectNear(FlightGhost.hold(GameConfig.RELEASE_LEAD_MAX + 0.2), 0.2, 1e-9)
+		end)
+
+		T.it(
+			"quitte la main dès le lâcher, sans recul ni gel, à 0 et 150 ms de latence (15 et 60 i/s, tampon de 200 à 290 ms)",
+			function()
+				local path = FlightGhost.path(ORIGIN, launchVelocity(22e6), G)
+				local speed = launchVelocity(22e6).Magnitude
+				-- Aller-retour mesuré en Studio : ≈ 50 ms sans latence simulée, ≈ 350 ms à 150 ms
+				for _, rtt in { 0.05, 0.35 } do
+					for _, buffer in { 0.2, 0.29 } do
+						for _, fps in { 15, 60 } do
+							local run = release(path, path, rtt, buffer, fps, Vector3.new(0.4, -0.3, -0.6), 1.04)
+							local label =
+								string.format(" (aller-retour %.2f s, tampon %.2f s, %d i/s)", rtt, buffer, fps)
+							T.expect(
+								run.firstMove ~= nil and run.firstMove <= 1.5 / fps,
+								"départ à la 1re image" .. label
+							)
+							T.expect(run.firstStep <= speed / fps * 1.05 + 0.1, "1re image " .. run.firstStep .. label)
+							T.expect(run.backward < 0.05, "recul " .. run.backward .. label)
+							T.expectEqual(run.frozen, 0, "images figées" .. label)
+							T.expect(run.minRate >= FlightGhost.MIN_RATE - 1e-6, "vitesse " .. run.minRate .. label)
+							T.expect(
+								run.maxStep <= speed / fps * FlightGhost.MAX_RATE + 1,
+								"saut " .. run.maxStep .. label
+							)
+							T.expect(run.doneAt ~= nil and run.doneAt < 2.5, "main rendue" .. label)
+							if fps == 60 then
+								print(
+									string.format(
+										"[mesure] lâcher anticipé%s : vitesse affichée ≥ %.0f %%, main rendue à %.2f s",
+										label,
+										run.minRate * 100,
+										run.doneAt or -1
+									)
+								)
+							end
+						end
+					end
+				end
+			end
+		)
+
+		T.it("se recale sans recul sur un départ du serveur plus lent (jauge recalée)", function()
+			local client = FlightGhost.path(ORIGIN, launchVelocity(22e6), G)
+			-- Jauge à 0,8 au lieu de 1 chez le serveur, départ 0,4 stud plus haut (main répliquée)
+			local server =
+				FlightGhost.path(ORIGIN + Vector3.new(0, 0.4, 0), launchVelocity(22e6) * Gauge.launchFactor(0.8), G)
+			local speed = launchVelocity(22e6).Magnitude
+			for _, rtt in { 0.05, 0.35 } do
+				for _, fps in { 15, 60 } do
+					local run = release(client, server, rtt, 0.25, fps, nil, 1.04)
+					local label = string.format(" (aller-retour %.2f s, %d i/s)", rtt, fps)
+					T.expect(run.backward < 0.05, "recul " .. run.backward .. label)
+					T.expectEqual(run.frozen, 0, "images figées" .. label)
+					T.expect(run.maxStep <= speed / fps * FlightGhost.MAX_RATE + 1, "saut " .. run.maxStep .. label)
+					T.expect(run.doneAt ~= nil and run.doneAt < 3, "main rendue" .. label)
+				end
+			end
+		end)
+
+		T.it("garde le mannequin en main le temps de la latence au-delà de RELEASE_LEAD_MAX, puis part", function()
+			local path = FlightGhost.path(ORIGIN, launchVelocity(22e6), G)
+			local rtt = GameConfig.RELEASE_LEAD_MAX + 0.2
+			local run = release(path, path, rtt, 0.25, 60, nil, 1.04)
+			T.expect(run.firstMove ~= nil and math.abs(run.firstMove - 0.2) <= 2 / 60, "départ après 0,2 s")
+			T.expect(run.backward < 0.05, "recul " .. run.backward)
+			T.expectEqual(run.frozen, 0, "images figées après le maintien")
+			T.expect(run.doneAt ~= nil and run.doneAt < 3, "main rendue")
+		end)
+
+		T.it("recale le temps affiché sur la distance le long de la piste du plan du serveur", function()
+			local client = FlightGhost.path(ORIGIN, launchVelocity(22e6), G)
+			local server = FlightGhost.path(ORIGIN, launchVelocity(22e6) * 0.9, G)
+			local state = FlightGhost.new()
+			for _ = 1, 18 do
+				FlightGhost.ahead(client, state, 1 / 60)
+			end
+			local before = FlightGhost.sample(client, state.shown)
+			FlightGhost.rebase(state, client, server)
+			local after = FlightGhost.sample(server, state.shown) + FlightGhost.correction(state)
+			T.expectNear((after - before).Magnitude, 0, 1e-3, "pas de saut au recalage")
+			T.expectNear((after - ORIGIN):Dot(server.flat), (before - ORIGIN):Dot(client.flat), 1e-3, "même distance")
+			-- L'écart restant se résorbe en RECALE_TIME
+			for _ = 1, math.ceil(FlightGhost.RECALE_TIME * 60) + 1 do
+				FlightGhost.ahead(server, state, 1 / 60)
+			end
+			T.expectEqual(FlightGhost.correction(state), Vector3.zero)
 		end)
 	end)
 end

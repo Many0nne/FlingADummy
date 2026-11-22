@@ -10,6 +10,7 @@ local NAMES = {
 	"Inventory",
 	"ResultDone",
 	"LaunchStarted",
+	"LaunchRefused",
 	"LaunchResult",
 	"Impact",
 	"SetMusic",
@@ -30,6 +31,7 @@ export type Remotes = {
 	ResultDone: RemoteEvent, -- client → serveur : GO BACK, fin du résultat et du tirage
 	StopTraining: RemoteEvent, -- client → serveur : bouton STOP ou saut pendant l'entraînement
 	LaunchStarted: RemoteEvent, -- serveur → client : modèle du mannequin lancé, départ du vol (point, vitesse, mannequin)
+	LaunchRefused: RemoteEvent, -- serveur → client : sans charge, Launch refusé (le décoratif parti au lâcher s'efface)
 	LaunchResult: RemoteEvent, -- serveur → client : gains, blessures, cause
 	Impact: RemoteEvent, -- serveur → tous les clients : liste de chocs de la frame (effets, sons, popups)
 	SetMusic: RemoteEvent, -- client → serveur : true = musique coupée (bouton du HUD), sauvegardé avec les données

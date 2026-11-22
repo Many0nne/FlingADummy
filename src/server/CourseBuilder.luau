@@ -17,6 +17,7 @@ local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local Leaderboard = require(ReplicatedStorage.Shared.Leaderboard)
 local Objectives = require(ReplicatedStorage.Shared.Objectives)
 local ThrowDummies = require(ReplicatedStorage.Shared.ThrowDummies)
+local ThrowStart = require(ReplicatedStorage.Shared.ThrowStart)
 local TrainingLook = require(ReplicatedStorage.Shared.TrainingLook)
 local Zones = require(ReplicatedStorage.Shared.Zones)
 local Build = require(script.Parent.Build)
@@ -1443,8 +1444,8 @@ end
 -- Cette méthode permet de créer les places des joueurs (position, couleur, repères) avant que le décor ne les habille
 -- lorsque le serveur démarre.
 local function newSlots(): { Slot }
-	local pitch = math.rad(GameConfig.LAUNCH_PITCH_DEG)
-	local direction = Vector3.new(0, math.sin(pitch), math.cos(pitch))
+	-- Direction commune, recalculée par le lanceur au lâcher (Shared.ThrowStart, #144)
+	local direction = ThrowStart.DIRECTION
 	local slots = {}
 	for index = 1, GameConfig.SLOT_COUNT do
 		local launchPoint = CourseLayout.launchPoint(index)

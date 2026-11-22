@@ -6,8 +6,11 @@
 --
 -- Les effets sont portés par des pièces du client (hors du mannequin) qui suivent à chaque image les pièces affichées :
 -- la copie locale du lanceur (Client.LaunchGhost, décalage sur la copie répliquée) puis la copie répliquée, sans
--- double effet ni reprise au retour de la main. Mouvement réduit : moins de particules, pas d'anneau qui s'étend.
+-- double effet ni reprise au retour de la main. Chez le lanceur, le vol commence dès le lâcher sur le décoratif qui part
+-- (plan prévu par le client, #144) et passe, sans se rallumer, au mannequin du serveur quand sa copie locale prend le
+-- relais (repères du plan recalculés sur son départ). Mouvement réduit : moins de particules, pas d'anneau qui s'étend.
 local Debris = game:GetService("Debris")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -293,6 +296,8 @@ local function finish(flight: Flight)
 	Debris:AddItem(flight.root, LINGER)
 end
 
+local begin: (Model, BasePart, FlightFxRules.Cues, Vector3, Vector3, number, number) -> ()
+
 -- Cette méthode permet de commencer le suivi des effets d'un mannequin lancé lorsque il apparaît (rien pour un
 -- mannequin sans comportement visible : Crash, Glass, Steel).
 local function start(model: Model)
@@ -303,6 +308,10 @@ local function start(model: Model)
 	local velocity = model:GetAttribute("LaunchVelocity")
 	local index = model:GetAttribute("ThrownIndex")
 	if typeof(origin) ~= "Vector3" or typeof(velocity) ~= "Vector3" or not ThrowDummies.isIndex(index) then
+		return
+	end
+	-- Mannequin du joueur local parti au lâcher : ses effets portés par le décoratif passent sur lui au relais (adopt)
+	if model:GetAttribute("Owner") == Players.LocalPlayer.UserId and LaunchGhost.anticipating() then
 		return
 	end
 	local cues = FlightFxRules.cues(origin, velocity, Workspace.Gravity, ThrowDummies.get(index))
@@ -336,17 +345,25 @@ local function start(model: Model)
 	local launchedAt = model:GetAttribute("LaunchTime")
 	local age = if typeof(launchedAt) == "number" then Workspace:GetServerTimeNow() - launchedAt else 0
 	local counted = model:GetAttribute("Bounces")
+	begin(model, torso, cues, origin, velocity, age, if typeof(counted) == "number" then counted else 0)
+end
+
+-- Cette méthode permet de commencer le suivi des effets d'un mannequin affiché lorsque son vol démarre (repères
+-- `cues`, départ `origin` à `velocity`, `age` s déjà écoulées, `counted` rebonds déjà comptés).
+function begin(
+	model: Model,
+	torso: BasePart,
+	cues: FlightFxRules.Cues,
+	origin: Vector3,
+	velocity: Vector3,
+	age: number,
+	counted: number
+)
 	local root = UIKit.create("Folder", { Name = model.Name, Parent = folder })
 	local flight: Flight = {
 		model = model,
 		torso = torso,
-		tracker = FlightFxRules.tracker(
-			cues,
-			origin,
-			velocity,
-			age,
-			if typeof(counted) == "number" then counted else 0
-		),
+		tracker = FlightFxRules.tracker(cues, origin, velocity, age, counted),
 		profile = FlightFxRules.profile(UIKit.reducedMotion()),
 		root = root,
 		jet = nil,
@@ -423,6 +440,57 @@ local function step(flight: Flight, dt: number)
 	end
 end
 
+-- Cette méthode permet de commencer les effets du vol sur le décoratif lâché par le joueur local (`visual`, départ prévu
+-- par le client) lorsque il part sans attendre le serveur (#144).
+local function preview(visual: Model, origin: Vector3, velocity: Vector3, index: number)
+	local torso = visual.PrimaryPart
+	if not torso or flights[visual] then
+		return
+	end
+	local cues = FlightFxRules.cues(origin, velocity, Workspace.Gravity, ThrowDummies.get(index))
+	if cues.boostAlong <= 0 and not cues.glide and cues.bounces == 0 then
+		return
+	end
+	begin(visual, torso, cues, origin, velocity, 0, 0)
+end
+
+-- Cette méthode permet de faire passer les effets du décoratif lâché (`visual`) au mannequin du serveur (`model`), sans
+-- les rallumer, lorsque sa copie locale prend le relais ; suivi ordinaire si le décoratif n'en portait pas.
+local function adopt(visual: Model, model: Model)
+	local flight = flights[visual]
+	local torso = model:FindFirstChild("Torso")
+	if not flight or flights[model] or not torso or not torso:IsA("BasePart") then
+		if flight then
+			finish(flight)
+		end
+		task.spawn(start, model)
+		return
+	end
+	flights[visual] = nil
+	flight.model = model
+	flight.torso = torso
+	local origin = model:GetAttribute("LaunchOrigin")
+	local velocity = model:GetAttribute("LaunchVelocity")
+	local index = model:GetAttribute("ThrownIndex")
+	if typeof(origin) == "Vector3" and typeof(velocity) == "Vector3" and ThrowDummies.isIndex(index) then
+		local tracker = flight.tracker
+		local horizontal = Vector3.new(velocity.X, 0, velocity.Z)
+		tracker.cues = FlightFxRules.cues(origin, velocity, Workspace.Gravity, ThrowDummies.get(index))
+		tracker.origin = origin
+		tracker.flat = if horizontal.Magnitude > 1e-3 then horizontal.Unit else Vector3.zAxis
+	end
+	-- Repères du plan recalculés sur le départ du serveur ; traînées posées sur les bras du décoratif (échelle de la
+	-- main) reposées sur ceux du mannequin du serveur
+	for _, arm in flight.arms do
+		arm.rig:Destroy()
+	end
+	flight.arms = {}
+	if flight.tracker.cues.glide then
+		addTrails(flight)
+	end
+	flights[model] = flight
+end
+
 -- Cette méthode permet de créer les émetteurs des rebonds et de suivre les mannequins lancés (dossier Course/Dummies)
 -- lorsque le client démarre.
 function FlightFx.init()
@@ -460,6 +528,14 @@ function FlightFx.init()
 		Enabled = false,
 		Parent = burstPart,
 	})
+	LaunchGhost.onAnticipate = preview
+	LaunchGhost.onSwap = adopt
+	LaunchGhost.onCancel = function(visual: Model)
+		local flight = flights[visual]
+		if flight then
+			finish(flight)
+		end
+	end
 	RunService:BindToRenderStep(BIND_NAME, Enum.RenderPriority.Camera.Value + 2, function(dt)
 		for _, flight in flights do
 			step(flight, dt)

@@ -7,6 +7,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 
 local Remotes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Remotes"))
 local Announce = require(script.Announce)
@@ -64,6 +65,21 @@ BaseFx.init()
 ThrowController.init(player, remotes, gui)
 FlightCamera.init(player)
 LaunchGhost.init(player)
+-- Lâcher anticipé (#144) : le décoratif part dès le marqueur Release, sans attendre l'aller-retour du serveur ; la
+-- caméra de vol, le coup de champ de vision et le souffle partent avec lui
+ThrowController.onReleased = function(gauge: number)
+	-- Studio : DebugNoAnticipate (attribut de Workspace) garde l'ancien départ, pour comparer
+	if RunService:IsStudio() and Workspace:GetAttribute("DebugNoAnticipate") == true then
+		return
+	end
+	local visual, scale = CharacterPoser.released()
+	if visual and LaunchGhost.anticipate(visual, scale, gauge) then
+		CharacterPoser.forgetReleased()
+		ThrowCinematic.finish()
+		FlightCamera.follow(visual, LaunchGhost.torso)
+		Effects.thrown(visual:GetPivot().Position)
+	end
+end
 FlightFx.init()
 Effects.init(player, remotes.Impact)
 TrapMotion.init()
@@ -84,8 +100,8 @@ remotes.LaunchStarted.OnClientEvent:Connect(function(model: Model, launch: any)
 	prizeToken += 1
 	ThrowCinematic.finish()
 	CharacterPoser.handOff()
-	-- Départ anticipé sur le plan du vol : pas de mannequin figé à l'apparition (#117) ; sans retarder l'écran de vol
-	-- si le torse se fait attendre
+	-- Départ anticipé sur le plan du vol : pas de mannequin figé à l'apparition (#117), recalage du décoratif parti au
+	-- lâcher (#144) ; sans retarder l'écran de vol si le torse se fait attendre
 	task.spawn(LaunchGhost.start, model, launch)
 	FlightView.show(model)
 	FlightCamera.follow(model, LaunchGhost.torso)
@@ -110,6 +126,9 @@ local function playPrize(result: any)
 		)
 	end
 end
+
+-- Lancer refusé par le serveur : le décoratif parti au lâcher s'efface (#144)
+remotes.LaunchRefused.OnClientEvent:Connect(LaunchGhost.refuse)
 
 remotes.LaunchResult.OnClientEvent:Connect(function(result)
 	Effects.setFlying(nil)

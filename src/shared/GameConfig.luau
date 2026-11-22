@@ -23,6 +23,7 @@ local GameConfig = {
 	SPEED_BASE          = 130,    -- vitesse de lancer à la puissance de départ (studs/s ; 110 avant #113, glissade bornée)
 	SPEED_PER_LOG       = 38,     -- + 38 studs/s chaque fois que la puissance est multipliée par e (30 avant #113)
 	THROW_RELEASE_TIME  = 0.7,    -- lâcher dans l'animation de lancer (marqueur Release, s) : republier Throw si modifié
+	RELEASE_LEAD_MAX    = 0.4,    -- départ affiché dès le lâcher (#144) : avance sur le serveur (latence aller-retour) prise au plus (s) ; au-delà, maintien à la main
 
 	-- Vol plafonné et glissade bornée (#113, Shared.FlightArc)
 	APEX_HEIGHT         = 100,    -- hauteur max du vol (studs au-dessus de la piste) : au-delà, la puissance part en distance

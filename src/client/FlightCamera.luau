@@ -28,6 +28,7 @@ local FlightCamera = {}
 local player: Player
 local following = false
 local shake = 0
+local flightFocus: Vector3? = nil -- point visé par la caméra de vol à la dernière image (repris par un nouveau suivi)
 
 -- Cette méthode permet de rendre la caméra normale (suivie du personnage) lorsque le vol et son résultat sont finis,
 -- ou que le lancer n'a pas eu lieu.
@@ -36,6 +37,7 @@ function FlightCamera.stop()
 		return
 	end
 	following = false
+	flightFocus = nil
 	RunService:UnbindFromRenderStep(BIND_NAME)
 	local camera = Workspace.CurrentCamera
 	camera.CameraType = Enum.CameraType.Custom
@@ -84,13 +86,14 @@ function FlightCamera.closeUp(root: BasePart, duration: number)
 	end)
 end
 
--- Cette méthode permet de suivre un mannequin lancé (Shared.FlightFraming, lissage de l'écart seul) lorsque le serveur
--- annonce le lancer ; `shown` : torse à l'écran s'il n'est pas la copie répliquée (Client.LaunchGhost, #117).
-function FlightCamera.follow(model: Model, shown: (() -> (Vector3?, Vector3?))?)
+-- Cette méthode permet de suivre un mannequin lancé (Shared.FlightFraming, `shown` : torse affiché par Client.LaunchGhost)
+-- lorsque le lancer part ; un suivi qui en remplace un autre garde son point visé (passage du décoratif au serveur, #144).
+function FlightCamera.follow(model: Model, shown: (() -> (Vector3?, Vector3?, number?))?)
 	local torso = model:WaitForChild("Torso", 2) :: BasePart?
 	if not torso then
 		return
 	end
+	local kept = flightFocus
 	FlightCamera.stop()
 	following = true
 	shake = 0
@@ -98,26 +101,30 @@ function FlightCamera.follow(model: Model, shown: (() -> (Vector3?, Vector3?))?)
 	camera.CameraType = Enum.CameraType.Scriptable
 	-- La vitesse prolongée doit être celle de ce qui est affiché : la copie répliquée, figée au départ à vitesse pleine,
 	-- se faisait dépasser par la caméra (#117)
-	-- Cette méthode permet de donner la position et la vitesse du torse à l'écran lorsque la caméra se place.
-	local function displayed(): (Vector3, Vector3)
-		local position, velocity
+	-- Cette méthode permet de donner la position, la vitesse et la vitesse réelle du torse à l'écran lorsque la caméra
+	-- se place.
+	local function displayed(): (Vector3, Vector3, number)
+		local position, velocity, speed
 		if shown then
-			position, velocity = shown()
+			position, velocity, speed = shown()
 		end
 		local part = torso :: BasePart
-		return position or part.Position, velocity or part.AssemblyLinearVelocity
+		return position or part.Position,
+			velocity or part.AssemblyLinearVelocity,
+			speed or part.AssemblyLinearVelocity.Magnitude
 	end
 	local position = camera.CFrame.Position
-	local focus = displayed()
+	local focus = kept or displayed()
 	RunService:BindToRenderStep(BIND_NAME, Enum.RenderPriority.Camera.Value + 1, function(dt)
 		if not torso.Parent then
 			FlightCamera.stop()
 			return
 		end
-		local target, velocity = displayed()
+		local target, velocity, speed = displayed()
 		position += velocity * dt
-		-- Distance du cadrage selon la vitesse réelle (répliquée) : pas de va-et-vient quand l'affichage ralentit au départ
-		local offset = FlightFraming.offset(target.Y, torso.AssemblyLinearVelocity.Magnitude) -- piste à y = 0
+		-- Distance du cadrage selon la vitesse réelle (répliquée, ou du plan avant elle) : pas de va-et-vient quand
+		-- l'affichage ralentit au départ
+		local offset = FlightFraming.offset(target.Y, speed) -- piste à y = 0
 		position = position:Lerp(target + offset, 1 - math.exp(-POSITION_SHARPNESS * dt))
 		-- Le point visé avance lui aussi avec le torse : sinon, en montée rapide, il traîne en dessous et le mannequin
 		-- sort par le haut de l'image (#88)
@@ -126,6 +133,7 @@ function FlightCamera.follow(model: Model, shown: (() -> (Vector3?, Vector3?))?)
 		shake *= math.exp(-SHAKE_DECAY * dt)
 		local jitter = Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 2 * shake
 		camera.CFrame = CFrame.lookAt(position + jitter, focus + jitter * 0.5)
+		flightFocus = focus
 	end)
 end
 

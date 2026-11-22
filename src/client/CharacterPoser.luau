@@ -21,6 +21,7 @@ local ThrowDummies = require(Shared:WaitForChild("ThrowDummies"))
 local Training = require(Shared:WaitForChild("Training"))
 local TrainingLook = require(Shared:WaitForChild("TrainingLook"))
 
+local LaunchGhost = require(script.Parent.LaunchGhost)
 local UIKit = require(script.Parent.UIKit)
 
 local HELD_SCALE = 0.6
@@ -210,8 +211,8 @@ local function setVisual(state: State, key: string?, build: (() -> Model)?)
 end
 
 -- Cette méthode permet de lâcher le mannequin du joueur local lorsque l'animation de lancer atteint son marqueur
--- Release (ou le délai de secours) : le décoratif reste figé au point de lâcher, là où le mannequin du serveur va
--- apparaître (le faire voler d'avance le faisait reculer à l'arrivée du vrai), et le lancer part au serveur.
+-- Release (ou le délai de secours) : le lancer part au serveur et le décoratif n'est plus posé sur la main ; le geste
+-- le confie à Client.LaunchGhost, qui le fait partir tout de suite (#144), sinon il reste figé au point de lâcher.
 local function release()
 	local current = throw
 	if not current or current.released then
@@ -291,7 +292,8 @@ local function update(player: Player, state: State)
 		return
 	end
 	local action = player:GetAttribute("Action")
-	local releasedHere = player == localPlayer and throw ~= nil and throw.released
+	-- Pas de nouveau mannequin en main tant que le décoratif lâché vole sans réponse du serveur (#144)
+	local releasedHere = player == localPlayer and (throw ~= nil and throw.released or LaunchGhost.anticipating())
 	-- Le suffixe reconstruit le décoratif en maillé quand les gabarits arrivent après lui (blocs en attendant)
 	local shape = ":mesh" .. DummyShape.meshStage()
 	local carried = if action == nil then carriedKey(character) else nil
@@ -361,6 +363,18 @@ end
 -- Cette méthode permet de savoir si le geste du joueur local est en cours lorsque l'interface doit ignorer un clic.
 function CharacterPoser.isThrowing(): boolean
 	return throw ~= nil
+end
+
+-- Cette méthode permet de donner le décoratif lâché par le joueur local et son échelle de construction lorsque le
+-- geste le fait partir sans attendre le serveur (Client.LaunchGhost, #144) ; nil s'il n'y en a pas.
+function CharacterPoser.released(): (Model?, number)
+	local current = released
+	return if current then current.model else nil, HELD_SCALE
+end
+
+-- Cette méthode permet d'oublier le décoratif lâché (sans le retirer) lorsque Client.LaunchGhost l'a pris en charge.
+function CharacterPoser.forgetReleased()
+	released = nil
 end
 
 -- Cette méthode permet de retirer le mannequin décoratif lâché lorsque le mannequin du serveur prend le relais.

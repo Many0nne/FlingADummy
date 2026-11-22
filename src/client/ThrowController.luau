@@ -17,6 +17,7 @@ local Gauge = require(Shared:WaitForChild("Gauge"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local CharacterPoser = require(script.Parent.CharacterPoser)
+local LaunchGhost = require(script.Parent.LaunchGhost)
 local ThrowCinematic = require(script.Parent.ThrowCinematic)
 local UIKit = require(script.Parent.UIKit)
 
@@ -28,6 +29,9 @@ local SHINE_REACH = 1.5 -- décalage du dégradé aux deux bouts : le reflet sor
 local SHINE_PAUSE = 1.4 -- pause entre deux passages (s)
 
 local ThrowController = {}
+
+-- Branché par l'amorçage du client : départ affiché dès le lâcher, jauge arrêtée à `gauge` (#144)
+ThrowController.onReleased = nil :: ((gauge: number) -> ())?
 
 local player: Player
 local remotes: Remotes.Remotes
@@ -178,14 +182,26 @@ local function trigger(): boolean
 	CharacterPoser.playThrow(function()
 		remotes.Launch:FireServer(value)
 		ThrowCinematic.release()
-	end, function()
-		-- Geste fini : lancer parti (la jauge se cache au vol) ou refusé (caméra rendue, jauge réarmée)
-		if player:GetAttribute("LaneState") ~= "Flying" then
-			ThrowCinematic.abort()
-			CharacterPoser.handOff()
+		if ThrowController.onReleased then
+			ThrowController.onReleased(value)
 		end
-		locked = nil
-		refresh()
+	end, function()
+		-- Geste fini : lancer parti (la jauge se cache au vol) ou refusé (caméra rendue, jauge réarmée) ; tant que le
+		-- décoratif lâché vole sans réponse du serveur (#144), la jauge attend
+		-- Cette méthode permet de clore le geste lorsque la réponse du serveur est connue.
+		local function settle()
+			if player:GetAttribute("LaneState") ~= "Flying" then
+				if LaunchGhost.anticipating() then
+					task.delay(0.1, settle) -- borné : Client.LaunchGhost s'arrête au plus HANDOFF_TIME après le lâcher
+					return
+				end
+				ThrowCinematic.abort()
+				CharacterPoser.handOff()
+			end
+			locked = nil
+			refresh()
+		end
+		settle()
 	end)
 	return true
 end
