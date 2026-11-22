@@ -486,12 +486,13 @@ Dummy à même puissance et jauge), quelle que soit la puissance, sans passer le
   rebonds physiques ne comptent pas).
 - Sol plat (test Lune, de 200 à 4,4 B de puissance) : Rubber + 14,5 %, Glider + 18,5 %, Rocket + 22,5 % à l'arrêt
   (part de la portée naturelle, plus la glissade du Rocket plus rapide).
-- **Mesures** (Studio, `DebugLaunchBots` avec `DebugBotsPower` et `DebugBotsDummy`, jauge pleine, 3 couloirs ; 6 vols
-  par mannequin à 22 M et 4,4 B, 3 à 360 M et 1 M ; distance finale, durée du vol) :
+- **Mesures** (Studio, `DebugLaunchBots` avec `DebugBotsPower` et `DebugBotsDummy`, jauge pleine, 3 couloirs ; 6 à 9 vols
+  par mannequin à 22 M et 4,4 B, 3 à 6 à 360 M et 1 M ; distance finale, durée du vol ; Rubber, Glider et Rocket
+  revérifiés sur le code final) :
   | Puissance | Crash | Rubber avant → après | Glider avant → après | Rocket avant → après |
   |---|---|---|---|---|
-  | 22 M | 3 584-3 624 m, 7,5-8,5 s | 3 611-5 537 m (± 21 %) → **4 206-4 267 m (+ 17 %, ± 0,7 %)**, 4 rebonds, 10,5-11,4 s | 4 212-4 989 m (± 8 %) → **4 310-4 577 m (+ 23 %, ± 3 %)**, 8,9-9,6 s | 3 650-3 669 m (+ 1,6 %) → **4 384-4 694 m (+ 24 %, ± 3,4 %)**, 7,9-8,6 s ; 5 501 m après un piège |
-  | 360 M | 4 834-4 907 m | → 5 201-5 552 m (+ 7 à + 14 %) | → bout de piste (6 037 m) | → 5 751-5 770 m (+ 19 %) |
+  | 22 M | 3 584-3 624 m, 7,5-8,5 s | 3 611-5 537 m (± 21 %) → **4 186-4 304 m (+ 17 %)**, un vol à 3 872 m (± 5 %), 2 à 4 rebonds, 10,5-11,9 s | 4 212-4 989 m (± 8 %) → **4 310-4 577 m (+ 24 %, ± 3 %)**, 8,9-9,7 s | 3 650-3 669 m (+ 1,6 %) → **4 320-4 694 m (+ 23 %, ± 4 %)**, 7,6-9 s ; 5 501 m après un piège |
+  | 360 M | 4 834-4 907 m | → 5 201-5 819 m (+ 7 à + 20 %) | → bout de piste (6 037 m) | → 5 751-5 770 m (+ 19 %) |
   | 1 M | 2 451-2 500 m | → 3 300 m (piège vers 2,9 km, 3 sur 3) | → 3 007 m (+ 21 %), 2 vols sur 3 projetés par un piège | → 3 018 m (+ 22 %), idem |
   | 4,4 B | 6 044-6 049 m, 9,8-15,4 s | bout de piste avant comme après, 13,1-16 s | bout de piste, 9,1-11,5 s | bout de piste, 7,8-7,9 s |
   Premier contact au point du plan (Glider 4 192 m, Rocket 4 197 m, prévus 4 211 m à 22 M) ; sommet 100 studs (101
