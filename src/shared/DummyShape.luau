@@ -21,7 +21,12 @@ DummyShape.SURFACE = "DummySurface"
 -- Même atlas en AlphaMode Transparency (Shared.DummyMarks), copié dans le dossier des gabarits par Server.DummyAssets :
 -- posé sur une coque à peine plus grande que la pièce, il ne montre que visage, cibles et bandes noires (#126)
 DummyShape.MARKS = "DummyMarks"
-DummyShape.MARKS_GAP = 0.02 -- écart de la coque à la pièce (studs par face, échelle 1)
+-- Écart de la coque à la pièce (studs par face, échelle 1, multiplié par l'échelle du modèle). 0,02 laissait visage et
+-- cibles scintiller à travers la pièce dès quelques studs de distance (#161) : 0,05 les décolle franchement.
+DummyShape.MARKS_GAP = 0.05
+-- Écart minimal (studs, échelle 1) entre deux faces de même sens de pièces superposées (pièce ajoutée ou bloc contre
+-- sa pièce porteuse) : en dessous, elles scintillent (z-fighting) ; contrôlé par tests/specs/DummyShape.spec.luau
+DummyShape.MIN_FACE_GAP = 0.03
 -- Pièces qui reçoivent une coque : visage et cibles seulement (une coque par membre doublerait les pièces translucides
 -- de chaque mannequin posé sur une base)
 DummyShape.MARKED = { Head = true, Torso = true }

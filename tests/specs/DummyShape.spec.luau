@@ -167,6 +167,40 @@ return function(T, Loader)
 				T.expectNear((shell.Size - part.Size - Vector3.one * gap).Magnitude, 0, 1e-5, "à peine plus grande")
 			end
 		end)
+		T.it(
+			"décolle la coque des marques d'au moins MIN_FACE_GAP sur tout le catalogue, à toute échelle (#161)",
+			function()
+				local Collection = Loader.new():require("src/shared/Collection")
+				local ThrowDummies = Loader.new():require("src/shared/ThrowDummies")
+				local variants = {}
+				for _, dummy in Collection.DUMMIES do
+					table.insert(variants, { id = dummy.id, variant = Collection.variant({ id = dummy.id, size = 1 }) })
+				end
+				for index = 1, #ThrowDummies.LIST do
+					table.insert(variants, { id = ThrowDummies.get(index).id, variant = ThrowDummies.variant(index) })
+				end
+				T.expect(#variants >= 84, "64 mannequins de collection et 20 à lancer : " .. #variants)
+				local shells, bad = 0, {}
+				for _, entry in variants do
+					for _, scale in { 1, 2.05, 4.1 } do
+						local model = DummyShape.buildVisual(scale, entry.variant)
+						for name in DummyShape.MARKED do
+							local shell = model:FindFirstChild(name .. "Marks")
+							if shell then
+								shells += 1
+								local grow = shell.Size - model[name].Size
+								local least = math.min(grow.X, grow.Y, grow.Z) / 2
+								if least < DummyShape.MIN_FACE_GAP * scale - 1e-6 then
+									table.insert(bad, string.format("%s %s x%.2f : %.4f", entry.id, name, scale, least))
+								end
+							end
+						end
+					end
+				end
+				T.expect(shells > 0, "au moins un mannequin sous matériau porte une coque")
+				T.expectEqual(#bad, 0, table.concat(bad, " | "))
+			end
+		)
 		T.it("pas de coque sur une pièce qui garde l'atlas ou une pièce masquée", function()
 			local plain = DummyShape.buildVisual(1, { color = Color3.new(1, 0, 0) })
 			T.expectEqual(plain:FindFirstChild("TorsoMarks"), nil)
