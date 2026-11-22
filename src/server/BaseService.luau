@@ -24,7 +24,7 @@ local Inventory = require(Shared.Inventory)
 local Rarity = require(Shared.Rarity)
 local RevealPlan = require(Shared.RevealPlan)
 local Store = require(Shared.Store)
-local Tutorial = require(Shared.Tutorial)
+local PlaceRule = require(Shared.PlaceRule)
 
 local CourseBuilder = require(script.Parent.CourseBuilder)
 local DummyTools = require(script.Parent.DummyTools)
@@ -243,7 +243,7 @@ end
 -- Cette méthode permet de savoir si la première pose du tutoriel reste à faire (elle se fait à la main, sur un
 -- présentoir) lorsque le joueur demande AUTO, Place ou « Place best ».
 local function firstPlacePending(player: Player): boolean
-	return Tutorial.current((player:GetAttribute("Tutorial") :: number?) or 0) == "Place"
+	return PlaceRule.firstPending(player:GetAttribute("Tutorial") :: number?)
 end
 
 -- Cette méthode permet de rendre la base d'un joueur et de publier sa collection dans ses attributs (stock, base,
@@ -332,16 +332,20 @@ end
 -- Cette méthode permet de savoir si le joueur peut utiliser AUTO lorsqu'il le demande : première pose du tutoriel
 -- déjà faite à la main, et avatar dans sa base ou tout près.
 local function canAuto(player: Player): boolean
-	if firstPlacePending(player) then
-		return false
-	end
 	local slot = slotOf[player]
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	-- Marge pour la latence : l'avatar a pu bouger depuis le clic
-	return slot ~= nil
+	local near = slot ~= nil
 		and root ~= nil
 		and CourseLayout.isNearBase(slot.index, root.Position - (root.AssemblyLinearVelocity * 0.3), slot.base.big)
+	-- Règle partagée avec le client (Shared.PlaceRule) ; la cible et le mannequin se jugent plus loin dans `place`
+	return PlaceRule.status({
+		tutorialStep = player:GetAttribute("Tutorial") :: number?,
+		hasEntry = true,
+		near = near,
+		hasTarget = true,
+	}) == "ok"
 end
 
 -- Cette méthode permet de poser le mannequin que le joueur tient (outil équipé), sinon le dernier gagné, lorsque le
