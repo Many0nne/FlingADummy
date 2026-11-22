@@ -361,6 +361,30 @@ return function(T, Loader)
 		end)
 	end)
 
+	T.describe("icônes dessinées (#173)", function()
+		T.it(
+			"donne à chaque article et chaque section une icône connue de Assets.ICONS, avec un emoji de repli",
+			function()
+				local Assets = loader:require("src/shared/Assets")
+				for _, entry in Store.ITEMS do
+					T.expect(Assets.ICONS[entry.art] ~= nil, entry.id .. " : icône " .. tostring(entry.art))
+					T.expect(entry.icon ~= "", entry.id .. " : emoji de repli")
+				end
+				for _, section in Store.SECTIONS do
+					T.expect(Assets.ICONS[section.art] ~= nil, section.id .. " : icône " .. tostring(section.art))
+					T.expect(section.icon ~= "", section.id .. " : emoji de repli")
+				end
+				T.expect(Assets.ICONS.rebirth ~= nil, "icône Rebirth déclarée")
+			end
+		)
+		T.it("publie chaque icône déclarée (identifiant > 0)", function()
+			local Assets = loader:require("src/shared/Assets")
+			for name, id in Assets.ICONS do
+				T.expect(id > 0, name .. " publiée")
+			end
+		end)
+	end)
+
 	T.describe("Store.clock", function()
 		T.it("écrit les minuteurs en m:ss ou h:mm:ss", function()
 			T.expectEqual(Store.clock(899.2), "15:00")

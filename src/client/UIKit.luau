@@ -176,8 +176,8 @@ function UIKit.gradientText(label: TextLabel, top: Color3, bottom: Color3): UIGr
 end
 
 -- Cette méthode permet d'afficher une icône dessinée (image publiée, sinon emoji de repli) lorsque l'on construit un
--- bouton ou un compteur ; `props` place l'icône.
-function UIKit.icon(name: string, props: { [string]: any }): GuiObject
+-- bouton ou un compteur ; `props` place l'icône, `fallback` remplace l'emoji de repli par défaut (identifiant à 0).
+function UIKit.icon(name: string, props: { [string]: any }, fallback: string?): GuiObject
 	local uri = Assets.uri(Assets.ICONS[name])
 	local icon: GuiObject
 	if uri then
@@ -190,7 +190,7 @@ function UIKit.icon(name: string, props: { [string]: any }): GuiObject
 		icon = UIKit.create("TextLabel", {
 			BackgroundTransparency = 1,
 			Font = UIKit.FONT,
-			Text = EMOJI[name] or "?",
+			Text = fallback or EMOJI[name] or "?",
 			TextScaled = true,
 		})
 	end
