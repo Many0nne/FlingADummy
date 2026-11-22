@@ -28,7 +28,13 @@ table.sort(specs)
 
 for _, name in specs do
 	local path = SPECS_DIR .. "/" .. name
-	local env = { Vector3 = roblox.Vector3, CFrame = roblox.CFrame, Instance = roblox.Instance, Color3 = roblox.Color3 }
+	local env = {
+		Vector2 = roblox.Vector2,
+		Vector3 = roblox.Vector3,
+		CFrame = roblox.CFrame,
+		Instance = roblox.Instance,
+		Color3 = roblox.Color3,
+	}
 	local ok, err = pcall(function()
 		local spec = luau.load(fs.readFile(path), { debugName = path, environment = env })()
 		spec(Test, Loader, Lib)

@@ -213,6 +213,32 @@ end
 -- #44 : vu de tous) et Throw Power (« 💪 1.2K »)
 export type Label = { title: string, income: string, best: string, power: string }
 
+-- Taille du texte flottant : en studs plus une marge en pixels (lisible de loin), bornée en largeur (#150) pour que
+-- les textes des bases voisines (48 studs d'un centre à l'autre, Shared.CourseLayout.BASE_PITCH) ne se chevauchent pas
+BaseLook.LABEL_STUDS = Vector2.new(14, 9.4)
+BaseLook.LABEL_PIXELS = Vector2.new(110, 82)
+BaseLook.LABEL_SPAN = 44 -- largeur maximale (studs, à la distance du texte) : 4 studs d'écart entre deux textes
+
+-- Cette méthode permet de donner la taille en pixels du texte flottant d'une base vu à la profondeur `depth` (studs)
+-- par une caméra de `unit` pixels par stud à 1 stud, lorsque le client l'ajuste à chaque image (#150).
+function BaseLook.labelPixels(depth: number, unit: number): Vector2
+	local perStud = unit / math.max(depth, 1)
+	local size = BaseLook.LABEL_STUDS * perStud + BaseLook.LABEL_PIXELS
+	local cap = BaseLook.LABEL_SPAN * perStud
+	if size.X > cap then
+		size *= cap / size.X
+	end
+	return size
+end
+
+-- Cette méthode permet de savoir si deux étiquettes (centre et taille à l'écran, en pixels) se chevauchent lorsque le
+-- client masque l'étiquette d'un mannequin posé qui passerait devant le texte d'une base (#150).
+function BaseLook.overlaps(centerA: Vector2, sizeA: Vector2, centerB: Vector2, sizeB: Vector2): boolean
+	local gap = (centerA - centerB)
+	local reach = (sizeA + sizeB) / 2
+	return math.abs(gap.X) < reach.X and math.abs(gap.Y) < reach.Y
+end
+
 -- Cette méthode permet de donner les lignes du texte flottant d'une base lorsque son propriétaire ou ses valeurs
 -- changent ; `owner` nil : base vide ; `power` nil (données pas chargées) : ligne vide ; `rebirths` > 0 : compteur
 -- violet « 🌟 3 » à côté de la Throw Power (ligne en RichText) ; `best` sous 1 m ou nil : pas de ligne de record.
