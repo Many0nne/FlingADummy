@@ -1693,12 +1693,15 @@ def render_dummy(cam, dummy_id, look, body, addons, materials):
         slots = obj["orig_slots"]
         for i, slot in enumerate(obj.material_slots):
             orig = slots[i]
-            if look.get("material"):
-                slot.material = roblox_material(look["color"], look["material"])
+            tint = look.get("pieces", {}).get(name, look["color"])
+            if look.get("material") and "Lower" in name and name not in look.get("pieces", {}):
+                tint = (45, 47, 55)  # sans atlas, avant-bras et tibias restent sombres en jeu (DummyShape.DARK)
+            if orig == "Body" and look.get("material"):
+                slot.material = roblox_material(tint, look["material"])
             elif orig == "Body":
-                tint = look.get("pieces", {}).get(name, look["color"])
                 slot.material = body_tint(tint, body_mat_default)
             else:
+                # Visage, cibles et bandes noires gardes sous un materiau (#126 : coque des marques en jeu)
                 slot.material = {"Dark": dark, "Target": target}[orig]
     shown = []
     for o in addons.values():

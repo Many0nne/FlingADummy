@@ -109,6 +109,7 @@ DummyFamilies.STYLES = {
 -- style STYLES s'il en a un) lorsque l'on construit son look.
 function DummyFamilies.paletteOf(family: string, paletteId: string): Palette
 	local palette = DummyFamilies.PALETTES[paletteId]
+	assert(palette, "DummyFamilies.paletteOf : palette inconnue " .. paletteId)
 	local style = DummyFamilies.STYLES[paletteId .. "_" .. family]
 	if not style then
 		return palette
