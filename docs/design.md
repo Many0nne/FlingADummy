@@ -621,10 +621,11 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
 - **Présentoirs** : 6 au départ (2 rangées de 3), jusqu'à 10. Les mannequins posés sont construits par le serveur
   (visibles de tous), nom coloré par rareté et $/s au-dessus.
 - **Texte flottant** au-dessus du centre de la base (#91, comme les jardins de 09 et les enclos de 01 ; `BillboardGui`
-  à 24 studs, police Fredoka One et contour du HUD) : portrait du joueur, « NOM'S BASE », revenu « $223/s » en vert et
-  Throw Power « 💪 1.2K » en cyan (renaissances « 🌟 3 » en violet à côté, #108), mis à jour en direct (achat, pose, entraînement) ; « EMPTY BASE · $0/s » sans
-  joueur. Taille en studs plus une marge en pixels : lisible de près et à travers tout le hub (affiché jusqu'à
-  600 studs). Comparaison entre joueurs d'un coup d'œil ; plus de panneau à l'entrée.
+  à 24 studs, police Fredoka One et contour du HUD) : portrait du joueur, « NOM'S BASE », revenu « $223/s » en vert,
+  record « 🏆 BEST 3.6 km » en or juste dessous (#44 : le record d'un joueur se voit de tous ; rien sans record) et
+  Throw Power « 💪 1.2K » en cyan (renaissances « 🌟 3 » en violet à côté, #108), mis à jour en direct (achat, pose,
+  entraînement, record) ; « EMPTY BASE · $0/s » sans joueur. Taille en studs plus une marge en pixels : lisible de
+  près et à travers tout le hub (affiché jusqu'à 600 studs). Comparaison entre joueurs d'un coup d'œil ; plus de panneau à l'entrée.
 - **Paliers visuels de la base** (#61, `Shared.BaseLook`) : la base change d'aspect à chaque présentoir acheté, un
   joueur voit de loin les bases les plus avancées du serveur.
   | Présentoirs | Palier | Clôture | Sol | Décor |
@@ -681,13 +682,30 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
   stock, la liste des découverts devient l'Index.
 
 ## Carte (v0.3) : lobby de 4 joueurs, piste unique
-- **Hub** (pelouse à damier entourée de parois en gradins) : une **base par joueur** (terrain clôturé, 6 à 10 présentoirs
-  pour la collection, texte flottant « NOM'S BASE » avec revenu et Throw Power, aspect qui monte avec les présentoirs
-  achetés, pad d'achat de présentoir) avec son **appareil
-  d'entraînement** à côté de l'entrée, qu'il
-  laisse libre (podium à tenons, pastille jaune, râtelier, invite « Lift », briques fines `FadBrickFine`), deux stands
-  détaillés au fond (#68, `Server.Props`, animés par `Client.HubShops`), chevrons jaunes vers la zone de lancer. Plan
-  dans `Shared.CourseLayout`.
+- **Hub** (#120, pelouse à damier de 256 × 96 studs entourée de parois en gradins ; plan dans `Shared.CourseLayout`,
+  vérifié par les tests : rien ne se chevauche, tout reste dans le hub), calé sur les jardins de 09 :
+  - les **4 bases sur une rangée, côte à côte** (40 × 34 studs, 8 studs de passage entre deux clôtures, dans l'ordre
+    des places : la place 1 à droite), entrée tournée vers la bande ; chaque base : terrain clôturé, 6 à 10 présentoirs
+    pour la collection, texte flottant, aspect qui monte avec les présentoirs achetés ;
+  - devant chaque base, de part et d'autre de l'entrée : son **appareil d'entraînement** à gauche (podium à tenons,
+    pastille jaune, râtelier, invite « Lift », briques fines `FadBrickFine`, avatar face à la bande) et son **pad
+    d'achat de présentoir** à droite ; chevrons jaunes de l'entrée vers la bande (et du point d'apparition de secours) ;
+  - au bord de la bande, dos à la paroi du départ et tournés vers les bases : à gauche les **stands** (SHOP au ras de la
+    bande, puis SELL ; #68, `Server.Props`, animés par `Client.HubShops`) ; à droite les **tableaux de scores**
+    (LONGEST THROW, INCOME, REBIRTHS) puis la **zone d'événement** réservée (dallage clair bordé de blanc, vide,
+    pancarte « EVENTS · SOON » ; rien de jouable).
+  Trajets à pied mesurés en Studio (marche réelle à 16 studs/s sur un chemin calculé, #120) : réapparition → bande
+  0,3 s (inchangé) ; base la plus éloignée → bande 4,8-4,9 s (7,4 s avant) ; bande (milieu) → stand le plus éloigné
+  (SELL) 5,9 s (6,9 s avant) ; bande → tableau le plus éloigné 5,2 s ; apparition de secours → bande 1,5 s.
+- **Tableaux de scores** (#120, `Shared.Leaderboard`, `Server.LeaderboardService`) : trois panneaux au style des stands
+  (cadre en bois sur deux poteaux coiffés de lanternes, bandeau coloré, Fredoka One) : **LONGEST THROW** (record
+  `BestDistance`, « 3.6 km »), **INCOME** (revenu courant, « $12.3K/s »), **REBIRTHS**. Top 10 **global** : un
+  `OrderedDataStore` par tableau (scores entiers, revenu borné à 2^53). Toutes les 60 s, le serveur écrit le score de
+  chaque joueur chargé s'il a changé (et au départ du joueur), relit le top de chaque tableau puis l'affiche, complété
+  par les valeurs des joueurs du serveur (plus fraîches) ; un joueur chargé entre au tableau tout de suite. Bandeau
+  « TOP 10 · ALL SERVERS » ; sans accès DataStore ou en cas d'erreur, repli sur les joueurs du serveur
+  (« TOP 10 · THIS SERVER », signalé dans le journal `[Leaderboard]`). Valeur sous 1 (pas de record, revenu nul) :
+  pas de ligne.
 - **Stands** (échoppes de 01 / 09 : bois, auvent rayé, comptoir garni, marchand en blocs juché derrière, qui se balance
   et salue, bulle d'appel, anneau lumineux au sol devant l'invite) :
   - **SHOP** (bleu, haut) : les mannequins à lancer exposés sur des plateaux tournants (comptoir, étagère du fond),
@@ -715,6 +733,8 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
   instances, piste de ces thèmes 41-79 ms ; six thèmes de 2,4 à 6 km ≈ 12 900 instances (× 2 environ), 60-114 ms de
   piste en plus. `StreamingEnabled` est coupé : chaque client reçoit tout (client Studio : 60 FPS, 119 Mo pour les
   instances).
+  Hub de #120 (mesuré en Studio, hors mannequins posés) : 2 371 instances contre 2 042 (+ 329 : tableaux, zone
+  d'événement, chevrons) ; décor entier 25 436 instances construites en 291 ms (25 121 en 284 ms avant).
 - **Obstacles partagés** (`Server.Obstacles`, plan dans `Shared.TrackPlan`) : dans chaque thème, les 2 ou 3 obstacles cassables du thème à
   tour de rôle (un site de plus que le minimum : il a remplacé la rangée de vitres retirée par #90) (`Server.ThemeObstacles`, un par colonne ou d'un seul tenant sur la largeur des colonnes) et son piège
   signature (section « Zones de la piste », un second piège dans les thèmes longs), sites espacés régulièrement

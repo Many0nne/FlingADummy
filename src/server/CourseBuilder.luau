@@ -103,7 +103,7 @@ export type Slot = {
 	index: number,
 	color: Color3,
 	launchPoint: Vector3, -- point de la bande, au sol, d'où partent les mannequins de test de la place (Studio)
-	station: CFrame, -- position de l'avatar qui s'entraîne (sur le podium, face au centre du hub)
+	station: CFrame, -- position de l'avatar qui s'entraîne (sur le podium, face à la bande)
 	prompt: ProximityPrompt, -- « Lift » sur l'appareil d'entraînement, devant la base
 	trainer: Trainer, -- appareil d'entraînement, habillé par Server.TrainingService
 	base: Base, -- présentoirs, remplis par Server.BaseService
@@ -835,7 +835,7 @@ local function buildPad(parent: Instance, slot: Slot): Pad
 	local spot, facing = CourseLayout.padPosition(slot.index)
 	local model = Instance.new("Model")
 	model.Name = "DisplayPad" .. slot.index
-	-- Repère : regard vers le centre du hub ; le panneau est derrière la dalle
+	-- Repère : regard vers la bande ; le panneau est derrière la dalle
 	local frame = CFrame.lookAt(spot, spot + facing)
 	local slab = Build.block(model, Vector3.new(6, 0.3, 6), frame * CFrame.new(0, 0.15, -3), COLORS.padGreen)
 	slab.Name = "Slab"
