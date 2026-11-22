@@ -26,7 +26,7 @@ return function(T, Loader)
 					end
 					T.expectEqual(Training.expForLevel(1000, tier), GameConfig.LEVEL_MAX_REPS * gain)
 				end
-				-- Niveau 30 au bois : 594 répétitions (≈ 8 min) avant #15, LEVEL_MAX_REPS maintenant
+				-- Niveau 30 au bois : 594 répétitions (≈ 8 min) avant #15, LEVEL_MAX_REPS (≈ 10 s) maintenant
 				local progress = { level = 30, exp = 0 }
 				local reps = 0
 				repeat

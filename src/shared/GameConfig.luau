@@ -40,7 +40,7 @@ local GameConfig = {
 	REP_TIME            = 0.8,    -- durée d'une répétition (s)
 	LEVEL_BASE_EXP      = 3,      -- EXP du premier niveau d'entraînement (3 répétitions avec l'équipement de départ)
 	LEVEL_EXP_GROWTH    = 1.2,    -- EXP demandée × 1,2 par niveau…
-	LEVEL_MAX_REPS      = 5,      -- … plafonnée à 5 répétitions de l'équipement du joueur (#15 : niveaux de 4 s au plus)
+	LEVEL_MAX_REPS      = 12,     -- … plafonnée à 12 répétitions de l'équipement du joueur (#15 : niveaux de 10 s au plus)
 
 	-- CHANCE du lancer (le lancer ne rapporte pas d'argent : il fait gagner un mannequin de collection)
 	CHANCE_PER_BONE     = 0.02,   -- + 2 % de chance par os cassé
