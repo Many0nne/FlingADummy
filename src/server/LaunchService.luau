@@ -285,7 +285,12 @@ function LaunchService.launch(player: Player, gauge: any, force: boolean?)
 	local _, equipped = ThrowDummies.sanitize(player:GetAttribute("ThrowTier"), player:GetAttribute("ThrowEquipped"))
 	local rebirth = Rebirth.luck(Rebirth.read(player:GetAttribute("Rebirths")))
 	local dummy, origin, speed = startFlight(player, player, slot, power, gauge, equipped, rebirth)
-	remotes.LaunchStarted:FireClient(player, dummy)
+	-- Départ du vol pour le lanceur : il rejoue le plan en avance sur la copie répliquée (Client.LaunchGhost, #117)
+	remotes.LaunchStarted:FireClient(player, dummy, {
+		origin = origin,
+		velocity = slot.direction * speed,
+		thrown = equipped,
+	})
 	remotes.Impact:FireAllClients({
 		{ kind = "Throw", position = origin, value = speed, userId = player.UserId },
 	})

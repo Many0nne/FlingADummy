@@ -16,6 +16,7 @@ local FlightCamera = require(script.FlightCamera)
 local FlightView = require(script.FlightView)
 local Hud = require(script.Hud)
 local HubShops = require(script.HubShops)
+local LaunchGhost = require(script.LaunchGhost)
 local Music = require(script.Music)
 local Objective = require(script.Objective)
 local PhotoCamera = require(script.PhotoCamera)
@@ -56,6 +57,7 @@ HubShops.onShop = Hud.openDummyShop
 HubShops.init()
 ThrowController.init(player, remotes, gui)
 FlightCamera.init(player)
+LaunchGhost.init(player)
 Effects.init(player, remotes.Impact)
 TrapMotion.init()
 ZoneSky.init()
@@ -68,15 +70,18 @@ UserInputService.JumpRequest:Connect(stopTraining)
 
 local prizeToken = 0 -- invalide un tirage programmé si le couloir redevient prêt ou qu'un autre vol part
 
-remotes.LaunchStarted.OnClientEvent:Connect(function(model: Model)
+remotes.LaunchStarted.OnClientEvent:Connect(function(model: Model, launch: any)
 	if typeof(model) ~= "Instance" then
 		return
 	end
 	prizeToken += 1
 	ThrowCinematic.finish()
 	CharacterPoser.handOff()
+	-- Départ anticipé sur le plan du vol : pas de mannequin figé à l'apparition (#117) ; sans retarder l'écran de vol
+	-- si le torse se fait attendre
+	task.spawn(LaunchGhost.start, model, launch)
 	FlightView.show(model)
-	FlightCamera.follow(model)
+	FlightCamera.follow(model, LaunchGhost.torso)
 	Effects.setFlying(model)
 end)
 
