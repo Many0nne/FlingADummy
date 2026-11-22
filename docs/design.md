@@ -632,7 +632,9 @@ sien et ceux des voisins) :
   ses pièces ne se déforment pas côté client sans casser leur assemblage.
 - **Déclenchement** : le serveur pose `LaunchOrigin`, `LaunchVelocity`, `ThrownIndex` et `LaunchTime` sur le
   mannequin lancé ; chaque client recalcule le plan (`FlightArc.plan`) et suit la position **affichée** du torse : copie
-  locale du lanceur (`Client.LaunchGhost`, son décalage) puis copie répliquée. Un suivi commencé en cours de vol (joueur
+  locale du lanceur (`Client.LaunchGhost`, son décalage) puis copie répliquée ; chez le lanceur, le suivi commence dès le
+  lâcher sur le décoratif qui part (plan prévu par le client, #144) et passe au mannequin du serveur au relais sans se
+  rallumer (repères recalculés sur son départ). Un suivi commencé en cours de vol (joueur
   arrivé, torse répliqué tard) part de l'âge du vol et ne rejoue pas les rebonds déjà comptés. Les effets sont portés par des pièces du client hors du
   mannequin, placées à chaque image sur ce qui est affiché : pas de double effet au retour de la main.
 - **Lisibilité** : flamme et fumée collées au mannequin (quelques studs), traînées de 0,3 s, éclats du rebond de moins
@@ -950,6 +952,18 @@ Interface : section suivante.
   le moteur faisant défiler la copie répliquée ≈ 4 % plus vite pour réduire son retard, l'affichage rend aussi la main
   dès qu'il n'a plus d'avance. La caméra prolonge la vitesse de ce qui est affiché, sa distance suit la vitesse réelle.
   Le serveur décide toujours de tout (distance, chocs, CHANCE) ; les autres joueurs ne voient pas la copie locale.
+- **Lâcher anticipé** (#144, `Shared.ThrowStart`, `Shared.FlightGhost`, `Client.LaunchGhost`) : le décoratif tenu
+  restait figé à la main le temps d'un aller-retour réseau (≈ 50 ms sans latence simulée, ≈ 350 ms à 150 ms). Il part
+  maintenant au marqueur `Release` sur le plan calculé par le client, avec le même calcul que le serveur
+  (`ThrowStart` : main de l'avatar, puissance, jauge, mannequin équipé), en passant en 0,15 s de sa pose et de son
+  échelle en main (0,6) à celles du vol. Le mannequin du serveur, reconnu dès son arrivée (attribut `Owner`), est
+  masqué ; son départ recale le temps affiché sur son plan à même distance le long de la piste (jauge recalée : pas de
+  saut, l'écart restant se résorbe en 0,35 s), puis la copie locale de ses pièces prend le relais du décoratif. L'avance
+  à résorber grandit d'un aller-retour : l'affichage ne descend pas sous 50 % de la vitesse (`FlightGhost.MIN_RATE`) et
+  rend la main vers 1 s sans latence, 1,6 à 1,7 s à 150 ms (simulé, tests Lune). Au-delà de `RELEASE_LEAD_MAX`
+  (0,4 s) de latence, le reste est un maintien à la main. Caméra de vol, coup de champ de vision, souffle et effets
+  du vol (#138) partent avec le décoratif. Lancer refusé (pas de départ du serveur après la latence + 0,3 s, couloir pas
+  en vol) : le décoratif s'efface en 0,15 s.
 - Les chocs sont annoncés à tous les clients (`Impact`), qui jouent sons, particules et popups.
 - Effets des comportements en vol (#138) : déduits du plan par chaque client d'après les attributs du mannequin lancé
   (section « Effets des comportements en vol »).

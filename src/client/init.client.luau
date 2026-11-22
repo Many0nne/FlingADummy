@@ -61,6 +61,18 @@ HubShops.init()
 ThrowController.init(player, remotes, gui)
 FlightCamera.init(player)
 LaunchGhost.init(player)
+-- Lâcher anticipé (#144) : le décoratif part dès le marqueur Release, sans attendre l'aller-retour du serveur ; la
+-- caméra de vol, le coup de champ de vision et le souffle partent avec lui
+ThrowController.onReleased = function(gauge: number)
+	local visual, scale = CharacterPoser.released()
+	if visual and LaunchGhost.anticipate(visual, scale, gauge) then
+		CharacterPoser.forgetReleased()
+		ThrowCinematic.finish()
+		FlightCamera.follow(visual, LaunchGhost.torso)
+		Effects.thrown(visual:GetPivot().Position)
+	end
+end
+ThrowController.onRefused = LaunchGhost.cancel
 FlightFx.init()
 Effects.init(player, remotes.Impact)
 TrapMotion.init()
@@ -81,8 +93,8 @@ remotes.LaunchStarted.OnClientEvent:Connect(function(model: Model, launch: any)
 	prizeToken += 1
 	ThrowCinematic.finish()
 	CharacterPoser.handOff()
-	-- Départ anticipé sur le plan du vol : pas de mannequin figé à l'apparition (#117) ; sans retarder l'écran de vol
-	-- si le torse se fait attendre
+	-- Départ anticipé sur le plan du vol : pas de mannequin figé à l'apparition (#117), recalage du décoratif parti au
+	-- lâcher (#144) ; sans retarder l'écran de vol si le torse se fait attendre
 	task.spawn(LaunchGhost.start, model, launch)
 	FlightView.show(model)
 	FlightCamera.follow(model, LaunchGhost.torso)
