@@ -156,6 +156,24 @@ return function(T, Loader)
 			T.expectNear(run.boostOff :: number, cues.boostTime + FlightFx.BOOST_SLACK, 2 * DT, "extinction bornée")
 		end)
 
+		T.it("compte la poussée depuis le lâcher quand le suivi commence en retard", function()
+			local rocket = dummyOf("Jetpack")
+			local v = launchVelocity(22e6)
+			local cues = FlightFx.cues(ORIGIN, v, G, rocket)
+			-- Torse arrivé 1,5 s après le lâcher, mannequin retenu (piège) avant la fin de la poussée
+			local tracker = FlightFx.tracker(cues, ORIGIN, v, 1.5)
+			local off: number? = nil
+			local t = 1.5
+			while t < 5 do
+				local frame = FlightFx.step(tracker, ORIGIN + Vector3.new(0, 20, 30), DT, 0)
+				if not frame.boosting and not off then
+					off = t
+				end
+				t += DT
+			end
+			T.expectNear(off :: number, cues.boostTime + FlightFx.BOOST_SLACK, 2 * DT, "extinction à l'heure du vol")
+		end)
+
 		T.it("n'allume rien pour un mannequin sans réacteur", function()
 			local v = launchVelocity(22e6)
 			local cues = FlightFx.cues(ORIGIN, v, G, dummyOf("Classic"))
@@ -349,6 +367,28 @@ return function(T, Loader)
 			for i = 2, 4 do
 				T.expectNear(run.bounces[i], contacts[i], 2 * DT, "boing " .. i .. " à son rebond")
 			end
+		end)
+
+		T.it("ne rejoue pas les rebonds déjà comptés quand le suivi commence en cours de vol", function()
+			local tracker = FlightFx.tracker(cues, ORIGIN, v, 6, 3)
+			local played = {}
+			local t = 0
+			while t < 2 do
+				local frame = FlightFx.step(tracker, Vector3.new(0, 1, 100 + 30 * t), DT, 3)
+				if frame.bounce then
+					table.insert(played, frame.bounce)
+				end
+				t += DT
+			end
+			T.expectEqual(#played, 0, "rien à rejouer")
+			local frame
+			for _ = 1, 40 do
+				frame = FlightFx.step(tracker, Vector3.new(0, 1, 200), DT, 4)
+				if frame.bounce then
+					break
+				end
+			end
+			T.expectEqual(frame.bounce, 4, "le suivant garde son rang")
 		end)
 
 		T.it("ignore les rebonds physiques non comptés et borne aux rebonds du plan", function()

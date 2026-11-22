@@ -24,6 +24,7 @@ type Record = { weld: Weld, carrier: BasePart, base: CFrame, spin: Vector3?, bob
 local animated: { [BasePart]: Record | true } = {}
 local resting: { [BasePart]: true } = {} -- pièces encore à poser à leur repos (mouvement réduit)
 local still = false -- mouvement réduit en cours
+local READ_EVERY = 1 -- le réglage de mouvement réduit est relu toutes les READ_EVERY s (il change rarement)
 
 -- Cette méthode permet de lire une fois les données d'animation d'une pièce étiquetée lorsque la boucle la rencontre ;
 -- true (réessayer plus tard) tant que sa soudure, sa pièce porteuse ou son repos ne sont pas arrivés (réplication).
@@ -120,8 +121,14 @@ function DummyFx.init()
 		animated[instance :: BasePart] = nil
 		resting[instance :: BasePart] = nil
 	end)
+	local readAt = -math.huge
 	RunService.Heartbeat:Connect(function()
-		local reduced = UIKit.reducedMotion()
+		local clock = os.clock()
+		local reduced = still
+		if clock - readAt >= READ_EVERY then
+			readAt = clock
+			reduced = UIKit.reducedMotion()
+		end
 		if reduced ~= still then
 			still = reduced
 			table.clear(resting)

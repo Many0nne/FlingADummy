@@ -312,11 +312,19 @@ local function start(model: Model)
 	local torso = model:FindFirstChild("Torso")
 	if not torso then
 		-- Réplication en plusieurs paquets (connexion lente) : le suivi démarre à l'arrivée du torse
-		local added
+		local added, gone
 		added = model.ChildAdded:Connect(function(child)
 			if child.Name == "Torso" then
 				added:Disconnect()
+				gone:Disconnect()
 				task.spawn(start, model)
+			end
+		end)
+		-- Mannequin retiré avant l'arrivée du torse : plus rien à attendre
+		gone = model.AncestryChanged:Connect(function()
+			if not model:IsDescendantOf(Workspace) then
+				added:Disconnect()
+				gone:Disconnect()
 			end
 		end)
 		return
@@ -324,11 +332,21 @@ local function start(model: Model)
 	if flights[model] or not torso:IsA("BasePart") or not model.Parent then
 		return
 	end
+	-- Suivi commencé en retard (arrivée en cours de vol, torse tardif) : temps du vol et rebonds déjà passés
+	local launchedAt = model:GetAttribute("LaunchTime")
+	local age = if typeof(launchedAt) == "number" then Workspace:GetServerTimeNow() - launchedAt else 0
+	local counted = model:GetAttribute("Bounces")
 	local root = UIKit.create("Folder", { Name = model.Name, Parent = folder })
 	local flight: Flight = {
 		model = model,
 		torso = torso,
-		tracker = FlightFxRules.tracker(cues, origin, velocity),
+		tracker = FlightFxRules.tracker(
+			cues,
+			origin,
+			velocity,
+			age,
+			if typeof(counted) == "number" then counted else 0
+		),
 		profile = FlightFxRules.profile(UIKit.reducedMotion()),
 		root = root,
 		jet = nil,
@@ -450,7 +468,7 @@ function FlightFx.init()
 	task.spawn(function()
 		local dummies = Workspace:WaitForChild("Course"):WaitForChild("Dummies")
 		rayParams.FilterDescendantsInstances = { dummies, folder }
-		-- Cette méthode permet de suivre un mannequin du dossier dès que son départ est lisible.
+		-- Cette méthode permet de suivre un mannequin lorsque il apparaît dans le dossier ou que son départ arrive.
 		local function watch(child: Instance)
 			if not child:IsA("Model") then
 				return

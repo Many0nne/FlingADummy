@@ -586,9 +586,10 @@ sien et ceux des voisins) :
   d'un autre joueur), 3 et 4 pour les vols du lanceur, joués avec le torse affiché à 0,9-4 studs du sol.
 - Pas d'écrasement (squash) du modèle au rebond : la copie affichée est celle du serveur dès le premier contact,
   ses pièces ne se déforment pas côté client sans casser leur assemblage.
-- **Déclenchement** : le serveur pose `LaunchOrigin`, `LaunchVelocity` et `ThrownIndex` sur le mannequin lancé ;
-  chaque client recalcule le plan (`FlightArc.plan`) et suit la position **affichée** du torse : copie locale du lanceur
-  (`Client.LaunchGhost`, son décalage) puis copie répliquée. Les effets sont portés par des pièces du client hors du
+- **Déclenchement** : le serveur pose `LaunchOrigin`, `LaunchVelocity`, `ThrownIndex` et `LaunchTime` sur le
+  mannequin lancé ; chaque client recalcule le plan (`FlightArc.plan`) et suit la position **affichée** du torse : copie
+  locale du lanceur (`Client.LaunchGhost`, son décalage) puis copie répliquée. Un suivi commencé en cours de vol (joueur
+  arrivé, torse répliqué tard) part de l'âge du vol et ne rejoue pas les rebonds déjà comptés. Les effets sont portés par des pièces du client hors du
   mannequin, placées à chaque image sur ce qui est affiché : pas de double effet au retour de la main.
 - **Lisibilité** : flamme et fumée collées au mannequin (quelques studs), traînées de 0,3 s, éclats du rebond de moins
   d'une seconde au point de contact : rien devant les obstacles pour la caméra de vol (captures :

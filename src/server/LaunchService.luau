@@ -139,8 +139,10 @@ local function startFlight(
 	-- Tête la première : l'axe vertical du mannequin suit la direction du lancer
 	dummy:PivotTo(CFrame.fromMatrix(origin, Vector3.xAxis, dir))
 	-- Départ du vol, lu par chaque client pour recalculer le plan (effets des comportements : Client.FlightFx, #138),
-	-- posé avant la réplication ; `Bounces` : rebonds réglés du caoutchouc
+	-- posé avant la réplication ; `LaunchTime` : heure du lâcher (suivi commencé en retard), `Bounces` : rebonds
+	-- réglés du caoutchouc
 	dummy:SetAttribute("LaunchOrigin", origin)
+	dummy:SetAttribute("LaunchTime", Workspace:GetServerTimeNow())
 	dummy:SetAttribute("LaunchVelocity", dir * speed)
 	dummy:SetAttribute("ThrownIndex", thrownIndex)
 	dummy:SetAttribute("Bounces", 0)

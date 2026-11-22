@@ -77,14 +77,15 @@ export type Frame = {
 }
 
 -- Cette méthode permet de démarrer le suivi des effets d'un vol lorsque le client voit apparaître le mannequin lancé
--- (repères `cues`, départ `origin`, vitesse de départ `velocity`).
-function FlightFx.tracker(cues: Cues, origin: Vector3, velocity: Vector3): Tracker
+-- (repères `cues`, départ `origin`, vitesse de départ `velocity`) ; `age` : temps déjà écoulé depuis le lâcher (s),
+-- `counted` : rebonds déjà comptés par le serveur, jamais rejoués (suivi commencé en cours de vol).
+function FlightFx.tracker(cues: Cues, origin: Vector3, velocity: Vector3, age: number?, counted: number?): Tracker
 	local horizontal = Vector3.new(velocity.X, 0, velocity.Z)
 	return {
 		cues = cues,
 		origin = origin,
 		flat = if horizontal.Magnitude > 1e-3 then horizontal.Unit else Vector3.zAxis,
-		time = 0,
+		time = math.max(age or 0, 0),
 		previous = nil,
 		vy = 0,
 		fall = 0,
@@ -93,7 +94,7 @@ function FlightFx.tracker(cues: Cues, origin: Vector3, velocity: Vector3): Track
 		gliding = false,
 		glided = false,
 		landed = false,
-		played = 0,
+		played = math.clamp(math.floor(counted or 0), 0, cues.bounces),
 		reboundAt = nil,
 		waitingSince = nil,
 		owedUntil = nil,
