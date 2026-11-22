@@ -415,8 +415,8 @@ La première heure finit sur le Plasma Dummy à 57 min ; l'attente suivante (Fro
 deuxième heure, où les écarts s'allongent comme prévu (Magma Glass ≈ 11 min après). Bruit : la médiane de 15 joueurs
 déplace les instants de ± 60 s selon les graines (plus grand écart de la première heure de 330 à 435 s sur 7 lots de 15
 joueurs avant #133, 330 à 390 s sur 4 lots après) ; 330 à 420 s sur 4 lots de 200 joueurs avant, 300 à 315 s sur 3 lots
-après. Le garde-fou `Progression.spec` mesure donc la première heure sur 200 joueurs (75 min simulées, ≈ 1 s), et l'ancien
-réglage y échoue (375 s). Jalons (60 joueurs, 14 h) : Plasma Dummy 57 min (60, − 5 %), Omega 90 min (94, − 4 %),
+après. Le garde-fou `Progression.spec` mesure donc la première heure sur 200 joueurs (75 min simulées : tests Lune de 1,7 à 3,1 s), et
+l'ancien réglage y échoue (375 s ; attente avant la fin de l'heure aussi bornée à 6 min). Jalons (60 joueurs, 14 h) : Plasma Dummy 57 min (60, − 5 %), Omega 90 min (94, − 4 %),
 Infinite 4,8 h (4,9), bout de piste 57 min (58), première renaissance 10,5 h (10,6) ; revenu à 60 min $727K/s ($758K/s),
 puissance 655 M (557 M) ; saut le plus fort du ratio × 1,67 (inchangé).
 
