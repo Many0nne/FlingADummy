@@ -75,8 +75,8 @@ base, il rapporte des $/s, seule source d'argent.
    surbrillance, invite « Place » (E). Le mannequin gagné va d'abord au **stock** (inventaire) et dans la **barre
    d'outils** Roblox (#54) : un lancer suivant sans poser l'y laisse et y ajoute le nouveau, rien ne se perd ; le
    panneau montre le dernier gagné. Ensuite, la pose passe par la barre : mannequin **équipé** près d'un présentoir
-   libre → invite « Place » ; le bouton **AUTO** (dans sa base ou à moins de 12 studs de sa clôture, vérifié aussi par
-   le serveur) pose le mannequin tenu, sinon le dernier gagné.
+   libre → invite « Place » ; le bouton **AUTO** (dans sa base ou à moins de 12 studs de sa clôture avant ou arrière,
+   4 sur les côtés : jamais depuis la base voisine, #120 ; vérifié aussi par le serveur) pose le mannequin tenu, sinon le dernier gagné.
 
 ## Mécanique secondaire : l'entraînement
 - Un appareil d'entraînement par joueur, devant sa base à côté de l'entrée (podium à tenons, râtelier de mannequins

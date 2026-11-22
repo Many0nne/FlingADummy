@@ -132,11 +132,13 @@ function CourseLayout.basePosition(index: number): Vector3
 end
 
 -- Cette méthode permet de savoir si un point est dans la base `index` ou à moins de BASE_REACH studs de sa clôture
--- (au sol, hauteur ignorée) lorsque le bouton AUTO de pose s'affiche ou que le serveur le valide.
+-- avant ou arrière (au sol, hauteur ignorée ; sur les côtés, pas au-delà du milieu du passage vers la base voisine)
+-- lorsque le bouton AUTO de pose s'affiche ou que le serveur le valide.
 function CourseLayout.isNearBase(index: number, position: Vector3): boolean
 	local center = CourseLayout.basePosition(index)
 	local reach = CourseLayout.BASE_REACH
-	return math.abs(position.X - center.X) <= CourseLayout.BASE_SIZE.X / 2 + reach
+	local side = math.min(reach, (CourseLayout.BASE_PITCH - CourseLayout.BASE_SIZE.X) / 2)
+	return math.abs(position.X - center.X) <= CourseLayout.BASE_SIZE.X / 2 + side
 		and math.abs(position.Z - center.Z) <= CourseLayout.BASE_SIZE.Z / 2 + reach
 end
 

@@ -61,11 +61,14 @@ function Leaderboard.score(value: any): number
 	return math.min(math.floor(value), Leaderboard.MAX_SCORE)
 end
 
--- Cette méthode permet de savoir s'il faut écrire le score `score` d'un joueur quand le dernier écrit pendant sa
--- session est `last` (nil : rien d'écrit encore) : seulement s'il a changé (un écrit par tableau et par joueur au plus
--- toutes les REFRESH s).
-function Leaderboard.shouldWrite(last: number?, score: number): boolean
-	return score ~= last
+-- Cette méthode permet de savoir s'il faut écrire le score `score` d'un joueur quand le classement en connaît `known`
+-- (dernier écrit pendant sa session, sinon valeur lue dans le top ; nil : inconnu) : seulement s'il a changé (un
+-- écrit par tableau et par joueur au plus toutes les REFRESH s), et pas un 0 qui n'effacerait rien de connu.
+function Leaderboard.shouldWrite(known: number?, score: number): boolean
+	if known == nil then
+		return score > 0
+	end
+	return score ~= known
 end
 
 -- Cette méthode permet d'écrire la valeur d'un tableau (« 3.6 km », « $12.3K/s », « 4 ») lorsque le tableau affiche

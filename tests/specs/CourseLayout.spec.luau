@@ -234,19 +234,25 @@ return function(T, Loader)
 			"vrai dans la base et jusqu'à BASE_REACH de sa clôture, faux au-delà et dans les autres bases",
 			function()
 				local center = CourseLayout.basePosition(1)
-				local half = CourseLayout.BASE_SIZE.X / 2
+				local half = CourseLayout.BASE_SIZE.Z / 2
 				T.expect(CourseLayout.isNearBase(1, center), "centre")
 				T.expect(
-					CourseLayout.isNearBase(1, center + Vector3.new(half + CourseLayout.BASE_REACH - 1, 5, 0)),
-					"bord"
+					CourseLayout.isNearBase(1, center + Vector3.new(0, 5, half + CourseLayout.BASE_REACH - 1)),
+					"devant l'entrée"
 				)
 				T.expect(
-					not CourseLayout.isNearBase(1, center + Vector3.new(half + CourseLayout.BASE_REACH + 1, 0, 0)),
+					not CourseLayout.isNearBase(1, center + Vector3.new(0, 0, half + CourseLayout.BASE_REACH + 1)),
 					"loin"
 				)
 				for index = 2, GameConfig.SLOT_COUNT do
 					T.expect(not CourseLayout.isNearBase(1, CourseLayout.basePosition(index)), "base " .. index)
 				end
+				-- Bases côte à côte : jamais près de la sienne depuis l'intérieur de la voisine
+				local neighbour = CourseLayout.basePosition(2)
+				local inside = neighbour - Vector3.new(CourseLayout.BASE_SIZE.X / 2 - 0.5, 0, 0)
+				T.expect(not CourseLayout.isNearBase(1, inside), "dans la base voisine")
+				T.expect(CourseLayout.isNearBase(1, CourseLayout.stationPosition(1)), "appareil d'entraînement")
+				T.expect(CourseLayout.isNearBase(1, CourseLayout.padPosition(1)), "pad d'achat")
 				T.expect(not CourseLayout.isNearBase(1, Vector3.new(0, 0, -8)), "bande de lancer")
 			end
 		)
