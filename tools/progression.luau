@@ -34,7 +34,7 @@ local TRAIN_TIME = 15 -- entraînement entre deux lancers (s)
 -- Distance (m) : premier contact au sol prévu par Shared.FlightArc (main à ORIGIN_HEIGHT au-dessus de la piste), plus
 -- SLIDE_SHARE de la glissade freinée théorique (le choc de l'atterrissage en mange une part ; mesuré en Studio, #113)
 local ORIGIN_HEIGHT = 5.3
-local SLIDE_SHARE = 1
+local SLIDE_SHARE = 0.4 -- 0,3 à 0,75 mesuré (#113) : obstacles et rebonds au point de chute
 -- Bonus des os et objets (part ajoutée à la CHANCE) : ≈ +30 % au départ, ≈ +55 % à 10,5 K de puissance (mesures #14)
 local BONUS_BASE, BONUS_PER_LOG = 0.3, 0.035
 
