@@ -154,13 +154,14 @@ L'équivalent des aliments de 01 et des graines de 09 : le mannequin qu'on lance
   | Mannequin | Prix | Chance | Comportement | Réglage |
   |---|---|---|---|---|
   | Crash Dummy | offert | 1.0x | Classic | densité 1,5, frottement 0,3, rebond 0,3 (le mannequin d'origine) |
-  | Rubber Dummy (rose, pompon) | $1.5K | 1.25x | Bouncy | frottement 0,05 ; chaque rebond au sol rend 85 % de la chute vers le haut et garde 85 % de l'élan vers l'avant |
+  | Rubber Dummy (rose, pompon) | $1.5K | 1.25x | Bouncy | frottement 0,05 ; 4 rebonds au sol (60 % de la chute rendue vers le haut à chacun, le premier à ≈ 35 studs), à élan constant et sans frein, pour + 15 % de la portée naturelle à l'arrêt (#130) |
   | Glass Dummy (verre, étiquette FRAGILE) | $40K | 1.5x | Fragile | chocs × 2 pour les os : plus d'os cassés (+2 % chacun) |
   | Steel Dummy (acier, plaques de lest) | $250K | 2.0x | Heavy | densité 8 : il défonce les obstacles au lieu d'y rebondir |
-  | Glider Dummy (vert, aile orange) | $1.2M | 2.5x | Glides | 70 % de la gravité compensée quand il descend (plus de 4 studs/s) |
-  | Rocket Dummy (rouge, réacteur) | $3M | 3.0x | Jetpack | poussée de 60 studs/s² vers l'avant pendant la 1re seconde |
+  | Glider Dummy (vert, aile orange) | $1.2M | 2.5x | Glides | redescend du sommet à vitesse tenue (≈ 40 studs/s depuis le plafond, au lieu d'une chute libre à 150), pour + 20 % de la portée naturelle (#130) |
+  | Rocket Dummy (rouge, réacteur) | $3M | 3.0x | Jetpack | poussée à plat vers l'avant pendant les 2 premières secondes (≈ + 25 % de vitesse), croisière allongée, pour + 20 % de la portée naturelle (#130) |
   Les pièges (`Shared.Traps`) remplacent la vitesse comme pour tous : le comportement reprend ensuite (portance,
-  rebond) ou est fini (poussée).
+  rebond) ou est fini (poussée). Réglages calculés par `FlightArc.plan` pour chaque vol (section « Comportements sous
+  le vol plafonné »).
 - **Suite du catalogue** (#94, `ThrowDummies.EXTENDED`) : 14 mannequins de 4x à 135x (« Ruby Rubber Dummy »,
   « Infinite Rocket Dummy »), chacun avec le comportement et la physique d'un des cinq ci-dessus sous une palette de
   `Shared.DummyFamilies`, prix calés par #15 ($12M à $200B, colonne `cost` de `ThrowDummies.EXTENDED`) ; seuls les six premiers sont exposés sur le
@@ -180,7 +181,8 @@ L'équivalent des aliments de 01 et des graines de 09 : le mannequin qu'on lance
   (multiplicateur déjà compté dans le chiffre).
 - **Sauvegarde** avec les données du joueur : `ThrowTier` (mannequins possédés : les N premiers) et `ThrowEquipped`,
   bornés au catalogue au chargement.
-- **Mesures** (Studio, `DebugLaunch` = 1, attribut `DebugThrowDummy`, 2 vols chacun ; détail dans la PR #14) :
+- **Mesures** (avant le vol plafonné : historique, voir #130 pour les valeurs actuelles ; Studio, `DebugLaunch` = 1,
+  attribut `DebugThrowDummy`, 2 vols chacun ; détail dans la PR #14) :
   | Mannequin | Puissance 10 : distance, CHANCE | Puissance 10,5 K : distance, CHANCE |
   |---|---|---|
   | Crash | 143-168 m, 1.76-1.81X | 1 139-1 167 m, 9.42-10.06X |
@@ -396,12 +398,14 @@ $548/s à 4:48 (simulé : $790/s à 5 min). Le Rubber Dummy rebondit bien plus l
 1. **Piste prolongée à 6 km** (#97) : six thèmes de plus après Moon Base, un tous les 600 m (section « Zones de la
    piste »), CHANCE des zones de × 18 à × 60. Joueur simulé rejoué (60 joueurs, 14 h, après #15 et #113) et vols mesurés en Studio
    (Crash Dummy, jauge pleine, `DebugLaunch`) :
-   | Fin de piste | Vitesse | Puissance | Atteinte (simulé) | CHANCE des zones | Vols mesurés (#113, 6 par puissance) |
+   | Fin de piste | Vitesse | Puissance (Crash Dummy) | Atteinte (simulé, #130 : mannequin équipé) | CHANCE des zones | Vols mesurés (#113, 6 par puissance) |
    |---|---|---|---|---|---|
-   | 2,4 km (fin de Moon Base) | 557 | 760 K | 30 min | × 18 | (#14, #33) |
-   | 3,6 km (Neon City) | 685 | 22 M | 57 min | × 27 | 3 590 à 3 630 m |
-   | 4,8 km (Haunted Castle) | 791 | 360 M | 117 min | × 40 | 4 867 à 4 991 m, 5 021 à 5 510 m après un piège |
-   | 6 km (bout) | 886 | 4,4 B | 4,2 h | × 60 | bout de piste 6 fois sur 6 (6 043-6 048 m) |
+   | 2,4 km (fin de Moon Base) | 557 | 760 K | 25 min (30 avant #130) | × 18 | (#14, #33) |
+   | 3,6 km (Neon City) | 685 | 22 M | 56 min (57) | × 27 | 3 590 à 3 630 m |
+   | 4,8 km (Haunted Castle) | 791 | 360 M | 72 min (117) | × 40 | 4 867 à 4 991 m, 5 021 à 5 510 m après un piège |
+   | 6 km (bout) | 886 | 4,4 B | 3,4 h (4,2 h) | × 60 | bout de piste 6 fois sur 6 (6 043-6 048 m) |
+   Depuis #130, le joueur simulé compte la distance du mannequin équipé (Golden Rocket à 66 min : 4,8 km atteints avec
+   ≈ 40 % de puissance en moins).
    Avant #113, les vols montaient à ≈ 590 studs à 4,4 B puis glissaient au hasard (4,1 à 6,0 km à 4,4 B, mesures de
    #97) ; le vol plafonné (#113, section « Vol plafonné ») tient ces paliers à ± 2 % hors pièges. Effet simulé de la
    piste de 6 km : CHANCE finale × 3,3 (17 K au lieu de 5,1 K à 24 h), Divine à 7,1 h au lieu de 12,3 h.
@@ -438,6 +442,39 @@ le faisait monter toujours plus haut (≈ 590 studs à 4,4 B, carte vue de très
 - **Joueur simulé recalé** : distance = premier contact de `FlightArc.plan` + 0,4 × la glissade théorique
   (`tools/ProgressionSim.luau`). Temps rejoués avec l'économie de #15 (60 joueurs, 14 h) : achats décalés de 0 à
   0,2 h (Infinite Rocket 9,4 h au lieu de 9,6 h), bout de piste 4,2 h au lieu de 4,6 h.
+
+### Comportements sous le vol plafonné (#130, `Shared.FlightArc`)
+Mesurés après #113, le Rocket ne gagnait plus que + 1,6 % (sa poussée finissait avant la croisière, dont la fin était
+calculée sans elle), le Rubber partait au hasard (3,6 à 5,5 km à 22 M : ± 21 %, rebonds physiques) et le Glider
+variait de 4,2 à 5 km. Décision : **chaque comportement gagne une part fixe de la portée naturelle** (l'arc du Crash
+Dummy à même puissance et jauge), quelle que soit la puissance, sans passer le plafond :
+- `ThrowDummies` donne la part (`glide`, `thrust`, `bounce`) ; `FlightArc.plan` en tire les réglages du vol : poussée
+  (studs/s²) qui ajoute la part au point de chute de l'arc naturel, fin de croisière reculée d'autant ; vitesse de
+  descente tenue du planeur qui allonge sa descente de la part × durée de l'arc ; élan des rebonds du caoutchouc qui
+  ajoute la part à l'arrêt (glissade plus courte comprise).
+- **Rocket** (+ 20 %) : pousse à plat pendant 2 s (montée et début de croisière), vitesse ≈ + 25 %, croisière plus
+  longue au plafond. **Glider** (+ 20 %) : quitte le plafond au même point que le Crash Dummy et redescend à
+  ≈ 40 studs/s (≈ 2,5 s de descente au lieu de 1,3). **Rubber** (+ 15 %) : 4 rebonds de hauteur fixe (≈ 35, 13, 4,5
+  et 1,7 studs), élan rétabli à chaque rebond, pas de frein au sol entre deux rebonds ; rebond reconnu sur la chute la
+  plus forte depuis le précédent (les membres touchent souvent avant le torse), au plus les 4 du plan (les petits
+  rebonds physiques ne comptent pas).
+- Sol plat (test Lune, de 200 à 4,4 B de puissance) : Rubber + 14,5 %, Glider + 18,5 %, Rocket + 22,5 % à l'arrêt
+  (part de la portée naturelle, plus la glissade du Rocket plus rapide).
+- **Mesures** (Studio, `DebugLaunchBots` avec `DebugBotsPower` et `DebugBotsDummy`, jauge pleine, 3 couloirs ; 6 vols
+  par mannequin à 22 M et 4,4 B, 3 à 360 M et 1 M ; distance finale, durée du vol) :
+  | Puissance | Crash | Rubber avant → après | Glider avant → après | Rocket avant → après |
+  |---|---|---|---|---|
+  | 22 M | 3 584-3 624 m, 7,5-8,5 s | 3 611-5 537 m (± 21 %) → **4 206-4 267 m (+ 17 %, ± 0,7 %)**, 4 rebonds, 10,5-11,4 s | 4 212-4 989 m (± 8 %) → **4 310-4 577 m (+ 23 %, ± 3 %)**, 8,9-9,6 s | 3 650-3 669 m (+ 1,6 %) → **4 384-4 694 m (+ 24 %, ± 3,4 %)**, 7,9-8,6 s ; 5 501 m après un piège |
+  | 360 M | 4 834-4 907 m | → 5 201-5 552 m (+ 7 à + 14 %) | → bout de piste (6 037 m) | → 5 751-5 770 m (+ 19 %) |
+  | 1 M | 2 451-2 500 m | → 3 300 m (piège vers 2,9 km, 3 sur 3) | → 3 007 m (+ 21 %), 2 vols sur 3 projetés par un piège | → 3 018 m (+ 22 %), idem |
+  | 4,4 B | 6 044-6 049 m, 9,8-15,4 s | bout de piste avant comme après, 13,1-16 s | bout de piste, 9,1-11,5 s | bout de piste, 7,8-7,9 s |
+  Premier contact au point du plan (Glider 4 192 m, Rocket 4 197 m, prévus 4 211 m à 22 M) ; sommet 100 studs (101
+  au plus) pour tous ; vol le plus long 16 s (Rubber à 4,4 B) : `MAX_FLIGHT_TIME` (20 s) suffit. À 4,4 B le Crash
+  Dummy finit déjà contre la paroi : l'avantage s'y lit en CHANCE de zone avant le bout de piste, pas à l'arrivée.
+- **Joueur simulé** : distance et CHANCE du mannequin équipé (`ProgressionSim.distanceFor` avec son comportement,
+  glissade à la vitesse d'arrivée du plan). Rejoué (60 joueurs, 14 h) : achats décalés de − 6 à + 3 min (Amber Glider
+  59 min au lieu de 61, Magma Glass 102 min au lieu de 108, Infinite Rocket 9,7 h au lieu de 9,4 h), saut le plus fort
+  inchangé (× 1,73), bout de piste 3,4 h au lieu de 4,2 h.
 
 ### Renaissance (#108, `Shared.Rebirth`)
 Le levier après tout le catalogue d'achats (≈ 11,5 h simulées depuis #15 ; 9,6 h avant), comme la
