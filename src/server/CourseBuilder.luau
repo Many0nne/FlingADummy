@@ -975,9 +975,15 @@ local function keepPrevious(base: Base, old: Folder)
 		store.Parent = ReplicatedStorage
 	end
 	local earlier = store:FindFirstChild(base.model.Name)
+	if earlier and earlier:GetAttribute("KeptAt") == time() then
+		-- Deux montées dans la même image : les clients n'ont vu que le premier habillage, gardé
+		old:Destroy()
+		return
+	end
 	if earlier then
 		earlier:Destroy()
 	end
+	old:SetAttribute("KeptAt", time())
 	old.Name = base.model.Name
 	old.Parent = store
 	task.delay(BaseUpgrade.KEEP, function()
@@ -987,13 +993,12 @@ local function keepPrevious(base: Base, old: Folder)
 	end)
 end
 
--- Cette méthode permet d'habiller une base au palier visuel `tier` (Shared.BaseLook : sol, clôture, décor) lorsque son
--- propriétaire change ou achète un présentoir ; sans effet si la base a déjà ce palier. `upgrade` (achat qui monte de
--- palier) : l'état final est posé tout de suite et chaque client joue l'animation de construction (Shared.BaseUpgrade).
-function CourseBuilder.styleBase(slot: Slot, tier: number, upgrade: boolean?)
+-- Cette méthode permet d'habiller une base au palier `tier` (`upgrade` : animée par les clients, Shared.BaseUpgrade)
+-- lorsque son propriétaire change ou achète un présentoir ; renvoie false si la base avait déjà ce palier.
+function CourseBuilder.styleBase(slot: Slot, tier: number, upgrade: boolean?): boolean
 	local base = slot.base
 	if base.tier == tier then
-		return
+		return false
 	end
 	local look, fence = BaseLook.base(tier)
 	-- Nouvel habillage posé avant de retirer l'ancien : la clôture ne disparaît jamais
@@ -1070,6 +1075,7 @@ function CourseBuilder.styleBase(slot: Slot, tier: number, upgrade: boolean?)
 	end
 	base.look = folder
 	base.tier = tier
+	return true
 end
 
 -- Cette méthode permet de construire la base d'une place (terrain, présentoirs vides, texte flottant, confettis

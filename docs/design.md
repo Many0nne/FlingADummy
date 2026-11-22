@@ -655,7 +655,8 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
   Throw Power « 💪 1.2K » en cyan (renaissances « 🌟 3 » en violet à côté, #108), mis à jour en direct (achat, pose,
   entraînement, record) ; « EMPTY BASE · $0/s » sans joueur. Taille en studs plus une marge en pixels : lisible de
   près et à travers tout le hub (affiché jusqu'à 600 studs). Comparaison entre joueurs d'un coup d'œil ; plus de panneau à l'entrée.
-  Sans chevauchement (#150) : chaque client borne la largeur du texte à 44 studs à sa distance
+  Sans chevauchement vu de face (#150 : depuis la bande, vue haute ; en enfilade le long de la rangée, des textes à des
+  profondeurs différentes peuvent encore se recouvrir) : chaque client borne la largeur du texte à 44 studs à sa distance
   (`BaseLook.labelPixels`, `Client.BaseFx` : 4 studs d'écart avec le texte voisin, 48 studs d'un centre à l'autre),
   taille d'avant inchangée de près et depuis la bande ; texte ancré par son bas à 26 studs (il grandit vers le haut :
   nom, revenu et record restent au-dessus des mannequins géants vus de la bande) ; l'étiquette d'un mannequin posé

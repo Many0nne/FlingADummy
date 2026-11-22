@@ -170,23 +170,22 @@ local function updateLabel(slot: Slot, player: Player?)
 	label.avatar.Image = if player and portrait then string.format(HEADSHOT, player.UserId) else ""
 end
 
--- Cette méthode permet d'habiller la base au palier visuel de ses présentoirs achetés (Shared.BaseLook) lorsque la base
--- est rendue ; quand son propriétaire vient d'en acheter un (pas à son arrivée) : animation de construction s'il monte
--- de palier (confettis à la fin, Client.BaseFx), sinon confettis tout de suite.
+-- Cette méthode permet d'habiller la base au palier de ses présentoirs achetés lorsque la base est rendue ; achat qui
+-- monte de palier : animation de construction (confettis à la fin, Client.BaseFx), autre achat : confettis tout de suite.
 local function styleTier(slot: Slot, player: Player?, ready: boolean, displays: number)
 	local tier = BaseLook.baseTier(displays)
 	local previous = styled[slot.index]
 	local bought = ready and player ~= nil and previous ~= nil and previous.player == player
 	local upgrade = bought and previous ~= nil and tier > previous.tier
-	if bought and not upgrade and previous and displays > previous.displays then
-		CourseBuilder.celebrate(slot.base.burst)
-	end
 	if ready and player then
 		styled[slot.index] = { player = player, tier = tier, displays = displays }
 	else
 		styled[slot.index] = nil
 	end
-	CourseBuilder.styleBase(slot, tier, upgrade)
+	local animated = CourseBuilder.styleBase(slot, tier, upgrade) and upgrade
+	if bought and not animated and previous and displays > previous.displays then
+		CourseBuilder.celebrate(slot.base.burst)
+	end
 end
 
 -- Cette méthode permet de reconstruire les mannequins posés d'une place (vide si personne ne l'occupe), d'habiller ses

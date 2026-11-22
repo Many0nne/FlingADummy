@@ -118,11 +118,11 @@ local function pose(piece: Piece, lift: number, fade: number)
 	end
 end
 
--- Cette méthode permet d'arrêter l'animation d'une base lorsqu'elle se termine, qu'une autre la remplace ou que le
--- serveur change l'habillage : pièces rendues telles que le serveur les a posées (même rangées par lui pour une
--- animation suivante), sol à sa couleur finale si l'habillage est toujours celui de la base.
+-- Cette méthode permet de rendre les pièces et le sol tels que le serveur les a posés lorsque l'animation d'une base
+-- se termine, qu'une autre la remplace ou que le serveur change l'habillage.
 local function stop(run: Run)
 	runs[run.base] = nil
+	-- Pièces rendues même si le serveur a rangé l'habillage pour une animation suivante ; sol seulement s'il est à jour
 	if run.look.Parent then
 		for _, piece in run.pieces do
 			settle(piece)
@@ -147,6 +147,11 @@ local function impact(run: Run, piece: Piece, now: number)
 		return
 	end
 	run.lastSound = now
+	-- Son porté par son propre point (pas celui de la poussière, qui se déplace), sous le terrain : il survit à l'animation
+	local source = Instance.new("Attachment")
+	source.WorldPosition = piece.bottom
+	source.Parent = Workspace.Terrain
+	Debris:AddItem(source, 3)
 	local definition = Sounds.Brick
 	local sound = Instance.new("Sound")
 	sound.SoundId = definition.id
@@ -154,9 +159,8 @@ local function impact(run: Run, piece: Piece, now: number)
 	sound.PlaybackSpeed = 0.95 + math.random() * 0.3
 	sound.RollOffMinDistance = 30
 	sound.RollOffMaxDistance = 300
-	sound.Parent = attachment
+	sound.Parent = source
 	sound:Play()
-	Debris:AddItem(sound, 3)
 end
 
 -- Cette méthode permet de poser l'émetteur de poussière d'une animation (pièce invisible au centre de la base) lorsque
@@ -352,9 +356,8 @@ local function project(camera: Camera, position: Vector3): (Vector2?, number)
 	return Vector2.new(point.X, point.Y), point.Z
 end
 
--- Cette méthode permet de borner la taille du texte flottant de chaque base à sa distance (largeur sous l'écart entre
--- deux bases) et de masquer l'étiquette d'un mannequin posé qui passerait devant l'un de ces textes (#150) lorsque
--- RenderStepped tourne.
+-- Cette méthode permet de borner la largeur du texte de chaque base et de masquer l'étiquette d'un mannequin posé qui
+-- passerait devant l'un de ces textes (#150) lorsque RenderStepped tourne.
 local function arrangeLabels()
 	local camera = Workspace.CurrentCamera
 	if not camera then
