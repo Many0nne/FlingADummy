@@ -493,12 +493,15 @@ Dummy à même puissance et jauge), quelle que soit la puissance, sans passer le
   revérifiés sur le code final) :
   | Puissance | Crash | Rubber avant → après | Glider avant → après | Rocket avant → après |
   |---|---|---|---|---|
-  | 22 M | 3 584-3 624 m, 7,5-8,5 s | 3 611-5 537 m (± 21 %) → **4 186-4 304 m (+ 17 %)**, un vol à 3 872 m (± 5 %), 2 à 4 rebonds, 10,5-11,9 s | 4 212-4 989 m (± 8 %) → **4 310-4 577 m (+ 24 %, ± 3 %)**, 8,9-9,7 s | 3 650-3 669 m (+ 1,6 %) → **4 320-4 694 m (+ 23 %, ± 4 %)**, 7,6-9 s ; 5 501 m après un piège |
+  | 22 M | 3 584-3 624 m, 7,5-8,5 s | 3 611-5 537 m (± 21 %) → **4 186-4 304 m (+ 17 %)**, un vol à 3 872 m (dispersion ± 5 % avec lui), 2 à 4 rebonds, 10,5-11,9 s | 4 212-4 989 m (± 8 %) → **4 310-4 577 m (+ 24 %, ± 3 %)**, 8,9-9,7 s | 3 650-3 669 m (+ 1,6 %) → **4 320-4 694 m (+ 23 %, ± 4 %)**, 7,6-9 s ; 5 501 m après un piège |
   | 360 M | 4 834-4 907 m | → 5 201-5 819 m (+ 7 à + 20 %) | → bout de piste (6 037 m) | → 5 751-5 770 m (+ 19 %) |
   | 1 M | 2 451-2 500 m | → 3 300 m (piège vers 2,9 km, 3 sur 3) | → 3 007 m (+ 21 %), 2 vols sur 3 projetés par un piège | → 3 018 m (+ 22 %), idem |
   | 4,4 B | 6 044-6 049 m, 9,8-15,4 s | bout de piste avant comme après, 13,1-16 s | bout de piste, 9,1-11,5 s | bout de piste, 7,8-7,9 s |
-  Premier contact au point du plan (Glider 4 192 m, Rocket 4 197 m, prévus 4 211 m à 22 M) ; sommet 100 studs (101
-  au plus) pour tous ; vol le plus long 16 s (Rubber à 4,4 B) : `MAX_FLIGHT_TIME` (20 s) suffit. À 4,4 B le Crash
+  Premier contact au point du plan (Glider 4 192 m, Rocket 4 197 m, prévus 4 211 m ; Crash et Rubber 3 506-3 523 m,
+  prévus 3 508 m, à 22 M). Glissade après le premier contact à 22 M : Crash 61-104 m (un vol à 249 m), Rubber 664-798 m
+  (rebonds compris), Glider 118-385 m, Rocket 124-497 m (vitesse plus haute). Moyennes à 22 M dans la cible
+  (+ 17 à + 24 %), vols isolés jusqu'à + 28 %. Sommet 100 studs pour tous (101 au plus : l'asservissement de
+  croisière dépasse d'un stud, comme pour le Crash Dummy de #113) ; vol le plus long 16 s (Rubber à 4,4 B) : `MAX_FLIGHT_TIME` (20 s) suffit. À 4,4 B le Crash
   Dummy finit déjà contre la paroi : l'avantage s'y lit en CHANCE de zone avant le bout de piste, pas à l'arrivée.
 - **Joueur simulé** : distance et CHANCE du mannequin équipé (`ProgressionSim.distanceFor` avec son comportement,
   glissade à la vitesse d'arrivée du plan). Rejoué sur l'économie de #129 (60 joueurs, 14 h) : achats avancés de 0 à
