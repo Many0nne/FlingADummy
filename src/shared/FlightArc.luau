@@ -24,6 +24,7 @@ FlightArc.GLIDE_GAIN = 10 -- rappel vers la vitesse de descente du planeur (1/s)
 FlightArc.TORSO_REST = 1 -- hauteur du torse posé sur la piste (studs) : vitesse de chute au premier rebond
 FlightArc.BOUNCE_RESTITUTION = 0.6 -- part de la vitesse de chute rendue vers le haut à chaque rebond
 FlightArc.BOUNCE_MIN_FALL = 20 -- chute (studs/s) arrêtée net en une frame qui compte comme un rebond au sol
+FlightArc.BOUNCE_DETECT = 0.75 -- un rebond prévu est reconnu dès 75 % de BOUNCE_MIN_FALL (sol un peu plus haut, frames)
 FlightArc.BOUNCE_STOP = -2 -- vitesse verticale (studs/s) au-dessus de laquelle la chute est arrêtée
 
 -- "Rise" : montée freinée vers le plafond ; "Cruise" : à plat au plafond ; "Free" : arc naturel ou chute après la
@@ -79,9 +80,8 @@ local function sinkFor(height: number, duration: number, gravity: number): numbe
 	return gravity * (duration - math.sqrt(math.max(duration * duration - 2 * height / gravity, 0)))
 end
 
--- Cette méthode permet de donner les vitesses de départ des rebonds d'un mannequin qui touche le sol en tombant à
--- `fall` studs/s (chaque rebond rend BOUNCE_RESTITUTION de la chute, tant qu'elle dépasse BOUNCE_MIN_FALL) lorsque le
--- plan d'un mannequin rebondissant se calcule.
+-- Cette méthode permet de donner les vitesses de départ des rebonds (BOUNCE_RESTITUTION de chaque chute de plus de
+-- BOUNCE_MIN_FALL) lorsque le plan d'un mannequin qui touche le sol en tombant à `fall` studs/s se calcule.
 local function bounceSpeeds(fall: number): { number }
 	local ups = {}
 	while fall > FlightArc.BOUNCE_MIN_FALL do
@@ -190,13 +190,20 @@ function FlightArc.startPhase(plan: Plan): Phase
 	return if plan.capped then "Rise" else "Free"
 end
 
--- Cette méthode permet de donner l'accélération propre au mannequin lancé (portance du planeur qui tient sa vitesse de
--- descente, en l'air comme en glissade sur une pente ; poussée du réacteur au départ, vers l'avant à plat `forward`)
--- lorsque le serveur avance le vol d'une frame ; `elapsed` : temps depuis le lâcher (s).
-function FlightArc.accel(plan: Plan, velocity: Vector3, forward: Vector3, elapsed: number, gravity: number): Vector3
+-- Cette méthode permet de donner l'accélération propre du mannequin (portance du planeur, sauf juste après un piège :
+-- `coasting` ; poussée du réacteur `elapsed` s après le lâcher) lorsque le serveur avance le vol d'une frame.
+function FlightArc.accel(
+	plan: Plan,
+	velocity: Vector3,
+	forward: Vector3,
+	elapsed: number,
+	gravity: number,
+	coasting: boolean?
+): Vector3
 	local accel = Vector3.zero
 	local sink = plan.sink
-	if sink and velocity.Y < -sink then
+	-- Pas de portance pendant la poussée d'un piège (presse qui écrase, trampoline) : son effet se voit
+	if sink and velocity.Y < -sink and not coasting then
 		accel += Vector3.new(0, gravity + FlightArc.GLIDE_GAIN * (-sink - velocity.Y), 0)
 	end
 	if plan.boost > 0 and elapsed < plan.boostTime then
@@ -208,10 +215,8 @@ function FlightArc.accel(plan: Plan, velocity: Vector3, forward: Vector3, elapse
 	return accel
 end
 
--- Cette méthode permet de donner la vitesse du torse après le rebond `done + 1` du plan d'un mannequin rebondissant
--- (chute arrêtée cette frame : `before` → `after`, de plus de BOUNCE_MIN_FALL au plus fort) lorsque le serveur avance
--- le vol ; `fall` : chute la plus forte depuis le dernier rebond (studs/s : les membres touchent souvent avant le
--- torse, qui ralentit sur plusieurs frames) ; nil sans rebond (pas de chute arrêtée, ou rebonds prévus tous faits).
+-- Cette méthode permet de donner la vitesse après le rebond `done + 1` du plan (chute `fall` au plus fort, arrêtée cette
+-- frame : `before` → `after`) lorsque le serveur avance le vol d'un mannequin rebondissant ; nil sans rebond.
 function FlightArc.bounce(
 	plan: Plan,
 	before: Vector3,
@@ -223,11 +228,13 @@ function FlightArc.bounce(
 	local speed = plan.bounceSpeed
 	local up = plan.bounceUps[(done or 0) + 1]
 	local flat = Vector3.new(forward.X, 0, forward.Z)
+	-- Chute la plus forte depuis le dernier rebond : les membres touchent souvent avant le torse, qui ralentit sur
+	-- plusieurs frames
 	local falling = math.max(fall or 0, -before.Y)
 	if
 		not speed
 		or not up
-		or falling <= FlightArc.BOUNCE_MIN_FALL
+		or falling <= FlightArc.BOUNCE_MIN_FALL * FlightArc.BOUNCE_DETECT
 		or before.Y >= FlightArc.BOUNCE_STOP
 		or after.Y < FlightArc.BOUNCE_STOP
 		or flat.Magnitude < 1e-3

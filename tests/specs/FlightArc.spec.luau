@@ -387,6 +387,7 @@ return function(T, Loader)
 	end)
 
 	T.describe("FlightArc.accel et FlightArc.bounce", function()
+		-- Cette méthode permet de donner le plan d'un vol à 22 M du mannequin `name` lorsque l'on vérifie son comportement.
 		local function planOf(name: string): FlightArc.Plan
 			local speed = Economy.launchSpeed(2.2e7)
 			return FlightArc.plan(speed * math.cos(PITCH), speed * math.sin(PITCH), ORIGIN_HEIGHT, G, dummyOf(name))
@@ -399,6 +400,11 @@ return function(T, Loader)
 			T.expectEqual(FlightArc.accel(plan, Vector3.new(0, -sink + 1, 80), FORWARD, 2, G), Vector3.zero)
 			T.expectNear(FlightArc.accel(plan, Vector3.new(0, -sink - 0.01, 80), FORWARD, 2, G).Y, G, 0.5, "tient")
 			T.expect(FlightArc.accel(plan, Vector3.new(0, -sink - 20, 80), FORWARD, 2, G).Y > G, "rattrape")
+			T.expectEqual(
+				FlightArc.accel(plan, Vector3.new(0, -150, 80), FORWARD, 2, G, true),
+				Vector3.zero,
+				"laisse agir un piège (presse)"
+			)
 		end)
 
 		T.it("le caoutchouc rebondit à élan et hauteur du plan, seulement sur une chute arrêtée", function()
@@ -440,6 +446,8 @@ return function(T, Loader)
 		T.it("ne freine pas l'élan d'un rebond en cours, freine après", function()
 			local v = FlightArc.brake(Vector3.new(0, 40, 300), FORWARD, 1, 0.1, false, true)
 			T.expectNear(v.Z, 300, 1e-9)
+			local after = FlightArc.brake(Vector3.new(0, 40, 300), FORWARD, 1, 0.1, false, false)
+			T.expectNear(after.Z, 300 - GameConfig.GROUND_BRAKE * 0.1, 1e-6, "freiné une fois le rebond fini")
 		end)
 	end)
 

@@ -652,9 +652,11 @@ end
 -- lorsque le vol avance d'une frame ; les vitesses de référence suivent (pas de choc).
 local function applyBehavior(flight: Flight, elapsed: number, dt: number, before: Vector3?, impact: boolean)
 	local velocity = flight.torso.AssemblyLinearVelocity
-	local change = FlightArc.accel(flight.arc, velocity, flight.forward, elapsed, Workspace.Gravity) * dt
+	-- Un piège vient d'agir : ni portance ni rebond ne remplacent sa poussée, et le frein attend (TRAP_COAST)
+	local coasting = flight.lastTrap ~= nil and os.clock() - flight.lastTrap.at < FlightArc.TRAP_COAST
+	local change = FlightArc.accel(flight.arc, velocity, flight.forward, elapsed, Workspace.Gravity, coasting) * dt
 	local armed = elapsed > GameConfig.IMPACT_GRACE_TIME
-	if before and armed then
+	if before and armed and not coasting then
 		local bounced = FlightArc.bounce(flight.arc, before, velocity, flight.forward, flight.fall, flight.bounces)
 		if bounced then
 			change += bounced - velocity
@@ -675,7 +677,7 @@ local function applyBehavior(flight: Flight, elapsed: number, dt: number, before
 		armed = armed,
 		impact = armed and impact,
 		trapped = flight.trapped,
-		coasting = flight.lastTrap ~= nil and os.clock() - flight.lastTrap.at < FlightArc.TRAP_COAST,
+		coasting = coasting,
 		bouncing = elapsed < flight.bounceUntil,
 		dt = dt,
 		gravity = Workspace.Gravity,
@@ -741,9 +743,8 @@ local function step(flight: Flight, dt: number)
 	end
 end
 
--- Cette méthode permet de lancer `count` mannequins de test depuis les places libres (jauge au maximum ; puissance
--- DebugBotsPower, sinon celle du joueur ; mannequin à lancer DebugBotsDummy, sinon le Crash Dummy) lorsque l'on mesure
--- plusieurs vols simultanés dans Studio sans autres joueurs, sans toucher à la sauvegarde du joueur.
+-- Cette méthode permet de lancer `count` mannequins de test depuis les places libres (jauge pleine, DebugBotsPower et
+-- DebugBotsDummy du joueur s'ils sont posés) lorsque l'on mesure des vols dans Studio sans toucher à sa sauvegarde.
 local function launchBots(player: Player, count: number)
 	local botPower = player:GetAttribute("DebugBotsPower")
 	local power = if typeof(botPower) == "number"
