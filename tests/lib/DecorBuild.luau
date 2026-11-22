@@ -236,9 +236,12 @@ function DecorBuild.build(Loader): any
 						else ""
 					calls += 1
 					source = name .. "." .. key .. detail .. " #" .. calls
-					local results = table.pack(fn(first, ...))
+					local results = table.pack(pcall(fn, first, ...))
 					source = "CourseBuilder"
-					return table.unpack(results, 1, results.n)
+					if not results[1] then
+						error(results[2], 0)
+					end
+					return table.unpack(results, 2, results.n)
 				end
 			end
 		end

@@ -82,6 +82,7 @@ end
 -- Cette méthode permet de poser des éléments voisins (`fn(...)`) contre les blocs de `area` lorsqu'ils se chevauchent :
 -- chaque bloc qui affleure un bloc de la zone ressort de SurfaceGap.STEP et s'y ajoute.
 function Build.within(area: SurfaceGap.Area, fn: (...any) -> ...any, ...: any): ...any
+	assert(placed == nil or placed == area, "Build.within : une autre zone est en cours de pose")
 	return run(area, true, fn, ...)
 end
 
@@ -95,7 +96,7 @@ end
 -- Cette méthode permet de poser un élément de décor d'un tenant (`fn(...)`) lorsque ses blocs se chevauchent : un bloc
 -- qui affleure un bloc déjà posé de l'élément en ressort de SurfaceGap.STEP.
 function Build.settled(fn: (...any) -> ...any, ...: any): ...any
-	return Build.within(SurfaceGap.area(), fn, ...)
+	return run(placed or SurfaceGap.area(), true, fn, ...)
 end
 
 -- Cette méthode permet de créer une pièce décorative sans collision ni requête lorsque l'on pose un élément que le

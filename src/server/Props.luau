@@ -1555,6 +1555,7 @@ end
 -- #93)
 for name, fn in Props :: any do
 	if type(fn) == "function" then
+		-- Cette méthode permet de poser l'élément `name` d'un tenant lorsqu'il est demandé.
 		(Props :: any)[name] = function(...)
 			return Build.settled(fn, ...)
 		end
