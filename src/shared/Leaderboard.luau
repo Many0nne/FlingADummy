@@ -52,19 +52,20 @@ Leaderboard.BOARDS = {
 export type Entry = { userId: number, value: number, name: string? }
 
 -- Cette méthode permet de donner le score entier à écrire dans le classement pour la valeur `value` d'un joueur
--- (arrondi à l'unité inférieure, borné à MAX_SCORE) ; nil si elle n'est pas un nombre ou vaut moins de 1 (rien
--- d'utile à classer).
-function Leaderboard.score(value: any): number?
+-- (arrondi à l'unité inférieure, borné à MAX_SCORE) ; 0 si elle n'est pas un nombre ou vaut moins de 1 : écrit quand
+-- même, il efface un ancien score (revenu retombé à zéro, sauvegarde remise à zéro) et n'est jamais affiché.
+function Leaderboard.score(value: any): number
 	if type(value) ~= "number" or value ~= value or value < 1 then
-		return nil
+		return 0
 	end
 	return math.min(math.floor(value), Leaderboard.MAX_SCORE)
 end
 
--- Cette méthode permet de savoir s'il faut écrire le score `score` d'un joueur quand le dernier écrit est `last` :
--- seulement s'il existe et a changé (un écrit par tableau et par joueur au plus toutes les REFRESH s).
-function Leaderboard.shouldWrite(last: number?, score: number?): boolean
-	return score ~= nil and score ~= last
+-- Cette méthode permet de savoir s'il faut écrire le score `score` d'un joueur quand le dernier écrit pendant sa
+-- session est `last` (nil : rien d'écrit encore) : seulement s'il a changé (un écrit par tableau et par joueur au plus
+-- toutes les REFRESH s).
+function Leaderboard.shouldWrite(last: number?, score: number): boolean
+	return score ~= last
 end
 
 -- Cette méthode permet d'écrire la valeur d'un tableau (« 3.6 km », « $12.3K/s », « 4 ») lorsque le tableau affiche
@@ -91,7 +92,7 @@ function Leaderboard.merge(stored: { Entry }, live: { Entry }, size: number?): {
 	end
 	local list: { Entry } = {}
 	for _, entry in byUser do
-		if Leaderboard.score(entry.value) then
+		if Leaderboard.score(entry.value) >= 1 then
 			table.insert(list, entry)
 		end
 	end

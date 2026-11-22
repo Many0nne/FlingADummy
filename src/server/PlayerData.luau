@@ -150,6 +150,12 @@ function PlayerData.collection(player: Player): CollectionData?
 	return collections[player]
 end
 
+-- Cette méthode permet de savoir si la sauvegarde du joueur a bien été lue (pas de valeurs par défaut faute de
+-- DataStore, ni joueur neuf de Studio) lorsque l'on recopie ses valeurs dans un classement global.
+function PlayerData.isLoaded(player: Player): boolean
+	return loaded[player] == true
+end
+
 -- Cette méthode permet de mettre à jour le record du joueur lorsque la distance d'un lancer le dépasse.
 function PlayerData.recordDistance(player: Player, distance: number)
 	if distance > ((player:GetAttribute("BestDistance") :: number?) or 0) then

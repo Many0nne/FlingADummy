@@ -1,27 +1,34 @@
 -- Tableaux de scores du hub (#120, Shared.Leaderboard) : top 10 global par OrderedDataStore (un par tableau). Toutes
--- les REFRESH s, le serveur écrit le score de chaque joueur chargé qui a changé (et au départ du joueur), lit le top de
--- chaque tableau puis l'affiche, complété par les valeurs des joueurs du serveur (plus fraîches). Sans accès DataStore
--- (Studio sans accès API) ou en cas d'erreur : repli sur les joueurs du serveur, signalé dans le journal.
+-- les REFRESH s, le serveur écrit le score de chaque joueur dont la sauvegarde est chargée s'il a changé (et à son
+-- départ ou à l'arrêt du serveur), lit le top de chaque tableau puis l'affiche, complété par les valeurs des joueurs du
+-- serveur (plus fraîches). Sans accès DataStore (Studio sans accès API) ou en cas d'erreur : repli sur les joueurs du
+-- serveur, signalé dans le journal.
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserService = game:GetService("UserService")
 
 local Leaderboard = require(ReplicatedStorage.Shared.Leaderboard)
+local PlayerData = require(script.Parent.PlayerData)
 local Props = require(script.Parent.Props)
 
 type Entry = Leaderboard.Entry
 
 local LeaderboardService = {}
 
+local READ_MARGIN = 8 -- lignes lues en plus du top : remplacent un joueur présent dont la valeur a baissé
+local UNKNOWN = "Player" -- nom d'un joueur introuvable (compte supprimé, service indisponible)
+
 local boards: { Props.Scoreboard } = {}
 local stores: { [string]: OrderedDataStore } = {}
 local tops: { [string]: { Entry } } = {} -- dernier top global lu, par tableau
 local global = false -- vrai si la dernière lecture du classement global a réussi pour tous les tableaux
 local written: { [Player]: { [string]: number } } = {} -- dernier score écrit, par joueur et par tableau
-local names: { [number]: string } = {} -- noms affichés des joueurs absents du serveur (cache)
+local names: { [number]: string } = {} -- noms affichés des joueurs absents du serveur (cache, introuvables compris)
 local fallbackReason: string? = nil -- raison du repli, signalée une fois par changement d'état
--- Joueurs en train de partir (encore dans Players pendant PlayerRemoving) : plus comptés dans les valeurs du serveur
+local namesWarned = false -- échec de la recherche des noms déjà signalé
+-- Joueurs en train de partir (encore dans Players pendant PlayerRemoving) : plus comptés ni écrits par le
+-- rafraîchissement
 local leaving: { [Player]: boolean } = setmetatable({}, { __mode = "k" }) :: any
 
 -- Cette méthode permet de signaler dans le journal le passage au repli sur les joueurs du serveur (ou le retour au
@@ -54,7 +61,7 @@ local function liveEntries(board: Leaderboard.Board): { Entry }
 end
 
 -- Cette méthode permet de retrouver les noms affichés des joueurs du top absents du serveur (une requête groupée,
--- mise en cache) lorsque le top global vient d'être lu.
+-- mise en cache, introuvables compris) lorsque le top global vient d'être lu.
 local function resolveNames(entries: { Entry })
 	local missing = {}
 	for _, entry in entries do
@@ -68,12 +75,19 @@ local function resolveNames(entries: { Entry })
 	local ok, infos = pcall(function()
 		return UserService:GetUserInfosByUserIdsAsync(missing)
 	end)
-	if ok and type(infos) == "table" then
-		for _, info in infos do
-			names[info.Id] = info.DisplayName
+	if not (ok and type(infos) == "table") then
+		if not namesWarned then
+			namesWarned = true
+			warn("[Leaderboard] noms des joueurs introuvables : " .. tostring(infos))
 		end
-	else
-		warn("[Leaderboard] noms des joueurs introuvables : " .. tostring(infos))
+		return -- service indisponible : nouvel essai à la lecture suivante
+	end
+	for _, info in infos do
+		names[info.Id] = info.DisplayName
+	end
+	-- Comptes absents de la réponse (supprimés) : plus redemandés
+	for _, userId in missing do
+		names[userId] = names[userId] or UNKNOWN
 	end
 end
 
@@ -83,7 +97,7 @@ local function render(scoreboard: Props.Scoreboard, entries: { Entry })
 	scoreboard.scope.Text = if global then "TOP 10 · ALL SERVERS" else "TOP 10 · THIS SERVER"
 	for index, row in scoreboard.rows do
 		local entry = entries[index]
-		row.name.Text = if entry then entry.name or names[entry.userId] or "Player" else "-"
+		row.name.Text = if entry then entry.name or names[entry.userId] or UNKNOWN else "-"
 		row.value.Text = if entry then Leaderboard.format(scoreboard.board.id, entry.value) else ""
 	end
 end
@@ -99,13 +113,18 @@ local function renderAll()
 end
 
 -- Cette méthode permet d'écrire dans chaque classement global le score du joueur qui a changé depuis le dernier
--- écrit lorsque le classement est rafraîchi ou que le joueur part ; rien pour les joueurs de test de Studio.
-local function writeScores(player: Player)
-	if player.UserId <= 0 or player:GetAttribute("DataReady") ~= true then
-		return
+-- écrit, lorsque le classement est rafraîchi ou (`final`) que le joueur part ; seulement si sa sauvegarde a été lue
+-- (sinon ses valeurs par défaut écraseraient son vrai score), jamais pour les joueurs de test de Studio. Renvoie la
+-- raison d'un échec d'écriture, nil sinon.
+local function writeScores(player: Player, final: boolean?): string?
+	if player.UserId <= 0 or not PlayerData.isLoaded(player) or (leaving[player] and not final) then
+		return nil
 	end
 	local last = written[player] or {}
-	written[player] = last
+	if not final then
+		written[player] = last
+	end
+	local failure: string? = nil
 	for _, board in Leaderboard.BOARDS do
 		local store = stores[board.id]
 		local score = Leaderboard.score(player:GetAttribute(board.attribute))
@@ -116,24 +135,27 @@ local function writeScores(player: Player)
 			if ok then
 				last[board.id] = score
 			else
-				report("écriture impossible (" .. board.store .. ") : " .. tostring(err))
+				failure = "écriture impossible (" .. board.store .. ") : " .. tostring(err)
 			end
 		end
 	end
+	return failure
 end
 
--- Cette méthode permet de lire le top global de chaque tableau lorsque le classement est rafraîchi ; en cas d'erreur
--- (Studio sans accès API, quota), les tableaux passent sur les joueurs du serveur jusqu'à la lecture suivante.
-local function readTops()
+-- Cette méthode permet de lire le top global de chaque tableau (avec une marge de lignes, pour remplacer un joueur
+-- présent dont la valeur a baissé) lorsque le classement est rafraîchi ; renvoie la raison d'un échec, nil sinon :
+-- les tableaux passent alors sur les joueurs du serveur jusqu'à la lecture suivante.
+local function readTops(): string?
 	if next(stores) == nil then
 		global = false
-		return
+		return "classements globaux indisponibles"
 	end
 	local failure: string? = nil
+	local count = math.min(Leaderboard.SIZE + READ_MARGIN + #Players:GetPlayers(), 100)
 	for _, board in Leaderboard.BOARDS do
 		local store = stores[board.id]
 		local ok, result = pcall(function()
-			local page = store:GetSortedAsync(false, Leaderboard.SIZE):GetCurrentPage()
+			local page = store:GetSortedAsync(false, count):GetCurrentPage()
 			local entries: { Entry } = {}
 			for _, item in page do
 				local userId = tonumber(item.key)
@@ -151,16 +173,19 @@ local function readTops()
 		end
 	end
 	global = failure == nil
-	report(failure)
+	return failure
 end
 
 -- Cette méthode permet d'écrire les scores des joueurs, de relire le top global et de réafficher les tableaux
--- lorsque l'horloge du classement tourne (toutes les REFRESH s).
+-- lorsque l'horloge du classement tourne (toutes les REFRESH s) ; un échec d'écriture ou de lecture est signalé une
+-- fois.
 local function refresh()
+	local failure: string? = nil
 	for _, player in Players:GetPlayers() do
-		writeScores(player)
+		failure = writeScores(player) or failure
 	end
-	readTops()
+	failure = readTops() or failure
+	report(failure)
 	renderAll()
 end
 
@@ -172,6 +197,21 @@ local function track(player: Player)
 			renderAll()
 		end
 	end)
+end
+
+-- Cette méthode permet de retirer des tableaux un joueur qui part et d'écrire ses derniers scores lorsqu'il quitte le
+-- serveur ou que le serveur s'arrête.
+local function depart(player: Player)
+	if leaving[player] then
+		return
+	end
+	leaving[player] = true
+	renderAll()
+	local failure = writeScores(player, true)
+	if failure then
+		warn("[Leaderboard] " .. failure)
+	end
+	written[player] = nil
 end
 
 -- Cette méthode permet d'ouvrir les classements globaux, de brancher arrivées et départs et de lancer le
@@ -192,12 +232,11 @@ function LeaderboardService.init(built: { Props.Scoreboard })
 	for _, player in Players:GetPlayers() do
 		track(player)
 	end
-	Players.PlayerRemoving:Connect(function(player)
-		-- Dernier score écrit au départ, puis le joueur n'est plus compté dans les valeurs du serveur
-		leaving[player] = true
-		renderAll()
-		writeScores(player)
-		written[player] = nil
+	Players.PlayerRemoving:Connect(depart)
+	game:BindToClose(function()
+		for _, player in Players:GetPlayers() do
+			depart(player)
+		end
 	end)
 	task.spawn(function()
 		while true do

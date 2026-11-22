@@ -162,7 +162,8 @@ return function(T, Loader)
 			end
 		end)
 
-		-- Emprises qui se touchent à moins de `margin` studs (rectangles au sol)
+		-- Cette méthode permet de savoir si deux emprises au sol se touchent à moins de `margin` studs lorsque l'on
+		-- vérifie le plan du hub.
 		local function overlap(a, b, margin: number): boolean
 			return math.abs(a.center.X - b.center.X) < (a.size.X + b.size.X) / 2 + margin
 				and math.abs(a.center.Z - b.center.Z) < (a.size.Z + b.size.Z) / 2 + margin

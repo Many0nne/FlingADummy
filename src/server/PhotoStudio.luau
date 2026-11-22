@@ -153,8 +153,8 @@ local function stageSlot(parent: Instance, shot: PlanchePlan.Shot): boolean
 	end
 	staged = slot
 	local tier = shot.items[1].key :: number
-	-- Vues décrites pour une entrée vers +X (bases de #61) : symétrie par la diagonale x = z vers l'entrée des bases de
-	-- #120 (+Z), qui garde le cadrage des planches d'avant (appareil à gauche de l'entrée, pad à droite)
+	-- Cette méthode permet de passer un vecteur de vue décrit pour une entrée vers +X (bases de #61) à l'entrée des
+	-- bases de #120 (+Z) par symétrie sur la diagonale x = z, lorsque l'on cadre la prise : même cadrage qu'avant.
 	local function turn(v: Vector3): Vector3
 		return Vector3.new(v.Z, v.Y, v.X)
 	end

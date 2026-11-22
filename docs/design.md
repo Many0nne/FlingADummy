@@ -701,7 +701,8 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
   (cadre en bois sur deux poteaux coiffés de lanternes, bandeau coloré, Fredoka One) : **LONGEST THROW** (record
   `BestDistance`, « 3.6 km »), **INCOME** (revenu courant, « $12.3K/s »), **REBIRTHS**. Top 10 **global** : un
   `OrderedDataStore` par tableau (scores entiers, revenu borné à 2^53). Toutes les 60 s, le serveur écrit le score de
-  chaque joueur chargé s'il a changé (et au départ du joueur), relit le top de chaque tableau puis l'affiche, complété
+  chaque joueur dont la sauvegarde a été lue, s'il a changé (et au départ du joueur ou à l'arrêt du serveur ; un
+  score retombé sous 1 s'écrit 0 et efface l'ancien), relit le top de chaque tableau puis l'affiche, complété
   par les valeurs des joueurs du serveur (plus fraîches) ; un joueur chargé entre au tableau tout de suite. Bandeau
   « TOP 10 · ALL SERVERS » ; sans accès DataStore ou en cas d'erreur, repli sur les joueurs du serveur
   (« TOP 10 · THIS SERVER », signalé dans le journal `[Leaderboard]`). Valeur sous 1 (pas de record, revenu nul) :
