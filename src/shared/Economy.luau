@@ -13,6 +13,7 @@ export type Stats = {
 	smashed: number,
 	luck: number?, -- multiplicateur du mannequin lancé (Shared.ThrowDummies), 1 par défaut
 	rebirth: number?, -- multiplicateur des renaissances du lanceur (Shared.Rebirth.luck), 1 par défaut
+	boost: number?, -- multiplicateur de la boutique Robux (passe, potions, chance du serveur, lancer chanceux : Shared.Store.luck), 1 par défaut
 }
 
 export type Chance = {
@@ -23,6 +24,7 @@ export type Chance = {
 	smashBonus: number, -- part ajoutée par les objets détruits
 	luck: number, -- multiplicateur du mannequin lancé
 	rebirth: number, -- multiplicateur des renaissances
+	boost: number, -- multiplicateur de la boutique Robux
 	total: number, -- chance finale, arrondie au centième
 }
 
@@ -57,7 +59,7 @@ end
 
 -- Cette méthode permet de calculer la CHANCE d'un lancer (et son détail pour l'écran de résultat) lorsque le
 -- mannequin vole ou s'est arrêté : chance des zones × (1 + bonus des os + bonus de la casse) × multiplicateur du
--- mannequin lancé × multiplicateur des renaissances.
+-- mannequin lancé × multiplicateur des renaissances × multiplicateur de la boutique Robux.
 function Economy.chance(stats: Stats): Chance
 	local distance = math.max(0, math.floor(stats.distance))
 	local zoneChance = Economy.zoneChance(stats.distance)
@@ -65,6 +67,7 @@ function Economy.chance(stats: Stats): Chance
 	local smashBonus = math.max(0, stats.smashed) * GameConfig.CHANCE_PER_SMASH
 	local luck = math.max(1, stats.luck or 1)
 	local rebirth = math.max(1, stats.rebirth or 1)
+	local boost = math.max(1, stats.boost or 1)
 	return {
 		distance = distance,
 		zone = Zones.indexAt(distance),
@@ -73,7 +76,8 @@ function Economy.chance(stats: Stats): Chance
 		smashBonus = smashBonus,
 		luck = luck,
 		rebirth = rebirth,
-		total = Economy.round(zoneChance * (1 + bonesBonus + smashBonus) * luck * rebirth),
+		boost = boost,
+		total = Economy.round(zoneChance * (1 + bonesBonus + smashBonus) * luck * rebirth * boost),
 	}
 end
 

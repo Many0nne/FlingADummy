@@ -307,7 +307,7 @@ local function start(model: Model)
 	local origin = model:GetAttribute("LaunchOrigin")
 	local velocity = model:GetAttribute("LaunchVelocity")
 	local index = model:GetAttribute("ThrownIndex")
-	if typeof(origin) ~= "Vector3" or typeof(velocity) ~= "Vector3" or not ThrowDummies.isIndex(index) then
+	if typeof(origin) ~= "Vector3" or typeof(velocity) ~= "Vector3" or not ThrowDummies.isThrowable(index) then
 		return
 	end
 	-- Mannequin du joueur local parti au lâcher : ses effets portés par le décoratif passent sur lui au relais (adopt)
@@ -472,7 +472,7 @@ local function adopt(visual: Model, model: Model)
 	local origin = model:GetAttribute("LaunchOrigin")
 	local velocity = model:GetAttribute("LaunchVelocity")
 	local index = model:GetAttribute("ThrownIndex")
-	if typeof(origin) == "Vector3" and typeof(velocity) == "Vector3" and ThrowDummies.isIndex(index) then
+	if typeof(origin) == "Vector3" and typeof(velocity) == "Vector3" and ThrowDummies.isThrowable(index) then
 		local tracker = flight.tracker
 		local horizontal = Vector3.new(velocity.X, 0, velocity.Z)
 		tracker.cues = FlightFxRules.cues(origin, velocity, Workspace.Gravity, ThrowDummies.get(index))

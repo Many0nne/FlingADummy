@@ -16,6 +16,7 @@ local TrainingBoost = require(ReplicatedStorage.Shared.TrainingBoost)
 local CourseBuilder = require(script.Parent.CourseBuilder)
 local PlayerData = require(script.Parent.PlayerData)
 local SlotService = require(script.Parent.SlotService)
+local StoreService = require(script.Parent.StoreService)
 
 local TrainingService = {}
 
@@ -310,7 +311,8 @@ function TrainingService.init(slots: { CourseBuilder.Slot }, stopRemote: RemoteE
 			session.elapsed += dt
 			if session.elapsed >= GameConfig.REP_TIME then
 				session.elapsed -= GameConfig.REP_TIME
-				completeRep(player, TrainingBoost.multiplier(boostOf(player)))
+				-- Bouton « 2x TRAINING! » × boutique Robux (Strong Arms, boost d'entraînement)
+				completeRep(player, TrainingBoost.multiplier(boostOf(player)) * StoreService.trainingMultiplier(player))
 			end
 		end
 	end)

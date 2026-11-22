@@ -144,16 +144,28 @@ function CourseLayout.basePosition(index: number): Vector3
 	return Vector3.new(x, 0, CourseLayout.BASE_FRONT - CourseLayout.BASE_SIZE.Z / 2)
 end
 
--- Cette méthode permet de savoir si un point est dans la base `index` ou à moins de BASE_REACH studs de sa clôture
--- avant ou arrière (au sol, hauteur ignorée ; sur les côtés, pas au-delà du milieu du passage vers la base voisine)
--- lorsque le bouton AUTO de pose s'affiche ou que le serveur le valide.
-function CourseLayout.isNearBase(index: number, position: Vector3): boolean
-	local center = CourseLayout.basePosition(index)
+-- Cette méthode permet de donner le centre au sol et la taille de la base `index`, agrandie vers le fond (même entrée)
+-- pour tenir DISPLAY_ROOM présentoirs quand `big` (passe Big Base, #160), lorsque l'on construit son terrain et sa
+-- clôture ou que l'on vérifie qu'un point en est proche.
+function CourseLayout.baseBox(index: number, big: boolean?): (Vector3, Vector3)
+	local size = CourseLayout.BASE_SIZE
+	if big then
+		size = Vector3.new(size.X, size.Y, CourseLayout.baseDepthFor(CourseLayout.DISPLAY_ROOM))
+	end
+	local x = CourseLayout.basePosition(index).X
+	return Vector3.new(x, 0, CourseLayout.BASE_FRONT - size.Z / 2), size
+end
+
+-- Cette méthode permet de savoir si un point est dans la base `index` (agrandie si `big`) ou à moins de BASE_REACH
+-- studs de sa clôture avant ou arrière (au sol, hauteur ignorée ; sur les côtés, pas au-delà du milieu du passage vers
+-- la base voisine) lorsque le bouton AUTO de pose s'affiche ou que le serveur le valide.
+function CourseLayout.isNearBase(index: number, position: Vector3, big: boolean?): boolean
+	local center, size = CourseLayout.baseBox(index, big)
 	local reach = CourseLayout.BASE_REACH
 	-- Un peu moins que le demi-passage : le milieu du passage n'est près d'aucune des deux bases
-	local side = math.min(reach, (CourseLayout.BASE_PITCH - CourseLayout.BASE_SIZE.X) / 2 - 0.5)
-	return math.abs(position.X - center.X) <= CourseLayout.BASE_SIZE.X / 2 + side
-		and math.abs(position.Z - center.Z) <= CourseLayout.BASE_SIZE.Z / 2 + reach
+	local side = math.min(reach, (CourseLayout.BASE_PITCH - size.X) / 2 - 0.5)
+	return math.abs(position.X - center.X) <= size.X / 2 + side
+		and math.abs(position.Z - center.Z) <= size.Z / 2 + reach
 end
 
 -- Cette méthode permet de donner le centre au sol de l'appareil d'entraînement de la place `index` (devant la base, à

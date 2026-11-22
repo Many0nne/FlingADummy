@@ -14,7 +14,7 @@ return function(T, Loader)
 				T.expect(typeof(board.color) == "Color3", board.id .. " : couleur")
 			end
 			T.expectEqual(table.concat(ids, ","), "Distance,Income,Rebirths")
-			T.expectEqual(table.concat(attributes, ","), "BestDistance,Income,Rebirths")
+			T.expectEqual(table.concat(attributes, ","), "BestDistance,BaseIncome,Rebirths")
 			T.expectEqual(Leaderboard.BOARDS[1].title, "LONGEST THROW")
 		end)
 	end)

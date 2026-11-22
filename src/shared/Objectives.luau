@@ -24,7 +24,7 @@ export type Objective = {
 	id: string,
 	text: string,
 	target: string?, -- valeur de l'attribut Objective de la cible du décor
-	button: string?, -- bouton du HUD désigné : "Shop"
+	button: string?, -- bouton du HUD désigné (aucun objectif actuel : Shop ouvre la boutique Robux, #160)
 	buy: string?, -- achat visé dans la fenêtre du bouton (« Gear ») : la flèche passe sur son bouton
 }
 
@@ -34,7 +34,9 @@ local THROW = { id = "Throw", text = "Throw your dummy!", target = "Throw" }
 -- Première pose à la main (tutoriel) : flèche et chevrons vers un présentoir libre de sa base
 local PLACE = { id = "Place", text = "Place your dummy!", target = "Place" }
 local TRAIN = { id = "Train", text = "Train!", target = "Train" }
-local BUY_GEAR = { id = "BuyGear", text = "Buy better gear!", button = "Shop", buy = "Gear" }
+-- Achat de l'équipement au pad d'amélioration devant l'appareil (#159) : flèche et chevrons vers son pad ; le bouton
+-- UPGRADE du popup « NEW GEAR! » ou celui de la carte (fenêtre Training Gear ouverte) prennent la flèche d'interface
+local BUY_GEAR = { id = "BuyGear", text = "Buy better gear!", target = "BuyGear", buy = "Gear" }
 
 -- Cette méthode permet de choisir l'objectif du tutoriel (lancer, poser le mannequin gagné, entraînement, puis achat
 -- de l'équipement dès qu'il est abordable) lorsque l'état du joueur change ; nil une fois le tutoriel fini ou quand

@@ -19,6 +19,7 @@ local NAMES = {
 	"ThrowDummy",
 	"Rebirth",
 	"TrainingBoost",
+	"Store",
 }
 
 export type Remotes = {
@@ -48,6 +49,10 @@ export type Remotes = {
 	-- serveur (bouton à montrer) ou "Cancel"
 	-- (séance arrêtée) ; client → serveur : numéro de l'apparition cliquée. Bonus accordé : attribut TrainBoostEnds
 	TrainingBoost: RemoteEvent,
+	-- Boutique Robux (#160, Server.StoreService) : client → serveur "Buy" + identifiant d'un article pas encore créé sur
+	-- l'expérience (achat simulé en Studio seulement) ; serveur → client "Granted" + identifiant + argent reçu (popup de
+	-- l'acheteur), serveur → tous "ServerLuck" + identifiant + nom de l'acheteur
+	Store: RemoteEvent,
 }
 
 local Remotes = {}

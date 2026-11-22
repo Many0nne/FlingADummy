@@ -88,8 +88,13 @@ function Planches.build(loader: any): ({ [string]: any }, { [string]: number })
 				key = dummy.id,
 				title = dummy.name,
 				lines = {
-					if dummy.cost == 0 then "FREE" else Format.money(dummy.cost),
-					string.format("LUCK x%g", dummy.luck),
+					if item.key == ThrowDummies.RAINBOW
+						then "GAMEPASS"
+						elseif dummy.cost == 0 then "FREE"
+						else Format.money(dummy.cost),
+					if item.key == ThrowDummies.RAINBOW
+						then "LUCK 1.5x BEST"
+						else string.format("LUCK x%g", dummy.luck),
 				},
 				look = fingerprint(ThrowDummies.variant(item.key)),
 			}

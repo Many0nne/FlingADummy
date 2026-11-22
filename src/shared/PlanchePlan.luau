@@ -55,7 +55,8 @@ function PlanchePlan.shots(sheet: string): { Shot }
 		end
 	elseif sheet == "a-lancer" then
 		local items = {}
-		for index = 1, #ThrowDummies.LIST do
+		-- Catalogue, puis le Rainbow Dummy du passe de la boutique Robux (#160, ThrowDummies.RAINBOW)
+		for index = 1, ThrowDummies.RAINBOW do
 			table.insert(items, { kind = "throw", key = index })
 		end
 		rows(sheet, items, nil, list)

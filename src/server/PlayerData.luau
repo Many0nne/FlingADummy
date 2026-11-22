@@ -2,6 +2,8 @@
 -- attributs du Player (répliqués au client), recopiés dans les leaderstats ; collection (stock, présentoirs de la base
 -- et présentoirs achetés, Index : Shared.Inventory) gardée côté serveur. Le tout est sauvegardé en DataStore (migration
 -- des sauvegardes de #13 par Inventory.read). Renaissance (Shared.Rebirth) et remise à zéro de Studio (DebugWipe).
+-- État d'achat de la boutique Robux (passes, boosts, lancers chanceux, reçus : Shared.Store, #160) gardé côté serveur
+-- et sauvegardé avec le reste ; Server.StoreService le modifie et le publie.
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -11,6 +13,7 @@ local Workspace = game:GetService("Workspace")
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local Inventory = require(ReplicatedStorage.Shared.Inventory)
 local Rebirth = require(ReplicatedStorage.Shared.Rebirth)
+local Store = require(ReplicatedStorage.Shared.Store)
 local ThrowDummies = require(ReplicatedStorage.Shared.ThrowDummies)
 local Training = require(ReplicatedStorage.Shared.Training)
 local Tutorial = require(ReplicatedStorage.Shared.Tutorial)
@@ -40,6 +43,9 @@ local PlayerData = {}
 local store: DataStore? = nil
 local loaded: { [Player]: boolean } = {}
 local collections: { [Player]: CollectionData } = {}
+local stores: { [Player]: Store.State } = {}
+-- Studio : joueurs ayant simulé un achat Robux (DebugBuy, bouton Buy) : plus rien n'est sauvegardé pour eux
+local simulated: { [Player]: boolean } = {}
 local musicChangedAt: { [Player]: number } = {}
 local musicWanted: { [Player]: boolean } = {} -- dernier choix reçu, appliqué à la fin du délai
 local musicScheduled: { [Player]: boolean } = {}
@@ -74,6 +80,7 @@ local function load(player: Player)
 		player:SetAttribute(key, value)
 	end
 	collections[player] = Inventory.new()
+	stores[player] = Store.new()
 	setupLeaderstats(player)
 	-- Studio : attribut FreshPlayer sur Workspace = nouveau joueur (données vierges, rien lu ni sauvegardé)
 	local fresh = RunService:IsStudio() and Workspace:GetAttribute("FreshPlayer") == true
@@ -103,7 +110,13 @@ local function load(player: Player)
 				if type(data.Tutorial) ~= "number" then
 					player:SetAttribute("Tutorial", Tutorial.infer(data))
 				end
-				local collection, sold = Inventory.read(data.Collection)
+				-- Achats d'abord : la capacité de la base (Big Base) garde les présentoirs 31 à 40 à la relecture
+				local state = Store.read(data.Store)
+				stores[player] = state
+				if player:GetAttribute("ThrowEquipped") == ThrowDummies.RAINBOW and not state.passes.Rainbow then
+					player:SetAttribute("ThrowEquipped", owned)
+				end
+				local collection, sold = Inventory.read(data.Collection, Store.displayBonus(state.passes))
 				collections[player] = collection
 				if sold > 0 then
 					PlayerData.addMoney(player, sold) -- stock au-delà du plafond : vendu, pas perdu
@@ -116,11 +129,16 @@ local function load(player: Player)
 	player:SetAttribute("DataReady", true)
 end
 
--- Cette méthode permet de sauvegarder les données d'un joueur lorsqu'il part ou que le serveur s'arrête ; ne fait rien
--- si le chargement avait échoué (on n'écrase pas une sauvegarde par des valeurs par défaut).
-local function save(player: Player)
+-- Cette méthode permet de sauvegarder les données d'un joueur lorsqu'il part, que le serveur s'arrête ou qu'un achat
+-- Robux est attribué ; ne fait rien si le chargement avait échoué (on n'écrase pas une sauvegarde par des valeurs par
+-- défaut). Renvoie true si la sauvegarde est écrite.
+local function save(player: Player): boolean
 	if not store or not loaded[player] then
-		return
+		return false
+	end
+	if simulated[player] then
+		print("[PlayerData] " .. player.Name .. " : achat Robux simulé dans la session, sauvegarde ignorée")
+		return false
 	end
 	local data = {}
 	for key in DEFAULTS do
@@ -130,12 +148,35 @@ local function save(player: Player)
 	if collection then
 		data.Collection = Inventory.write(collection)
 	end
+	local state = stores[player]
+	if state then
+		data.Store = Store.write(state)
+	end
 	local ok, err = pcall(function()
 		(store :: DataStore):SetAsync(keyOf(player), data)
 	end)
 	if not ok then
 		warn("[PlayerData] sauvegarde impossible pour " .. player.Name .. " : " .. tostring(err))
 	end
+	return ok
+end
+
+-- Cette méthode permet de sauvegarder tout de suite les données d'un joueur lorsque un achat Robux vient d'être
+-- attribué (le reçu noté doit survivre à un arrêt du serveur) ; renvoie true si la sauvegarde est écrite.
+function PlayerData.saveNow(player: Player): boolean
+	return save(player)
+end
+
+-- Cette méthode permet de ne plus sauvegarder un joueur de Studio lorsque un achat Robux est simulé pour lui (argent,
+-- passes et mannequins gagnés grâce à la simulation n'arrivent jamais dans la sauvegarde ; DebugWipe la rétablit).
+function PlayerData.markSimulated(player: Player)
+	simulated[player] = true
+end
+
+-- Cette méthode permet de donner l'état d'achat de la boutique Robux d'un joueur (modifiable en place, sauvegardé avec
+-- ses données) lorsque Server.StoreService attribue un achat ou fait tourner les boosts ; nil hors de sa présence.
+function PlayerData.store(player: Player): Store.State?
+	return stores[player]
 end
 
 -- Cette méthode permet de créditer (ou débiter) de l'argent lorsque la base verse son revenu, qu'un mannequin est
@@ -192,7 +233,9 @@ function PlayerData.throwDummy(player: Player, action: any, index: any): boolean
 	local owned, equipped =
 		ThrowDummies.sanitize(player:GetAttribute("ThrowTier"), player:GetAttribute("ThrowEquipped"))
 	local money = (player:GetAttribute("Money") :: number?) or 0
-	local result = ThrowDummies.act(owned, equipped, money, action, index)
+	local state = stores[player]
+	local rainbow = state ~= nil and state.passes.Rainbow == true
+	local result = ThrowDummies.act(owned, equipped, money, action, index, rainbow)
 	if not result then
 		return false
 	end
@@ -274,9 +317,11 @@ function PlayerData.rebirth(player: Player, onAccepted: (() -> ())?): number?
 	if onAccepted then
 		onAccepted()
 	end
+	-- Rainbow Dummy (passe, #160) : reste équipé, il ne fait pas partie des mannequins remis à zéro
+	local keepRainbow = player:GetAttribute("ThrowEquipped") == ThrowDummies.RAINBOW
 	-- Compteur en dernier : l'interface qui le suit lit des valeurs déjà remises à zéro
 	for key, value in result do
-		if key ~= "Rebirths" then
+		if key ~= "Rebirths" and not (keepRainbow and key == "ThrowEquipped") then
 			player:SetAttribute(key, value)
 		end
 	end
@@ -284,8 +329,8 @@ function PlayerData.rebirth(player: Player, onAccepted: (() -> ())?): number?
 	return result.Rebirths
 end
 
--- Cette méthode permet d'être prévenu quand la collection d'un joueur est remplacée (DebugWipe) lorsque un service
--- (la base) doit se reconstruire.
+-- Cette méthode permet d'être prévenu quand la collection et les achats d'un joueur sont remplacés (DebugWipe) lorsque
+-- un service (la base, la boutique) doit se reconstruire.
 function PlayerData.onReset(listener: (Player) -> ())
 	table.insert(resetListeners, listener)
 end
@@ -307,6 +352,8 @@ function PlayerData.wipe(player: Player)
 		player:SetAttribute(key, value)
 	end
 	collections[player] = Inventory.new()
+	stores[player] = Store.new()
+	simulated[player] = nil -- remise à zéro : la sauvegarde vide d'un nouveau joueur est de nouveau écrite
 	for _, listener in resetListeners do
 		listener(player)
 	end
@@ -337,6 +384,8 @@ function PlayerData.init()
 		save(player)
 		loaded[player] = nil
 		collections[player] = nil
+		stores[player] = nil
+		simulated[player] = nil
 		musicChangedAt[player] = nil
 		musicWanted[player] = nil
 		musicScheduled[player] = nil

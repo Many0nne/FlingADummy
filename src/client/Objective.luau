@@ -189,7 +189,7 @@ end
 local function updateHudAnchor()
 	local anchor: GuiObject? = nil
 	local edge, onOffer = false, false
-	if current and current.button then
+	if current and (current.button or current.buy) then
 		local buy = current.buy
 		local offerButton = if buy == "Gear" then Hud.offerButton() else nil
 		local cardButton = if buy then Hud.buyButton(buy) else nil
@@ -197,7 +197,7 @@ local function updateHudAnchor()
 			anchor, onOffer = offerButton, true
 		elseif cardButton then
 			anchor = cardButton
-		else
+		elseif current.button then
 			anchor, edge = Hud.anchor(current.button), true
 		end
 	end

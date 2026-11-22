@@ -5,7 +5,8 @@
 -- gagné (attribut `PendingDummy`), comme l'invite pendant la première pose du tutoriel. Un nouveau lancer l'ajoute au
 -- stock, rien ne se perd. Fenêtres de collection (remote Inventory) : poser, retirer, vendre, « Place best ». Pad « 8 > 9 » devant la base : achat du présentoir suivant. Le serveur publie la
 -- collection dans des attributs du joueur (Stock, BaseDummies, Displays, DummyIndex) que le client affiche. Les
--- mannequins posés sont construits par le serveur, visibles de tous.
+-- mannequins posés sont construits par le serveur, visibles de tous. Boutique Robux (#160, Server.StoreService) : revenu
+-- multiplié (2x Money, VIP, boost d'argent), base agrandie de 10 présentoirs (Big Base), badge VIP sur le texte.
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -22,11 +23,13 @@ local GameConfig = require(Shared.GameConfig)
 local Inventory = require(Shared.Inventory)
 local Rarity = require(Shared.Rarity)
 local RevealPlan = require(Shared.RevealPlan)
+local Store = require(Shared.Store)
 local Tutorial = require(Shared.Tutorial)
 
 local CourseBuilder = require(script.Parent.CourseBuilder)
 local DummyTools = require(script.Parent.DummyTools)
 local PlayerData = require(script.Parent.PlayerData)
+local StoreService = require(script.Parent.StoreService)
 
 type Slot = CourseBuilder.Slot
 
@@ -120,25 +123,31 @@ local function buildDisplayed(entry: Collection.Entry, top: BasePart, facing: Ve
 end
 
 -- Cette méthode permet d'habiller un présentoir selon qu'il est acheté (couleur de la place) ou non (grisé, sans
--- invite ni objectif) lorsque la base est rendue.
+-- invite ni objectif) lorsque la base est rendue ; ceux de Big Base (au-delà de DISPLAY_MAX) sont cachés et sans
+-- collision quand la base n'est pas agrandie.
 local function styleDisplay(slot: Slot, display: number, unlocked: boolean)
 	local top = slot.base.displays[display]
 	local pedestal = slot.base.pedestals[display]
-	top.Color = if unlocked then slot.color else LOCKED_COLOR
-	top.Transparency = if unlocked then 0 else LOCKED_TRANSPARENCY
-	pedestal.Transparency = if unlocked then 0 else LOCKED_TRANSPARENCY
-	top:SetAttribute("Locked", if unlocked then nil else true)
+	local hidden = display > CourseLayout.DISPLAY_MAX and not slot.base.big
+	local open = unlocked and not hidden
+	top.Color = if open then slot.color else LOCKED_COLOR
+	top.Transparency = if hidden then 1 elseif open then 0 else LOCKED_TRANSPARENCY
+	pedestal.Transparency = if hidden then 1 elseif open then 0 else LOCKED_TRANSPARENCY
+	pedestal.CanCollide = not hidden
+	top.CanCollide = not hidden
+	top:SetAttribute("Locked", if open then nil else true)
 end
 
 -- Cette méthode permet d'afficher sur le pad d'achat le présentoir suivant et son prix (« 8 > 9 », « $450K »), ou MAX,
 -- lorsque la base change ; le client n'active l'invite que pour le propriétaire tant que le maximum n'est pas atteint.
-local function stylePad(slot: Slot, displays: number?)
+local function stylePad(slot: Slot, displays: number?, bonus: number?)
 	local pad = slot.base.pad
 	local price = if displays then Inventory.displayPrice(displays) else nil
-	local count = displays or GameConfig.DISPLAY_START
+	-- Big Base : les présentoirs offerts comptent dans « 18 > 19 » (le prix reste celui du prochain acheté)
+	local count = (displays or GameConfig.DISPLAY_START) + (bonus or 0)
 	if displays and not price then
 		pad.title.Text = "MAX"
-		pad.price.Text = count .. " / " .. CourseLayout.DISPLAY_MAX
+		pad.price.Text = count .. " / " .. (CourseLayout.DISPLAY_MAX + (bonus or 0))
 	else
 		pad.title.Text = count .. " > " .. (count + 1)
 		pad.price.Text = Format.money(price or Inventory.displayPrice(count) or 0)
@@ -157,7 +166,8 @@ local function updateLabel(slot: Slot, player: Player?)
 		if ready and player then player:GetAttribute("Income") :: number? else 0,
 		if ready and player then player:GetAttribute("ThrowPower") :: number? else nil,
 		if ready and player then player:GetAttribute("Rebirths") :: number? else nil,
-		if ready and player then player:GetAttribute("BestDistance") :: number? else nil
+		if ready and player then player:GetAttribute("BestDistance") :: number? else nil,
+		ready and player ~= nil and Store.decodePasses(player:GetAttribute("Passes")).VIP == true
 	)
 	local label = slot.base.label
 	label.title.Text = text.title
@@ -197,9 +207,12 @@ local function render(slot: Slot, player: Player?, force: boolean?)
 	local data = if player then PlayerData.collection(player) else nil
 	local ready = player ~= nil and data ~= nil and player:GetAttribute("DataReady") == true
 	local displays = if ready and data then data.displays else GameConfig.DISPLAY_START
+	local capacity = if ready and data then Inventory.capacity(data) else displays
+	-- Big Base : base agrandie avant l'habillage du palier (clôture refaite à la bonne taille)
+	CourseBuilder.setBaseBig(slot, ready and data ~= nil and data.bonus > 0)
 	styleTier(slot, player, ready, displays)
 	for display, top in slot.base.displays do
-		local unlocked = display <= displays
+		local unlocked = display <= capacity
 		styleDisplay(slot, display, unlocked)
 		local entry = if ready and data and unlocked then data.base[display] else nil
 		local key = if entry then Inventory.key(entry) else nil
@@ -218,9 +231,11 @@ local function render(slot: Slot, player: Player?, force: boolean?)
 		top:SetAttribute("Occupied", if entry then true else nil)
 		top:SetAttribute("Objective", if ready and unlocked and not entry then "Place" else nil)
 	end
-	stylePad(slot, if ready and data then data.displays else nil)
+	stylePad(slot, if ready and data then data.displays else nil, if ready and data then data.bonus else nil)
 	if ready and data and player then
-		player:SetAttribute("Income", Inventory.income(data))
+		local base = Inventory.income(data)
+		player:SetAttribute("BaseIncome", base) -- classement INCOME : sans les multiplicateurs Robux
+		player:SetAttribute("Income", base * StoreService.incomeMultiplier(player))
 	end
 	updateLabel(slot, player)
 end
@@ -234,6 +249,10 @@ end
 -- Cette méthode permet de rendre la base d'un joueur et de publier sa collection dans ses attributs (stock, base,
 -- présentoirs achetés, Index, dernier gagné) lorsque sa collection change.
 local function refresh(player: Player, force: boolean?)
+	local collection = PlayerData.collection(player)
+	if collection then
+		collection.bonus = StoreService.displayBonus(player) -- Big Base (boutique Robux)
+	end
 	local slot = slotOf[player]
 	if slot then
 		render(slot, player, force)
@@ -251,7 +270,7 @@ local function refresh(player: Player, force: boolean?)
 	end
 	player:SetAttribute("Stock", Inventory.encodeList(data.stock))
 	player:SetAttribute("BaseDummies", Inventory.encodeBase(data.base))
-	player:SetAttribute("Displays", data.displays)
+	player:SetAttribute("Displays", Inventory.capacity(data)) -- présentoirs utilisables (Big Base compris)
 	player:SetAttribute("DummyIndex", Inventory.encodeIndex(data.index))
 	player:SetAttribute("PendingDummy", if data.last then Inventory.key(data.last) else nil)
 	DummyTools.sync(player, data.stock) -- un outil du Backpack par mannequin du stock
@@ -322,7 +341,7 @@ local function canAuto(player: Player): boolean
 	-- Marge pour la latence : l'avatar a pu bouger depuis le clic
 	return slot ~= nil
 		and root ~= nil
-		and CourseLayout.isNearBase(slot.index, root.Position - (root.AssemblyLinearVelocity * 0.3))
+		and CourseLayout.isNearBase(slot.index, root.Position - (root.AssemblyLinearVelocity * 0.3), slot.base.big)
 end
 
 -- Cette méthode permet de poser le mannequin que le joueur tient (outil équipé), sinon le dernier gagné, lorsque le
@@ -419,7 +438,7 @@ function BaseService.act(player: Player, action: any, arg: any): boolean
 		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 		return slot ~= nil
 			and root ~= nil
-			and CourseLayout.isNearBase(slot.index, root.Position)
+			and CourseLayout.isNearBase(slot.index, root.Position, slot.base.big)
 			and BaseService.buyDisplay(player)
 	elseif action == "SellRarity" then
 		if typeof(arg) == "number" and Rarity.LIST[arg] and not firstPlacePending(player) then
@@ -486,6 +505,7 @@ local function track(player: Player)
 	end
 	slotOf[player] = slot
 	player:SetAttribute("Income", 0)
+	player:SetAttribute("BaseIncome", 0)
 	DummyTools.track(player, function()
 		local data = PlayerData.collection(player)
 		return if data and player:GetAttribute("DataReady") then data.stock else nil
@@ -511,6 +531,14 @@ local function track(player: Player)
 	player:GetAttributeChangedSignal("DataReady"):Connect(function()
 		refresh(player)
 	end)
+	-- Boutique Robux : passes (revenu, Big Base, badge VIP) et boost d'argent qui commence ou finit
+	for _, attribute in { "Passes", "BoostMoney" } do
+		player:GetAttributeChangedSignal(attribute):Connect(function()
+			if slotOf[player] == slot then
+				refresh(player)
+			end
+		end)
+	end
 	-- Throw Power, renaissances et record en direct au-dessus de la base (entraînement, renaissance, lancer)
 	for _, attribute in { "ThrowPower", "Rebirths", "BestDistance" } do
 		player:GetAttributeChangedSignal(attribute):Connect(function()

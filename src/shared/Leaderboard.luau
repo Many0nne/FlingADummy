@@ -34,7 +34,7 @@ Leaderboard.BOARDS = {
 		id = "Income",
 		title = "INCOME",
 		icon = "💰",
-		attribute = "Income",
+		attribute = "BaseIncome", -- revenu des présentoirs, sans les multiplicateurs de la boutique Robux (#160)
 		store = "TopIncome_v1",
 		color = rgb(70, 190, 70),
 	},

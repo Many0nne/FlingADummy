@@ -234,7 +234,7 @@ local function readLaunch(launch: any): Launch?
 	return {
 		origin = launch.origin,
 		velocity = launch.velocity,
-		thrown = if ThrowDummies.isIndex(launch.thrown) then launch.thrown else 1,
+		thrown = if ThrowDummies.isThrowable(launch.thrown) then launch.thrown else 1,
 	}
 end
 

@@ -261,10 +261,20 @@ function BaseLook.overlaps(centerA: Vector2, sizeA: Vector2, centerB: Vector2, s
 	return math.abs(gap.X) < reach.X and math.abs(gap.Y) < reach.Y
 end
 
+BaseLook.VIP_HEX = "FFC828" -- badge VIP doré du texte flottant (passe VIP de la boutique Robux)
+
 -- Cette méthode permet de donner les lignes du texte flottant d'une base lorsque son propriétaire ou ses valeurs
 -- changent ; `owner` nil : base vide ; `power` nil (données pas chargées) : ligne vide ; `rebirths` > 0 : compteur
--- violet « 🌟 3 » à côté de la Throw Power (ligne en RichText) ; `best` sous 1 m ou nil : pas de ligne de record.
-function BaseLook.label(owner: string?, income: number?, power: number?, rebirths: number?, best: number?): Label
+-- violet « 🌟 3 » à côté de la Throw Power (ligne en RichText) ; `best` sous 1 m ou nil : pas de ligne de record ;
+-- `vip` (passe VIP, #160) : badge « VIP » doré devant le titre (ligne en RichText).
+function BaseLook.label(
+	owner: string?,
+	income: number?,
+	power: number?,
+	rebirths: number?,
+	best: number?,
+	vip: boolean?
+): Label
 	if not owner then
 		return { title = "EMPTY BASE", income = "$0/s", best = "", power = "" }
 	end
@@ -273,7 +283,9 @@ function BaseLook.label(owner: string?, income: number?, power: number?, rebirth
 		powerText ..= string.format('  <font color="#%s">🌟 %d</font>', Rebirth.COLOR_HEX, math.floor(rebirths))
 	end
 	return {
-		title = string.upper(owner) .. "'S BASE",
+		title = (if vip then string.format('<font color="#%s">VIP</font> ', BaseLook.VIP_HEX) else "") .. string.upper(
+			owner
+		) .. "'S BASE",
 		income = Format.money(math.max(0, income or 0)) .. "/s",
 		best = if best and best >= 1 then "🏆 BEST " .. Format.distance(best) else "",
 		power = powerText,

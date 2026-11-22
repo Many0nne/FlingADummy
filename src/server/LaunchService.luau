@@ -31,6 +31,7 @@ local DummyFactory = require(script.Parent.DummyFactory)
 local Obstacles = require(script.Parent.Obstacles)
 local PlayerData = require(script.Parent.PlayerData)
 local SlotService = require(script.Parent.SlotService)
+local StoreService = require(script.Parent.StoreService)
 
 type Slot = CourseBuilder.Slot
 
@@ -54,6 +55,7 @@ type Flight = {
 	slot: Slot,
 	thrown: ThrowDummies.Dummy, -- mannequin à lancer équipé au départ : chance, os, portance, poussée
 	rebirth: number, -- multiplicateur de CHANCE des renaissances du lanceur au départ (Shared.Rebirth.luck)
+	boost: number, -- multiplicateur de CHANCE de la boutique Robux au départ (Shared.Store.luck)
 	forward: Vector3, -- direction du lancer (poussée du réacteur)
 	flat: Vector3, -- direction de la piste à plat (trajectoire, frein au sol)
 	origin: Vector3, -- point de départ du mannequin
@@ -113,7 +115,8 @@ end
 
 -- Cette méthode permet de lancer un mannequin neuf (le mannequin à lancer `thrownIndex` du catalogue, avec son modèle
 -- et sa physique) depuis la main du lanceur (ou sa place) et de commencer à suivre son vol lorsqu'un joueur, ou un
--- test, lance ; `rebirth` multiplie sa CHANCE (renaissances). Renvoie le mannequin, le point de départ et la vitesse.
+-- test, lance ; `rebirth` (renaissances) et `boost` (boutique Robux) multiplient sa CHANCE, `luck` remplace celle du
+-- mannequin (Rainbow Dummy : selon le meilleur possédé). Renvoie le mannequin, le point de départ et la vitesse.
 local function startFlight(
 	owner: Player?,
 	key: any,
@@ -121,7 +124,9 @@ local function startFlight(
 	power: number,
 	gauge: number,
 	thrownIndex: number,
-	rebirth: number
+	rebirth: number,
+	boost: number,
+	luck: number?
 ): (Model, Vector3, number)
 	local speed = ThrowStart.speed(power, gauge)
 	local dir = slot.direction
@@ -129,6 +134,10 @@ local function startFlight(
 	local flatDir = Vector3.new(dir.X, 0, dir.Z)
 	local flat = if flatDir.Magnitude > 1e-3 then flatDir.Unit else Vector3.zAxis
 	local thrown = ThrowDummies.get(thrownIndex)
+	if luck and luck ~= thrown.luck then
+		thrown = table.clone(thrown)
+		thrown.luck = luck
+	end
 	local arc = FlightArc.plan(speed * flatDir.Magnitude, speed * dir.Y, origin.Y, Workspace.Gravity, thrown)
 	local dummy = DummyFactory.build(ThrowDummies.variant(thrownIndex) :: any, thrown.physics)
 	-- Tête la première : l'axe vertical du mannequin suit la direction du lancer
@@ -165,10 +174,11 @@ local function startFlight(
 	dummy:SetAttribute("Speed", math.floor(speed))
 	dummy:SetAttribute("Luck", thrown.luck) -- bannière CHANCE : multiplicateur du mannequin lancé
 	dummy:SetAttribute("Rebirth", rebirth) -- bannière CHANCE : multiplicateur des renaissances
+	dummy:SetAttribute("Boost", boost) -- bannière CHANCE : multiplicateur de la boutique Robux
 	-- CHANCE de départ déjà multipliée : la bannière ne montre pas « 1X » avant la première frame
 	dummy:SetAttribute(
 		"Chance",
-		Economy.chance({ distance = 0, bones = 0, smashed = 0, luck = thrown.luck, rebirth = rebirth }).total
+		Economy.chance({ distance = 0, bones = 0, smashed = 0, luck = thrown.luck, rebirth = rebirth, boost = boost }).total
 	)
 	dummy:SetAttribute("Thrown", thrown.name)
 
@@ -179,6 +189,7 @@ local function startFlight(
 		slot = slot,
 		thrown = thrown,
 		rebirth = rebirth,
+		boost = boost,
 		forward = dir,
 		flat = flat,
 		origin = origin,
@@ -300,9 +311,12 @@ function LaunchService.launch(player: Player, gauge: any, force: boolean?)
 	PlayerData.tutorialStep(player, "Throw")
 
 	local power = (player:GetAttribute("ThrowPower") :: number?) or GameConfig.START_POWER
-	local _, equipped = ThrowDummies.sanitize(player:GetAttribute("ThrowTier"), player:GetAttribute("ThrowEquipped"))
+	local owned, equipped =
+		ThrowDummies.sanitize(player:GetAttribute("ThrowTier"), player:GetAttribute("ThrowEquipped"))
 	local rebirth = Rebirth.luck(Rebirth.read(player:GetAttribute("Rebirths")))
-	local dummy, origin, speed = startFlight(player, player, slot, power, gauge, equipped, rebirth)
+	local boost = StoreService.launchLuck(player) -- consomme un lancer chanceux s'il en reste
+	local luck = ThrowDummies.luckOf(equipped, owned)
+	local dummy, origin, speed = startFlight(player, player, slot, power, gauge, equipped, rebirth, boost, luck)
 	-- Départ du vol pour le lanceur : il rejoue le plan en avance sur la copie répliquée (Client.LaunchGhost, #117)
 	remotes.LaunchStarted:FireClient(player, dummy, {
 		origin = origin,
@@ -588,6 +602,7 @@ local function finish(flight: Flight, elapsed: number)
 		smashed = flight.smashed,
 		luck = flight.thrown.luck,
 		rebirth = flight.rebirth,
+		boost = flight.boost,
 	})
 	result.bones = flight.totalBones
 	result.smashed = flight.smashed
@@ -666,6 +681,7 @@ local function publish(flight: Flight)
 			smashed = flight.smashed,
 			luck = flight.thrown.luck,
 			rebirth = flight.rebirth,
+			boost = flight.boost,
 		}).total,
 	}
 	for name, value in values do
@@ -799,7 +815,7 @@ local function launchBots(player: Player, count: number)
 			break
 		end
 		botCount += 1
-		startFlight(nil, "Bot" .. botCount, slot, power, 1, thrownIndex, 1)
+		startFlight(nil, "Bot" .. botCount, slot, power, 1, thrownIndex, 1, 1)
 	end
 end
 

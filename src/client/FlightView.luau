@@ -42,6 +42,8 @@ local luckBadge: Frame
 local luckLabel: TextLabel
 local rebirthBadge: Frame
 local rebirthLabel: TextLabel
+local boostBadge: Frame
+local boostLabel: TextLabel
 local zoneBanner: Frame
 local zoneLabel: TextLabel
 local xray: Frame
@@ -282,6 +284,28 @@ local function build(gui: ScreenGui)
 		ZIndex = 4,
 		Parent = rebirthBadge,
 	})
+	-- Badge de la boutique Robux (#160 : 2x Luck, potions, chance du serveur, lancer chanceux), au coin bas droit
+	boostBadge = UIKit.create("Frame", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(1, -18, 1, -6),
+		Size = UDim2.fromOffset(0, 30),
+		AutomaticSize = Enum.AutomaticSize.X,
+		Rotation = -6,
+		BackgroundColor3 = Color3.fromRGB(255, 90, 150),
+		Visible = false,
+		ZIndex = 3,
+		Parent = chanceBox,
+	})
+	UIKit.corner(boostBadge, 15)
+	UIKit.outline(boostBadge, 3)
+	UIKit.create("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10), Parent = boostBadge })
+	boostLabel = UIKit.text({
+		Size = UDim2.fromScale(0, 1),
+		AutomaticSize = Enum.AutomaticSize.X,
+		TextSize = 20,
+		ZIndex = 4,
+		Parent = boostBadge,
+	})
 	zoneBanner = UIKit.create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 156),
@@ -519,6 +543,12 @@ function FlightView.show(model: Model)
 	rebirthBadge.Visible = rebirth > 1
 	if rebirth > 1 then
 		rebirthLabel.Text = "REBIRTH x" .. Format.short(rebirth)
+	end
+	-- Multiplicateur de la boutique Robux (#160), déjà compté
+	local boost = (model:GetAttribute("Boost") :: number?) or 1
+	boostBadge.Visible = boost > 1
+	if boost > 1 then
+		boostLabel.Text = "BOOST x" .. Format.short(boost)
 	end
 	showZone(1)
 	update()

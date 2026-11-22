@@ -2,12 +2,14 @@
 -- une carte par mannequin teintée à sa couleur (nom, « 1.25x CHANCE » en jaune, rendu 3D, comportement en vol), bouton
 -- EQUIPPED / EQUIP / prix (jaune s'il est abordable, rouge sinon) / cadenas pour ceux d'après. Ouverte par le stand
 -- SHOP du hub ou le popup « NEW DUMMY! ». Le client n'envoie que des intentions (remote ThrowDummy), le serveur valide.
+-- Rainbow Dummy (passe de la boutique Robux, #160) : carte en tête, seulement avec le passe (EQUIP / EQUIPPED).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local DummyShape = require(Shared:WaitForChild("DummyShape"))
 local Format = require(Shared:WaitForChild("Format"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Store = require(Shared:WaitForChild("Store"))
 local ThrowDummies = require(Shared:WaitForChild("ThrowDummies"))
 
 local UIKit = require(script.Parent.UIKit)
@@ -43,7 +45,12 @@ end
 local function onAction(index: number)
 	local owned, equipped = levels()
 	local state = ThrowDummies.cardState(owned, equipped, index)
-	if state == "Owned" then
+	if index == ThrowDummies.RAINBOW then
+		if equipped ~= index then
+			remotes.ThrowDummy:FireServer("Equip", index)
+			UIKit.playSound("Click", 1.1)
+		end
+	elseif state == "Owned" then
 		remotes.ThrowDummy:FireServer("Equip", index)
 		UIKit.playSound("Click", 1.1)
 	elseif state == "Buy" then
@@ -94,7 +101,10 @@ end
 function ThrowShop.scrollToNext()
 	if row then
 		local owned = levels()
-		UIKit.scrollToCard(row, math.min(owned + 1, #ThrowDummies.LIST))
+		-- Carte du Rainbow Dummy affichée en tête : tout décale d'une carte
+		local rainbow = cards[ThrowDummies.RAINBOW]
+		local shift = if rainbow and rainbow.frame.Visible then 1 else 0
+		UIKit.scrollToCard(row, math.min(owned + 1, #ThrowDummies.LIST) + shift)
 	end
 end
 
@@ -108,6 +118,15 @@ function ThrowShop.refresh()
 	local owned, equipped = levels()
 	local money = hooks.money()
 	for index, card in cards do
+		if index == ThrowDummies.RAINBOW then
+			-- Rainbow Dummy : carte seulement avec le passe, chance recalculée sur le meilleur possédé
+			local has = Store.decodePasses(player:GetAttribute("Passes")).Rainbow == true
+			card.frame.Visible = has
+			card.rarity.Text = Format.luck(ThrowDummies.luckOf(index, owned)) .. " CHANCE"
+			local on = equipped == index
+			setAction(card, if on then "EQUIPPED" else "EQUIP", if on then C.equipped else C.green, not on)
+			continue
+		end
 		local dummy = ThrowDummies.LIST[index]
 		local state = ThrowDummies.cardState(owned, equipped, index)
 		local stroke = card.frame:FindFirstChildOfClass("UIStroke") :: UIStroke
@@ -182,7 +201,25 @@ function ThrowShop.init(
 		end
 		cards[index] = card
 	end
-	for _, attribute in { "ThrowTier", "ThrowEquipped", "Money" } do
+	-- Rainbow Dummy en tête de la boutique (ordre 0), caché sans le passe
+	local rainbow = ThrowDummies.RAINBOW_DUMMY
+	local rainbowCard = UIKit.card(row, 0, function()
+		onAction(ThrowDummies.RAINBOW)
+	end)
+	rainbowCard.title.Text = rainbow.name
+	rainbowCard.rarity.TextColor3 = AFFORDABLE
+	rainbowCard.stat.Text = rainbow.behavior
+	rainbowCard.frame.Visible = false
+	local rainbowGradient = rainbowCard.frame:FindFirstChildOfClass("UIGradient")
+	if rainbowGradient then
+		rainbowGradient.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 150, 150)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 240, 140)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 170, 255)),
+		})
+	end
+	cards[ThrowDummies.RAINBOW] = rainbowCard
+	for _, attribute in { "ThrowTier", "ThrowEquipped", "Money", "Passes" } do
 		player:GetAttributeChangedSignal(attribute):Connect(ThrowShop.refresh)
 	end
 	-- Cette méthode permet de retenir les mannequins possédés au chargement lorsque les données du joueur sont prêtes
