@@ -25,6 +25,18 @@ local GameConfig = {
 	THROW_RELEASE_TIME  = 0.7,    -- lâcher dans l'animation de lancer (marqueur Release, s) : republier Throw si modifié
 	RELEASE_LEAD_MAX    = 0.4,    -- départ affiché dès le lâcher (#144) : avance sur le serveur (latence aller-retour) prise au plus (s) ; au-delà, maintien à la main
 
+	-- Caméra de la bande (#158, Shared.ThrowFraming) : resserrée derrière l'épaule droite tant que le joueur tient le
+	-- mannequin, cadrage de 09 à la jauge (avatar à gauche du centre, regard dans l'axe de la piste)
+	BAND_CAM_IN         = 0.35,   -- fondu de la caméra libre au cadrage de la bande (s ; coupe directe en mouvement réduit)
+	BAND_CAM_OUT        = 0.25,   -- retour à la caméra libre si le joueur quitte la bande sans lancer (s)
+	BAND_CAM_FOV        = 55,     -- champ de vision du cadrage (caméra libre : 70)
+	BAND_CAM_SIDE       = 2.2,    -- caméra à droite du HumanoidRootPart, côté du bras qui lance (studs)
+	BAND_CAM_HEIGHT     = 2,      -- caméra au-dessus du HumanoidRootPart (studs) : juste sous le haut de la tête
+	BAND_CAM_BACK       = 10,     -- caméra derrière le HumanoidRootPart (studs)
+	BAND_CAM_LOOK       = 80,     -- point visé devant le joueur, dans l'axe de la piste (studs)
+	BAND_CAM_DIP        = 1.5,    -- point visé plus bas que la caméra (studs) : regard presque à l'horizontale
+	THROW_CAM_BLEND     = 0.45,   -- passage du cadrage de la bande au gros plan du geste (s, Client.ThrowCinematic)
+
 	-- Vol plafonné et glissade bornée (#113, Shared.FlightArc)
 	APEX_HEIGHT         = 100,    -- hauteur max du vol (studs au-dessus de la piste) : au-delà, la puissance part en distance
 	GROUND_BRAKE        = 600,    -- frein au sol après le premier contact (studs/s²) : glissade = vitesse² / 1 200
