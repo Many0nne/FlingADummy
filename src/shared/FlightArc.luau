@@ -191,20 +191,23 @@ function FlightArc.startPhase(plan: Plan): Phase
 end
 
 -- Cette méthode permet de donner l'accélération propre du mannequin (portance du planeur, sauf juste après un piège :
--- `coasting` ; poussée du réacteur `elapsed` s après le lâcher) lorsque le serveur avance le vol d'une frame.
+-- `coasting` ; poussée du réacteur `elapsed` s après le lâcher) lorsque le serveur avance le vol d'une frame de `dt` s.
 function FlightArc.accel(
 	plan: Plan,
 	velocity: Vector3,
 	forward: Vector3,
 	elapsed: number,
 	gravity: number,
-	coasting: boolean?
+	coasting: boolean?,
+	dt: number?
 ): Vector3
 	local accel = Vector3.zero
 	local sink = plan.sink
 	-- Pas de portance pendant la poussée d'un piège (presse qui écrase, trampoline) : son effet se voit
 	if sink and velocity.Y < -sink and not coasting then
-		accel += Vector3.new(0, gravity + FlightArc.GLIDE_GAIN * (-sink - velocity.Y), 0)
+		-- Rappel borné à 1/dt : une frame longue ne fait pas remonter le planeur
+		local gain = math.min(FlightArc.GLIDE_GAIN, 1 / math.max(dt or 0, 1e-3))
+		accel += Vector3.new(0, gravity + gain * (-sink - velocity.Y), 0)
 	end
 	if plan.boost > 0 and elapsed < plan.boostTime then
 		local flat = Vector3.new(forward.X, 0, forward.Z)
@@ -251,8 +254,8 @@ function FlightArc.bounce(
 	local lateral = horizontal - flat * ahead
 	-- Élan et hauteur réglés par le plan à chaque rebond, même après un obstacle qui l'a ralenti ou un contact amorti
 	-- par les membres : la distance ne dépend pas des caisses touchées entre deux rebonds. Jamais plus haut que la
-	-- chute (petite chute sur une caisse basse), et pas de poussée vers l'avant contre une paroi qui l'a renvoyé
-	local push = if ahead < 0 then ahead else speed
+	-- chute (petite chute sur une caisse basse), et pas de poussée vers l'avant contre une paroi qui l'a arrêté
+	local push = if ahead < speed * 0.25 then ahead else speed
 	return flat * push + lateral + Vector3.new(0, math.min(up, falling), 0)
 end
 

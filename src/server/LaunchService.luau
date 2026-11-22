@@ -654,9 +654,10 @@ local function applyBehavior(flight: Flight, elapsed: number, dt: number, before
 	local velocity = flight.torso.AssemblyLinearVelocity
 	-- Un piège vient d'agir : ni portance ni rebond ne remplacent sa poussée, et le frein attend (TRAP_COAST)
 	local coasting = flight.lastTrap ~= nil and os.clock() - flight.lastTrap.at < FlightArc.TRAP_COAST
-	local change = FlightArc.accel(flight.arc, velocity, flight.forward, elapsed, Workspace.Gravity, coasting) * dt
+	local change = FlightArc.accel(flight.arc, velocity, flight.forward, elapsed, Workspace.Gravity, coasting, dt) * dt
 	local armed = elapsed > GameConfig.IMPACT_GRACE_TIME
-	if before and armed and not coasting then
+	-- Projeté par un piège : le caoutchouc rebondit librement (physique), sa poussée n'est pas reprise par le plan
+	if before and armed and not coasting and not flight.trapped then
 		local bounced = FlightArc.bounce(
 			flight.arc,
 			before,
@@ -756,6 +757,8 @@ end
 local function launchBots(player: Player, count: number)
 	local botPower = player:GetAttribute("DebugBotsPower")
 	local power = if typeof(botPower) == "number"
+			and botPower > 0
+			and botPower < math.huge
 		then botPower
 		else (player:GetAttribute("ThrowPower") :: number?) or GameConfig.START_POWER
 	local botDummy = player:GetAttribute("DebugBotsDummy")
