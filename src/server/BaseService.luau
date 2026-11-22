@@ -632,24 +632,31 @@ function BaseService.init(builtSlots: { Slot }, placeRemote: RemoteEvent, invent
 	PlayerData.onReset(function(player)
 		refresh(player, true)
 	end)
-	Players.PlayerAdded:Connect(function(player)
-		-- SlotService pose l'attribut Slot dans son propre PlayerAdded : suivi sans attente bloquante (lobby plein : jamais)
-		if player:GetAttribute("Slot") ~= nil then
-			track(player)
+	-- Cette méthode permet de suivre un joueur dès que SlotService lui a donné une place, sans attente bloquante
+	-- (lobby plein : jamais de place, la connexion est coupée au départ du joueur).
+	local function trackWhenSlotted(player: Player)
+		if typeof(player:GetAttribute("Slot")) == "number" then
+			task.spawn(track, player)
 			return
 		end
-		local connection = player:GetAttributeChangedSignal("Slot"):Connect(function()
+		if waitingSlot[player] then
+			return
+		end
+		waitingSlot[player] = player:GetAttributeChangedSignal("Slot"):Connect(function()
+			if typeof(player:GetAttribute("Slot")) ~= "number" then
+				return
+			end
 			local pending = waitingSlot[player]
 			waitingSlot[player] = nil
 			if pending then
 				pending:Disconnect()
-				track(player)
+				task.defer(track, player)
 			end
 		end)
-		waitingSlot[player] = connection
-	end)
+	end
+	Players.PlayerAdded:Connect(trackWhenSlotted)
 	for _, player in Players:GetPlayers() do
-		task.spawn(track, player)
+		trackWhenSlotted(player)
 	end
 	Players.PlayerRemoving:Connect(function(player)
 		local slot = slotOf[player]
