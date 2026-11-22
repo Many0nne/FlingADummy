@@ -3,6 +3,9 @@
 -- torse traverse sa boîte (une fois par vol et par piège), remplace la vitesse du mannequin par `Traps.react`, casse
 -- `bones` os sur les membres les plus proches et annonce le choc ; chaque client joue son son, ses particules et son
 -- popup (`label`). Les pièges ne collisionnent pas : leur effet est cette règle, pas la physique.
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local GameConfig = require(Shared:WaitForChild("GameConfig"))
+
 local Traps = {}
 
 export type Kind = {
@@ -24,9 +27,11 @@ export type Kind = {
 
 Traps.WIDTH = 12 -- largeur d'un piège : une colonne d'obstacles (SLOT_SPACING), moins un passage de 2 studs
 Traps.FLOOR = -1 -- bas des boîtes : un mannequin couché au sol (torse à moins d'un stud) est dedans
--- Anneau propulseur (#85) : centre du cerceau à 85 studs, là où passe un vol de 32° qui retomberait ≈ 150 m plus loin
--- (z · tan 32° · 150 / (z + 150) ≈ 87 à 1,85 km comme à 2,2 km : les sites de la Moon Base) ; ouverture de 9,8 studs
--- de diamètre, boîte carrée de 8 studs dedans (coins sur les pans)
+-- Anneau propulseur (#85, #98) : centre du cerceau au plafond du vol (APEX_HEIGHT, #113), là où file à plat un vol qui
+-- atteint la Moon Base (≈ 65 % des vols en l'air au-dessus de ses deux sites, mesuré par tools/booster-ring : un cerceau
+-- sur la chute, à 81-89 studs, n'en prenait que 5 %) ; ouverture de 9,8 studs de diamètre, boîte carrée de 8 studs
+-- dedans (coins sur les pans), RING_HALF au-dessus et au-dessous du plafond
+Traps.RING_HALF = 4
 
 -- stylua: ignore
 Traps.KINDS = {
@@ -65,8 +70,8 @@ Traps.KINDS = {
 	               keep = 0.7,  forward = 0,   side = 0,  up = 105, restitution = 0,   spin = 5,  bones = 1 },
 	-- Base lunaire : anneau propulseur suspendu, énorme poussée vers l'avant ; seule l'ouverture du cerceau déclenche
 	-- (boîte de 8 × 8 studs autour du centre du cerceau, voir plus haut)
-	Booster    = { label = "BOOST!",    sound = "Rocket", burst = "Sparks",   height = 89,  depth = 6,
-	               bottom = 81, width = 8,
+	Booster    = { label = "BOOST!",    sound = "Rocket", burst = "Sparks",   height = GameConfig.APEX_HEIGHT + Traps.RING_HALF,  depth = 6,
+	               bottom = GameConfig.APEX_HEIGHT - Traps.RING_HALF, width = 8,
 	               keep = 1,    forward = 70,  side = 0,  up = 25,  restitution = 0,   spin = 0,  bones = 1 },
 	-- Piste prolongée (#97) ----------------------------------------------------------------------------------------
 	-- Mars : geyser de poussière, projette à la verticale pendant son éruption (Traps.CYCLES)
