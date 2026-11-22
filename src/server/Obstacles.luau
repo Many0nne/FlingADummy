@@ -10,6 +10,7 @@ local Workspace = game:GetService("Workspace")
 
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local ObstacleRules = require(ReplicatedStorage.Shared.ObstacleRules)
+local SurfaceGap = require(ReplicatedStorage.Shared.SurfaceGap)
 local TrackPlan = require(ReplicatedStorage.Shared.TrackPlan)
 local Zones = require(ReplicatedStorage.Shared.Zones)
 local Build = require(script.Parent.Build)
@@ -112,8 +113,11 @@ function Obstacles.build(parent: Instance)
 		end
 	end
 	trapBoxes = TrackPlan.trapBoxes(sites)
+	-- Colonnes d'un même piège posées dans une même zone : leurs pièces qui se touchent ne scintillent pas (#93)
+	local areas: { [number]: SurfaceGap.Area } = {}
 	for _, box in trapBoxes do
-		TrapProps.build(box, folder)
+		areas[box.site] = areas[box.site] or SurfaceGap.area()
+		TrapProps.build(box, folder, areas[box.site])
 	end
 	-- Simulées par le serveur : sinon le joueur le plus proche prend la main sur la physique des débris
 	for _, piece in pieces do

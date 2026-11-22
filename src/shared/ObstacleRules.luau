@@ -1,6 +1,8 @@
 -- Règles des obstacles partagés (logique pure, testée) : une pièce est « déplacée » quand elle a quitté sa place,
 -- l'obstacle réapparaît RESPAWN_DELAY après son dernier choc, pièce par pièce de bas en haut, et chaque objet projeté
--- est compté pour le vol le plus proche.
+-- est compté pour le vol le plus proche. Murs en quinconce : les rangées décalées finissent par une brique d'une et
+-- demie, si bien qu'aucune brique n'est en porte-à-faux (#114 : celle du bout de la rangée du haut tombait seule au
+-- démarrage) et que le mur garde autant de pièces (bonus de casse inchangé).
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 
@@ -59,6 +61,41 @@ function ObstacleRules.claimant(position: Vector3, flights: { Vector3 }): number
 		end
 	end
 	return best
+end
+
+-- Brique d'un mur en quinconce : centre (x le long du mur, centré sur 0 ; y au-dessus du sol) et largeur
+export type WallBrick = { x: number, y: number, width: number, row: number }
+
+-- Cette méthode permet de disposer un mur en quinconce de `rows` rangées de briques `brick` sur `span` studs (jeu `gap`)
+-- lorsque l'on monte un mur de thème : rangées paires de `count` briques, rangées décalées de `count - 1`.
+function ObstacleRules.staggeredWall(span: number, brick: Vector3, rows: number, gap: number): { WallBrick }
+	local step = brick.X + gap
+	local count = math.floor(span / step)
+	-- Rangées centrées sur la largeur (la largeur d'une brique ne divise pas toujours `span`)
+	local left = -span / 2 + (span - count * step) / 2
+	local bricks = {}
+	for row = 0, rows - 1 do
+		local y = brick.Y / 2 + row * (brick.Y + gap)
+		if row % 2 == 0 then
+			for col = 0, count - 1 do
+				table.insert(bricks, { x = left + step / 2 + col * step, y = y, width = brick.X, row = row })
+			end
+		else
+			-- Décalée d'une demi-brique ; celles des bouts s'allongent d'autant, jusqu'au bord des rangées paires
+			for col = 0, count - 2 do
+				local x0 = left + step / 2 + gap / 2 + col * step
+				local x1 = x0 + brick.X
+				if col == 0 then
+					x0 = left + gap / 2
+				end
+				if col == count - 2 then
+					x1 = -left - gap / 2
+				end
+				table.insert(bricks, { x = (x0 + x1) / 2, y = y, width = x1 - x0, row = row })
+			end
+		end
+	end
+	return bricks
 end
 
 return ObstacleRules

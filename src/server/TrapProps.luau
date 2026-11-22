@@ -5,6 +5,7 @@
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local SurfaceGap = require(ReplicatedStorage.Shared.SurfaceGap)
 local TrackPlan = require(ReplicatedStorage.Shared.TrackPlan)
 local Traps = require(ReplicatedStorage.Shared.Traps)
 local Build = require(script.Parent.Build)
@@ -666,8 +667,8 @@ builders.Wormhole = function(model, at, box)
 end
 
 -- Cette méthode permet d'habiller le piège d'une boîte (TrackPlan.trapBox) sous `parent` lorsque la piste est
--- construite ; un modèle par colonne.
-function TrapProps.build(box: TrapBox, parent: Instance)
+-- construite ; un modèle par colonne, ajusté contre les colonnes voisines déjà posées dans `area` (#93).
+function TrapProps.build(box: TrapBox, parent: Instance, area: SurfaceGap.Area)
 	local builder = builders[box.kind]
 	if not builder then
 		warn("[TrapProps] piège inconnu : " .. box.kind)
@@ -676,7 +677,8 @@ function TrapProps.build(box: TrapBox, parent: Instance)
 	local model = Instance.new("Model")
 	model.Name = "Trap" .. box.kind
 	model:SetAttribute("Trap", box.kind)
-	builder(model, CFrame.new(box.x, 0, box.z), box)
+	-- D'un tenant avec les colonnes voisines du même piège : un bloc qui en affleure un autre ressort un peu
+	Build.within(area, builder, model, CFrame.new(box.x, 0, box.z), box)
 	-- Pièces mobiles : même piège et même phase que la boîte, que le serveur prend pour décider s'il agit
 	for _, child in model:GetChildren() do
 		if CollectionService:HasTag(child, Traps.MOTION_TAG) then

@@ -1,6 +1,16 @@
 -- Briques de construction du décor généré par le code : pièces ancrées, blocs aux matériaux « briques à tenons »
 -- (MaterialVariant synchronisés par Rojo dans MaterialService), textes sur panneaux et étiquettes flottantes.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local SurfaceGap = require(ReplicatedStorage.Shared.SurfaceGap)
+
 local Build = {}
+
+-- Zone de pose en cours (Build.within, Build.keep, Build.settled) et pièces posées depuis son ouverture, ajustées à sa
+-- fermeture : un bloc qui affleure un bloc déjà posé de la zone ressort un peu (#93)
+local placed: SurfaceGap.Area? = nil
+local adjust = true -- faux : les pièces s'ajoutent à la zone telles quelles (Build.keep)
+local pending: { Part } = {}
 
 -- Matériaux des jeux de référence (01 / 09) : tenons en relief teintés par la couleur de la pièce
 -- (assets/course/build_textures.py ; MaterialVariant dans default.project.json, cartes publiées sur le compte)
@@ -8,6 +18,13 @@ Build.CHECKER = "FadChecker" -- damier marqué de carreaux de 8 studs à 4 × 4 
 Build.WALL = "FadWall" -- même damier, plus doux : parois en gradins et herbe qui les coiffe
 Build.BRICK = "FadBrick" -- un tenon tous les 2 studs : accessoires, obstacles, végétation voxel
 Build.FINE = "FadBrickFine" -- mêmes cartes, un tenon par stud : objets à l'échelle de l'avatar (appareil d'entraînement)
+
+-- Cette méthode permet de savoir si une pièce de la zone est toujours un bloc visible lorsqu'une nouvelle pièce s'y
+-- compare (une pièce devenue cylindre, boule ou invisible depuis ne compte plus).
+local function visibleBlock(entry: SurfaceGap.Placed): boolean
+	local part = entry.part
+	return part == nil or (part.Shape == Enum.PartType.Block and part.Transparency < 1)
+end
 
 -- Cette méthode permet de créer une pièce ancrée avec ses propriétés lorsque le décor est construit ; `Variant`
 -- (Build.CHECKER, Build.WALL, Build.BRICK, Build.FINE) pose le matériau à tenons.
@@ -26,9 +43,60 @@ function Build.part(props: { [string]: any }): Part
 		p.Material = Enum.Material.Plastic
 		p.MaterialVariant = props.Variant
 	end
+	if placed then
+		table.insert(pending, p)
+	end
 	-- Parent en dernier : la pièce entre dans le monde déjà configurée
 	p.Parent = props.Parent
 	return p
+end
+
+-- Cette méthode permet d'exécuter `fn(...)` dans la zone `area`, puis d'ajuster (si `settle`) et d'y ajouter ses blocs
+-- visibles, une fois leurs formes et positions définitives ; un appel imbriqué reste dans la zone en cours.
+local function run(area: SurfaceGap.Area, settle: boolean, fn: (...any) -> ...any, ...: any): ...any
+	if placed then
+		return fn(...)
+	end
+	placed, adjust = area, settle
+	local results = table.pack(xpcall(fn, debug.traceback, ...))
+	if results[1] then
+		for _, p in pending do
+			if p.Parent and p.Shape == Enum.PartType.Block and p.Transparency < 1 then
+				if adjust then
+					local size, cframe = SurfaceGap.settle(area, p.Size, p.CFrame, visibleBlock)
+					p.Size = size
+					p.CFrame = cframe
+				end
+				SurfaceGap.add(area, p.Size, p.CFrame, p)
+			end
+		end
+	end
+	placed, adjust = nil, true
+	table.clear(pending)
+	if not results[1] then
+		error(results[2], 0)
+	end
+	return table.unpack(results, 2, results.n)
+end
+
+-- Cette méthode permet de poser des éléments voisins (`fn(...)`) contre les blocs de `area` lorsqu'ils se chevauchent :
+-- chaque bloc qui affleure un bloc de la zone ressort de SurfaceGap.STEP et s'y ajoute.
+function Build.within(area: SurfaceGap.Area, fn: (...any) -> ...any, ...: any): ...any
+	assert(placed == nil or placed == area, "Build.within : une autre zone est en cours de pose")
+	return run(area, true, fn, ...)
+end
+
+-- Cette méthode permet d'ajouter à `area`, sans les ajuster, les blocs d'une structure réglée à la main (gradins) que
+-- d'autres éléments toucheront ensuite (Build.within).
+function Build.keep(area: SurfaceGap.Area, fn: (...any) -> ...any, ...: any): ...any
+	assert(placed == nil, "Build.keep : pas dans un élément en cours de pose")
+	return run(area, false, fn, ...)
+end
+
+-- Cette méthode permet de poser un élément de décor d'un tenant (`fn(...)`) lorsque ses blocs se chevauchent : un bloc
+-- qui affleure un bloc déjà posé de l'élément en ressort de SurfaceGap.STEP.
+function Build.settled(fn: (...any) -> ...any, ...: any): ...any
+	return run(placed or SurfaceGap.area(), true, fn, ...)
 end
 
 -- Cette méthode permet de créer une pièce décorative sans collision ni requête lorsque l'on pose un élément que le

@@ -18,6 +18,7 @@ local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local Leaderboard = require(ReplicatedStorage.Shared.Leaderboard)
 local Objectives = require(ReplicatedStorage.Shared.Objectives)
 local ThrowDummies = require(ReplicatedStorage.Shared.ThrowDummies)
+local SurfaceGap = require(ReplicatedStorage.Shared.SurfaceGap)
 local ThrowStart = require(ReplicatedStorage.Shared.ThrowStart)
 local TrainingLook = require(ReplicatedStorage.Shared.TrainingLook)
 local Zones = require(ReplicatedStorage.Shared.Zones)
@@ -34,6 +35,7 @@ local SEGMENT_LENGTH = 400 -- longueur maximale d'une pièce de sol ou de paroi 
 local CAP_THICKNESS = Drips.CAP_THICKNESS
 local CAP_OVERHANG = 1 -- l'herbe déborde du bord de chaque marche
 local END_Z = GameConfig.COURSE_LENGTH + 40 -- fond du canyon, derrière la paroi de bout de piste
+local END_EXTRA = 200 -- les parois de la dernière zone dépassent d'autant la paroi de bout de piste (pas de trou aux coins)
 local FINISH_CLEARANCE = 12 -- pas de décor au pied des parois à moins de 12 studs avant l'arche d'arrivée (piliers)
 local STATION_HEIGHT = 1.4 -- hauteur du podium de l'appareil d'entraînement
 local STATION_SPOT = 0.6 -- avance de la place de l'avatar devant le centre du podium (le râtelier est derrière)
@@ -327,59 +329,152 @@ local function scatter(
 	end
 end
 
--- Cette méthode permet de monter une paroi en gradins coiffés d'herbe et décorés (bord de `start` à `finish`, tournée vers
--- `facing`) lorsque l'on borde le hub ou la piste ; `grow` ±1 allonge ou raccourcit les marches hautes à chaque bout.
+-- Bout d'une paroi en gradins (#93, #38) : avancée de la couverture du dessus (`cover`) et du débord côté zone ouverte
+-- (`strip`) au-delà du bout de la marche, coulées arrêtées à `drip` studs du bout ; `fill` : la marche (et sa
+-- couverture) se prolonge jusqu'au bord extérieur de la paroi voisine, qui la coupe à angle droit (coin du hub sans
+-- encoche). Une couverture qui affleure le bout de sa marche scintille : elle le dépasse ou s'arrête avant.
+type WallEnd = { cover: number, strip: number, drip: number, fill: boolean?, recede: boolean? }
+local CAP_LIP = SurfaceGap.STEP -- avancée de la couverture sur un bout visible
+-- Bout visible : la couverture dépasse un peu la marche
+local FREE: WallEnd = { cover = CAP_LIP, strip = CAP_LIP, drip = 0 }
+-- Prolongée dans l'alignement (paroi de la zone suivante, ou fond du hub qui la recouvre) : couverture au ras, bout caché
+local JOINT: WallEnd = { cover = 0, strip = 0, drip = 0 }
+-- Épaulement du hub : la couverture de la piste avance par-dessus, celle du hub s'arrête avant
+local UNDER: WallEnd = { cover = -CAP_LIP, strip = -CAP_LIP, drip = 0 }
+-- Entre deux parois qui la bordent (bout de piste) : leur débord couvre le coin, couverture et coulées s'arrêtent avant
+local INNER: WallEnd = { cover = -CAP_OVERHANG, strip = -CAP_OVERHANG, drip = CAP_OVERHANG }
+-- Fond du hub : la marche couvre le coin jusqu'au bord extérieur des côtés ; son débord et ses coulées s'arrêtent avant
+-- celui des côtés
+local FILL: WallEnd = { cover = CAP_LIP, strip = -CAP_OVERHANG, drip = CAP_OVERHANG, fill = true }
+-- Au-delà de la paroi de bout de piste (côtés de la dernière zone) : coulées arrêtées à son pied, qui recule d'une marche
+-- à l'autre (`recede`)
+local BEYOND_END: WallEnd = { cover = CAP_LIP, strip = CAP_LIP, drip = END_EXTRA, recede = true }
+
+-- Cette méthode permet de poser un bloc axe-aligné entre deux coins opposés quelconques (hauteurs `y0` à `y1`) lorsque
+-- l'on monte la couverture d'une marche.
+local function capBox(parent: Instance, p: Vector3, q: Vector3, y0: number, y1: number, color: Color3, name: string)
+	box(
+		parent,
+		Vector3.new(math.min(p.X, q.X), y0, math.min(p.Z, q.Z)),
+		Vector3.new(math.max(p.X, q.X), y1, math.max(p.Z, q.Z)),
+		color,
+		Build.WALL,
+		name
+	)
+end
+
+-- Cette méthode permet de monter la marche `tier` d'une paroi (bloc, couverture du dessus, débord, coulées) lorsque l'on
+-- monte la paroi ; renvoie les deux bouts de la ligne du décor de son terre-plein.
+local function terrace(
+	parent: Instance,
+	start: Vector3,
+	finish: Vector3,
+	facing: Vector3,
+	zone: Zone,
+	tier: number,
+	grows: { number },
+	ends: { WallEnd }
+): (Vector3, Vector3)
+	local startEnd, finishEnd = ends[1], ends[2]
+	local along = (finish - start).Unit
+	local _, top = CourseLayout.tier(tier)
+	local back = tier * CourseLayout.TIER_STEP -- recul de la marche
+	local a = start - along * (grows[1] * back) - facing * back
+	local b = finish + along * (grows[2] * back) - facing * back
+	-- Bloc de la marche : du bord jusqu'au bord extérieur du plateau (et jusqu'à celui de la paroi voisine, `fill`)
+	local depth = CourseLayout.OUTER - GameConfig.TRACK_WIDTH / 2 - back
+	local outer = -facing * depth
+	local a0 = a - along * (if startEnd.fill then depth else 0)
+	local b0 = b + along * (if finishEnd.fill then depth else 0)
+	local low = Vector3.new(
+		math.min(a0.X, b0.X + outer.X, a0.X + outer.X, b0.X),
+		top - CourseLayout.TIER_HEIGHT,
+		math.min(a0.Z, b0.Z + outer.Z, a0.Z + outer.Z, b0.Z)
+	)
+	local high = Vector3.new(
+		math.max(a0.X, b0.X + outer.X, a0.X + outer.X, b0.X),
+		top,
+		math.max(a0.Z, b0.Z + outer.Z, a0.Z + outer.Z, b0.Z)
+	)
+	box(parent, low, high, zone.wall, Build.WALL, "Terrace")
+	-- Couverture du dessus du bloc (cachée sous la marche suivante), qui dépasse un peu son bord extérieur, puis son
+	-- débord côté zone ouverte ; chacune dépasse le bout du bloc ou s'arrête avant (jamais au ras d'un bout visible)
+	local y0, y1 = top - 0.4, top + CAP_THICKNESS - 0.4
+	capBox(
+		parent,
+		a0 - along * startEnd.cover,
+		b0 + along * finishEnd.cover - facing * (depth + CAP_LIP),
+		y0,
+		y1,
+		zone.top,
+		"TerraceTop"
+	)
+	capBox(
+		parent,
+		a - along * startEnd.strip,
+		b + along * finishEnd.strip + facing * CAP_OVERHANG,
+		y0,
+		y1,
+		zone.top,
+		"TerraceTop"
+	)
+	-- Coulées arrêtées à `drip` studs de chaque bout (moins le recul de la marche si la paroi qui les arrête recule aussi)
+	local trim0 = startEnd.drip - (if startEnd.recede then back else 0)
+	local trim1 = finishEnd.drip - (if finishEnd.recede then back else 0)
+	local length = (b - a).Magnitude - trim0 - trim1
+	if length > 0 then
+		drips(parent, a + along * trim0 + Vector3.new(0, y0, 0), facing, length, zone.top, low, high)
+	end
+	-- Ligne du décor du terre-plein : au milieu de la marche, sur la couverture
+	local rise = Vector3.new(0, y1, 0) - facing * (CourseLayout.TIER_STEP / 2)
+	return a + rise, b + rise
+end
+
+-- Cette méthode permet de monter les marches d'une paroi en gradins (bords, `grow` et bouts WallEnd) dans `area` lorsque
+-- l'on borde le hub ou la piste ; renvoie de quoi poser son décor, une fois les parois voisines montées.
 local function terraces(
+	area: SurfaceGap.Area,
 	parent: Instance,
 	start: Vector3,
 	finish: Vector3,
 	facing: Vector3,
 	zone: Zone,
 	growStart: number,
-	growEnd: number
-)
-	local along = (finish - start).Unit
-	for tier = 0, CourseLayout.TIER_COUNT - 1 do
-		local _, top = CourseLayout.tier(tier)
-		local back = tier * CourseLayout.TIER_STEP -- recul de la marche
-		local a = start - along * (growStart * back) - facing * back
-		local b = finish + along * (growEnd * back) - facing * back
-		-- Bloc de la marche : du bord jusqu'au bord extérieur du plateau
-		local depth = CourseLayout.OUTER - GameConfig.TRACK_WIDTH / 2 - back
-		local outer = -facing * depth
-		local low = Vector3.new(
-			math.min(a.X, b.X + outer.X, a.X + outer.X, b.X),
-			top - CourseLayout.TIER_HEIGHT,
-			math.min(a.Z, b.Z + outer.Z, a.Z + outer.Z, b.Z)
-		)
-		local high = Vector3.new(
-			math.max(a.X, b.X + outer.X, a.X + outer.X, b.X),
-			top,
-			math.max(a.Z, b.Z + outer.Z, a.Z + outer.Z, b.Z)
-		)
-		box(parent, low, high, zone.wall, Build.WALL, "Terrace")
-		-- Couverture de tout le dessus du bloc (cachée sous la marche suivante), qui déborde côté zone ouverte ; pas aux
-		-- bouts, où elle chevaucherait la couverture de la paroi voisine
-		local c0 = a + facing * CAP_OVERHANG
-		local c1 = b + outer
-		box(
-			parent,
-			Vector3.new(math.min(c0.X, c1.X), top - 0.4, math.min(c0.Z, c1.Z)),
-			Vector3.new(math.max(c0.X, c1.X), top + CAP_THICKNESS - 0.4, math.max(c0.Z, c1.Z)),
-			zone.top,
-			Build.WALL,
-			"TerraceTop"
-		)
-		drips(parent, a + Vector3.new(0, top - 0.4, 0), facing, (b - a).Magnitude, zone.top, low, high)
-		-- Décor du terre-plein (marches) ou du plateau (dernière marche, deux rangées)
-		local ground0 = a + Vector3.new(0, top + CAP_THICKNESS - 0.4, 0) - facing * (CourseLayout.TIER_STEP / 2)
-		local ground1 = b + Vector3.new(0, top + CAP_THICKNESS - 0.4, 0) - facing * (CourseLayout.TIER_STEP / 2)
-		if tier < CourseLayout.TIER_COUNT - 1 then
-			scatter(parent, zone, ground0, ground1, 26, facing, 1.5, true)
-		else
-			scatter(parent, zone, ground0, ground1, 16, facing, 2, true)
-			scatter(parent, zone, ground0 - facing * 22, ground1 - facing * 22, 18, facing, 8, true)
+	growEnd: number,
+	startEnd: WallEnd,
+	finishEnd: WallEnd
+): () -> ()
+	-- Marches réglées à la main (bouts, débords : WallEnd), ajoutées à la zone telles quelles
+	local lines = {}
+	Build.keep(area, function()
+		for tier = 0, CourseLayout.TIER_COUNT - 1 do
+			local ground0, ground1 = terrace(
+				parent,
+				start,
+				finish,
+				facing,
+				zone,
+				tier,
+				{ growStart, growEnd },
+				{ startEnd, finishEnd }
+			)
+			lines[tier] = { ground0, ground1 }
 		end
+	end)
+	-- Cette méthode permet de semer le décor des terre-pleins et du plateau (dernière marche, deux rangées) lorsque les
+	-- parois voisines sont montées : un accessoire qui affleure une marche, une coulée ou un voisin en ressort un peu.
+	return function()
+		Build.within(area, function()
+			for tier = 0, CourseLayout.TIER_COUNT - 1 do
+				local ground0, ground1 = lines[tier][1], lines[tier][2]
+				if tier < CourseLayout.TIER_COUNT - 1 then
+					scatter(parent, zone, ground0, ground1, 26, facing, 1.5, true)
+				else
+					scatter(parent, zone, ground0, ground1, 16, facing, 2, true)
+					scatter(parent, zone, ground0 - facing * 22, ground1 - facing * 22, 18, facing, 8, true)
+				end
+			end
+		end)
 	end
 end
 
@@ -451,7 +546,8 @@ local function buildLaunchZone(parent: Instance)
 	-- Liseré blanc en bordure, côté piste, à peine surélevé
 	Build.part({
 		Name = "BandEdge",
-		Size = Vector3.new(GameConfig.TRACK_WIDTH, 1.2, CourseLayout.BAND_EDGE),
+		-- Entre un peu dans les parois : ses bouts ne sont pas au ras de ceux du sol de la piste (#93)
+		Size = Vector3.new(GameConfig.TRACK_WIDTH + 2 * SurfaceGap.STEP, 1.2, CourseLayout.BAND_EDGE),
 		Position = Vector3.new(0, top + CourseLayout.EDGE_RISE - 0.6, CourseLayout.BAND_EDGE / 2),
 		Color = COLORS.line,
 		Variant = Build.BRICK,
@@ -789,20 +885,23 @@ function CourseBuilder.styleStation(slot: Slot, tier: number)
 	-- Nouvel habillage posé avant de retirer l'ancien : le podium ne manque jamais sous l'avatar
 	local fresh = Instance.new("Model")
 	fresh.Name = "Look"
-	buildPodium(fresh, trainer.floor, slot.color, look)
-	local top = trainer.floor * CFrame.new(0, STATION_HEIGHT, 0)
-	buildRack(fresh, top, slot.color, look, tier, slot.index)
-	-- Pièces de palier (#118), sur le repère du podium et du râtelier (buildRack)
-	StationPieces.build(fresh, {
-		floor = trainer.floor,
-		top = top,
-		size = CourseLayout.STATION_SIZE,
-		height = STATION_HEIGHT,
-		rackZ = CourseLayout.STATION_SIZE / 2 - 1.2,
-		postX = RACK_POST_X,
-		rackHeight = RACK_HEIGHT,
-		barY = RACK_HEIGHT - 0.9,
-	}, look)
+	-- D'un tenant : une pièce qui en affleure une autre ressort un peu (#93)
+	Build.settled(function()
+		buildPodium(fresh, trainer.floor, slot.color, look)
+		local top = trainer.floor * CFrame.new(0, STATION_HEIGHT, 0)
+		buildRack(fresh, top, slot.color, look, tier, slot.index)
+		-- Pièces de palier (#118), sur le repère du podium et du râtelier (buildRack)
+		StationPieces.build(fresh, {
+			floor = trainer.floor,
+			top = top,
+			size = CourseLayout.STATION_SIZE,
+			height = STATION_HEIGHT,
+			rackZ = CourseLayout.STATION_SIZE / 2 - 1.2,
+			postX = RACK_POST_X,
+			rackHeight = RACK_HEIGHT,
+			barY = RACK_HEIGHT - 0.9,
+		}, look)
+	end)
 	fresh.Parent = trainer.model
 	trainer.look:Destroy()
 	trainer.look = fresh
@@ -1108,51 +1207,54 @@ function CourseBuilder.styleBase(slot: Slot, tier: number, upgrade: boolean?): b
 	base.plot.Color = look.plot or Build.shade(slot.color, 0.6)
 	local center, size = CourseLayout.baseBox(slot.index, base.big)
 	local hx, hz = size.X / 2, size.Z / 2
-	local gate, corners = baseFence(folder, slot, fence)
-	local lift = Vector3.new(0, BaseLook.postTop(fence), 0)
-	-- Arche d'entrée : les lanternes de l'entrée montent sur son linteau
-	local gateTops = { gate[1] + lift, gate[2] + lift }
-	if look.arch then
-		local a, b = Props.arch(folder, gate[1], gate[2], slot.color)
-		gateTops = { a, b }
-	end
-	if look.lanterns >= 2 then
-		for _, top in gateTops do
-			Props.lantern(folder, top)
+	-- Clôture et décor du palier d'un tenant : une pièce qui en affleure une autre ressort un peu (#93)
+	Build.settled(function()
+		local gate, corners = baseFence(folder, slot, fence)
+		local lift = Vector3.new(0, BaseLook.postTop(fence), 0)
+		-- Arche d'entrée : les lanternes de l'entrée montent sur son linteau
+		local gateTops = { gate[1] + lift, gate[2] + lift }
+		if look.arch then
+			local a, b = Props.arch(folder, gate[1], gate[2], slot.color)
+			gateTops = { a, b }
 		end
-	end
-	if look.lanterns >= 6 then
-		for _, corner in corners do
-			Props.lantern(folder, corner + lift)
+		if look.lanterns >= 2 then
+			for _, top in gateTops do
+				Props.lantern(folder, top)
+			end
 		end
-	end
-	local plotTop = center.Y + PLOT_TOP
-	if look.flowers then
-		-- Le long du fond (côté opposé à l'entrée) et de part et d'autre de l'entrée, entre clôture et présentoirs
-		local back = center.Z - (hz - BED_INSET)
-		local front = center.Z + (hz - BED_INSET)
-		local reach = hx - BED_END
-		Props.flowerBed(
-			folder,
-			Vector3.new(center.X - reach, plotTop, back),
-			Vector3.new(center.X + reach, plotTop, back)
-		)
-		for _, side in { -1, 1 } do
+		if look.lanterns >= 6 then
+			for _, corner in corners do
+				Props.lantern(folder, corner + lift)
+			end
+		end
+		local plotTop = center.Y + PLOT_TOP
+		if look.flowers then
+			-- Le long du fond (côté opposé à l'entrée) et de part et d'autre de l'entrée, entre clôture et présentoirs
+			local back = center.Z - (hz - BED_INSET)
+			local front = center.Z + (hz - BED_INSET)
+			local reach = hx - BED_END
 			Props.flowerBed(
 				folder,
-				Vector3.new(center.X + side * (GATE_WIDTH / 2 + 1.5), plotTop, front),
-				Vector3.new(center.X + side * reach, plotTop, front)
+				Vector3.new(center.X - reach, plotTop, back),
+				Vector3.new(center.X + reach, plotTop, back)
 			)
+			for _, side in { -1, 1 } do
+				Props.flowerBed(
+					folder,
+					Vector3.new(center.X + side * (GATE_WIDTH / 2 + 1.5), plotTop, front),
+					Vector3.new(center.X + side * reach, plotTop, front)
+				)
+			end
 		end
-	end
-	if look.flags then
-		for _, corner in corners do
-			local inside = Vector3.new(math.sign(center.X - corner.X), 0, math.sign(center.Z - corner.Z))
-			-- Fanion tourné vers l'extérieur de la base, côté entrée ou fond
-			local outward = Vector3.new(0, 0, -inside.Z)
-			Props.flag(folder, Vector3.new(corner.X, plotTop, corner.Z) + inside * FLAG_INSET, outward, slot.color)
+		if look.flags then
+			for _, corner in corners do
+				local inside = Vector3.new(math.sign(center.X - corner.X), 0, math.sign(center.Z - corner.Z))
+				-- Fanion tourné vers l'extérieur de la base, côté entrée ou fond
+				local outward = Vector3.new(0, 0, -inside.Z)
+				Props.flag(folder, Vector3.new(corner.X, plotTop, corner.Z) + inside * FLAG_INSET, outward, slot.color)
+			end
 		end
-	end
+	end)
 	if fence.shine then
 		local zone = sparkles(
 			folder,
@@ -1265,10 +1367,10 @@ local function buildBase(parent: Instance, slot: Slot)
 		displays = displays,
 		pedestals = pedestals,
 		facing = CourseLayout.ENTRANCE,
-		pad = buildPad(parent, slot),
+		pad = Build.settled(buildPad, parent, slot),
 	}
 	CourseBuilder.styleBase(slot, 1)
-	slot.gearPad = buildGearPad(parent, slot)
+	slot.gearPad = Build.settled(buildGearPad, parent, slot)
 	CourseBuilder.styleGearPad(slot, 1, nil)
 end
 
@@ -1349,17 +1451,23 @@ end
 
 -- Cette méthode permet de construire le hub (pelouse à damier, parois en gradins, rangée des bases avec leurs appareils
 -- et pads, stands, tableaux de scores et zone d'événement au bord de la bande, chevrons vers la bande, arbres, point
--- d'apparition) lorsque le serveur démarre ; renvoie les tableaux de scores (remplis par Server.LeaderboardService).
-local function buildHub(parent: Instance, slots: { Slot }): { Props.Scoreboard }
+-- d'apparition) lorsque le serveur démarre ; renvoie les tableaux de scores (remplis par Server.LeaderboardService) et
+-- le décor des parois, à poser quand celles de la piste (`walls`, zone commune) sont montées.
+local function buildHub(parent: Instance, slots: { Slot }, walls: SurfaceGap.Area): ({ Props.Scoreboard }, { () -> () })
 	local zone = Zones.LIST[1]
 	local halfW = GameConfig.HUB_WIDTH / 2
 	local front = CourseLayout.HUB_FRONT
 	local back = CourseLayout.HUB_BACK
 	ground(parent, -halfW, halfW, back, front, zone.ground, "Hub")
 	-- Parois : côtés (jusqu'aux épaulements de la piste) et fond
-	terraces(parent, Vector3.new(halfW, 0, back), Vector3.new(halfW, 0, front), -Vector3.xAxis, zone, 1, 1)
-	terraces(parent, Vector3.new(-halfW, 0, front), Vector3.new(-halfW, 0, back), Vector3.xAxis, zone, 1, 1)
-	terraces(parent, Vector3.new(-halfW, 0, back), Vector3.new(halfW, 0, back), Vector3.zAxis, zone, 1, 1)
+	-- Coins du fond : la paroi du fond les couvre (FILL), les côtés s'y arrêtent ; devant, la piste passe par-dessus
+	local right, left = Vector3.new(halfW, 0, 0), Vector3.new(-halfW, 0, 0)
+	local backZ, frontZ = Vector3.new(0, 0, back), Vector3.new(0, 0, front)
+	local decor = {
+		terraces(walls, parent, left + backZ, right + backZ, Vector3.zAxis, zone, 1, 1, FILL, FILL),
+		terraces(walls, parent, right + backZ, right + frontZ, -Vector3.xAxis, zone, 1, 1, JOINT, UNDER),
+		terraces(walls, parent, left + frontZ, left + backZ, Vector3.xAxis, zone, 1, 1, UNDER, JOINT),
+	}
 	-- Les épaulements entre le hub (large) et la piste (étroite) sont les bouts des parois de la piste : stands et
 	-- tableaux s'y adossent, de part et d'autre de la bande
 
@@ -1367,7 +1475,7 @@ local function buildHub(parent: Instance, slots: { Slot }): { Props.Scoreboard }
 		buildStation(parent, slot)
 		buildBase(parent, slot)
 		-- Chevrons de l'entrée de la base vers la bande
-		chevrons(parent, CourseLayout.basePosition(slot.index).X, CourseLayout.BASE_FRONT + 4, 3)
+		Build.settled(chevrons, parent, CourseLayout.basePosition(slot.index).X, CourseLayout.BASE_FRONT + 4, 3)
 	end
 	-- Stands (#68) à gauche de la bande : boutique des mannequins à lancer (#14), vente des mannequins de collection
 	local shopAt = CourseLayout.standFrame("shop")
@@ -1383,22 +1491,25 @@ local function buildHub(parent: Instance, slots: { Slot }): { Props.Scoreboard }
 	for index, board in Leaderboard.BOARDS do
 		table.insert(boards, Props.scoreboard(parent, CourseLayout.boardFrame(index), board))
 	end
-	buildEventArea(parent)
+	Build.settled(buildEventArea, parent)
 	-- Chevrons du point d'apparition vers la bande
-	chevrons(parent, 0, CourseLayout.SPAWN.Z + 4, 3)
-	-- Arbres et buissons aux coins du fond et le long des côtés, à côté des bases du bout de la rangée
-	for _, side in { -1, 1 } do
-		for _ = 1, 5 do
-			local position =
-				Vector3.new(side * rng:NextNumber(halfW - 12, halfW - 4), 0, rng:NextNumber(back + 4, back + 20))
-			Props.build(if rng:NextNumber() < 0.6 then "tree" else "bush", parent, CFrame.new(position), rng, true)
+	Build.settled(chevrons, parent, 0, CourseLayout.SPAWN.Z + 4, 3)
+	-- Arbres et buissons aux coins du fond et le long des côtés, à côté des bases du bout de la rangée (un arbre qui
+	-- affleure une paroi ou un voisin en ressort un peu)
+	Build.within(walls, function()
+		for _, side in { -1, 1 } do
+			for _ = 1, 5 do
+				local position =
+					Vector3.new(side * rng:NextNumber(halfW - 12, halfW - 4), 0, rng:NextNumber(back + 4, back + 20))
+				Props.build(if rng:NextNumber() < 0.6 then "tree" else "bush", parent, CFrame.new(position), rng, true)
+			end
+			for _ = 1, 4 do
+				local position =
+					Vector3.new(side * rng:NextNumber(halfW - 14, halfW - 5), 0, rng:NextNumber(back + 24, -52))
+				Props.build(if rng:NextNumber() < 0.6 then "tree" else "bush", parent, CFrame.new(position), rng, true)
+			end
 		end
-		for _ = 1, 4 do
-			local position =
-				Vector3.new(side * rng:NextNumber(halfW - 14, halfW - 5), 0, rng:NextNumber(back + 24, -52))
-			Props.build(if rng:NextNumber() < 0.6 then "tree" else "bush", parent, CFrame.new(position), rng, true)
-		end
-	end
+	end)
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "SpawnLocation"
 	spawn.Anchored = true
@@ -1411,7 +1522,7 @@ local function buildHub(parent: Instance, slots: { Slot }): { Props.Scoreboard }
 	spawn.CFrame =
 		CFrame.lookAt(CourseLayout.SPAWN + Vector3.new(0, 0.5, 0), CourseLayout.SPAWN + Vector3.new(0, 0.5, 1))
 	spawn.Parent = parent
-	return boards
+	return boards, decor
 end
 
 -- Cette méthode permet de dresser l'arche d'arrivée traversable (ligne et bandeau à damier, piliers, panneau « FINISH »)
@@ -1461,12 +1572,13 @@ local function buildFinish(parent: Instance)
 	model.Parent = parent
 end
 
--- Cette méthode permet de construire la piste (sol, parois et décor de chaque zone, panneaux, arche d'arrivée, paroi du
--- bout) lorsque le serveur démarre ; renvoie le temps de construction de chaque zone (ms), pour le journal.
-local function buildTrack(parent: Instance): { string }
+-- Cette méthode permet de construire la piste (sol, parois de chaque zone dans `walls`, arche d'arrivée, paroi du bout)
+-- lorsque le serveur démarre ; renvoie de quoi poser son décor, qui rend le temps de chaque zone (ms) pour le journal.
+local function buildTrack(parent: Instance, walls: SurfaceGap.Area): () -> { string }
 	local half = GameConfig.TRACK_WIDTH / 2
 	local length = GameConfig.COURSE_LENGTH
-	local timings = {}
+	local spent: { number } = {} -- temps de chaque zone (s), marches puis décor
+	local dressers: { () -> () } = {}
 	for index, zone in Zones.LIST do
 		local started = os.clock()
 		local folder = Instance.new("Folder")
@@ -1475,49 +1587,63 @@ local function buildTrack(parent: Instance): { string }
 		local zoneEnd = if index == #Zones.LIST then END_Z else Zones.finish(index, length)
 		ground(folder, -half, half, zoneStart, zoneEnd, zone.ground, "Track")
 		-- Les parois de la dernière zone dépassent la paroi de bout de piste (pas de trou aux coins)
-		local wallEnd = if index == #Zones.LIST then END_Z + 200 else zoneEnd
+		local wallEnd = if index == #Zones.LIST then END_Z + END_EXTRA else zoneEnd
 		-- Parois : la première zone part des épaulements (z = -LAUNCH_DEPTH), les marches hautes reculent avec eux
 		local wallStart = if index == 1 then -GameConfig.LAUNCH_DEPTH else zoneStart
 		local grow = if index == 1 then -1 else 0
-		terraces(folder, Vector3.new(half, 0, wallStart), Vector3.new(half, 0, wallEnd), -Vector3.xAxis, zone, grow, 0)
-		terraces(folder, Vector3.new(-half, 0, wallEnd), Vector3.new(-half, 0, wallStart), Vector3.xAxis, zone, 0, grow)
-		-- Décor au pied des parois (traversable : le mannequin ne s'y accroche pas), arrêté avant les piliers de l'arche
-		-- d'arrivée qui sont dans sa rangée
-		local footEnd = if index == #Zones.LIST then length - FINISH_CLEARANCE else zoneEnd
-		for _, side in { -1, 1 } do
-			local x = side * (half - 4)
-			scatter(
-				folder,
-				zone,
-				Vector3.new(x, 0, math.max(zoneStart, 8)),
-				Vector3.new(x, 0, footEnd),
-				22,
-				Vector3.xAxis,
-				1.5,
-				false
-			)
-		end
+		-- Bouts : épaulement du hub (la couverture avance sur celle du hub), raccord avec la zone voisine, ou au-delà de la
+		-- paroi de bout de piste
+		local first = if index == 1 then FREE else JOINT
+		local last = if index == #Zones.LIST then BEYOND_END else JOINT
+		local right, left = Vector3.new(half, 0, 0), Vector3.new(-half, 0, 0)
+		local z0, z1 = Vector3.new(0, 0, wallStart), Vector3.new(0, 0, wallEnd)
+		local decor = {
+			terraces(walls, folder, right + z0, right + z1, -Vector3.xAxis, zone, grow, 0, first, last),
+			terraces(walls, folder, left + z1, left + z0, Vector3.xAxis, zone, 0, grow, last, first),
+		}
+		-- Ligne d'entrée de zone, que les accessoires qui la touchent devront éviter
 		if index > 1 then
-			Build.decor({
+			Build.keep(walls, Build.decor, {
 				Name = "ZoneLine",
 				Size = Vector3.new(GameConfig.TRACK_WIDTH, 0.1, 1.2),
 				Position = Vector3.new(0, 0.05, zoneStart),
 				Color = COLORS.line,
 				Parent = folder,
 			})
-			-- Panneaux d'entrée de zone (pas au départ : la zone de lancer reste dégagée, comme dans les références)
-			local label = string.format("%s  x%s CHANCE", string.upper(zone.name), zone.chance)
-			for _, side in { -1, 1 } do
-				Props.signpost(folder, CFrame.new(side * (half - 9), 0, zoneStart + 4), label, zone.color)
-			end
 		end
 		folder.Parent = parent
-		table.insert(timings, string.format("%s %.0f", zone.name, (os.clock() - started) * 1000))
+		spent[index] = os.clock() - started
+		-- Cette méthode permet de poser le décor de la zone (gradins, pied des parois, panneaux d'entrée) lorsque toutes
+		-- les parois et lignes qu'il peut toucher sont posées.
+		dressers[index] = function()
+			local begun = os.clock()
+			for _, decorate in decor do
+				decorate()
+			end
+			-- Décor au pied des parois (traversable : le mannequin ne s'y accroche pas), arrêté avant les piliers de
+			-- l'arche d'arrivée qui sont dans sa rangée
+			local footEnd = if index == #Zones.LIST then length - FINISH_CLEARANCE else zoneEnd
+			for _, side in { -1, 1 } do
+				local x = side * (half - 4)
+				local from, to = Vector3.new(x, 0, math.max(zoneStart, 8)), Vector3.new(x, 0, footEnd)
+				Build.within(walls, scatter, folder, zone, from, to, 22, Vector3.xAxis, 1.5, false)
+			end
+			-- Panneaux d'entrée de zone (pas au départ : la zone de lancer reste dégagée, comme dans les références), au
+			-- pied des parois : ils ressortent un peu des accessoires qu'ils touchent
+			if index > 1 then
+				local label = string.format("%s  x%s CHANCE", string.upper(zone.name), zone.chance)
+				for _, side in { -1, 1 } do
+					local at = CFrame.new(side * (half - 9), 0, zoneStart + 4)
+					Build.within(walls, Props.signpost, folder, at, label, zone.color)
+				end
+			end
+			spent[index] += os.clock() - begun
+		end
 	end
-	buildFinish(parent)
+	Build.settled(buildFinish, parent)
 	-- Paroi de bout de piste, en gradins tournés vers le départ
-	local last = Zones.LIST[#Zones.LIST]
-	terraces(parent, Vector3.new(half, 0, END_Z), Vector3.new(-half, 0, END_Z), -Vector3.zAxis, last, 1, 1)
+	local from, to = Vector3.new(half, 0, END_Z), Vector3.new(-half, 0, END_Z)
+	local endDecor = terraces(walls, parent, from, to, -Vector3.zAxis, Zones.LIST[#Zones.LIST], 1, 1, INNER, INNER)
 	-- Parois invisibles au-dessus des gradins (côtés et bout de piste) : les mannequins restent dans le canyon
 	local _, topHeight = CourseLayout.tier(CourseLayout.TIER_COUNT - 1)
 	local innerTop = CourseLayout.tier(CourseLayout.TIER_COUNT - 1)
@@ -1563,7 +1689,19 @@ local function buildTrack(parent: Instance): { string }
 		CanQuery = false,
 		Parent = parent,
 	})
-	return timings
+	-- Cette méthode permet de poser le décor de toutes les zones puis celui de la paroi du bout lorsque toutes les parois
+	-- sont montées ; renvoie le temps de chaque zone.
+	return function()
+		for _, dress in dressers do
+			dress()
+		end
+		endDecor()
+		local timings = {}
+		for index, zone in Zones.LIST do
+			table.insert(timings, string.format("%s %.0f", zone.name, spent[index] * 1000))
+		end
+		return timings
+	end
 end
 
 -- Cette méthode permet de créer les places des joueurs (position, couleur, repères) avant que le décor ne les habille
@@ -1607,10 +1745,19 @@ function CourseBuilder.build(): Course
 	local course = Instance.new("Folder")
 	course.Name = "Course"
 	local slots = newSlots()
-	local boards = buildHub(course, slots)
+	-- Parois du hub et de la piste dans une même zone : leur décor (posé une fois toutes montées) et celui du pied des
+	-- parois ressortent un peu de tout ce qu'ils touchent, d'une zone à l'autre comprise (#93)
+	local walls = SurfaceGap.area()
+	local boards, hubDecor = buildHub(course, slots, walls)
 	buildLaunchZone(course)
 	local hubTime = os.clock() - started
-	local zoneTimes = buildTrack(course)
+	local dressTrack = buildTrack(course, walls)
+	local hubDecorStarted = os.clock()
+	for _, decorate in hubDecor do
+		decorate()
+	end
+	hubTime += os.clock() - hubDecorStarted
+	local zoneTimes = dressTrack()
 	local trackTime = os.clock() - started - hubTime
 	local dummies = Instance.new("Folder")
 	dummies.Name = "Dummies"
