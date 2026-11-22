@@ -793,7 +793,7 @@
             {
               "key": "amber_glider",
               "lines": [
-                "$120M",
+                "$100M",
                 "LUCK x8"
               ],
               "look": "a55901bef5",
@@ -802,7 +802,7 @@
             {
               "key": "golden_rocket",
               "lines": [
-                "$180M",
+                "$140M",
                 "LUCK x10"
               ],
               "look": "c261727128",
@@ -811,7 +811,7 @@
             {
               "key": "frost_rubber",
               "lines": [
-                "$600M",
+                "$450M",
                 "LUCK x13"
               ],
               "look": "729010d98d",
@@ -1127,7 +1127,7 @@
             {
               "key": 10,
               "lines": [
-                "$300M",
+                "$200M",
                 "+2.2M EXP / rep"
               ],
               "look": "d0a5028312",
