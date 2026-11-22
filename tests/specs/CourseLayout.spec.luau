@@ -107,15 +107,13 @@ return function(T, Loader)
 			for index = 1, count do
 				local station, facing = CourseLayout.stationPosition(index)
 				local base = CourseLayout.basePosition(index)
-				local side = CourseLayout.entranceSide(index)
 				-- Entrée de 10 studs au milieu du côté de la base : l'appareil ne la couvre pas, sans quitter la base
-				local beside = math.abs(station.Z - base.Z) - podium
+				local beside = math.abs(station.X - base.X) - podium
 				T.expect(beside >= 5, "entrée libre, obtenu " .. beside)
-				T.expect(math.abs(station.Z - base.Z) + podium <= half.Z, "le long de la base")
-				T.expectEqual(math.sign(station.X - base.X), side, "du côté de l'entrée (centre du hub)")
-				T.expect(-side * base.X > 0, "entrée tournée vers le centre du hub")
-				T.expectEqual(facing, Vector3.new(side, 0, 0), "avatar face au centre du hub")
-				local gap = math.abs(station.X - base.X) - half.X - podium
+				T.expect(math.abs(station.X - base.X) + podium <= half.X, "le long de la base")
+				T.expect(station.Z > base.Z, "du côté de l'entrée (la bande)")
+				T.expectEqual(facing, CourseLayout.ENTRANCE, "avatar face à la bande")
+				local gap = station.Z - podium - CourseLayout.BASE_FRONT
 				T.expect(gap >= 4, "passage libre entre l'appareil et la clôture, obtenu " .. gap)
 				T.expect(gap <= 8, "près de la base, obtenu " .. gap)
 				T.expect(math.abs(station.X) + podium <= GameConfig.HUB_WIDTH / 2, "dans la largeur du hub")
@@ -133,11 +131,17 @@ return function(T, Loader)
 			end
 		end)
 
-		T.it("donne à chaque joueur sa base, du côté de sa place, dans le hub, sans chevauchement", function()
+		T.it("donne à chaque joueur sa base, en rangée face à la bande, dans le hub, sans chevauchement", function()
 			local half = CourseLayout.BASE_SIZE / 2
 			for index = 1, count do
 				local base = CourseLayout.basePosition(index)
+				T.expectEqual(base.Z, CourseLayout.basePosition(1).Z, "bases sur une rangée")
 				T.expect(base.X * CourseLayout.slotX(index) > 0, "base du côté de la place " .. index)
+				if index > 1 then
+					local gap = base.X - CourseLayout.basePosition(index - 1).X - 2 * half.X
+					T.expect(gap >= 6 and gap <= 12, "côte à côte avec un passage, obtenu " .. gap)
+				end
+				T.expectEqual(base.Z + half.Z, CourseLayout.BASE_FRONT, "entrée sur la clôture avant")
 				T.expect(math.abs(base.X) + half.X <= GameConfig.HUB_WIDTH / 2, "base dans la largeur du hub")
 				T.expect(base.Z + half.Z <= -GameConfig.LAUNCH_DEPTH, "base derrière la zone de lancer")
 				T.expect(
@@ -156,6 +160,71 @@ return function(T, Loader)
 					T.expect(math.abs(position.Z - base.Z) < half.Z - 3, "présentoir dans la base (z)")
 				end
 			end
+		end)
+
+		-- Emprises qui se touchent à moins de `margin` studs (rectangles au sol)
+		local function overlap(a, b, margin: number): boolean
+			return math.abs(a.center.X - b.center.X) < (a.size.X + b.size.X) / 2 + margin
+				and math.abs(a.center.Z - b.center.Z) < (a.size.Z + b.size.Z) / 2 + margin
+		end
+
+		T.it(
+			"ne fait se chevaucher ni bases, ni appareils, ni pads, ni stands, ni tableaux, ni zone d'événement",
+			function()
+				local list = CourseLayout.hubFootprints()
+				T.expectEqual(#list, 3 * count + 2 + 3 + 1, "tout est listé")
+				for i = 1, #list do
+					for j = i + 1, #list do
+						-- 2 studs de passage au moins entre deux éléments
+						T.expect(not overlap(list[i], list[j], 2), list[i].name .. " / " .. list[j].name)
+					end
+				end
+			end
+		)
+
+		T.it("garde tout dans le hub, hors de la bande", function()
+			local halfW = GameConfig.HUB_WIDTH / 2
+			for _, item in CourseLayout.hubFootprints() do
+				local half = item.size / 2
+				T.expect(math.abs(item.center.X) + half.X <= halfW, item.name .. " dans la largeur du hub")
+				T.expect(item.center.Z + half.Z <= CourseLayout.HUB_FRONT, item.name .. " derrière la bande")
+				T.expect(item.center.Z - half.Z >= CourseLayout.HUB_BACK, item.name .. " dans la profondeur du hub")
+			end
+		end)
+
+		T.it(
+			"met les stands à gauche de la bande, les tableaux puis la zone d'événement à droite, contre la paroi",
+			function()
+				local edge = GameConfig.TRACK_WIDTH / 2
+				local byName = {}
+				for _, item in CourseLayout.hubFootprints() do
+					byName[item.name] = item
+				end
+				for _, name in { "shop", "sell", "board1", "board2", "board3", "event" } do
+					local item = byName[name]
+					T.expect(
+						CourseLayout.HUB_FRONT - (item.center.Z + item.size.Z / 2) <= 1.5,
+						name .. " contre la paroi"
+					)
+				end
+				T.expect(byName.shop.center.X - byName.shop.size.X / 2 > edge, "SHOP à gauche de la bande")
+				T.expect(byName.sell.center.X > byName.shop.center.X, "SELL après le SHOP")
+				T.expect(byName.board1.center.X + byName.board1.size.X / 2 < -edge, "tableaux à droite de la bande")
+				T.expect(byName.board2.center.X < byName.board1.center.X, "INCOME après LONGEST THROW")
+				T.expect(byName.board3.center.X < byName.board2.center.X, "REBIRTHS après INCOME")
+				T.expect(byName.event.center.X < byName.board3.center.X, "zone d'événement au bout")
+				-- Premier stand et premier tableau au ras de la bande (à moins de 4 studs de son bord)
+				T.expect(byName.shop.center.X - byName.shop.size.X / 2 - edge < 4, "SHOP au bord de la bande")
+				T.expect(-edge - (byName.board1.center.X + byName.board1.size.X / 2) < 4, "tableau au bord de la bande")
+			end
+		)
+
+		T.it("garde le point d'apparition de secours dégagé, entre les bases et la bande", function()
+			local spawn = { name = "spawn", center = CourseLayout.SPAWN, size = Vector3.new(6, 0, 6) }
+			for _, item in CourseLayout.hubFootprints() do
+				T.expect(not overlap(spawn, item, 2), "apparition hors de " .. item.name)
+			end
+			T.expect(CourseLayout.SPAWN.Z > CourseLayout.BASE_FRONT, "devant les bases")
 		end)
 	end)
 
@@ -186,8 +255,8 @@ return function(T, Loader)
 		T.it("présentoirs écartés les uns des autres, les 6 premiers aux places de #13", function()
 			local center = CourseLayout.basePosition(1)
 			local displays = CourseLayout.displayPositions(1)
-			T.expectEqual(displays[1], center + Vector3.new(-9, 0, -7))
-			T.expectEqual(displays[6], center + Vector3.new(9, 0, 7))
+			T.expectEqual(displays[1], center + Vector3.new(-7, 0, -9))
+			T.expectEqual(displays[6], center + Vector3.new(7, 0, 9))
 			for i = 1, #displays do
 				for j = i + 1, #displays do
 					T.expect((displays[i] - displays[j]).Magnitude >= 7, string.format("présentoirs %d et %d", i, j))
@@ -199,11 +268,11 @@ return function(T, Loader)
 				local pad, facing = CourseLayout.padPosition(index)
 				local base = CourseLayout.basePosition(index)
 				local station = CourseLayout.stationPosition(index)
-				T.expect(math.abs(pad.X - base.X) > CourseLayout.BASE_SIZE.X / 2, "hors de la base")
+				T.expect(pad.Z - base.Z > CourseLayout.BASE_SIZE.Z / 2, "hors de la base, côté entrée")
 				T.expect(CourseLayout.isNearBase(index, pad), "près de la base")
-				T.expect(math.abs(pad.Z - base.Z) > 5, "pas devant l'entrée")
+				T.expect(math.abs(pad.X - base.X) > 5, "pas devant l'entrée")
 				T.expect((pad - station).Magnitude > 15, "loin de l'appareil")
-				T.expectEqual(facing.X, CourseLayout.entranceSide(index))
+				T.expectEqual(facing, CourseLayout.ENTRANCE)
 			end
 		end)
 	end)

@@ -1,0 +1,88 @@
+-- Leaderboard (#120) : tableaux du hub, scores écrits dans les classements globaux, fusion du top global et des joueurs
+-- du serveur, textes affichés.
+return function(T, Loader)
+	local Leaderboard = Loader.new():require("src/shared/Leaderboard")
+
+	T.describe("Leaderboard.BOARDS", function()
+		T.it("donne les trois tableaux dans l'ordre du hub, chacun avec son attribut et son classement", function()
+			local ids, attributes, stores = {}, {}, {}
+			for _, board in Leaderboard.BOARDS do
+				table.insert(ids, board.id)
+				table.insert(attributes, board.attribute)
+				T.expect(not stores[board.store], "classement unique : " .. board.store)
+				stores[board.store] = true
+				T.expect(typeof(board.color) == "Color3", board.id .. " : couleur")
+			end
+			T.expectEqual(table.concat(ids, ","), "Distance,Income,Rebirths")
+			T.expectEqual(table.concat(attributes, ","), "BestDistance,Income,Rebirths")
+			T.expectEqual(Leaderboard.BOARDS[1].title, "LONGEST THROW")
+		end)
+	end)
+
+	T.describe("Leaderboard.score / shouldWrite", function()
+		T.it("écrit un entier, arrondi en dessous, borné, rien sous 1 ou hors nombre", function()
+			T.expectEqual(Leaderboard.score(3650.9), 3650)
+			T.expectEqual(Leaderboard.score(1), 1)
+			T.expectEqual(Leaderboard.score(0.5), nil)
+			T.expectEqual(Leaderboard.score(0), nil)
+			T.expectEqual(Leaderboard.score(-4), nil)
+			T.expectEqual(Leaderboard.score(0 / 0), nil)
+			T.expectEqual(Leaderboard.score("12"), nil)
+			T.expectEqual(Leaderboard.score(nil), nil)
+			T.expectEqual(Leaderboard.score(1e300), Leaderboard.MAX_SCORE)
+			T.expectEqual(Leaderboard.score(math.huge), Leaderboard.MAX_SCORE)
+		end)
+		T.it("n'écrit qu'un score présent et changé", function()
+			T.expect(Leaderboard.shouldWrite(nil, 10), "premier écrit")
+			T.expect(Leaderboard.shouldWrite(9, 10), "score changé")
+			T.expect(not Leaderboard.shouldWrite(10, 10), "inchangé")
+			T.expect(not Leaderboard.shouldWrite(10, nil), "rien à écrire")
+		end)
+	end)
+
+	T.describe("Leaderboard.format", function()
+		T.it("écrit distance, revenu et renaissances avec Shared.Format", function()
+			T.expectEqual(Leaderboard.format("Distance", 3650), "3.6 km")
+			T.expectEqual(Leaderboard.format("Distance", 845), "845 m")
+			T.expectEqual(Leaderboard.format("Income", 12345), "$12.3K/s")
+			T.expectEqual(Leaderboard.format("Rebirths", 3), "3")
+			T.expectEqual(Leaderboard.format("Rebirths", 1500), "1.5K")
+		end)
+	end)
+
+	T.describe("Leaderboard.merge", function()
+		T.it("classe par valeur décroissante, égalités par UserId, coupé à SIZE", function()
+			local stored = {}
+			for id = 1, 14 do
+				table.insert(stored, { userId = id, value = id * 10 })
+			end
+			table.insert(stored, { userId = 99, value = 140 })
+			local list = Leaderboard.merge(stored, {})
+			T.expectEqual(#list, Leaderboard.SIZE)
+			T.expectEqual(list[1].userId, 14)
+			T.expectEqual(list[2].userId, 99, "égalité : UserId croissant")
+			T.expectEqual(list[2].value, 140)
+			T.expectEqual(list[Leaderboard.SIZE].value, 60)
+		end)
+		T.it("remplace la valeur lue par celle du joueur présent, même plus basse", function()
+			local stored = { { userId = 1, value = 500 }, { userId = 2, value = 300 } }
+			local live = { { userId = 1, value = 200, name = "Alice" }, { userId = 3, value = 400, name = "Carl" } }
+			local list = Leaderboard.merge(stored, live, 5)
+			T.expectEqual(#list, 3)
+			T.expectEqual(list[1].userId, 3)
+			T.expectEqual(list[2].userId, 2)
+			T.expectEqual(list[3].userId, 1)
+			T.expectEqual(list[3].value, 200)
+			T.expectEqual(list[3].name, "Alice")
+		end)
+		T.it("écarte les valeurs sous 1 (joueur sans record, revenu nul)", function()
+			local list = Leaderboard.merge({ { userId = 1, value = 0 } }, { { userId = 2, value = 0.4 } })
+			T.expectEqual(#list, 0)
+		end)
+		T.it("se contente des joueurs du serveur quand le classement global manque (repli)", function()
+			local list = Leaderboard.merge({}, { { userId = -1, value = 12, name = "Player1" } })
+			T.expectEqual(#list, 1)
+			T.expectEqual(list[1].name, "Player1")
+		end)
+	end)
+end

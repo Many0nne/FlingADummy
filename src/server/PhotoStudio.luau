@@ -153,8 +153,11 @@ local function stageSlot(parent: Instance, shot: PlanchePlan.Shot): boolean
 	end
 	staged = slot
 	local tier = shot.items[1].key :: number
-	local side = CourseLayout.entranceSide(slot.index)
-	local mirror = Vector3.new(side, 1, 1) -- vues décrites pour une entrée vers +X
+	-- Vues décrites pour une entrée vers +X (bases de #61) : symétrie par la diagonale x = z vers l'entrée des bases de
+	-- #120 (+Z), qui garde le cadrage des planches d'avant (appareil à gauche de l'entrée, pad à droite)
+	local function turn(v: Vector3): Vector3
+		return Vector3.new(v.Z, v.Y, v.X)
+	end
 	local center, view
 	if shot.framing == "base" then
 		BaseService.showcase(slot, GameConfig.DISPLAY_START + tier - 1)
@@ -163,7 +166,7 @@ local function stageSlot(parent: Instance, shot: PlanchePlan.Shot): boolean
 		CourseBuilder.styleStation(slot, tier)
 		center, view = CourseLayout.stationPosition(slot.index), STATION_VIEW
 	end
-	frame(parent, shot.name, center + view.aim * mirror, -(view.from * mirror).Unit, view.width)
+	frame(parent, shot.name, center + turn(view.aim), -turn(view.from).Unit, view.width)
 	return true
 end
 

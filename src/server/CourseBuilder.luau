@@ -13,6 +13,7 @@ local CourseLayout = require(ReplicatedStorage.Shared.CourseLayout)
 local Drips = require(ReplicatedStorage.Shared.Drips)
 local DummyShape = require(ReplicatedStorage.Shared.DummyShape)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local Leaderboard = require(ReplicatedStorage.Shared.Leaderboard)
 local Objectives = require(ReplicatedStorage.Shared.Objectives)
 local ThrowDummies = require(ReplicatedStorage.Shared.ThrowDummies)
 local TrainingLook = require(ReplicatedStorage.Shared.TrainingLook)
@@ -61,19 +62,20 @@ local COLORS = {
 local PLOT_TOP = 0.3 -- épaisseur du terrain d'une base (dessus au-dessus de la pelouse)
 local GATE_WIDTH = 10 -- entrée de la base, côté hub
 local BED_INSET = 2.2 -- du bord de la base à l'axe d'un massif de fleurs
-local BED_END = 5 -- massifs arrêtés à cette distance des clôtures avant et arrière
+local BED_END = 5 -- massifs arrêtés à cette distance des clôtures de côté
 local FLAG_INSET = 2.5 -- drapeaux plantés à l'intérieur des coins
 local LABEL_HEIGHT = 24 -- texte flottant de la base, au-dessus de son centre (au-dessus des plus grands mannequins posés)
-local LABEL_SIZE = Vector2.new(14, 8) -- taille du texte flottant en studs (plus une marge en pixels : lisible de loin)
+local LABEL_SIZE = Vector2.new(14, 9.4) -- taille du texte flottant en studs (plus une marge en pixels : lisible de loin)
 local LABEL_DISTANCE = 600 -- distance d'affichage du texte flottant (tout le hub et la zone de lancer)
 local LABEL_GREEN = Color3.fromRGB(80, 215, 70) -- revenu (vert du HUD)
 local LABEL_CYAN = Color3.fromRGB(90, 205, 255) -- Throw Power (cyan du HUD)
+local LABEL_GOLD = Color3.fromRGB(255, 205, 60) -- record (#44)
 
 -- Pad d'achat de présentoir devant la base (panneau « 6 > 7 » et prix, mis à jour par Server.BaseService)
 export type Pad = { title: TextLabel, price: TextLabel, prompt: ProximityPrompt }
 
 -- Texte flottant au-dessus de la base (#91), rempli par Server.BaseService (Shared.BaseLook.label)
-export type BaseLabel = { avatar: ImageLabel, title: TextLabel, income: TextLabel, power: TextLabel }
+export type BaseLabel = { avatar: ImageLabel, title: TextLabel, income: TextLabel, best: TextLabel, power: TextLabel }
 
 export type Base = {
 	model: Model,
@@ -84,7 +86,7 @@ export type Base = {
 	burst: BasePart, -- confettis d'achat de présentoir (CourseBuilder.celebrate)
 	displays: { BasePart }, -- dessus des DISPLAY_MAX présentoirs (invite « Place » dedans), grisés tant que pas achetés
 	pedestals: { BasePart }, -- socles des présentoirs
-	facing: number, -- côté de l'entrée (±1 sur X) : les mannequins posés regardent par là
+	facing: Vector3, -- direction de l'entrée (vers la bande) : les mannequins posés regardent par là
 	pad: Pad,
 }
 
@@ -109,7 +111,7 @@ export type Slot = {
 	spawn: CFrame, -- réapparition et retour après un lancer : dans le hub, juste derrière la bande, face à la piste
 }
 
-export type Course = { slots: { Slot }, dummies: Folder }
+export type Course = { slots: { Slot }, dummies: Folder, boards: { Props.Scoreboard } }
 
 local CourseBuilder = {}
 
@@ -873,7 +875,7 @@ local function baseLabel(parent: Instance, position: Vector3): BaseLabel
 	})
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "BaseLabel"
-	gui.Size = UDim2.new(LABEL_SIZE.X, 110, LABEL_SIZE.Y, 70)
+	gui.Size = UDim2.new(LABEL_SIZE.X, 110, LABEL_SIZE.Y, 82)
 	gui.LightInfluence = 0
 	gui.MaxDistance = LABEL_DISTANCE
 	gui.Parent = anchor
@@ -881,7 +883,7 @@ local function baseLabel(parent: Instance, position: Vector3): BaseLabel
 	avatar.Name = "Avatar"
 	avatar.AnchorPoint = Vector2.new(0.5, 0)
 	avatar.Position = UDim2.fromScale(0.5, 0)
-	avatar.Size = UDim2.fromScale(1, 0.3)
+	avatar.Size = UDim2.fromScale(1, 0.26)
 	avatar.SizeConstraint = Enum.SizeConstraint.RelativeYY
 	avatar.BackgroundColor3 = Color3.new(1, 1, 1)
 	avatar.Image = ""
@@ -914,23 +916,24 @@ local function baseLabel(parent: Instance, position: Vector3): BaseLabel
 		label.Parent = gui
 		return label
 	end
-	local power = line("Power", 0.8, 0.2, LABEL_CYAN)
+	-- Record (#44) sous le revenu, un peu plus petit : le revenu reste la ligne la plus lisible
+	local power = line("Power", 0.84, 0.16, LABEL_CYAN)
 	power.RichText = true -- compteur de renaissances en violet à côté de la Throw Power (Shared.BaseLook.label)
 	return {
 		avatar = avatar,
-		title = line("Title", 0.31, 0.25, Color3.new(1, 1, 1)),
-		income = line("Income", 0.56, 0.24, LABEL_GREEN),
+		title = line("Title", 0.27, 0.22, Color3.new(1, 1, 1)),
+		income = line("Income", 0.49, 0.2, LABEL_GREEN),
+		best = line("Best", 0.69, 0.15, LABEL_GOLD),
 		power = power,
 	}
 end
 
--- Cette méthode permet de poser la clôture d'une base au style `fence` (ouverte côté hub, entrée de 10 studs) dans
+-- Cette méthode permet de poser la clôture d'une base au style `fence` (ouverte côté bande, entrée de 10 studs) dans
 -- `folder` lorsque la base est habillée ; renvoie les deux bouts de l'entrée et les quatre coins, au sol.
 local function baseFence(folder: Instance, slot: Slot, fence: BaseLook.Fence): ({ Vector3 }, { Vector3 })
 	local center = CourseLayout.basePosition(slot.index)
 	local size = CourseLayout.BASE_SIZE
 	local hx, hz = size.X / 2, size.Z / 2
-	local inward = CourseLayout.entranceSide(slot.index)
 	local corners = {
 		center + Vector3.new(-hx, 0, -hz),
 		center + Vector3.new(hx, 0, -hz),
@@ -940,8 +943,10 @@ local function baseFence(folder: Instance, slot: Slot, fence: BaseLook.Fence): (
 	local gate = {}
 	for i, from in corners do
 		local to = corners[i % 4 + 1]
-		-- Chaque coin n'a qu'un poteau : posé par le tronçon qui y finit
-		if math.abs(from.X - to.X) < 0.01 and math.sign(from.X - center.X) == inward then
+		-- Chaque coin n'a qu'un poteau : posé par le tronçon qui y finit ; l'entrée est au milieu du côté qui regarde la
+		-- bande (CourseLayout.ENTRANCE)
+		local side = ((from + to) / 2 - center).Unit
+		if side:Dot(CourseLayout.ENTRANCE) > 0.99 then
 			local mid = (from + to) / 2
 			local dir = (to - from).Unit
 			gate = { mid - dir * GATE_WIDTH / 2, mid + dir * GATE_WIDTH / 2 }
@@ -969,7 +974,6 @@ function CourseBuilder.styleBase(slot: Slot, tier: number)
 	base.plot.Color = look.plot or Build.shade(slot.color, 0.6)
 	local center = CourseLayout.basePosition(slot.index)
 	local hx, hz = CourseLayout.BASE_SIZE.X / 2, CourseLayout.BASE_SIZE.Z / 2
-	local inward = CourseLayout.entranceSide(slot.index)
 	local gate, corners = baseFence(folder, slot, fence)
 	local lift = Vector3.new(0, BaseLook.postTop(fence), 0)
 	-- Arche d'entrée : les lanternes de l'entrée montent sur son linteau
@@ -991,19 +995,19 @@ function CourseBuilder.styleBase(slot: Slot, tier: number)
 	local plotTop = center.Y + PLOT_TOP
 	if look.flowers then
 		-- Le long du fond (côté opposé à l'entrée) et de part et d'autre de l'entrée, entre clôture et présentoirs
-		local back = center.X - inward * (hx - BED_INSET)
-		local front = center.X + inward * (hx - BED_INSET)
-		local reach = hz - BED_END
+		local back = center.Z - (hz - BED_INSET)
+		local front = center.Z + (hz - BED_INSET)
+		local reach = hx - BED_END
 		Props.flowerBed(
 			folder,
-			Vector3.new(back, plotTop, center.Z - reach),
-			Vector3.new(back, plotTop, center.Z + reach)
+			Vector3.new(center.X - reach, plotTop, back),
+			Vector3.new(center.X + reach, plotTop, back)
 		)
 		for _, side in { -1, 1 } do
 			Props.flowerBed(
 				folder,
-				Vector3.new(front, plotTop, center.Z + side * (GATE_WIDTH / 2 + 1.5)),
-				Vector3.new(front, plotTop, center.Z + side * reach)
+				Vector3.new(center.X + side * (GATE_WIDTH / 2 + 1.5), plotTop, front),
+				Vector3.new(center.X + side * reach, plotTop, front)
 			)
 		end
 	end
@@ -1011,7 +1015,7 @@ function CourseBuilder.styleBase(slot: Slot, tier: number)
 		for _, corner in corners do
 			local inside = Vector3.new(math.sign(center.X - corner.X), 0, math.sign(center.Z - corner.Z))
 			-- Fanion tourné vers l'extérieur de la base, côté entrée ou fond
-			local outward = Vector3.new(-inside.X, 0, 0)
+			local outward = Vector3.new(0, 0, -inside.Z)
 			Props.flag(folder, Vector3.new(corner.X, plotTop, corner.Z) + inside * FLAG_INSET, outward, slot.color)
 		end
 	end
@@ -1088,7 +1092,7 @@ local function buildBase(parent: Instance, slot: Slot)
 		burst = upgradeBurst(model, center + Vector3.new(0, 3, 0), slot.color),
 		displays = displays,
 		pedestals = pedestals,
-		facing = CourseLayout.entranceSide(slot.index),
+		facing = CourseLayout.ENTRANCE,
 		pad = buildPad(parent, slot),
 	}
 	CourseBuilder.styleBase(slot, 1)
@@ -1115,51 +1119,109 @@ local function standPrompt(parent: Instance, position: Vector3, action: string, 
 	prompt.Parent = anchor
 end
 
--- Cette méthode permet de construire le hub (pelouse à damier, parois en gradins, bases et leurs appareils, stands à
--- auvents, chevrons vers la zone de lancer, point d'apparition) lorsque le serveur démarre.
-local function buildHub(parent: Instance, slots: { Slot })
-	local zone = Zones.LIST[1]
-	local halfW = GameConfig.HUB_WIDTH / 2
-	local front = -GameConfig.LAUNCH_DEPTH
-	local back = front - GameConfig.HUB_DEPTH
-	ground(parent, -halfW, halfW, back, front, zone.ground, "Hub")
-	-- Parois : côtés (jusqu'aux épaulements de la piste) et fond
-	terraces(parent, Vector3.new(halfW, 0, back), Vector3.new(halfW, 0, front), -Vector3.xAxis, zone, 1, 1)
-	terraces(parent, Vector3.new(-halfW, 0, front), Vector3.new(-halfW, 0, back), Vector3.xAxis, zone, 1, 1)
-	terraces(parent, Vector3.new(-halfW, 0, back), Vector3.new(halfW, 0, back), Vector3.zAxis, zone, 1, 1)
-	-- Les épaulements entre le hub (large) et la piste (étroite) sont les bouts des parois de la piste
-
-	for _, slot in slots do
-		buildStation(parent, slot)
-		buildBase(parent, slot)
-	end
-	-- Stands du fond (#68) : vente des mannequins de collection, boutique des mannequins à lancer (#14)
-	local standZ = back + 14
-	local sellAt = CFrame.new(-24, 0, standZ) * CFrame.Angles(0, math.pi, 0)
-	Props.sellStand(parent, sellAt)
-	-- Invite du stand SELL, devant le comptoir : chaque client y ouvre sa fenêtre de vente
-	standPrompt(parent, (sellAt * CFrame.new(0, 3, -6)).Position, "Sell dummies", "SELL", Collection.SELL_TAG)
-	local shopAt = CFrame.new(24, 0, standZ) * CFrame.Angles(0, math.pi, 0)
-	local shop = Props.shopStand(parent, shopAt, ThrowDummies.DISPLAY_TAG, ThrowDummies.SHOWCASE)
-	-- Invite du stand SHOP : chaque client y ouvre la boutique des mannequins à lancer
-	standPrompt(parent, shop.prompt, "Buy dummies", "SHOP", ThrowDummies.SHOP_TAG)
-	-- Chevrons jaunes au sol vers la zone de lancer (01 / 09)
-	for i = 0, 3 do
+-- Cette méthode permet de tracer au sol `count` chevrons jaunes pointés vers la bande (+Z), le premier en (`x`, `z`),
+-- tous les 6 studs, lorsque l'on balise un chemin du hub vers la zone de lancer (01 / 09).
+local function chevrons(parent: Instance, x: number, z: number, count: number)
+	for i = 0, count - 1 do
 		for _, side in { -1, 1 } do
 			Build.decor({
 				Name = "Chevron",
 				Size = Vector3.new(3.2, 0.1, 1),
-				CFrame = CFrame.new(side * 1.1, 0.06, front - 30 + i * 6) * CFrame.Angles(0, math.rad(side * 45), 0),
+				CFrame = CFrame.new(x + side * 1.1, 0.06, z + i * 6) * CFrame.Angles(0, math.rad(side * 45), 0),
 				Color = COLORS.pad,
 				Parent = parent,
 			})
 		end
 	end
-	-- Arbres et buissons aux coins du hub
-	for _, corner in { Vector3.new(-1, 0, 0), Vector3.new(1, 0, 0) } do
+end
+
+-- Cette méthode permet de poser la zone d'événement réservée (#120 : dallage clair bordé de blanc, vide, et pancarte
+-- « EVENTS · SOON » au style des stands) au bout de la rangée des tableaux lorsque le hub est construit ; rien de jouable.
+local function buildEventArea(parent: Instance)
+	local center = CourseLayout.eventPosition()
+	local size = CourseLayout.EVENT_SIZE
+	local model = Instance.new("Model")
+	model.Name = "EventArea"
+	Build.part({
+		Name = "Paving",
+		Size = Vector3.new(size.X, 0.3, size.Z),
+		Position = center + Vector3.new(0, 0.15, 0),
+		Color = COLORS.stone,
+		Variant = Build.CHECKER,
+		Parent = model,
+	})
+	-- Bordure blanche à peine surélevée, comme le liseré de la bande
+	for _, edge in
+		{
+			{ Vector3.new(size.X, 0.5, 1), Vector3.new(0, 0, size.Z / 2 - 0.5) },
+			{ Vector3.new(size.X, 0.5, 1), Vector3.new(0, 0, -size.Z / 2 + 0.5) },
+			{ Vector3.new(1, 0.5, size.Z - 2), Vector3.new(size.X / 2 - 0.5, 0, 0) },
+			{ Vector3.new(1, 0.5, size.Z - 2), Vector3.new(-size.X / 2 + 0.5, 0, 0) },
+		}
+	do
+		Build.part({
+			Name = "Border",
+			Size = edge[1],
+			Position = center + edge[2] + Vector3.new(0, 0.25, 0),
+			Color = COLORS.line,
+			Variant = Build.BRICK,
+			Parent = model,
+		})
+	end
+	-- Pancarte au fond de la zone, tournée vers les bases
+	Props.comingSoon(model, CFrame.new(center + Vector3.new(0, 0.3, size.Z / 2 - 4)), "EVENTS", "SOON")
+	model.Parent = parent
+end
+
+-- Cette méthode permet de construire le hub (pelouse à damier, parois en gradins, rangée des bases avec leurs appareils
+-- et pads, stands, tableaux de scores et zone d'événement au bord de la bande, chevrons vers la bande, arbres, point
+-- d'apparition) lorsque le serveur démarre ; renvoie les tableaux de scores (remplis par Server.LeaderboardService).
+local function buildHub(parent: Instance, slots: { Slot }): { Props.Scoreboard }
+	local zone = Zones.LIST[1]
+	local halfW = GameConfig.HUB_WIDTH / 2
+	local front = CourseLayout.HUB_FRONT
+	local back = CourseLayout.HUB_BACK
+	ground(parent, -halfW, halfW, back, front, zone.ground, "Hub")
+	-- Parois : côtés (jusqu'aux épaulements de la piste) et fond
+	terraces(parent, Vector3.new(halfW, 0, back), Vector3.new(halfW, 0, front), -Vector3.xAxis, zone, 1, 1)
+	terraces(parent, Vector3.new(-halfW, 0, front), Vector3.new(-halfW, 0, back), Vector3.xAxis, zone, 1, 1)
+	terraces(parent, Vector3.new(-halfW, 0, back), Vector3.new(halfW, 0, back), Vector3.zAxis, zone, 1, 1)
+	-- Les épaulements entre le hub (large) et la piste (étroite) sont les bouts des parois de la piste : stands et
+	-- tableaux s'y adossent, de part et d'autre de la bande
+
+	for _, slot in slots do
+		buildStation(parent, slot)
+		buildBase(parent, slot)
+		-- Chevrons de l'entrée de la base vers la bande
+		chevrons(parent, CourseLayout.basePosition(slot.index).X, CourseLayout.BASE_FRONT + 4, 3)
+	end
+	-- Stands (#68) à gauche de la bande : boutique des mannequins à lancer (#14), vente des mannequins de collection
+	local shopAt = CourseLayout.standFrame("shop")
+	local shop = Props.shopStand(parent, shopAt, ThrowDummies.DISPLAY_TAG, ThrowDummies.SHOWCASE)
+	-- Invite du stand SHOP : chaque client y ouvre la boutique des mannequins à lancer
+	standPrompt(parent, shop.prompt, "Buy dummies", "SHOP", ThrowDummies.SHOP_TAG)
+	local sellAt = CourseLayout.standFrame("sell")
+	Props.sellStand(parent, sellAt)
+	-- Invite du stand SELL, devant le comptoir : chaque client y ouvre sa fenêtre de vente
+	standPrompt(parent, (sellAt * CFrame.new(0, 3, -6)).Position, "Sell dummies", "SELL", Collection.SELL_TAG)
+	-- Tableaux de scores à droite de la bande (#120), puis la zone d'événement réservée
+	local boards = {}
+	for index, board in Leaderboard.BOARDS do
+		table.insert(boards, Props.scoreboard(parent, CourseLayout.boardFrame(index), board))
+	end
+	buildEventArea(parent)
+	-- Chevrons du point d'apparition vers la bande
+	chevrons(parent, 0, CourseLayout.SPAWN.Z + 4, 3)
+	-- Arbres et buissons aux coins du fond et le long des côtés, à côté des bases du bout de la rangée
+	for _, side in { -1, 1 } do
 		for _ = 1, 5 do
 			local position =
-				Vector3.new(corner.X * rng:NextNumber(halfW - 12, halfW - 4), 0, rng:NextNumber(back + 4, back + 20))
+				Vector3.new(side * rng:NextNumber(halfW - 12, halfW - 4), 0, rng:NextNumber(back + 4, back + 20))
+			Props.build(if rng:NextNumber() < 0.6 then "tree" else "bush", parent, CFrame.new(position), rng, true)
+		end
+		for _ = 1, 4 do
+			local position =
+				Vector3.new(side * rng:NextNumber(halfW - 14, halfW - 5), 0, rng:NextNumber(back + 24, -52))
 			Props.build(if rng:NextNumber() < 0.6 then "tree" else "bush", parent, CFrame.new(position), rng, true)
 		end
 	end
@@ -1171,8 +1233,11 @@ local function buildHub(parent: Instance, slots: { Slot })
 	spawn.Neutral = true
 	spawn.Duration = 0
 	spawn.Size = Vector3.new(6, 1, 6)
-	spawn.Position = Vector3.new(0, 0.5, front - 36)
+	-- Face à la bande (+Z)
+	spawn.CFrame =
+		CFrame.lookAt(CourseLayout.SPAWN + Vector3.new(0, 0.5, 0), CourseLayout.SPAWN + Vector3.new(0, 0.5, 1))
 	spawn.Parent = parent
+	return boards
 end
 
 -- Cette méthode permet de dresser l'arche d'arrivée traversable (ligne et bandeau à damier, piliers, panneau « FINISH »)
@@ -1368,7 +1433,7 @@ function CourseBuilder.build(): Course
 	local course = Instance.new("Folder")
 	course.Name = "Course"
 	local slots = newSlots()
-	buildHub(course, slots)
+	local boards = buildHub(course, slots)
 	buildLaunchZone(course)
 	local hubTime = os.clock() - started
 	local zoneTimes = buildTrack(course)
@@ -1394,7 +1459,7 @@ function CourseBuilder.build(): Course
 	if DummyShape.meshStage() < 2 then
 		watchRackTemplates()
 	end
-	return { slots = slots, dummies = dummies }
+	return { slots = slots, dummies = dummies, boards = boards }
 end
 
 return CourseBuilder

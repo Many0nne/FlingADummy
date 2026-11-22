@@ -7,8 +7,8 @@ local GameConfig = {
 	TRACK_WIDTH         = 80,     -- largeur du fond du canyon (studs)
 	COURSE_LENGTH       = 6000,   -- longueur de la piste, axe +Z (studs = mètres affichés ; 2 400 avant #97)
 	SIDE_WALL_HEIGHT    = 260,    -- paroi invisible au-dessus des gradins : garde les mannequins dans le canyon
-	HUB_WIDTH           = 180,    -- hub (bases et leurs appareils) derrière la zone de lancer, axe X
-	HUB_DEPTH           = 130,    -- profondeur du hub, axe -Z, depuis l'arrière de la zone de lancer
+	HUB_WIDTH           = 256,    -- hub derrière la zone de lancer, axe X : 4 bases côte à côte, stands et tableaux (#120)
+	HUB_DEPTH           = 96,     -- profondeur du hub, axe -Z, depuis l'arrière de la zone de lancer (130 avant #120)
 	LAUNCH_DEPTH        = 16,     -- profondeur de la zone de lancer commune (z de -16 à 0)
 
 	-- Lancer : bande commune au bord de la piste (z de -BAND_DEPTH à 0), le joueur s'y fige jusqu'au lancer
