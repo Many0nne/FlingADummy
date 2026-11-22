@@ -32,6 +32,11 @@ CourseLayout.BASE_REACH = 12 -- bouton AUTO de pose : dans la base ou à moins d
 CourseLayout.STATION_GAP = 10 -- de la clôture d'entrée de la base au centre de son appareil d'entraînement (studs)
 CourseLayout.STATION_SHIFT = 12 -- décalage de l'appareil sur le côté de l'entrée (vers +X : à gauche en sortant)
 CourseLayout.STATION_SIZE = 9 -- côté du podium de l'appareil
+-- Pad d'amélioration de l'équipement (#159) : à côté de l'appareil, côté extérieur (comme le pad de la barre de traction
+-- de 09), dalle alignée sur l'avant du podium : ni les marches ni l'allée vers la bande ne sont gênées
+CourseLayout.GEAR_PAD_SHIFT = 23 -- de l'axe de la base au repère du pad (vers +X, au-delà de l'appareil)
+CourseLayout.GEAR_PAD_GAP = 9 -- de la clôture d'entrée au repère du pad (la dalle s'étend 6 studs devant)
+CourseLayout.GEAR_PAD_SIZE = Vector3.new(8, 0, 8.5) -- emprise au sol : dalle et panneau (8 studs de large) derrière
 
 -- Bord de la bande : stands et tableaux adossés à la paroi du départ (z = HUB_FRONT), tournés vers les bases (-Z)
 local STAND_BACK = 6 -- de la paroi au repère d'un stand (le fond de l'échoppe est 5 studs derrière le repère)
@@ -197,6 +202,14 @@ function CourseLayout.padPosition(index: number): (Vector3, Vector3)
 	return Vector3.new(base.X - CourseLayout.PAD_SHIFT, 0, z), CourseLayout.ENTRANCE
 end
 
+-- Cette méthode permet de donner le repère au sol du pad d'amélioration de l'équipement de la place `index` (à côté de
+-- son appareil d'entraînement, côté extérieur) et la direction où regarde son panneau (la bande).
+function CourseLayout.gearPadPosition(index: number): (Vector3, Vector3)
+	local base = CourseLayout.basePosition(index)
+	local z = CourseLayout.BASE_FRONT + CourseLayout.GEAR_PAD_GAP
+	return Vector3.new(base.X + CourseLayout.GEAR_PAD_SHIFT, 0, z), CourseLayout.ENTRANCE
+end
+
 -- Cette méthode permet de donner le repère au sol du stand `kind` (« shop » ou « sell ») à gauche de la bande, dos à
 -- la paroi du départ, face avant (-Z local) tournée vers les bases, lorsque le hub est construit.
 function CourseLayout.standFrame(kind: string): CFrame
@@ -222,7 +235,7 @@ end
 -- Emprise au sol d'un élément du hub (rectangle aligné sur les axes, hauteur ignorée)
 export type Footprint = { name: string, center: Vector3, size: Vector3 }
 
--- Cette méthode permet de lister les emprises au sol de ce qui est posé dans le hub (bases, appareils, pads, stands,
+-- Cette méthode permet de lister les emprises au sol de ce qui est posé dans le hub (bases, appareils, pads, pads d'amélioration, stands,
 -- tableaux, zone d'événement) lorsque les tests vérifient qu'ils ne se chevauchent pas et restent dans le hub.
 function CourseLayout.hubFootprints(): { Footprint }
 	local list: { Footprint } = {}
@@ -235,6 +248,9 @@ function CourseLayout.hubFootprints(): { Footprint }
 		local pad = CourseLayout.padPosition(index)
 		local padSize = Vector3.new(11, 0, 8.5)
 		table.insert(list, { name = "pad" .. index, center = pad + Vector3.new(0, 0, 1.75), size = padSize })
+		-- Pad d'amélioration : même gabarit, panneau plus étroit
+		local gear = CourseLayout.gearPadPosition(index) + Vector3.new(0, 0, 1.75)
+		table.insert(list, { name = "gearPad" .. index, center = gear, size = CourseLayout.GEAR_PAD_SIZE })
 	end
 	for _, kind in { "shop", "sell" } do
 		local center = CourseLayout.standFrame(kind).Position + Vector3.new(0, 0, STAND_DEPTH_SHIFT)

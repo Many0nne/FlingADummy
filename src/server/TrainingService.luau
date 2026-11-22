@@ -4,6 +4,7 @@
 -- aux couleurs du Training Gear de son propriétaire (Shared.BaseLook, #92). Bouton « 2x TRAINING! » (#119) : le serveur
 -- tient le calendrier de chaque joueur (Shared.TrainingBoost), annonce les apparitions (remote TrainingBoost), valide le
 -- clic et double l'EXP des répétitions pendant le bonus (attribut TrainBoostEnds, en temps serveur, pour le HUD).
+-- Pad d'amélioration à côté de l'appareil (#159) : panneau tenu à l'équipement et à l'argent du propriétaire.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -201,8 +202,21 @@ local function watchDebugTrain(player: Player)
 	end)
 end
 
+-- Cette méthode permet d'afficher sur le pad d'amélioration de la place `slot` l'équipement suivant de `player` et
+-- la couleur de son prix (Shared.GearPad) lorsque son équipement ou son argent changent.
+local function updateGearPad(player: Player, slot: CourseBuilder.Slot)
+	if player:GetAttribute("DataReady") ~= true then
+		CourseBuilder.styleGearPad(slot, 1, nil) -- sauvegarde pas encore lue : panneau neutre, pas un faux palier
+		return
+	end
+	local tier = (player:GetAttribute("GearTier") :: number?) or 1
+	local money = (player:GetAttribute("Money") :: number?) or 0
+	CourseBuilder.styleGearPad(slot, tier, money)
+end
+
 -- Cette méthode permet d'habiller l'appareil de la place du joueur à son Training Gear (confettis à chaque achat, pas
--- au chargement) dès que sa place est connue ; son départ rend à l'appareil le premier palier.
+-- au chargement) et d'en tenir le pad d'amélioration à jour dès que sa place est connue ; son départ rend à l'appareil
+-- le premier palier et au pad son état de place libre.
 local function dressStation(player: Player, slots: { CourseBuilder.Slot })
 	local connections: { RBXScriptConnection } = {}
 	local slot: CourseBuilder.Slot? = nil
@@ -225,8 +239,18 @@ local function dressStation(player: Player, slots: { CourseBuilder.Slot })
 				end
 				shown = tier
 				CourseBuilder.styleStation(owned, tier)
+				updateGearPad(player, owned)
 			end)
 		)
+		for _, attribute in { "Money", "DataReady" } do
+			table.insert(
+				connections,
+				player:GetAttributeChangedSignal(attribute):Connect(function()
+					updateGearPad(player, owned)
+				end)
+			)
+		end
+		updateGearPad(player, owned)
 	end
 	-- SlotService pose l'attribut Slot dans son propre PlayerAdded : suivi sans attente bloquante (lobby plein : jamais)
 	table.insert(connections, player:GetAttributeChangedSignal("Slot"):Connect(follow))
@@ -242,6 +266,7 @@ local function dressStation(player: Player, slots: { CourseBuilder.Slot })
 			end
 			if slot then
 				CourseBuilder.styleStation(slot, 1)
+				CourseBuilder.styleGearPad(slot, 1, nil)
 			end
 		end)
 	)

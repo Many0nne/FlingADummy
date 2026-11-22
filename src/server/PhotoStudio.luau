@@ -74,6 +74,7 @@ local function restoreSlot()
 	else
 		BaseService.showcase(staged, nil)
 		CourseBuilder.styleStation(staged, 1)
+		CourseBuilder.styleGearPad(staged, 1, nil)
 	end
 	staged = nil
 end
@@ -164,6 +165,8 @@ local function stageSlot(parent: Instance, shot: PlanchePlan.Shot): boolean
 		center, view = CourseLayout.basePosition(slot.index), BASE_VIEW
 	else
 		CourseBuilder.styleStation(slot, tier)
+		-- Pad d'amélioration au même palier, équipement suivant abordable (plaque verte) : tel que le joueur le voit
+		CourseBuilder.styleGearPad(slot, tier, math.huge)
 		center, view = CourseLayout.stationPosition(slot.index), STATION_VIEW
 	end
 	frame(parent, shot.name, center + turn(view.aim), -turn(view.from).Unit, view.width)

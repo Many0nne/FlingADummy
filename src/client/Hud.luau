@@ -3,9 +3,12 @@
 -- cartes d'objets (équipements d'entraînement ; collection, vente et Index : Client.CollectionWindows), barre
 -- d'entraînement avec STOP, « +N EXP » qui
 -- s'envole à chaque répétition, popups LEVEL UP! (Throw Power gagnée au niveau) / NEW EQUIPMENT!, popup « NEW GEAR! »
--- qui propose l'équipement suivant dès qu'il est abordable (achat en un clic) et popup « NEW DUMMY! » qui annonce le
--- mannequin à lancer suivant abordable (bouton SHOP vers la boutique, Client.ThrowShop). Fenêtre REBIRTH :
--- Client.RebirthWindow.
+-- qui propose l'équipement suivant dès qu'il est abordable (bouton vers sa carte de la fenêtre) et popup
+-- « NEW DUMMY! » qui annonce le mannequin à lancer suivant abordable (bouton SHOP vers la boutique, Client.ThrowShop).
+-- Fenêtre REBIRTH :
+-- Client.RebirthWindow. Invites du pad d'amélioration à côté de l'appareil (#159) : achat de l'équipement suivant
+-- (même remote que la fenêtre) et ouverture de la fenêtre Training Gear.
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
@@ -14,6 +17,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local DummyShape = require(Shared:WaitForChild("DummyShape"))
 local Format = require(Shared:WaitForChild("Format"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
+local GearPad = require(Shared:WaitForChild("GearPad"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local ThrowDummies = require(Shared:WaitForChild("ThrowDummies"))
@@ -241,6 +245,7 @@ local function buildButtons()
 		Shine = true,
 		Parent = left,
 	}, function()
+		-- Ouvre encore la fenêtre Training Gear ; passera à la boutique Robux avec #160 (l'équipement s'achète au pad, #159)
 		toggle("Shop")
 	end)
 	anchors.Rebirth = UIKit.iconButton("rebirth", "Rebirth", BUTTON_SIZE, {
@@ -432,8 +437,11 @@ local function buildGearOffer()
 		ZIndex = 17,
 		Parent = frame,
 	}, function()
-		if offerKind == "Gear" and offerTier == stat("GearTier", 1) + 1 then
-			Hud.onBuy("Gear")
+		if offerKind == "Gear" then
+			-- Fenêtre Training Gear ouverte sur la carte de l'équipement (#159) : l'achat se fait sur sa carte
+			if not UIKit.isWindowOpen(windows.Shop) then
+				toggle("Shop")
+			end
 		elseif offerKind == "Dummy" and offerTier then
 			dismissedOffers.Dummy[offerTier] = true -- vu dans la boutique : l'offre ne revient pas à sa fermeture
 			Hud.openDummyShop()
@@ -1012,6 +1020,61 @@ local function flyExpected(gain: number)
 	end
 end
 
+-- Cette méthode permet de brancher une invite « Upgrade » du pad d'amélioration (active sur le pad de sa place tant que
+-- le dernier équipement n'est pas atteint ; achat envoyé au serveur, refus annoncé si l'argent manque) lorsqu'elle
+-- apparaît.
+local function bindGearBuy(prompt: Instance)
+	if not prompt:IsA("ProximityPrompt") then
+		return
+	end
+	-- Cette méthode permet d'activer l'invite pour le propriétaire seulement lorsque le maximum ou la place changent.
+	local function update()
+		prompt.Enabled = prompt:GetAttribute("Slot") == player:GetAttribute("Slot") and not prompt:GetAttribute("Maxed")
+	end
+	prompt:GetAttributeChangedSignal("Maxed"):Connect(update)
+	player:GetAttributeChangedSignal("Slot"):Connect(update)
+	update()
+	prompt.Triggered:Connect(function()
+		local price = prompt:GetAttribute("Price")
+		if prompt:GetAttribute("Slot") ~= player:GetAttribute("Slot") or type(price) ~= "number" then
+			return
+		end
+		-- Argent réel (attribut) : le serveur valide sur lui, pas sur le compteur affiché
+		if stat("Money", 0) >= price then
+			Hud.onBuy("Gear")
+		else
+			Hud.popup({
+				title = "NOT ENOUGH MONEY!",
+				subtitle = "Next gear: " .. Format.money(price),
+				colors = { Color3.fromRGB(255, 120, 110), C.red },
+				rays = false,
+				sparkles = false,
+				duration = 1.6,
+			})
+			UIKit.playSound("Thud", 1.2)
+		end
+	end)
+end
+
+-- Cette méthode permet de brancher une invite « View all » du pad d'amélioration (active sur le pad de sa place,
+-- ouvre la fenêtre Training Gear) lorsqu'elle apparaît.
+local function bindGearView(prompt: Instance)
+	if not prompt:IsA("ProximityPrompt") then
+		return
+	end
+	-- Cette méthode permet d'activer l'invite pour le propriétaire seulement lorsque la place du joueur change.
+	local function update()
+		prompt.Enabled = prompt:GetAttribute("Slot") == player:GetAttribute("Slot")
+	end
+	player:GetAttributeChangedSignal("Slot"):Connect(update)
+	update()
+	prompt.Triggered:Connect(function()
+		if prompt:GetAttribute("Slot") == player:GetAttribute("Slot") and not UIKit.isWindowOpen(windows.Shop) then
+			toggle("Shop")
+		end
+	end)
+end
+
 -- Cette méthode permet de construire le HUD et de le brancher sur les attributs du joueur lorsque le client démarre ;
 -- `onStop` arrête l'entraînement, `remotes` sert aux fenêtres de collection.
 function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remotes)
@@ -1076,6 +1139,13 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 		Hud.refresh()
 	end)
 	buildTrainBar(onStop)
+	-- Pads d'amélioration à côté des appareils (#159)
+	for tag, bind in { [GearPad.BUY_TAG] = bindGearBuy, [GearPad.VIEW_TAG] = bindGearView } do
+		for _, prompt in CollectionService:GetTagged(tag) do
+			bind(prompt)
+		end
+		CollectionService:GetInstanceAddedSignal(tag):Connect(bind)
+	end
 	-- Fenêtre fermée (fin de l'animation) : l'offre masquée pendant qu'elle était à l'écran revient
 	for _, window in windows do
 		window:GetPropertyChangedSignal("Visible"):Connect(Hud.refresh)

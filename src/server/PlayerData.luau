@@ -166,7 +166,8 @@ end
 -- Cette méthode permet d'acheter l'équipement d'entraînement suivant lorsque le client le demande (`kind` = "Gear") ;
 -- le serveur valide le type, le palier maximal et le solde. Renvoie true si l'achat a eu lieu.
 function PlayerData.buyUpgrade(player: Player, kind: any): boolean
-	if kind ~= "Gear" then
+	-- Pas avant le chargement des données : l'achat porterait sur les valeurs par défaut, écrasées ensuite
+	if kind ~= "Gear" or player:GetAttribute("DataReady") ~= true then
 		return false
 	end
 	local tier = (player:GetAttribute("GearTier") :: number?) or 1
