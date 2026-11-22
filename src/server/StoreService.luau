@@ -5,6 +5,8 @@
 -- sont lus par les autres services : BaseService (revenu, présentoirs), LaunchService (CHANCE), TrainingService (EXP).
 -- Attributs publiés : Passes (« BigBase,VIP »), Boost<type> (fin en temps serveur), LuckyThrows, StarterEnds (fin de
 -- l'offre du pack de démarrage en temps serveur) ; ServerLuckEnds sur Workspace.
+-- Pack de démarrage (#176) : invite ouverte par le serveur après revérification de l'offre (une à la fois) ; un reçu en
+-- double (deux invites, deux serveurs) donne l'article de même prix (Store.STARTER_REPLACEMENT), pas le pack.
 -- Studio : un article dont l'identifiant Roblox vaut 0 s'achète en simulation (bouton de la fenêtre, ou attribut
 -- DebugBuy = « id » ou « id#reçu » sur le joueur, contexte Server).
 local MarketplaceService = game:GetService("MarketplaceService")
@@ -25,6 +27,30 @@ local remote: RemoteEvent? = nil
 local serverLuckEnds = 0 -- fin de la chance du serveur (temps serveur)
 local simulated = 0 -- compteur des reçus simulés de Studio
 local pendingPasses: { [Player]: { Store.Item } } = {} -- passes achetés avant le chargement des données
+-- Invite du pack de démarrage ouverte par le serveur : os.clock à l'ouverture, achat confirmé (reçu attendu)
+local starterPrompts: { [Player]: { at: number, bought: boolean } } = {}
+
+-- Cette méthode permet d'ouvrir l'invite d'achat d'un produit à offre unique (pack de démarrage) après avoir revérifié
+-- l'offre côté serveur (en cours, pas déjà achetée, pas d'invite ouverte) lorsque le joueur clique sur son prix (#176).
+local function prompt(player: Player, item: Store.Item)
+	local state = PlayerData.store(player)
+	if not state or player:GetAttribute("DataReady") ~= true then
+		return
+	end
+	local opened = starterPrompts[player]
+	if
+		not Store.canPrompt(
+			state,
+			item,
+			if opened then os.clock() - opened.at else nil,
+			opened ~= nil and opened.bought
+		)
+	then
+		return
+	end
+	starterPrompts[player] = { at = os.clock(), bought = false }
+	MarketplaceService:PromptProductPurchase(player, item.assetId)
+end
 
 -- Cette méthode permet de publier l'état d'achat d'un joueur dans ses attributs (passes, fins des boosts, lancers
 -- chanceux, fin de l'offre du pack de démarrage) lorsque il est chargé, qu'un achat est attribué ou remis à zéro.
@@ -94,32 +120,32 @@ local function grantProduct(player: Player, item: Store.Item): boolean
 	if not state then
 		return false
 	end
-	local amount: number? = nil
-	if item.id == "StarterPack" then
-		state.starter = true
-		state.lucky = math.min(state.lucky + Store.STARTER.throws, Store.LUCKY_MAX)
-		for kind, seconds in Store.STARTER.boosts do
-			Store.addBoost(state, kind, seconds)
-		end
-		amount = giveCash(player, Store.STARTER.minutes)
-	elseif item.id == "ServerLuck" then
-		local now = Workspace:GetServerTimeNow()
-		serverLuckEnds = math.max(serverLuckEnds, now) + (item.seconds or 0)
-		Workspace:SetAttribute("ServerLuckEnds", serverLuckEnds)
-		if remote then
-			remote:FireAllClients("ServerLuck", item.id, player.DisplayName)
-		end
-	elseif item.boost then
-		Store.addBoost(state, item.boost, item.seconds or 0)
-	elseif item.throws then
-		state.lucky = math.min(state.lucky + item.throws, Store.LUCKY_MAX)
-	elseif item.minutes then
-		amount = giveCash(player, item.minutes)
-	else
+	-- Pack de démarrage déjà acheté : Store.applyProduct attribue l'article de même prix à la place (#176)
+	local granted, minutes = Store.applyProduct(state, item)
+	if not granted then
 		return false
 	end
+	if granted ~= item then
+		print(
+			string.format(
+				"[Store] %s déjà acheté par %s : %s attribué à la place",
+				item.id,
+				player.Name,
+				granted.id
+			)
+		)
+	end
+	if granted.id == "ServerLuck" then
+		local now = Workspace:GetServerTimeNow()
+		serverLuckEnds = math.max(serverLuckEnds, now) + (granted.seconds or 0)
+		Workspace:SetAttribute("ServerLuckEnds", serverLuckEnds)
+		if remote then
+			remote:FireAllClients("ServerLuck", granted.id, player.DisplayName)
+		end
+	end
+	local amount = if minutes then giveCash(player, minutes) else nil
 	publish(player)
-	announce(player, item, amount)
+	announce(player, granted, amount)
 	return true
 end
 
@@ -310,17 +336,38 @@ function StoreService.init(storeRemote: RemoteEvent)
 			grantPass(player, item)
 		end
 	end)
-	-- Client : « Buy » + identifiant d'un article pas encore créé sur l'expérience, simulé en Studio seulement
+	-- Fin de l'invite du pack de démarrage : refermée sans achat, une autre peut s'ouvrir ; achetée, aucune autre
+	-- jusqu'au départ du joueur (le reçu peut arriver après cette fin)
+	MarketplaceService.PromptProductPurchaseFinished:Connect(function(userId, productId, purchased)
+		local player = Players:GetPlayerByUserId(userId)
+		local item = Store.byAsset("Product", productId)
+		local opened = if player then starterPrompts[player] else nil
+		if player and opened and item and Store.promptedByServer(item) then
+			if purchased then
+				opened.bought = true
+			else
+				starterPrompts[player] = nil
+			end
+		end
+	end)
+	-- Client : « Buy » + identifiant d'un article pas encore créé sur l'expérience (simulé en Studio seulement) ou
+	-- d'un produit à offre unique (invite ouverte par le serveur)
 	storeRemote.OnServerEvent:Connect(function(player, action, id)
 		local item = Store.get(id)
-		if action == "Buy" and item and item.assetId == 0 then
+		if action ~= "Buy" or not item then
+			return
+		end
+		if item.assetId == 0 then
 			StoreService.simulate(player, id)
+		elseif Store.promptedByServer(item) then
+			prompt(player, item)
 		end
 	end)
 	PlayerData.onReset(publish)
 	Players.PlayerAdded:Connect(track)
 	Players.PlayerRemoving:Connect(function(player)
 		pendingPasses[player] = nil
+		starterPrompts[player] = nil
 	end)
 	for _, player in Players:GetPlayers() do
 		track(player)

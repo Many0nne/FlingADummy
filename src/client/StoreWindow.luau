@@ -76,7 +76,10 @@ local function buy(item: Store.Item)
 		return
 	end
 	if item.assetId ~= 0 then
-		if item.kind == "Pass" then
+		if Store.promptedByServer(item) then
+			-- Offre unique : le serveur la revérifie avant d'ouvrir l'invite (#176)
+			remotes.Store:FireServer("Buy", item.id)
+		elseif item.kind == "Pass" then
 			MarketplaceService:PromptGamePassPurchase(player, item.assetId)
 		else
 			MarketplaceService:PromptProductPurchase(player, item.assetId)
