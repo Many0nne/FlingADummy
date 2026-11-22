@@ -25,13 +25,17 @@ return function(T, Loader)
 			T.expectEqual(Objectives.pick(state({ step = "Train" })).id, "Train")
 			T.expectEqual(Objectives.pick(state({ step = "Train" })).target, "Train")
 		end)
-		T.it("étape équipement : rien tant qu'il n'est pas abordable, puis Shop et sa carte", function()
-			T.expectEqual(Objectives.pick(state({ step = "BuyGear", hasPrize = true })), nil)
-			local buy = Objectives.pick(state({ step = "BuyGear", canBuyGear = true }))
-			T.expectEqual(buy.id, "BuyGear")
-			T.expectEqual(buy.button, "Shop")
-			T.expectEqual(buy.buy, "Gear")
-		end)
+		T.it(
+			"étape équipement : rien tant qu'il n'est pas abordable, puis le pad d'amélioration et sa carte",
+			function()
+				T.expectEqual(Objectives.pick(state({ step = "BuyGear", hasPrize = true })), nil)
+				local buy = Objectives.pick(state({ step = "BuyGear", canBuyGear = true }))
+				T.expectEqual(buy.id, "BuyGear")
+				T.expectEqual(buy.target, "BuyGear") -- pad devant l'appareil (#159) : Shop ouvre la boutique Robux (#160)
+				T.expectEqual(buy.button, nil)
+				T.expectEqual(buy.buy, "Gear")
+			end
+		)
 		T.it(
 			"étape pose : un présentoir libre de sa base quand un mannequin gagné est en main, sinon relancer",
 			function()

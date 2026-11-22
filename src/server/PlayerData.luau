@@ -44,6 +44,8 @@ local store: DataStore? = nil
 local loaded: { [Player]: boolean } = {}
 local collections: { [Player]: CollectionData } = {}
 local stores: { [Player]: Store.State } = {}
+-- Studio : achats tels que lus (réécrits tels quels) ; les achats simulés de Studio ne vont jamais dans la sauvegarde
+local storesRead: { [Player]: any } = {}
 local musicChangedAt: { [Player]: number } = {}
 local musicWanted: { [Player]: boolean } = {} -- dernier choix reçu, appliqué à la fin du délai
 local musicScheduled: { [Player]: boolean } = {}
@@ -111,6 +113,7 @@ local function load(player: Player)
 				-- Achats d'abord : la capacité de la base (Big Base) garde les présentoirs 31 à 40 à la relecture
 				local state = Store.read(data.Store)
 				stores[player] = state
+				storesRead[player] = data.Store
 				if player:GetAttribute("ThrowEquipped") == ThrowDummies.RAINBOW and not state.passes.Rainbow then
 					player:SetAttribute("ThrowEquipped", owned)
 				end
@@ -143,7 +146,9 @@ local function save(player: Player): boolean
 		data.Collection = Inventory.write(collection)
 	end
 	local state = stores[player]
-	if state then
+	if RunService:IsStudio() then
+		data.Store = storesRead[player] -- simulations de Studio (DebugBuy, bouton Buy) jamais sauvegardées
+	elseif state then
 		data.Store = Store.write(state)
 	end
 	local ok, err = pcall(function()
@@ -341,6 +346,7 @@ function PlayerData.wipe(player: Player)
 	end
 	collections[player] = Inventory.new()
 	stores[player] = Store.new()
+	storesRead[player] = nil -- Studio : la sauvegarde remise à zéro écrit des achats vides
 	for _, listener in resetListeners do
 		listener(player)
 	end
@@ -372,6 +378,7 @@ function PlayerData.init()
 		loaded[player] = nil
 		collections[player] = nil
 		stores[player] = nil
+		storesRead[player] = nil
 		musicChangedAt[player] = nil
 		musicWanted[player] = nil
 		musicScheduled[player] = nil

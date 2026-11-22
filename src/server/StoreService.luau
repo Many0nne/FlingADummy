@@ -262,6 +262,7 @@ end
 -- Cette méthode permet de suivre un joueur (publication à son chargement, vérification des passes, simulation de
 -- Studio par attribut DebugBuy) lorsqu'il arrive.
 local function track(player: Player)
+	-- Cette méthode permet de publier l'état d'achat et de vérifier les passes lorsque les données du joueur sont prêtes.
 	local function ready()
 		if player:GetAttribute("DataReady") == true then
 			publish(player)

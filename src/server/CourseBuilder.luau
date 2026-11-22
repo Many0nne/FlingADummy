@@ -890,6 +890,7 @@ local function buildGearPad(parent: Instance, slot: Slot): GearPadParts
 	-- Repère : regard vers la bande ; le panneau est derrière la dalle (même gabarit que le pad de présentoir)
 	local frame = CFrame.lookAt(spot, spot + facing)
 	local slab = Build.block(model, Vector3.new(6, 0.3, 6), frame * CFrame.new(0, 0.15, -3), COLORS.gearPad)
+	markObjective(slab, "BuyGear", slot.index) -- objectif « Buy better gear! » du tutoriel (#160 : plus le bouton Shop)
 	slab.Name = "Slab"
 	for _, side in { -1, 1 } do
 		Build.block(model, Vector3.new(1, 8.4, 1), frame * CFrame.new(side * 3.5, 4.2, 2), COLORS.woodDark)

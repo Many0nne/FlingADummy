@@ -15,6 +15,7 @@ local Format = require(Shared:WaitForChild("Format"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Inventory = require(Shared:WaitForChild("Inventory"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
+local Store = require(Shared:WaitForChild("Store"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Tutorial = require(Shared:WaitForChild("Tutorial"))
 
@@ -374,7 +375,8 @@ local function refreshInventory(data: Inventory.Data)
 		end
 	end
 	summaryLabel.Text = string.format("IN YOUR BASE %d/%d    INVENTORY %d", placed, data.displays, #data.stock)
-	totalLabel.Text = Format.perSecond(Inventory.income(data))
+	-- Revenu publié par le serveur (celui versé : 2x Money, VIP, boost d'argent compris, #160)
+	totalLabel.Text = Format.perSecond((player:GetAttribute("Income") :: number?) or Inventory.income(data))
 	-- « Place best » seulement s'il changerait quelque chose (essayé sur une copie)
 	local probe = state()
 	local useful = not firstPlacePending() and Inventory.placeBest(probe)
@@ -891,12 +893,15 @@ end
 -- Cette méthode permet d'annoncer un présentoir acheté (popup « NEW DISPLAY! ») lorsque le nombre de présentoirs
 -- augmente après le chargement.
 local function onDisplays()
-	local displays = player:GetAttribute("Displays")
-	if typeof(displays) ~= "number" then
+	local capacity = player:GetAttribute("Displays")
+	if typeof(capacity) ~= "number" then
 		return
 	end
+	-- Présentoirs achetés seulement : les 10 de Big Base (boutique Robux, #160) ont leur propre popup d'achat
+	local big = Store.decodePasses(player:GetAttribute("Passes")).BigBase
+	local displays = capacity - (if big then Store.BIG_BASE else 0)
 	if knownDisplays and displays > knownDisplays then
-		hooks.popup({ title = "NEW DISPLAY!", subtitle = "Your base now has " .. displays .. " displays" })
+		hooks.popup({ title = "NEW DISPLAY!", subtitle = "Your base now has " .. capacity .. " displays" })
 		UIKit.playSound("LevelUp", 1.2)
 	end
 	knownDisplays = displays
@@ -918,7 +923,7 @@ function CollectionWindows.init(
 	buildInventory(gui, rightInset)
 	buildSell(gui)
 	buildIndex(gui)
-	for _, attribute in { "Stock", "BaseDummies", "Displays", "DummyIndex", "Tutorial" } do
+	for _, attribute in { "Stock", "BaseDummies", "Displays", "DummyIndex", "Tutorial", "Income" } do
 		player:GetAttributeChangedSignal(attribute):Connect(CollectionWindows.refresh)
 	end
 	player:GetAttributeChangedSignal("Displays"):Connect(onDisplays)

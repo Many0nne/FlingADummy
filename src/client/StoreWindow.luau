@@ -496,7 +496,10 @@ function StoreWindow.refresh()
 		if item.kind == "Pass" then
 			local has = owned[item.id] == true
 			card.button.Text = if has then "OWNED" else ROBUX .. " " .. Format.thousands(item.price)
-			card.button.BackgroundColor3 = if has then OWNED else PRICE
+			card.button.BackgroundColor3 = if has
+				then OWNED
+				elseif item.assetId == 0 and not RunService:IsStudio() then SOON
+				else PRICE
 			card.button:SetAttribute("Disabled", has)
 		elseif item.assetId == 0 and not RunService:IsStudio() then
 			card.button.BackgroundColor3 = SOON
