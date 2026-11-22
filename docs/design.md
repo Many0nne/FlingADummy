@@ -108,6 +108,21 @@ base, il rapporte des $/s, seule source d'argent.
   toutes les ≈ 3 s au début, un plafond plus bas ferait sonner le popup en continu), l'EXP en trop passe au niveau suivant
   (plusieurs niveaux d'un coup avec un bon équipement). Le passage de niveau (« LEVEL UP! Throw Power +N ») donne autant
   de **Throw Power** que l'EXP qu'il demandait : puissance gagnée = EXP gagnée = gain × répétitions.
+- **Bouton « 2x TRAINING! »** (#119, retour de la sprint review 2, `Shared.TrainingBoost`, `Client.BoostButton`) :
+  toutes les 25 à 40 s d'entraînement (au hasard ; temps cumulé sur les séances du joueur, sinon des séances de 15 s
+  ne le verraient jamais), un gros bouton rond vert (icône de puissance, « 2x », bandeau « TRAINING! » jaune → orange)
+  surgit en rebond à un endroit au hasard du centre de l'écran (sous les popups du haut, au-dessus du STOP et de la
+  barre d'EXP), avec un petit son, entouré d'un anneau jaune qui se vide en 3 s (boosts « x2 Training » de 01 et « x2
+  Vitesse » de 02, gratuits ici). Cliqué à temps : **EXP par répétition × 2 pendant 30 s** (donc la Throw Power),
+  popup vert « 2x TRAINING! / EXP x2 for 30s » et son, barre de durée dorée « 2x 0:24 » qui se vide à droite du STOP,
+  « +N EXP » en orange, contour doré et étincelles sur l'avatar (étincelles coupées en mouvement réduit). Raté : il
+  disparaît, sans pénalité. Pas d'apparition pendant un bonus, pas de cumul ; arrêter la séance annule le bouton et le
+  bonus (pas de report). Le tutoriel n'en parle pas ; il peut apparaître dès la première séance.
+  Serveur seul juge (`Server.TrainingService`) : il tire le calendrier, annonce chaque apparition par son numéro
+  (remote `TrainingBoost`) et n'accepte que le clic de ce numéro, une fois, jusqu'à 0,5 s après la fin de l'affichage
+  (latence) ; bonus accordé : attribut joueur `TrainBoostEnds` (temps serveur) lu par le HUD. Chiffres dans
+  `GameConfig` (`BOOST_*`). Studio : `DebugBoost = true` fait apparaître le bouton, `DebugBoostClaim = <numéro>`
+  simule le clic du client (même validation), sortie « [Boost] ».
 - **Équipements** (achetés avec l'argent) : mannequin en bois +1, pierre +3, fer +10, or +40, diamant +160, néon +700,
   cosmique +3 000 EXP par répétition ; prix 100 $, 8 K, 120 K, 800 K, 1,8 M, 4,5 M (#15). Suite (#94,
   `Training.EXTENDED`) : ruby, emerald, plasma, omega, infinite, gain × 4 par palier (+12 K à +3 M), prix $20M, $50M,
@@ -464,6 +479,26 @@ Puissance à 14 h : 137 B (11,8 B avant). Le rythme de 09 est tenu sur les 20 pr
 `Progression.spec` : écart maximal entre deux achats de la première heure porté de 6 à 7 min (le 20e achat tombe à 375 s
 d'écart), puis ramené à 6 min par #133 (prix de l'Amber Glider au Frost Rubber, section « Rythme et économie »).
 Planche `entrainement.jpg` : les gains affichés sur l'appareil changent, à régénérer en Studio (manifeste déjà à jour).
+
+### Bouton « 2x TRAINING! » dans le joueur simulé (#119)
+Le joueur simulé clique 70 % des boutons (`ProgressionSim.BOOST_SUCCESS`, clic compté dès l'apparition, hasard à part :
+mêmes tirages de mannequins), et garde ses séances de 15 s : le bonus est coupé à la fin de la séance, il couvre en
+moyenne ≈ 7 s d'une séance sur deux. Rejoué (60 joueurs, 14 h, médianes ; `lune run tools/progression 60 14 "" "" 0`
+pour le joueur sans bonus) :
+| Repère | Sans bonus | Avec bonus (70 %) | Écart |
+|---|---|---|---|
+| Puissance à 2 / 5 / 10 min | 336 / 4.05K / 74.3K | 403 / 5.1K / 81.4K | + 20 %, + 26 %, + 10 % |
+| Puissance à 30 / 60 min | 25.1M / 655M | 28.9M / 760M | + 15 %, + 16 % |
+| Puissance 1 K / 100 K / 1 M / 100 M | 3 / 11 / 17 / 40 min | 3 / 11 / 17 / 40 min | 0 |
+| Puissance 1 B / 10 B | 65 / 112 min | 63 / 108 min | − 3 %, − 4 % |
+| Bout de piste | 57 min | 55 min | − 4 % |
+| Revenu à 10 / 60 min | $7.06K/s / $727K/s | $6.46K/s / $721K/s | bruit des tirages |
+| Achats : Diamond, Cosmic, Plasma, Omega, Infinite | 10, 18, 57, 90 min, 4,8 h | 11, 19, 57, 90 min, 4,8 h | ± 1 min |
+| Première renaissance, saut le plus fort du ratio | 10,5 h, × 1,67 | 10,4 h, × 1,67 | − 1 % |
+Aucun jalon de la première heure n'avance de plus de 15 % : les achats suivent l'argent (revenu de la base), que la
+puissance ne fait monter qu'à travers la distance, donc lentement. Prix inchangés. Non modélisé : un joueur qui
+prolonge sa séance pour finir son bonus (le bonus entier vaut 30 s d'entraînement doublé, ≈ 4 séances de gain en plus
+pour 15 s de lancer en moins).
 
 ### Repères comparés aux références
 | Repère | Fling a Dummy (simulé) | 09 *Throw a Seed* | 01 *Throw Food For Animals* |
@@ -865,7 +900,10 @@ Interface : section suivante.
   4 pour Dummy Shop, ouvertes sur la rangée du prochain achat), lignes de collection et grille de l'Index.
 - **Jauge** : capsule verticale à contour noir, dégradé vert (haut) → rouge (bas), 4 traits, curseur blanc, `+N` à
   droite, « Click to throw! » dessous.
-- **Popups** : « LEVEL UP! » / « NEW EQUIPMENT! » jaunes à contour en haut au centre, sous-titre dessous.
+- **Popups** : « LEVEL UP! » / « NEW EQUIPMENT! » jaunes à contour en haut au centre, sous-titre dessous ; « 2x
+  TRAINING! » en vert au bonus d'entraînement.
+- **Bouton « 2x TRAINING! »** pendant l'entraînement (section « Mécanique secondaire : l'entraînement ») : disque vert
+  à anneau de compte à rebours, au centre de l'écran ; barre de durée « 2x 0:24 » à droite du STOP.
 - Icônes : rendues par `assets/icons/build_icons.py` (Blender), ids dans `Shared.Assets.ICONS` (emoji de repli à 0).
 
 ## Architecture

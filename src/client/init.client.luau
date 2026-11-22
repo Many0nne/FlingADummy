@@ -9,6 +9,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local Remotes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Remotes"))
 local Announce = require(script.Announce)
+local BoostButton = require(script.BoostButton)
 local CharacterPoser = require(script.CharacterPoser)
 local DummyFx = require(script.DummyFx)
 local Effects = require(script.Effects)
@@ -44,6 +45,7 @@ Hud.onMusicToggle = Music.toggle
 Music.onChanged = Hud.setMusicOff
 Hud.init(player, stopTraining, remotes)
 local gui = Hud.screen()
+BoostButton.init(player, remotes.TrainingBoost, gui, { trainBar = Hud.trainBar(), popup = Hud.popup })
 Objective.init(player, gui)
 FlightView.init(gui)
 Prize.init(player, remotes, gui)

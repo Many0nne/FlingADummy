@@ -18,6 +18,7 @@ local Rarity = require(Shared:WaitForChild("Rarity"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local ThrowDummies = require(Shared:WaitForChild("ThrowDummies"))
 local Training = require(Shared:WaitForChild("Training"))
+local TrainingBoost = require(Shared:WaitForChild("TrainingBoost"))
 local TrainingLook = require(Shared:WaitForChild("TrainingLook"))
 local Tutorial = require(Shared:WaitForChild("Tutorial"))
 local UIMotion = require(Shared:WaitForChild("UIMotion"))
@@ -665,9 +666,9 @@ function Hud.refresh()
 	RebirthWindow.refresh() -- argent affiché : un gain en vol qui arrive ne change aucun attribut
 end
 
--- Cette méthode permet de faire s'envoler « +N EXP » (EXP de l'équipement) au-dessus de la barre d'entraînement lorsque
--- l'avatar termine une répétition, comme « +1 d'EXP » de la référence 01.
-local function floatExp(amount: number)
+-- Cette méthode permet de faire s'envoler « +N EXP » (EXP de l'équipement, en orange pendant le bonus « 2x TRAINING! »)
+-- au-dessus de la barre d'entraînement lorsque l'avatar termine une répétition, comme « +1 d'EXP » de la référence 01.
+local function floatExp(amount: number, boosted: boolean)
 	local holder = UIKit.create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, math.random(-90, 90), 1, -130),
@@ -678,8 +679,8 @@ local function floatExp(amount: number)
 	local label = UIKit.text({
 		Size = UDim2.fromScale(1, 1),
 		Text = "+" .. Format.short(amount) .. " EXP",
-		TextSize = 32,
-		TextColor3 = C.cyan,
+		TextSize = if boosted then 36 else 32,
+		TextColor3 = if boosted then C.orange else C.cyan,
 		Parent = holder,
 	})
 	TweenService:Create(holder, TweenInfo.new(0.9, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
@@ -710,7 +711,9 @@ end
 local function onRepProgress()
 	if player:GetAttribute("Action") == "Training" and os.clock() - lastRepFloat > REP_DEBOUNCE then
 		lastRepFloat = os.clock()
-		floatExp(Training.gear(stat("GearTier", 1)).gain)
+		local multiplier =
+			TrainingBoost.displayMultiplier(player:GetAttribute("TrainBoostEnds"), Workspace:GetServerTimeNow())
+		floatExp(Training.gear(stat("GearTier", 1)).gain * multiplier, multiplier > 1)
 	end
 end
 
@@ -889,6 +892,12 @@ end
 -- Cette méthode permet de donner le ScreenGui du jeu (créé par Hud.init) lorsqu'un autre module y ajoute ses éléments.
 function Hud.screen(): ScreenGui
 	return gui
+end
+
+-- Cette méthode permet de donner la barre d'entraînement (STOP et barre d'EXP, visible pendant la séance) lorsque le
+-- bouton « 2x TRAINING! » y pose la barre de durée du bonus.
+function Hud.trainBar(): Frame
+	return trainBar
 end
 
 -- Cette méthode permet de donner l'élément du HUD que l'objectif désigne (« Shop », « Dummies ») lorsque la

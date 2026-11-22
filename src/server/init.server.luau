@@ -25,7 +25,7 @@ local course = CourseBuilder.build()
 local remotes = Remotes.create()
 PlayerData.init()
 SlotService.init(course.slots)
-TrainingService.init(course.slots, remotes.StopTraining)
+TrainingService.init(course.slots, remotes.StopTraining, remotes.TrainingBoost)
 BaseService.init(course.slots, remotes.PlaceDummy, remotes.Inventory)
 LaunchService.init(remotes, course.dummies)
 
