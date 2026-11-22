@@ -42,6 +42,8 @@ type Active = {
 	path: FlightGhost.Path,
 	state: FlightGhost.State,
 	shown: Vector3?, -- position affichée du torse (copie locale) à l'image en cours
+	velocity: Vector3?, -- vitesse affichée du torse à l'image en cours
+	previous: Vector3?, -- position de la copie répliquée à l'image précédente
 }
 
 local LaunchGhost = {}
@@ -66,13 +68,14 @@ function LaunchGhost.stop()
 		end
 	end
 	Debris:AddItem(current.copy, FADE_OUT)
+	-- Seules les valeurs encore à celles posées ici sont rendues (un autre système a pu en changer entre-temps)
 	for instance, value in current.hidden do
-		if instance.Parent then
+		if instance.Parent and (instance :: any).LocalTransparencyModifier == 1 then
 			(instance :: any).LocalTransparencyModifier = value
 		end
 	end
 	for instance, enabled in current.effects do
-		if instance.Parent then
+		if instance.Parent and (instance :: any).Enabled == false then
 			(instance :: any).Enabled = enabled
 		end
 	end
@@ -99,11 +102,13 @@ local function copyPart(source: BasePart): BasePart
 	return copy
 end
 
--- Cette méthode permet de masquer pour le joueur local la copie répliquée (pièces, décalcomanies, effets) lorsque la
--- copie locale la remplace à l'écran.
+-- Cette méthode permet de masquer pour le joueur local la copie répliquée (pièces copiées, décalcomanies, effets)
+-- lorsque la copie locale la remplace à l'écran.
 local function hideSource(model: Model, current: Active)
 	for _, descendant in model:GetDescendants() do
-		if descendant:IsA("BasePart") or descendant:IsA("Decal") then
+		-- Pièces : les enfants directs, celles que la copie locale reprend (Shared.DummyShape n'en imbrique pas)
+		local copied = descendant:IsA("BasePart") and descendant.Parent == model
+		if copied or descendant:IsA("Decal") then
 			current.hidden[descendant] = descendant.LocalTransparencyModifier
 			descendant.LocalTransparencyModifier = 1
 		elseif EFFECTS[descendant.ClassName] then
@@ -120,7 +125,7 @@ function LaunchGhost.start(model: Model, launch: any)
 	if typeof(launch) ~= "table" or typeof(launch.origin) ~= "Vector3" or typeof(launch.velocity) ~= "Vector3" then
 		return
 	end
-	local torso = model:FindFirstChild("Torso")
+	local torso = model:WaitForChild("Torso", 2) -- même attente que Client.FlightCamera
 	if not torso or not torso:IsA("BasePart") then
 		return
 	end
@@ -137,6 +142,8 @@ function LaunchGhost.start(model: Model, launch: any)
 		path = path,
 		state = FlightGhost.new(),
 		shown = nil,
+		velocity = nil,
+		previous = nil,
 	}
 	for _, child in model:GetChildren() do
 		if child:IsA("BasePart") then
@@ -175,8 +182,16 @@ function LaunchGhost.start(model: Model, launch: any)
 		end
 		for _, pair in current.pairs do
 			pair.copy.CFrame = pair.source.CFrame + offset
+			pair.copy.Color = pair.source.Color -- os cassés teintés par le serveur pendant l'affichage anticipé
 		end
-		current.shown = torso.Position + offset
+		-- Vitesse de la copie répliquée telle qu'affichée (en retard), pas sa vitesse répliquée du moment
+		local position = torso.Position
+		local replicated = if current.previous and dt > 0
+			then (position - current.previous) / dt
+			else torso.AssemblyLinearVelocity
+		current.previous = position
+		current.shown = position + offset
+		current.velocity = FlightGhost.velocity(path, state, replicated)
 	end)
 	if RunService:IsStudio() then
 		print(
@@ -193,10 +208,10 @@ end
 -- cadre ; nil quand la copie répliquée est montrée telle quelle.
 function LaunchGhost.torso(): (Vector3?, Vector3?)
 	local current = active
-	if not current or not current.shown then
+	if not current then
 		return nil, nil
 	end
-	return current.shown, FlightGhost.velocity(current.path, current.state, current.torso.AssemblyLinearVelocity)
+	return current.shown, current.velocity
 end
 
 -- Cette méthode permet de retirer la copie locale sans attendre lorsque le joueur quitte le vol (retour au hub).
