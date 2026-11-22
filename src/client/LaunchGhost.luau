@@ -50,10 +50,12 @@ type Active = {
 local LaunchGhost = {}
 
 local active: Active? = nil
+local session = 0 -- incrémenté à chaque départ ou arrêt : un départ qui attendait son torse s'efface
 
 -- Cette méthode permet de rendre la main à la copie répliquée (copie locale retirée, pièces et effets rendus) lorsque
 -- l'avance est résorbée, que le vol disparaît ou qu'un autre lancer part.
 function LaunchGhost.stop()
+	session += 1
 	local current = active
 	if not current then
 		return
@@ -137,8 +139,9 @@ function LaunchGhost.start(model: Model, launch: any)
 	if typeof(launch) ~= "table" or typeof(launch.origin) ~= "Vector3" or typeof(launch.velocity) ~= "Vector3" then
 		return
 	end
+	local id = session
 	local torso = model:WaitForChild("Torso", 2) -- même attente que Client.FlightCamera
-	if not torso or not torso:IsA("BasePart") then
+	if id ~= session or not torso or not torso:IsA("BasePart") then
 		return
 	end
 	local thrown = if ThrowDummies.isIndex(launch.thrown) then ThrowDummies.get(launch.thrown) else nil
