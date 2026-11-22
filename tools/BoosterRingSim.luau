@@ -44,6 +44,8 @@ end
 -- Cette méthode permet de simuler les vols du mannequin lancé `thrown` (Shared.ThrowDummies) pour toutes les puissances
 -- (raison `step`) et jauges (pas `gaugeStep`) lorsque l'on cherche où ils passent au-dessus des sites.
 function BoosterRingSim.flights(m: { [string]: any }, thrown: any, step: number?, gaugeStep: number?): { Flight }
+	assert((step or BoosterRingSim.POWER_STEP) > 1, "raison des puissances > 1")
+	assert((gaugeStep or BoosterRingSim.GAUGE_STEP) > 0, "pas de jauge > 0")
 	local flights: { Flight } = {}
 	local pitch = math.rad(m.GameConfig.LAUNCH_PITCH_DEG)
 	local power = BoosterRingSim.POWER_MIN

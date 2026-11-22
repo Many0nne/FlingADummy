@@ -28,13 +28,13 @@ return function(T, Loader, Lib)
 		local STEP, GAUGE_STEP = 1.4, 0.1
 		for _, index in { 1, 5, 6 } do
 			local thrown = m.ThrowDummies.get(index)
-			T.it(thrown.name .. " : 30 à 75 % des vols en l'air au-dessus de chaque site le traversent", function()
+			T.it(thrown.name .. " : 40 à 75 % des vols en l'air au-dessus de chaque site le traversent", function()
 				local flights = Sim.flights(m, thrown, STEP, GAUGE_STEP)
 				for _, z in Sim.sites(m) do
 					local heights = Sim.heights(flights, z)
 					T.expect(#heights >= 100, "assez de vols en l'air au site " .. z)
 					local share = Sim.share(heights, bottom, top)
-					T.expect(share >= 0.3 and share <= 0.75, string.format("site %.0f : %.0f %%", z, 100 * share))
+					T.expect(share >= 0.4 and share <= 0.75, string.format("site %.0f : %.0f %%", z, 100 * share))
 				end
 			end)
 		end
