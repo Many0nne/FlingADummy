@@ -1,5 +1,6 @@
 -- Amorçage du serveur : groupes de collision, gabarits maillés du mannequin, décor (et cibles des objectifs), remotes,
--- données joueur, places du lobby, bases (collection et revenu), entraînement, lancers et renaissance.
+-- données joueur, places du lobby, bases (collection et revenu), entraînement, lancers et renaissance ; en Studio,
+-- attributs de test et scène des planches de référence.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -12,6 +13,7 @@ local CollisionGroups = require(script.CollisionGroups)
 local CourseBuilder = require(script.CourseBuilder)
 local DummyAssets = require(script.DummyAssets)
 local LaunchService = require(script.LaunchService)
+local PhotoStudio = require(script.PhotoStudio)
 local PlayerData = require(script.PlayerData)
 local SlotService = require(script.SlotService)
 local TrainingService = require(script.TrainingService)
@@ -53,8 +55,10 @@ remotes.Rebirth.OnServerEvent:Connect(function(player)
 end)
 
 -- Studio : DebugThrowDummy (indice du catalogue, contexte Server) donne et équipe ce mannequin à lancer (mesures) ;
--- DebugWipe (true) remet toute la sauvegarde du joueur à l'état d'un nouveau joueur (avant une sprint review, #95)
+-- DebugWipe (true) remet toute la sauvegarde du joueur à l'état d'un nouveau joueur (avant une sprint review, #95) ;
+-- PhotoShot (attribut de Workspace) pose une prise de vue des planches de référence (#121, Server.PhotoStudio)
 if RunService:IsStudio() then
+	PhotoStudio.init(course.slots)
 	-- Cette méthode permet de suivre l'attribut DebugThrowDummy d'un joueur lorsqu'il arrive (ou est déjà là).
 	local function watchDebugThrowDummy(player: Player)
 		player:GetAttributeChangedSignal("DebugThrowDummy"):Connect(function()
