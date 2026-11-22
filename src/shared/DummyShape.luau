@@ -18,6 +18,10 @@ DummyShape.TEMPLATES = "DummyTemplates"
 DummyShape.COMPLETE = "Complete"
 -- SurfaceAppearance de l'atlas (Shared.DummySurface, synchronisée par Rojo) clonée dans chaque gabarit maillé
 DummyShape.SURFACE = "DummySurface"
+-- Même atlas en AlphaMode Transparency (Shared.DummyMarks), copié dans le dossier des gabarits par Server.DummyAssets :
+-- posé sur une coque à peine plus grande que la pièce, il ne montre que visage, cibles et bandes noires (#126)
+DummyShape.MARKS = "DummyMarks"
+DummyShape.MARKS_GAP = 0.02 -- écart de la coque à la pièce (studs par face, échelle 1)
 -- Pièces ajoutées animées (rotation, flottement) : animées côté client par Client.DummyFx
 DummyShape.FX_TAG = "DummyFx"
 DummyShape.FX_WELD = "FxWeld"
@@ -351,6 +355,39 @@ function DummyShape.applyMaterial(part: BasePart, variant: Variant?): Enum.Mater
 	return material
 end
 
+-- Cette méthode permet de poser sur une pièce maillée qui a perdu l'atlas (matériau de déclinaison : glace, or, néon,
+-- verre…) une coque soudée qui ne montre que visage, cibles et bandes noires (#126) ; nil sans gabarit ni atlas.
+function DummyShape.addMarks(model: Model, part: BasePart, scale: number): BasePart?
+	local folder = ReplicatedStorage:FindFirstChild(DummyShape.TEMPLATES)
+	local marks = folder and folder:GetAttribute("Ready") and folder:FindFirstChild(DummyShape.MARKS)
+	local template = marks and folder:FindFirstChild(part.Name)
+	if not template then
+		return nil
+	end
+	local shell = (template :: BasePart):Clone()
+	for _, child in shell:GetChildren() do
+		child:Destroy() -- atlas en Overlay du gabarit : la coque ne garde que les marques
+	end
+	marks:Clone().Parent = shell
+	shell.Name = part.Name .. "Marks"
+	shell.Size = part.Size + Vector3.one * (2 * DummyShape.MARKS_GAP * scale)
+	shell.CFrame = part.CFrame
+	shell.Material = Enum.Material.SmoothPlastic
+	shell.Transparency = 0
+	shell.CastShadow = false
+	shell.Massless = true
+	shell.CanCollide = false
+	shell.CanQuery = false
+	shell.CanTouch = false
+	shell:SetAttribute("Accessory", true)
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = part
+	weld.Part1 = shell
+	weld.Parent = shell
+	shell.Parent = model
+	return shell
+end
+
 -- Pièces ajoutées translucides (#89) : le verre (Glass) laisse voir en jeu la pièce opaque juste derrière sans presque
 -- rien teinter (hublot du scaphandre, verres : invisibles sur le modèle, bien visibles sur l'icône rendue par Blender),
 -- et ni le verre ni le champ de force ne se rendent en ViewportFrame (fenêtres). Ces pièces passent donc en plastique
@@ -400,12 +437,18 @@ function DummyShape.buildPieces(model: Model, scale: number, variant: Variant?):
 			p.CFrame *= DummyShape.MESH_FLIP
 			p:SetAttribute(DummyShape.FLIPPED, true)
 		end
+		local textured = p:FindFirstChild(DummyShape.SURFACE) ~= nil
 		p.Material = DummyShape.applyMaterial(p, variant) -- avant la couleur : retire l'atlas si besoin
 		p.Color = DummyShape.colorOf(piece, p, variant)
-		if hide and table.find((variant :: Variant).hidden :: { string }, piece.name) then
+		local hidden = hide and table.find((variant :: Variant).hidden :: { string }, piece.name) ~= nil
+		if hidden then
 			p.Transparency = 1
 		end
 		p.Parent = model
+		if textured and not hidden and not p:FindFirstChild(DummyShape.SURFACE) then
+			-- Atlas retiré par le matériau : visage et cibles reposés par-dessus (#126)
+			DummyShape.addMarks(model, p, scale)
+		end
 		parts[piece.name] = p
 	end
 	if not parts.Torso:IsA("MeshPart") then

@@ -71,6 +71,75 @@ return function(T, Loader, Lib)
 		end)
 	end)
 
+	T.describe("DummyFamilies.STYLES (#127)", function()
+		T.it(
+			"retouche seulement des mannequins générés, groupes de pièces connus, ni verre ni champ de force",
+			function()
+				local ids = {}
+				for _, pairs in DummyFamilies.PAIRS do
+					for _, pair in pairs do
+						ids[pair[2] .. "_" .. pair[1]] = true
+					end
+				end
+				for id, style in DummyFamilies.STYLES do
+					T.expect(ids[id], id .. " n'est pas un mannequin généré")
+					T.expect(
+						(style.trim == nil) == (style.trimPieces == nil),
+						id .. " : couleur et pièces secondaires"
+					)
+					T.expect(style.trimPieces == nil or DummyFamilies.TRIMS[style.trimPieces] ~= nil, id .. " groupe")
+					for _, material in { style.material, style.accessoryMaterial } do
+						T.expect(material ~= Enum.Material.Glass and material ~= Enum.Material.ForceField, id)
+					end
+				end
+			end
+		)
+		T.it(
+			"Divine, Celestial, Ethereal : six mannequins distincts à l'œil (corps, matériau ou couleur secondaire)",
+			function()
+				-- Cette méthode permet de mesurer l'écart de deux couleurs (0 : identiques) lorsque l'on compare deux looks.
+				local function gap(a: Color3?, b: Color3?): number
+					if a == nil or b == nil then
+						return if a == b then 0 else 1
+					end
+					return math.abs(a.R - b.R) + math.abs(a.G - b.G) + math.abs(a.B - b.B)
+				end
+				for rarity = 8, 10 do
+					local looks = {}
+					for _, pair in DummyFamilies.PAIRS[rarity] do
+						local id = pair[2] .. "_" .. pair[1]
+						local look = Collection.look(id)
+						local style = DummyFamilies.STYLES[id]
+						T.expect(style ~= nil and style.trim ~= nil, id .. " : couleur secondaire")
+						table.insert(looks, { id = id, look = look, style = style })
+					end
+					for i = 1, #looks do
+						for j = i + 1, #looks do
+							local a, b = looks[i], looks[j]
+							local score = gap(a.look.color, b.look.color)
+								+ (if a.look.material ~= b.look.material then 0.5 else 0)
+								+ (
+									if a.style.trimPieces ~= b.style.trimPieces
+										then 0.3
+										else gap(a.style.trim, b.style.trim)
+								)
+							T.expect(score >= 0.5, a.id .. " / " .. b.id .. " trop proches : " .. score)
+						end
+					end
+				end
+			end
+		)
+		T.it("pose la couleur secondaire sur son groupe de pièces", function()
+			local look = Collection.look("radiant_king")
+			for _, piece in DummyFamilies.TRIMS.gloves do
+				T.expectEqual(look.pieceColors[piece], DummyFamilies.STYLES.radiant_king.trim, piece)
+			end
+			T.expectEqual(look.pieceColors.LeftUpperArm, nil)
+			T.expectEqual(look.color, DummyFamilies.STYLES.radiant_king.body)
+			T.expectEqual(look.material, Enum.Material.Foil)
+		end)
+	end)
+
 	T.describe("DummyFamilies.specs", function()
 		T.it("un mannequin par couple, identifiant « palette_famille », nom « Palette Famille »", function()
 			local list = generated()
@@ -129,7 +198,7 @@ return function(T, Loader, Lib)
 			for _, dummy in generated() do
 				local family, paletteId = DummyFamilies.parse(dummy.id)
 				local base = DummyModels.LOOKS[family :: string]
-				local palette = DummyFamilies.PALETTES[paletteId :: string]
+				local palette = DummyFamilies.paletteOf(family :: string, paletteId :: string)
 				local look = Collection.look(dummy.id)
 				T.expectEqual(look.accessories, base.accessories, dummy.id)
 				T.expectEqual(look.hidden, base.hidden, dummy.id)

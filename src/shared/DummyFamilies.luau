@@ -59,6 +59,69 @@ DummyFamilies.PALETTES = {
 	infinite  = { name = "Infinite",  body = rgb(255, 245, 230), accent = rgb(255, 120, 40),  tint = 0.85, glow = rgb(255, 180, 90),  accessoryMaterial = M.Foil },
 } :: { [string]: Palette }
 
+-- Retouches d'un mannequin généré (#127) : une palette revient jusqu'à trois fois dans une rareté haute, et la rangée
+-- Divine sortait uniforme (six mannequins blanc et or). Chacun garde la teinte de sa rareté mais change de couleur de
+-- corps, de matériau ou de couleur secondaire (`trim`) posée sur un groupe de pièces (`trimPieces`, TRIMS), comme les
+-- gants et bottes du Rubber Dummy. Champs absents : ceux de la palette. Identifiant et nom inchangés (sauvegardes).
+export type Style = {
+	body: Color3?,
+	accent: Color3?,
+	material: Enum.Material?,
+	accessoryMaterial: Enum.Material?,
+	glow: Color3?,
+	trim: Color3?,
+	trimPieces: string?,
+}
+
+-- Groupes de pièces d'une couleur secondaire (noms de Shared.DummyShape.PIECES)
+DummyFamilies.TRIMS = {
+	gloves = { "LeftLowerArm", "RightLowerArm", "LeftLowerLeg", "RightLowerLeg" }, -- gants et bottes
+	sleeves = { "LeftUpperArm", "LeftLowerArm", "RightUpperArm", "RightLowerArm" }, -- bras entiers (fantôme : sans jambes)
+	pants = { "LeftUpperLeg", "LeftLowerLeg", "RightUpperLeg", "RightLowerLeg" }, -- jambes entières
+} :: { [string]: { string } }
+
+-- stylua: ignore
+DummyFamilies.STYLES = {
+	-- Divine : blanc et or, mais chacun sa couleur de corps et de gants
+	angelic_royal    = { trim = rgb(255, 190, 40),  trimPieces = "gloves" },                                     -- nacre, gants d'or
+	radiant_galaxy   = { body = rgb(255, 200, 60),  trim = rgb(120, 200, 255), trimPieces = "gloves" },          -- or, gants ciel
+	angelic_hero     = { body = rgb(170, 215, 255), trim = rgb(255, 190, 40),  trimPieces = "pants" },           -- ciel, jambes d'or
+	radiant_diamond  = { body = rgb(255, 165, 140), trim = rgb(255, 240, 225), trimPieces = "gloves" },          -- or rose, gants crème
+	angelic_ghost    = { body = rgb(200, 170, 255), trim = rgb(255, 190, 40),  trimPieces = "sleeves" },         -- lavande, bras d'or
+	radiant_king     = { body = rgb(255, 180, 30),  trim = rgb(205, 30, 55),   trimPieces = "gloves", material = M.Foil }, -- or plein, gants pourpres
+	-- Celestial : rose, violet, turquoise
+	starlight_hero   = { body = rgb(255, 95, 185),  trim = rgb(255, 235, 120), trimPieces = "sleeves" },         -- fuchsia, bras or pâle
+	nebula_galaxy    = { trim = rgb(255, 130, 220), trimPieces = "gloves" },                                     -- violet, gants roses
+	aurora_ghost     = { trim = rgb(150, 110, 255), trimPieces = "sleeves" },                                    -- turquoise, bras violets
+	starlight_cosmic = { body = rgb(185, 145, 255), trim = rgb(255, 120, 220), trimPieces = "pants" },           -- lilas, jambes roses
+	nebula_king      = { body = rgb(225, 55, 195),  trim = rgb(75, 30, 150),   trimPieces = "gloves", material = M.Foil }, -- magenta, gants violets
+	starlight_void   = { body = rgb(255, 185, 235), trim = rgb(45, 25, 70),    trimPieces = "pants" },           -- rose pâle, jambes du vide
+	-- Ethereal : irisé, glace et néon
+	prism_ice        = { trim = rgb(255, 140, 235), trimPieces = "gloves" },                                     -- glace bleue, gants roses
+	aurora_royal     = { trim = rgb(150, 110, 255), trimPieces = "pants" },                                      -- turquoise, jambes violettes
+	plasma_neon      = { trim = rgb(80, 220, 255),  trimPieces = "gloves" },                                     -- néon magenta, gants cyan
+	prism_diamond    = { body = rgb(200, 165, 255), trim = rgb(110, 230, 255), trimPieces = "sleeves" },         -- glace lavande, bras aqua
+	plasma_void      = { body = rgb(140, 55, 255),  trim = rgb(255, 50, 200),  trimPieces = "pants" },           -- néon violet, jambes magenta
+	quantum_cosmic   = { trim = rgb(170, 90, 255),  trimPieces = "gloves" },                                     -- néon cyan, gants violets
+} :: { [string]: Style }
+
+-- Cette méthode permet de donner la palette effective d'un mannequin généré (palette `paletteId`, retouchée par son
+-- style STYLES s'il en a un) lorsque l'on construit son look.
+function DummyFamilies.paletteOf(family: string, paletteId: string): Palette
+	local palette = DummyFamilies.PALETTES[paletteId]
+	local style = DummyFamilies.STYLES[paletteId .. "_" .. family]
+	if not style then
+		return palette
+	end
+	local merged = table.clone(palette)
+	merged.body = style.body or palette.body
+	merged.accent = style.accent or palette.accent
+	merged.material = style.material or palette.material
+	merged.accessoryMaterial = style.accessoryMaterial or palette.accessoryMaterial
+	merged.glow = style.glow or palette.glow
+	return merged
+end
+
 -- Mannequins générés, par rareté (indice de Shared.Rarity) : famille (id d'un mannequin dessiné) × palette, du moins
 -- rare au plus rare. Familles de la même rareté pour les raretés dessinées, puis les plus chargées au-delà de Secret.
 -- stylua: ignore
@@ -202,8 +265,12 @@ end
 -- catalogue se construit ; corps à la palette, pièces et effets de la famille tirés vers sa teinte et sa lueur.
 function DummyFamilies.look(family: string, paletteId: string): DummyModels.Look
 	local base = DummyModels.LOOKS[family]
-	local palette = DummyFamilies.PALETTES[paletteId]
-	assert(base and palette, "DummyFamilies.look : famille ou palette inconnue " .. family .. "/" .. paletteId)
+	assert(
+		base and DummyFamilies.PALETTES[paletteId],
+		"DummyFamilies.look : famille ou palette inconnue " .. family .. "/" .. paletteId
+	)
+	local palette = DummyFamilies.paletteOf(family, paletteId)
+	local style = DummyFamilies.STYLES[paletteId .. "_" .. family]
 	local accessoryColors: { [string]: Color3 } = {}
 	for _, name in base.accessories do
 		local def = DummyModels.ADDONS[name]
@@ -216,6 +283,13 @@ function DummyFamilies.look(family: string, paletteId: string): DummyModels.Look
 		local colors: { [string]: Color3 } = {}
 		for piece, color in base.pieceColors do
 			colors[piece] = color:Lerp(palette.accent, palette.tint)
+		end
+		pieceColors = colors
+	end
+	if style and style.trim and style.trimPieces then
+		local colors: { [string]: Color3 } = pieceColors or {}
+		for _, piece in DummyFamilies.TRIMS[style.trimPieces] do
+			colors[piece] = style.trim
 		end
 		pieceColors = colors
 	end

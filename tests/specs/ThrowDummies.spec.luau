@@ -92,6 +92,36 @@ return function(T, Loader)
 		end)
 	end)
 
+	T.describe("Signes de rang (#127)", function()
+		T.it("rang croissant avec la chance : rien avant 13x, 3 pour les trois derniers", function()
+			local previous = 0
+			for _, dummy in LIST do
+				local rank = ThrowDummies.rank(dummy.luck)
+				T.expect(rank >= previous, dummy.id)
+				previous = rank
+				T.expectEqual(dummy.ornaments ~= nil, rank > 0, dummy.id .. " signes")
+			end
+			T.expectEqual(ThrowDummies.rank(LIST[#LIST].luck), 3)
+			T.expectEqual(ThrowDummies.rank(LIST[#LIST - 2].luck), 3)
+			T.expectEqual(ThrowDummies.rank(LIST[ThrowDummies.SHOWCASE + 1].luck), 0)
+		end)
+		T.it("plus de signes et d'effets à chaque rang, transmis par la déclinaison", function()
+			local count = { [0] = 0 }
+			for index, dummy in LIST do
+				local rank = ThrowDummies.rank(dummy.luck)
+				local n = #(dummy.ornaments or {}) + #(dummy.effects or {})
+				count[rank] = n
+				local variant = ThrowDummies.variant(index)
+				T.expectEqual(#(variant.blocks or {}), #(dummy.blocks or {}) + #(dummy.ornaments or {}), dummy.id)
+				T.expectEqual(variant.effects, dummy.effects, dummy.id)
+			end
+			T.expect(
+				count[1] > count[0] and count[2] > count[1] and count[3] > count[2],
+				"rangs de plus en plus riches"
+			)
+		end)
+	end)
+
 	T.describe("ThrowDummies.act (achat séquentiel, équipement)", function()
 		T.it("achète seulement le suivant, avec l'argent, et l'équipe", function()
 			local result = ThrowDummies.act(1, 1, LIST[2].cost, "Buy", 2)

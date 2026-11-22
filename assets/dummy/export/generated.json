@@ -153,9 +153,9 @@
   },
   "angelic_ghost": {
     "color": [
-      230,
-      225,
-      250
+      200,
+      170,
+      255
     ],
     "effects": [
       {
@@ -327,13 +327,35 @@
         "piece": "Head",
         "transparency": 0
       }
-    ]
+    ],
+    "pieces": {
+      "LeftLowerArm": [
+        255,
+        190,
+        40
+      ],
+      "LeftUpperArm": [
+        255,
+        190,
+        40
+      ],
+      "RightLowerArm": [
+        255,
+        190,
+        40
+      ],
+      "RightUpperArm": [
+        255,
+        190,
+        40
+      ]
+    }
   },
   "angelic_hero": {
     "color": [
-      230,
-      225,
-      250
+      170,
+      215,
+      255
     ],
     "effects": [
       {
@@ -422,9 +444,14 @@
         83
       ],
       "LeftLowerLeg": [
-        251,
-        185,
-        83
+        255,
+        190,
+        40
+      ],
+      "LeftUpperLeg": [
+        255,
+        190,
+        40
       ],
       "RightLowerArm": [
         251,
@@ -432,9 +459,14 @@
         83
       ],
       "RightLowerLeg": [
-        251,
-        185,
-        83
+        255,
+        190,
+        40
+      ],
+      "RightUpperLeg": [
+        255,
+        190,
+        40
       ]
     }
   },
@@ -588,7 +620,29 @@
         "piece": "RightUpperArm",
         "transparency": 0
       }
-    ]
+    ],
+    "pieces": {
+      "LeftLowerArm": [
+        255,
+        190,
+        40
+      ],
+      "LeftLowerLeg": [
+        255,
+        190,
+        40
+      ],
+      "RightLowerArm": [
+        255,
+        190,
+        40
+      ],
+      "RightLowerLeg": [
+        255,
+        190,
+        40
+      ]
+    }
   },
   "aurora_ghost": {
     "color": [
@@ -766,7 +820,29 @@
         "piece": "Head",
         "transparency": 0
       }
-    ]
+    ],
+    "pieces": {
+      "LeftLowerArm": [
+        150,
+        110,
+        255
+      ],
+      "LeftUpperArm": [
+        150,
+        110,
+        255
+      ],
+      "RightLowerArm": [
+        150,
+        110,
+        255
+      ],
+      "RightUpperArm": [
+        150,
+        110,
+        255
+      ]
+    }
   },
   "aurora_royal": {
     "color": [
@@ -918,7 +994,29 @@
         "piece": "RightUpperArm",
         "transparency": 0
       }
-    ]
+    ],
+    "pieces": {
+      "LeftLowerLeg": [
+        150,
+        110,
+        255
+      ],
+      "LeftUpperLeg": [
+        150,
+        110,
+        255
+      ],
+      "RightLowerLeg": [
+        150,
+        110,
+        255
+      ],
+      "RightUpperLeg": [
+        150,
+        110,
+        255
+      ]
+    }
   },
   "cherry_biker": {
     "color": [
@@ -3406,6 +3504,26 @@
       }
     ],
     "pieces": {
+      "LeftLowerArm": [
+        255,
+        130,
+        220
+      ],
+      "LeftLowerLeg": [
+        255,
+        130,
+        220
+      ],
+      "RightLowerArm": [
+        255,
+        130,
+        220
+      ],
+      "RightLowerLeg": [
+        255,
+        130,
+        220
+      ],
       "Torso": [
         251,
         135,
@@ -3415,9 +3533,9 @@
   },
   "nebula_king": {
     "color": [
-      120,
-      60,
-      220
+      225,
+      55,
+      195
     ],
     "effects": [
       {
@@ -3650,7 +3768,29 @@
         "piece": "Head",
         "transparency": 0
       }
-    ]
+    ],
+    "pieces": {
+      "LeftLowerArm": [
+        75,
+        30,
+        150
+      ],
+      "LeftLowerLeg": [
+        75,
+        30,
+        150
+      ],
+      "RightLowerArm": [
+        75,
+        30,
+        150
+      ],
+      "RightLowerLeg": [
+        75,
+        30,
+        150
+      ]
+    }
   },
   "omega_ghost": {
     "color": [
@@ -4339,13 +4479,35 @@
         "piece": "RightLowerArm",
         "transparency": 0
       }
-    ]
+    ],
+    "pieces": {
+      "LeftLowerArm": [
+        80,
+        220,
+        255
+      ],
+      "LeftLowerLeg": [
+        80,
+        220,
+        255
+      ],
+      "RightLowerArm": [
+        80,
+        220,
+        255
+      ],
+      "RightLowerLeg": [
+        80,
+        220,
+        255
+      ]
+    }
   },
   "plasma_void": {
     "color": [
-      255,
-      50,
-      200
+      140,
+      55,
+      255
     ],
     "effects": [
       {
@@ -4545,12 +4707,34 @@
         "piece": "Torso",
         "transparency": 0
       }
-    ]
+    ],
+    "pieces": {
+      "LeftLowerLeg": [
+        255,
+        50,
+        200
+      ],
+      "LeftUpperLeg": [
+        255,
+        50,
+        200
+      ],
+      "RightLowerLeg": [
+        255,
+        50,
+        200
+      ],
+      "RightUpperLeg": [
+        255,
+        50,
+        200
+      ]
+    }
   },
   "prism_diamond": {
     "color": [
-      170,
-      215,
+      200,
+      165,
       255
     ],
     "effects": [
@@ -4674,7 +4858,29 @@
         "piece": "RightUpperArm",
         "transparency": 0.25
       }
-    ]
+    ],
+    "pieces": {
+      "LeftLowerArm": [
+        110,
+        230,
+        255
+      ],
+      "LeftUpperArm": [
+        110,
+        230,
+        255
+      ],
+      "RightLowerArm": [
+        110,
+        230,
+        255
+      ],
+      "RightUpperArm": [
+        110,
+        230,
+        255
+      ]
+    }
   },
   "prism_ice": {
     "color": [
@@ -4794,7 +5000,29 @@
         "piece": "RightLowerLeg",
         "transparency": 0
       }
-    ]
+    ],
+    "pieces": {
+      "LeftLowerArm": [
+        255,
+        140,
+        235
+      ],
+      "LeftLowerLeg": [
+        255,
+        140,
+        235
+      ],
+      "RightLowerArm": [
+        255,
+        140,
+        235
+      ],
+      "RightLowerLeg": [
+        255,
+        140,
+        235
+      ]
+    }
   },
   "quantum_cosmic": {
     "color": [
@@ -5046,6 +5274,26 @@
       }
     ],
     "pieces": {
+      "LeftLowerArm": [
+        170,
+        90,
+        255
+      ],
+      "LeftLowerLeg": [
+        170,
+        90,
+        255
+      ],
+      "RightLowerArm": [
+        170,
+        90,
+        255
+      ],
+      "RightLowerLeg": [
+        170,
+        90,
+        255
+      ],
       "Torso": [
         147,
         78,
@@ -5056,8 +5304,8 @@
   "radiant_diamond": {
     "color": [
       255,
-      220,
-      100
+      165,
+      140
     ],
     "effects": [
       {
@@ -5179,13 +5427,35 @@
         "piece": "RightUpperArm",
         "transparency": 0.25
       }
-    ]
+    ],
+    "pieces": {
+      "LeftLowerArm": [
+        255,
+        240,
+        225
+      ],
+      "LeftLowerLeg": [
+        255,
+        240,
+        225
+      ],
+      "RightLowerArm": [
+        255,
+        240,
+        225
+      ],
+      "RightLowerLeg": [
+        255,
+        240,
+        225
+      ]
+    }
   },
   "radiant_galaxy": {
     "color": [
       255,
-      220,
-      100
+      200,
+      60
     ],
     "effects": [
       {
@@ -5364,6 +5634,26 @@
       }
     ],
     "pieces": {
+      "LeftLowerArm": [
+        120,
+        200,
+        255
+      ],
+      "LeftLowerLeg": [
+        120,
+        200,
+        255
+      ],
+      "RightLowerArm": [
+        120,
+        200,
+        255
+      ],
+      "RightLowerLeg": [
+        120,
+        200,
+        255
+      ],
       "Torso": [
         252,
         218,
@@ -5374,8 +5664,8 @@
   "radiant_king": {
     "color": [
       255,
-      220,
-      100
+      180,
+      30
     ],
     "effects": [
       {
@@ -5441,6 +5731,7 @@
         "preset": "sparkle"
       }
     ],
+    "material": "Foil",
     "parts": [
       {
         "color": [
@@ -5607,7 +5898,29 @@
         "piece": "Head",
         "transparency": 0
       }
-    ]
+    ],
+    "pieces": {
+      "LeftLowerArm": [
+        205,
+        30,
+        55
+      ],
+      "LeftLowerLeg": [
+        205,
+        30,
+        55
+      ],
+      "RightLowerArm": [
+        205,
+        30,
+        55
+      ],
+      "RightLowerLeg": [
+        205,
+        30,
+        55
+      ]
+    }
   },
   "ruby_diamond": {
     "color": [
@@ -6795,9 +7108,9 @@
   },
   "starlight_cosmic": {
     "color": [
-      255,
-      160,
-      235
+      185,
+      145,
+      255
     ],
     "effects": [
       {
@@ -7042,6 +7355,26 @@
       }
     ],
     "pieces": {
+      "LeftLowerLeg": [
+        255,
+        120,
+        220
+      ],
+      "LeftUpperLeg": [
+        255,
+        120,
+        220
+      ],
+      "RightLowerLeg": [
+        255,
+        120,
+        220
+      ],
+      "RightUpperLeg": [
+        255,
+        120,
+        220
+      ],
       "Torso": [
         215,
         102,
@@ -7052,8 +7385,8 @@
   "starlight_hero": {
     "color": [
       255,
-      160,
-      235
+      95,
+      185
     ],
     "effects": [
       {
@@ -7137,31 +7470,41 @@
     ],
     "pieces": {
       "LeftLowerArm": [
-        250,
-        104,
-        184
+        255,
+        235,
+        120
       ],
       "LeftLowerLeg": [
         250,
         104,
         184
       ],
+      "LeftUpperArm": [
+        255,
+        235,
+        120
+      ],
       "RightLowerArm": [
-        250,
-        104,
-        184
+        255,
+        235,
+        120
       ],
       "RightLowerLeg": [
         250,
         104,
         184
+      ],
+      "RightUpperArm": [
+        255,
+        235,
+        120
       ]
     }
   },
   "starlight_void": {
     "color": [
       255,
-      160,
+      185,
       235
     ],
     "effects": [
@@ -7361,7 +7704,29 @@
         "piece": "Torso",
         "transparency": 0
       }
-    ]
+    ],
+    "pieces": {
+      "LeftLowerLeg": [
+        45,
+        25,
+        70
+      ],
+      "LeftUpperLeg": [
+        45,
+        25,
+        70
+      ],
+      "RightLowerLeg": [
+        45,
+        25,
+        70
+      ],
+      "RightUpperLeg": [
+        45,
+        25,
+        70
+      ]
+    }
   },
   "tangerine_nerd": {
     "color": [
