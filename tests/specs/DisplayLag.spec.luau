@@ -46,6 +46,19 @@ return function(T, Loader)
 			T.expectEqual(DisplayLag.shownAt(DisplayLag.track(), Vector3.zero), nil)
 		end)
 
+		T.it("ne fait pas grandir le retard d'un mannequin arrêté après une glissade (Studio : 0,6 s)", function()
+			-- Glissade freinée jusqu'à l'arrêt en z = 200 à l'heure 10,6, puis immobile
+			local function slide(t: number): Vector3
+				local left = math.max(10.6 - t, 0)
+				return Vector3.new(0, 2, 200 - 40 * left * left)
+			end
+			local track = sampled(10, 11.2, slide)
+			T.expectEqual(DisplayLag.shownAt(track, slide(11.2)), nil, "arrêté : heure ambiguë")
+			T.expectEqual(DisplayLag.shownAt(track, slide(10.6) - Vector3.new(0, 0, 0.5)), nil, "presque arrêté")
+			-- Encore en glissade à l'affichage : mesurable
+			T.expectNear(DisplayLag.shownAt(track, slide(10.3)) :: number, 10.3, 0.01)
+		end)
+
 		T.it("prolonge le dernier pas quand l'échantillon suivant n'est pas encore arrivé", function()
 			local track = sampled(10, 10.5)
 			local t = 10.5 + DT / 2
@@ -72,7 +85,7 @@ return function(T, Loader)
 			local track = sampled(10, 11)
 			T.expectNear(DisplayLag.measure(track, 11, flight(10.7)) :: number, 0.3, 0.005)
 			T.expectEqual(DisplayLag.measure(track, 11, flight(10.1)), DisplayLag.MAX)
-			T.expectEqual(DisplayLag.measure(track, 10.9, flight(11)), 0)
+			T.expectEqual(DisplayLag.measure(track, 10.9, flight(10.95)), 0)
 		end)
 	end)
 

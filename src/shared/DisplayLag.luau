@@ -16,6 +16,8 @@ DisplayLag.KEEP = 1.2 -- échantillons gardés (s) : plus que le retard au plus 
 DisplayLag.MAX = 0.6 -- retard au plus (s)
 DisplayLag.MATCH = 6 -- écart (studs) au-delà duquel la position affichée n'est pas sur la trajectoire échantillonnée
 DisplayLag.MIN_SPAN = 0.3 -- pas plus court (studs) entre deux échantillons : mannequin presque arrêté, heure imprécise
+-- Position affichée à moins de AHEAD studs du dernier échantillon : mannequin arrêté là, heure ambiguë (pas de mesure)
+DisplayLag.AHEAD = 1
 DisplayLag.SMOOTH = 0.5 -- constante de temps du lissage (s)
 DisplayLag.MAX_RATE = 0.3 -- variation au plus du retard appliqué (s par seconde) : pièces à 70-130 % de leur vitesse
 
@@ -56,7 +58,8 @@ end
 
 -- Cette méthode permet de donner l'heure serveur où le mannequin était à `position` (sa position affichée) lorsque
 -- l'on mesure le retard d'affichage ; nil si la position n'est sur aucun pas assez long de la trajectoire (à MATCH
--- studs près). Le dernier pas se prolonge d'autant (échantillon suivant pas encore arrivé).
+-- studs près) ou à moins de AHEAD studs du dernier échantillon. Le dernier pas se prolonge d'autant (échantillon
+-- suivant pas encore arrivé).
 function DisplayLag.shownAt(track: Track, position: Vector3): number?
 	local times, positions = track.times, track.positions
 	local best, bestDistance = nil, DisplayLag.MATCH
@@ -73,6 +76,12 @@ function DisplayLag.shownAt(track: Track, position: Vector3): number?
 				best, bestDistance = times[i] + (times[i + 1] - times[i]) * u, distance
 			end
 		end
+	end
+	-- Mannequin arrêté (ou presque) là où il est affiché : la fin de son dernier pas en mouvement colle à sa position
+	-- et le retard mesuré grandirait sans fin (0,6 s mesurés en Studio après l'arrêt)
+	local count = #positions
+	if best and (positions[count] - position).Magnitude < DisplayLag.AHEAD then
+		return nil
 	end
 	return best
 end
