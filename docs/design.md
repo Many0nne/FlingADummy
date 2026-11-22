@@ -296,7 +296,8 @@ $25M), le « mur » de la review 2. Amber Glider, Golden Rocket et Frost Rubber 
 | Omega | +8.8M (+760K) | $1.8B | 90 min (94) | 106 min | $3.9B, 4,9 h |
 | Infinite | +35M (+3M) | $50B | 4,8 h (4,9) | 5,4 h | $14B, 6,6 h |
 
-Puissance (gains de #129) : 1 K à 3 min, 100 K à 12 min, 1 M à 17 min, 100 M à 43 min, 10 B à 2,1 h (avant #129 :
+Puissance (rejouée par #133) : 1 K à 3 min, 100 K à 11 min, 1 M à 17 min, 100 M à 40 min, 10 B à 1,9 h (après #129 :
+3 min, 12 min, 17 min, 43 min, 2,1 h ; avant #129 :
 5 min, 21 min, 32 min, 85 min, 6,4 h ; avant #15 : 5 min, 20 min, 45 min, 3,2 h, 7,8 h). Avec la piste de 2,4 km, le bout était atteint dès ≈ 760 K de puissance et la puissance
 n'ajoutait ensuite que des os et des objets ; la piste de 6 km (#97) donne un but aux paliers prolongés (tableau
 « Fin de piste » ci-dessous). Bout de piste simulé à 57 min depuis #133 (58 min après #130, 105 min après #129, 4,2 h
@@ -456,8 +457,8 @@ Planche `entrainement.jpg` : les gains affichés sur l'appareil changent, à ré
 | Première récompense | 15 s | 21 s | 24 s |
 | Premier équipement | 45 s ($100) | 1:45 ($500) | 0:42 ($1) |
 | Deuxième projectile | 90 s (1.25x, $1.5K) | 1:42 (1.25x, $1.2K) | 1:27 (pomme) |
-| Puissance | 1K à 3 min, 100K à 12 min | 1.34K à 4 min, 114K à 11 min | 503 à 17 min |
-| Revenu | 1K/s à 6 min, 100K/s à 32 min | 2.19K/s à 3:36 | 1.08K/s vers 9 min, 391K/s à 17 min |
+| Puissance | 1K à 3 min, 100K à 11 min | 1.34K à 4 min, 114K à 11 min | 503 à 17 min |
+| Revenu | 1K/s à 5 min, 100K/s à 27 min | 2.19K/s à 3:36 | 1.08K/s vers 9 min, 391K/s à 17 min |
 | Projectile le plus fort | 135x à 8,6 h | 135x (durée inconnue) | non observé |
 | Cote la plus haute | 1 IN 100T (50Qa en Giant) | 1 IN 300Qa | non observé |
 | Collection | 64 mannequins, 11 raretés | 110 plantes, 10 raretés + Royal | non observé |
@@ -474,7 +475,7 @@ Planche `entrainement.jpg` : les gains affichés sur l'appareil changent, à ré
    | 2,4 km (fin de Moon Base) | 557 | 760 K | 13 min (17) | × 18 | (#14, #33) |
    | 3,6 km (Neon City) | 685 | 22 M | 20 min (32) | × 27 | 3 590 à 3 630 m |
    | 4,8 km (Haunted Castle) | 791 | 360 M | 48 min (54) | × 40 | 4 867 à 4 991 m, 5 021 à 5 510 m après un piège |
-   | 6 km (bout) | 886 | 4,4 B | 58 min (105 ; 4,2 h avant #129) | × 60 | bout de piste 6 fois sur 6 (6 043-6 048 m) |
+   | 6 km (bout) | 886 | 4,4 B | 58 min (105 ; 4,2 h avant #129 ; 57 min depuis #133) | × 60 | bout de piste 6 fois sur 6 (6 043-6 048 m) |
    Depuis #130, le joueur simulé compte la distance du mannequin équipé : la fin de piste arrive avec moins de
    puissance (Golden Rocket à 54 min, + 20 %).
    Avant #113, les vols montaient à ≈ 590 studs à 4,4 B puis glissaient au hasard (4,1 à 6,0 km à 4,4 B, mesures de

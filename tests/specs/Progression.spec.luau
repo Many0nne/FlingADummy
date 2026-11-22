@@ -7,7 +7,9 @@ return function(T, Loader, Lib)
 	local m = Sim.modules(Loader.new())
 	local PLAYERS = 15
 	-- Rythme de la première heure (#133) : écarts de quelques secondes à quelques minutes, que la médiane de 15 joueurs
-	-- déplace de ± 60 s selon les graines ; 200 joueurs simulés sur 75 min (≈ 1 s) la stabilisent
+	-- déplace de ± 60 s selon les graines ; 200 joueurs simulés sur 75 min (≈ 1 s) la stabilisent. Écarts entre instants
+	-- médians, pour chaque achat dont l'instant médian tombe dans la première heure (l'attente qui la chevauche ouvre la
+	-- deuxième heure, où les écarts s'allongent : docs/design.md, « Rythme et économie »)
 	local HOUR_PLAYERS = 200
 	local HOUR_SECONDS = 75 * 60
 
