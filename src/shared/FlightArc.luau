@@ -216,14 +216,15 @@ function FlightArc.accel(
 end
 
 -- Cette méthode permet de donner la vitesse après le rebond `done + 1` du plan (chute `fall` au plus fort, arrêtée cette
--- frame : `before` → `after`) lorsque le serveur avance le vol d'un mannequin rebondissant ; nil sans rebond.
+-- frame au sol, torse à `height` : `before` → `after`) lorsque le serveur avance un mannequin rebondissant ; nil sinon.
 function FlightArc.bounce(
 	plan: Plan,
 	before: Vector3,
 	after: Vector3,
 	forward: Vector3,
 	fall: number?,
-	done: number?
+	done: number?,
+	height: number?
 ): Vector3?
 	local speed = plan.bounceSpeed
 	local up = plan.bounceUps[(done or 0) + 1]
@@ -231,9 +232,12 @@ function FlightArc.bounce(
 	-- Chute la plus forte depuis le dernier rebond : les membres touchent souvent avant le torse, qui ralentit sur
 	-- plusieurs frames
 	local falling = math.max(fall or 0, -before.Y)
+	-- Au sol seulement (`height`) : ni le dessus d'un obstacle haut, ni la croisière au plafond
+	local raised = height ~= nil and height >= GameConfig.BRAKE_HEIGHT
 	if
 		not speed
 		or not up
+		or raised
 		or falling <= FlightArc.BOUNCE_MIN_FALL * FlightArc.BOUNCE_DETECT
 		or before.Y >= FlightArc.BOUNCE_STOP
 		or after.Y < FlightArc.BOUNCE_STOP
@@ -243,10 +247,13 @@ function FlightArc.bounce(
 	end
 	flat = flat.Unit
 	local horizontal = Vector3.new(after.X, 0, after.Z)
-	local lateral = horizontal - flat * horizontal:Dot(flat)
+	local ahead = horizontal:Dot(flat)
+	local lateral = horizontal - flat * ahead
 	-- Élan et hauteur réglés par le plan à chaque rebond, même après un obstacle qui l'a ralenti ou un contact amorti
-	-- par les membres : la distance ne dépend pas des caisses touchées entre deux rebonds
-	return flat * speed + lateral + Vector3.new(0, up, 0)
+	-- par les membres : la distance ne dépend pas des caisses touchées entre deux rebonds. Jamais plus haut que la
+	-- chute (petite chute sur une caisse basse), et pas de poussée vers l'avant contre une paroi qui l'a renvoyé
+	local push = if ahead < 0 then ahead else speed
+	return flat * push + lateral + Vector3.new(0, math.min(up, falling), 0)
 end
 
 -- Cette méthode permet de donner la durée en l'air d'un rebond qui repart à `velocity` (plus une marge de 3 frames

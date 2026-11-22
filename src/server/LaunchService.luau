@@ -657,7 +657,15 @@ local function applyBehavior(flight: Flight, elapsed: number, dt: number, before
 	local change = FlightArc.accel(flight.arc, velocity, flight.forward, elapsed, Workspace.Gravity, coasting) * dt
 	local armed = elapsed > GameConfig.IMPACT_GRACE_TIME
 	if before and armed and not coasting then
-		local bounced = FlightArc.bounce(flight.arc, before, velocity, flight.forward, flight.fall, flight.bounces)
+		local bounced = FlightArc.bounce(
+			flight.arc,
+			before,
+			velocity,
+			flight.forward,
+			flight.fall,
+			flight.bounces,
+			flight.torso.Position.Y
+		)
 		if bounced then
 			change += bounced - velocity
 			flight.bounces += 1
