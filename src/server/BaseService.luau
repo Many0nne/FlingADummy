@@ -233,7 +233,9 @@ local function render(slot: Slot, player: Player?, force: boolean?)
 	end
 	stylePad(slot, if ready and data then data.displays else nil, if ready and data then data.bonus else nil)
 	if ready and data and player then
-		player:SetAttribute("Income", Inventory.income(data) * StoreService.incomeMultiplier(player))
+		local base = Inventory.income(data)
+		player:SetAttribute("BaseIncome", base) -- classement INCOME : sans les multiplicateurs Robux
+		player:SetAttribute("Income", base * StoreService.incomeMultiplier(player))
 	end
 	updateLabel(slot, player)
 end
@@ -503,6 +505,7 @@ local function track(player: Player)
 	end
 	slotOf[player] = slot
 	player:SetAttribute("Income", 0)
+	player:SetAttribute("BaseIncome", 0)
 	DummyTools.track(player, function()
 		local data = PlayerData.collection(player)
 		return if data and player:GetAttribute("DataReady") then data.stock else nil

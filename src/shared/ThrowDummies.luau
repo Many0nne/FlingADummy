@@ -452,6 +452,12 @@ function ThrowDummies.get(index: number): Dummy
 	return ThrowDummies.LIST[math.clamp(math.floor(index), 1, #ThrowDummies.LIST)]
 end
 
+-- Cette méthode permet de savoir si `value` désigne un mannequin qui peut être lancé (catalogue ou Rainbow Dummy)
+-- lorsque le client rejoue un vol.
+function ThrowDummies.isThrowable(value: any): boolean
+	return value == ThrowDummies.RAINBOW or ThrowDummies.isIndex(value)
+end
+
 -- Cette méthode permet de donner la chance du mannequin `index` pour un joueur qui possède les `owned` premiers
 -- (Rainbow Dummy : 1,5 × le meilleur possédé, 15x au moins) lorsque un lancer part ou qu'une carte l'affiche.
 function ThrowDummies.luckOf(index: number, owned: number): number

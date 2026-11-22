@@ -24,6 +24,7 @@ local StoreService = {}
 local remote: RemoteEvent? = nil
 local serverLuckEnds = 0 -- fin de la chance du serveur (temps serveur)
 local simulated = 0 -- compteur des reçus simulés de Studio
+local pendingPasses: { [Player]: { Store.Item } } = {} -- passes achetés avant le chargement des données
 
 -- Cette méthode permet de publier l'état d'achat d'un joueur dans ses attributs (passes, fins des boosts, lancers
 -- chanceux, fin de l'offre du pack de démarrage) lorsque il est chargé, qu'un achat est attribué ou remis à zéro.
@@ -64,6 +65,10 @@ end
 local function grantPass(player: Player, item: Store.Item, silent: boolean?): boolean
 	local state = PlayerData.store(player)
 	if not state or player:GetAttribute("DataReady") ~= true then
+		-- Données pas encore prêtes : appliqué au chargement (ready), le joueur a payé
+		local pending = pendingPasses[player] or {}
+		table.insert(pending, item)
+		pendingPasses[player] = pending
 		return false
 	end
 	if state.passes[item.id] then
@@ -76,6 +81,8 @@ local function grantPass(player: Player, item: Store.Item, silent: boolean?): bo
 	publish(player)
 	if not silent then
 		announce(player, item)
+		-- Big Base : présentoirs 31 à 40 utilisables tout de suite, passe sauvegardé avec eux
+		task.spawn(PlayerData.saveNow, player)
 	end
 	return true
 end
@@ -156,6 +163,7 @@ function StoreService.simulate(player: Player, id: any, purchaseId: string?): bo
 	if not item or not RunService:IsStudio() then
 		return false
 	end
+	PlayerData.markSimulated(player) -- rien de ce que donne la simulation n'arrive dans la vraie sauvegarde
 	if item.kind == "Pass" then
 		local ok = grantPass(player, item)
 		print(string.format("[Store] simulation : passe %s pour %s (%s)", item.id, player.Name, tostring(ok)))
@@ -266,6 +274,11 @@ local function track(player: Player)
 	local function ready()
 		if player:GetAttribute("DataReady") == true then
 			publish(player)
+			local pending = pendingPasses[player]
+			pendingPasses[player] = nil
+			for _, item in pending or {} do
+				grantPass(player, item)
+			end
 			task.spawn(verifyPasses, player)
 		end
 	end
@@ -306,6 +319,9 @@ function StoreService.init(storeRemote: RemoteEvent)
 	end)
 	PlayerData.onReset(publish)
 	Players.PlayerAdded:Connect(track)
+	Players.PlayerRemoving:Connect(function(player)
+		pendingPasses[player] = nil
+	end)
 	for _, player in Players:GetPlayers() do
 		track(player)
 	end

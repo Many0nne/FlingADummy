@@ -44,8 +44,8 @@ local store: DataStore? = nil
 local loaded: { [Player]: boolean } = {}
 local collections: { [Player]: CollectionData } = {}
 local stores: { [Player]: Store.State } = {}
--- Studio : achats tels que lus (réécrits tels quels) ; les achats simulés de Studio ne vont jamais dans la sauvegarde
-local storesRead: { [Player]: any } = {}
+-- Studio : joueurs ayant simulé un achat Robux (DebugBuy, bouton Buy) : plus rien n'est sauvegardé pour eux
+local simulated: { [Player]: boolean } = {}
 local musicChangedAt: { [Player]: number } = {}
 local musicWanted: { [Player]: boolean } = {} -- dernier choix reçu, appliqué à la fin du délai
 local musicScheduled: { [Player]: boolean } = {}
@@ -113,7 +113,6 @@ local function load(player: Player)
 				-- Achats d'abord : la capacité de la base (Big Base) garde les présentoirs 31 à 40 à la relecture
 				local state = Store.read(data.Store)
 				stores[player] = state
-				storesRead[player] = data.Store
 				if player:GetAttribute("ThrowEquipped") == ThrowDummies.RAINBOW and not state.passes.Rainbow then
 					player:SetAttribute("ThrowEquipped", owned)
 				end
@@ -137,6 +136,10 @@ local function save(player: Player): boolean
 	if not store or not loaded[player] then
 		return false
 	end
+	if simulated[player] then
+		print("[PlayerData] " .. player.Name .. " : achat Robux simulé dans la session, sauvegarde ignorée")
+		return false
+	end
 	local data = {}
 	for key in DEFAULTS do
 		data[key] = player:GetAttribute(key)
@@ -146,9 +149,7 @@ local function save(player: Player): boolean
 		data.Collection = Inventory.write(collection)
 	end
 	local state = stores[player]
-	if RunService:IsStudio() then
-		data.Store = storesRead[player] -- simulations de Studio (DebugBuy, bouton Buy) jamais sauvegardées
-	elseif state then
+	if state then
 		data.Store = Store.write(state)
 	end
 	local ok, err = pcall(function()
@@ -164,6 +165,12 @@ end
 -- attribué (le reçu noté doit survivre à un arrêt du serveur) ; renvoie true si la sauvegarde est écrite.
 function PlayerData.saveNow(player: Player): boolean
 	return save(player)
+end
+
+-- Cette méthode permet de ne plus sauvegarder un joueur de Studio lorsque un achat Robux est simulé pour lui (argent,
+-- passes et mannequins gagnés grâce à la simulation n'arrivent jamais dans la sauvegarde ; DebugWipe la rétablit).
+function PlayerData.markSimulated(player: Player)
+	simulated[player] = true
 end
 
 -- Cette méthode permet de donner l'état d'achat de la boutique Robux d'un joueur (modifiable en place, sauvegardé avec
@@ -346,7 +353,7 @@ function PlayerData.wipe(player: Player)
 	end
 	collections[player] = Inventory.new()
 	stores[player] = Store.new()
-	storesRead[player] = nil -- Studio : la sauvegarde remise à zéro écrit des achats vides
+	simulated[player] = nil -- remise à zéro : la sauvegarde vide d'un nouveau joueur est de nouveau écrite
 	for _, listener in resetListeners do
 		listener(player)
 	end
@@ -378,7 +385,7 @@ function PlayerData.init()
 		loaded[player] = nil
 		collections[player] = nil
 		stores[player] = nil
-		storesRead[player] = nil
+		simulated[player] = nil
 		musicChangedAt[player] = nil
 		musicWanted[player] = nil
 		musicScheduled[player] = nil
