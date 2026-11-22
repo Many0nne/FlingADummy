@@ -226,7 +226,7 @@ return function(T, Loader)
 		T.it("laisse la poussée d'un piège au sol se voir (pas de frein juste après)", function()
 			local v = FlightArc.brake(Vector3.new(20, 5, 270), FORWARD, 2, 0.1, true)
 			T.expectNear(v.Z, 270, 1e-9)
-			T.expect(math.abs(v.X) < 20, "latéral toujours amorti")
+			T.expectNear(v.X, 20, 1e-9, "poussée latérale du piège gardée")
 		end)
 	end)
 end

@@ -70,12 +70,15 @@ function FlightArc.startPhase(plan: Plan): Phase
 end
 
 -- Cette méthode permet de donner la vitesse après le frein au sol (élan le long de la piste réduit de GROUND_BRAKE ×
--- `dt` sous BRAKE_HEIGHT, sauf `coasting`, vitesse latérale amortie partout) lorsque le mannequin a touché le sol.
+-- `dt` sous BRAKE_HEIGHT, vitesse latérale amortie ; rien juste après un piège, `coasting`) après le premier contact.
 function FlightArc.brake(velocity: Vector3, forward: Vector3, height: number, dt: number, coasting: boolean?): Vector3
 	local flat = Vector3.new(velocity.X, 0, velocity.Z)
 	local ahead = flat:Dot(forward)
+	if coasting then
+		return velocity
+	end
 	local lateral = (flat - forward * ahead) * math.exp(-GameConfig.LATERAL_DAMP * dt)
-	if height < GameConfig.BRAKE_HEIGHT and not coasting then
+	if height < GameConfig.BRAKE_HEIGHT then
 		local slowed = math.max(math.abs(ahead) - GameConfig.GROUND_BRAKE * dt, 0)
 		ahead = if ahead < 0 then -slowed else slowed
 	end
