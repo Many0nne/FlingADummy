@@ -26,7 +26,7 @@ local course = CourseBuilder.build()
 local remotes = Remotes.create()
 PlayerData.init()
 SlotService.init(course.slots)
-TrainingService.init(course.slots, remotes.StopTraining)
+TrainingService.init(course.slots, remotes.StopTraining, remotes.TrainingBoost)
 BaseService.init(course.slots, remotes.PlaceDummy, remotes.Inventory)
 LaunchService.init(remotes, course.dummies)
 LeaderboardService.init(course.boards)
@@ -74,6 +74,7 @@ if RunService:IsStudio() then
 			if player:GetAttribute("DebugWipe") == true then
 				player:SetAttribute("DebugWipe", nil)
 				TrainingService.stop(player)
+				TrainingService.resetBoost(player) -- calendrier du bouton « 2x TRAINING! » d'un nouveau joueur
 				PlayerData.wipe(player)
 			end
 		end)

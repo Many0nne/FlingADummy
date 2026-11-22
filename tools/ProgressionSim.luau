@@ -22,6 +22,9 @@ ProgressionSim.SNAPSHOTS = { 120, 300, 600, 1800, 3600, 3 * 3600, 8 * 3600, 14 *
 -- Attente en dessous de laquelle un « prix suivant / revenu » ne compte pas comme un mur (s) : deux achats coup sur
 -- coup donnent un ratio minuscule, puis normal, sans que le joueur sente une marche
 ProgressionSim.RATIO_FLOOR = 60
+-- Bouton « 2x TRAINING! » (#119, Shared.TrainingBoost) : part des apparitions cliquées à temps (bonus dès la
+-- répétition suivante ; il s'arrête avec la séance de TRAIN_TIME s). 0 : joueur sans le bonus (comparaison)
+ProgressionSim.BOOST_SUCCESS = 0.7
 
 export type Purchase = {
 	t: number, -- instant de l'achat (s)
@@ -58,6 +61,7 @@ function ProgressionSim.modules(loader: any): { [string]: any }
 			"Rebirth",
 			"ThrowDummies",
 			"Training",
+			"TrainingBoost",
 		}
 	do
 		modules[name] = loader:require("src/shared/" .. name)
@@ -99,6 +103,15 @@ function ProgressionSim.simulate(m: { [string]: any }, seed: number, seconds: nu
 	local roll = function()
 		return math.random()
 	end
+	-- Hasard du bonus à part (Park-Miller, exact en double) : les tirages de mannequins restent ceux d'avant #119
+	local boostSeed = (seed * 7919) % 2147483646 + 1
+	-- Cette méthode permet de tirer un nombre dans [0, 1) lorsque le calendrier du bonus ou le clic du joueur en
+	-- demandent un.
+	local function boostRoll(): number
+		boostSeed = (boostSeed * 16807) % 2147483647
+		return (boostSeed - 1) / 2147483646
+	end
+	local boost = m.TrainingBoost.new(boostRoll)
 	local t = 0
 	local money = 0
 	local power = GameConfig.START_POWER
@@ -265,10 +278,17 @@ function ProgressionSim.simulate(m: { [string]: any }, seed: number, seconds: nu
 		-- Entraînement
 		local reps = math.floor(ProgressionSim.TRAIN_TIME / GameConfig.REP_TIME)
 		for _ = 1, reps do
+			-- Bouton « 2x TRAINING! » : horloge de la séance entière (TRAIN_TIME s), cliqué à temps par BOOST_SUCCESS
+			-- des joueurs, doublant dès la répétition suivante (≈ 0,8 s pour cliquer), bonus coupé en fin de séance
+			local event = m.TrainingBoost.advance(boost, ProgressionSim.TRAIN_TIME / reps, boostRoll)
 			local gained
-			progress, gained = Training.completeRep(progress, gear)
+			progress, gained = Training.completeRep(progress, gear, m.TrainingBoost.multiplier(boost))
 			power += gained
+			if event == "Offer" and boostRoll() < ProgressionSim.BOOST_SUCCESS then
+				m.TrainingBoost.claim(boost, boost.lastId)
+			end
 		end
+		m.TrainingBoost.stop(boost, boostRoll)
 		advance(ProgressionSim.TRAIN_TIME)
 		for _, threshold in { 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10 } do
 			if power >= threshold then

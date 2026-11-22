@@ -11,6 +11,9 @@ local Sounds = {
 	Cash = { id = "rbxassetid://120891770644830", volume = 0.6 },
 	Wind = { id = "rbxassetid://130796038173607", volume = 0 },
 	Click = { id = "rbxassetid://17779566040", volume = 0.5 },
+	-- Bouton « 2x TRAINING! » (#119) : apparition (clic clair de la jauge, joué plus aigu) et bonus accordé (montée)
+	BoostAppear = { id = "rbxassetid://15675059323", volume = 0.8 },
+	BoostStart = { id = "rbxassetid://112485797063762", volume = 0.7 },
 	GaugeStop = { id = "rbxassetid://15675059323", volume = 0.9 }, -- « Roblox_UI_Bright_Click » (Roblox) : clic de la jauge
 	-- Pièges des thèmes (Shared.Traps), Creator Store
 	Boing = { id = "rbxassetid://82861066161875", volume = 0.9 }, -- « Trampoline jump sound 01 »
