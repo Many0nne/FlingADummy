@@ -71,15 +71,11 @@ return function(T, Loader)
 		T.it("un meilleur équipement remplit les niveaux plus vite et reporte l'EXP en trop", function()
 			-- Fer : une répétition franchit plusieurs niveaux d'un coup, l'EXP en trop est reportée sur le suivant
 			local progress, power = Training.completeRep({ level = 1, exp = 0 }, 3)
-			local gain, level, spent = Training.GEARS[3].gain, 1, 0
-			while spent + Training.expForLevel(level, 3) <= gain do
-				spent += Training.expForLevel(level, 3)
-				level += 1
-			end
-			T.expect(level >= 3, "plusieurs niveaux d'un coup")
-			T.expectEqual(progress.level, level, "niveaux franchis")
-			T.expectEqual(progress.exp, gain - spent, "EXP reportée")
-			T.expectEqual(power, spent)
+			-- +45 : niveaux de 3, 4, 5, 6, 7, 8 et 9 EXP (3 × 1,2^n arrondi) : 42 versés, niveau 8, il reste 3 sur 11
+			T.expectEqual(Training.GEARS[3].gain, 45)
+			T.expectEqual(progress.level, 8, "niveaux franchis")
+			T.expectEqual(progress.exp, 3, "EXP reportée")
+			T.expectEqual(power, 42)
 			local _, woodPower = train({ level = 1, exp = 0 }, 1, 20)
 			local _, ironPower = train({ level = 1, exp = 0 }, 3, 20)
 			T.expect(ironPower > 5 * woodPower, "le fer rapporte bien plus que le bois")

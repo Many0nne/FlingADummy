@@ -367,8 +367,8 @@ Achat par achat (le moins cher d'abord : même ordre pour tous les joueurs ; rat
 | 34 | Infinite Rocket Dummy | $200B | 9,2 h | 2,3 h | × 1,3 |
 | | Renaissance 1 | $350B | 11,1 h | | |
 
-Saut le plus fort : **× 1,69** (× 4,29 avant #15 : Steel Dummy à 11 min, 11 min d'attente pour le Glider ; puis
-× 3,3 au Glider, 32 min d'attente pour le Cosmic, le mur du point 10). 19 achats la première heure (15 avant, dont 10
+Saut le plus fort : **× 1,67** depuis #129 (× 1,69 avant, × 4,29 avant #15 : Steel Dummy à 11 min, 11 min d'attente pour le Glider ; puis
+× 3,3 au Glider, 32 min d'attente pour le Cosmic, le mur du point 10). 21 achats la première heure (19 avant #129, 15 avant #15, dont 10
 dans les 10 premières minutes). Un écart d'achat dépasse 5 min dès ≈ 45 min de jeu (5 à 7 min jusqu'à 1 h).
 
 Écarts aux références : la puissance monte ≈ 3 fois moins vite que 09 (× 10 toutes les ≈ 8 min au lieu de 3,5 min) ;
@@ -494,17 +494,17 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
 - **Sauvegarde** : champ `Rebirths` (entier, `Rebirth.read` : 0 pour une sauvegarde antérieure, borné à 60).
 - **Joueur simulé** (`lune run tools/progression 40 300`, médianes ; 3e argument : facteur de prix pour les essais),
   piste de 6 km, prix de #15 ; prix × 2 (#109, appliqué) comparé au × 4 de #108 :
-  | Renaissance | Prix (× 2) | CHANCE | Atteinte (× 2) | Atteinte (× 4 : $350B, $1.4T, $5.6T…) |
+  | Renaissance | Prix (× 2) | CHANCE | Atteinte (× 2, après #129) | Atteinte (× 4 : $350B, $1.4T, $5.6T…) |
   |---|---|---|---|---|
-  | 1 | $350B | x2 | 11,5 h | 11,5 h |
-  | 2 | $700B | x4 | 15,8 h | 17,7 h |
-  | 3 | $1.4T | x8 | 20 h | 27 h |
-  | 4 | $2.8T | x16 | 24,5 h | 48,3 h |
-  | 5 | $5.6T | x32 | 30,2 h | 88 h |
-  | 6 | $11.2T | x64 | 37,2 h | 173 h |
-  | 7 | $22.4T | x128 | 46,4 h | > 300 h |
-  | 10 | $179T | x1.02K | 97 h | |
-  | 14 | $2.86Qa | x16.3K | 293 h | |
+  | 1 | $350B | x2 | 10,8 h | 11,5 h |
+  | 2 | $700B | x4 | 15,2 h | 17,7 h |
+  | 3 | $1.4T | x8 | 19,3 h | 27 h |
+  | 4 | $2.8T | x16 | 23,7 h | 48,3 h |
+  | 5 | $5.6T | x32 | 29,1 h | 88 h |
+  | 6 | $11.2T | x64 | 36,5 h | 173 h |
+  | 7 | $22.4T | x128 | 44,8 h | > 300 h |
+  | 10 | $179T | x1.02K | 96,4 h | |
+  | 14 | $2.86Qa | x16.3K | 294 h | |
   Premières sorties : Celestial 26 h (× 4 : 33 h), Ethereal 73 h (225 h), Infinity 262 h (> 300 h).
   Avec le prix × 4, l'écart entre deux renaissances double presque à chaque fois (6, 10, 21, 40, 84 h) : le revenu ne
   monte qu'avec la CHANCE (× 2) et le nombre de tirages. Avec × 2 (#109), il reste de 4 à 9 h jusqu'à la 7e, puis 11 à
