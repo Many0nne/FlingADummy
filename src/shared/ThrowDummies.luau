@@ -93,13 +93,13 @@ ThrowDummies.LIST = {
 		},
 		card = rgb(255, 150, 205),
 		-- Caoutchouc : presque sans frottement ; chaque rebond au sol rend 60 % de la chute vers le haut (4 rebonds depuis
-		-- le plafond), à élan constant et sans frein au sol, pour + 15 % de la portée naturelle à l'arrêt (#130)
+		-- le plafond), à élan constant et sans frein au sol, pour + 20 % de la portée naturelle à l'arrêt (#130)
 		physics = { density = 1.2, friction = 0.05, elasticity = 0.8, frictionWeight = 100, elasticityWeight = 100 },
 		boneFactor = 0.8,
 		glide = 0,
 		thrust = 0,
 		thrustTime = 0,
-		bounce = 0.15,
+		bounce = 0.2,
 	},
 	{
 		id = "glass",

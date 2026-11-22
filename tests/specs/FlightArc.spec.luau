@@ -414,6 +414,10 @@ return function(T, Loader)
 			local staggered = FlightArc.bounce(plan, before, stopped, FORWARD, 150) :: Vector3
 			T.expectNear(staggered.Y, 150 * FlightArc.BOUNCE_RESTITUTION, 1e-3, "chute la plus forte retenue")
 			T.expectEqual(FlightArc.bounce(plan, Vector3.new(0, -10, 80), stopped, FORWARD), nil, "chute faible")
+			local slowed = FlightArc.bounce(plan, Vector3.new(0, -10, 80), stopped, FORWARD, 33) :: Vector3
+			T.expect(slowed ~= nil, "chute freinée sur plusieurs frames (membres d'abord)")
+			T.expectNear(slowed.Y, 33 * FlightArc.BOUNCE_RESTITUTION, 1e-3)
+			T.expectEqual(FlightArc.bounce(plan, Vector3.new(0, -1, 80), stopped, FORWARD, 33), nil, "déjà posé")
 			T.expectEqual(FlightArc.bounce(plan, before, Vector3.new(0, -50, 80), FORWARD), nil, "en l'air")
 			T.expectEqual(FlightArc.bounce(planOf("Classic"), before, stopped, FORWARD), nil, "pas rebondissant")
 		end)

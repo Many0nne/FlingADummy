@@ -203,15 +203,18 @@ function FlightArc.accel(plan: Plan, velocity: Vector3, forward: Vector3, elapse
 	return accel
 end
 
--- Cette méthode permet de donner la vitesse du torse après un rebond au sol d'un mannequin rebondissant (chute de plus
--- de BOUNCE_MIN_FALL arrêtée en une frame : `before` → `after`) lorsque le serveur avance le vol ; `fall` : chute la
--- plus forte depuis le dernier rebond (studs/s, les membres touchent parfois avant le torse) ; nil sans rebond.
+-- Cette méthode permet de donner la vitesse du torse après un rebond au sol d'un mannequin rebondissant (chute arrêtée
+-- cette frame : `before` → `after`, de plus de BOUNCE_MIN_FALL au plus fort) lorsque le serveur avance le vol ; `fall` :
+-- chute la plus forte depuis le dernier rebond (studs/s : les membres touchent souvent avant le torse, qui ralentit sur
+-- plusieurs frames) ; nil sans rebond.
 function FlightArc.bounce(plan: Plan, before: Vector3, after: Vector3, forward: Vector3, fall: number?): Vector3?
 	local speed = plan.bounceSpeed
 	local flat = Vector3.new(forward.X, 0, forward.Z)
+	local falling = math.max(fall or 0, -before.Y)
 	if
 		not speed
-		or before.Y > -FlightArc.BOUNCE_MIN_FALL
+		or falling <= FlightArc.BOUNCE_MIN_FALL
+		or before.Y >= FlightArc.BOUNCE_STOP
 		or after.Y < FlightArc.BOUNCE_STOP
 		or flat.Magnitude < 1e-3
 	then
@@ -220,9 +223,9 @@ function FlightArc.bounce(plan: Plan, before: Vector3, after: Vector3, forward: 
 	flat = flat.Unit
 	local horizontal = Vector3.new(after.X, 0, after.Z)
 	local lateral = horizontal - flat * horizontal:Dot(flat)
-	local ahead = math.clamp(Vector3.new(before.X, 0, before.Z):Dot(flat), 0, speed)
-	local up = math.max(fall or 0, -before.Y) * FlightArc.BOUNCE_RESTITUTION
-	return flat * ahead + lateral + Vector3.new(0, up, 0)
+	-- Élan réglé par le plan à chaque rebond, même après un obstacle qui l'a ralenti : la distance ne dépend pas des
+	-- caisses touchées entre deux rebonds
+	return flat * speed + lateral + Vector3.new(0, falling * FlightArc.BOUNCE_RESTITUTION, 0)
 end
 
 -- Cette méthode permet de donner la durée en l'air d'un rebond qui repart à `velocity` (plus une marge de 3 frames
