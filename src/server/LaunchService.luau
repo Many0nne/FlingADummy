@@ -138,6 +138,14 @@ local function startFlight(
 	local dummy = DummyFactory.build(ThrowDummies.variant(thrownIndex) :: any, thrown.physics)
 	-- Tête la première : l'axe vertical du mannequin suit la direction du lancer
 	dummy:PivotTo(CFrame.fromMatrix(origin, Vector3.xAxis, dir))
+	-- Départ du vol, lu par chaque client pour recalculer le plan (effets des comportements : Client.FlightFx, #138),
+	-- posé avant la réplication ; `LaunchTime` : heure du lâcher (suivi commencé en retard), `Bounces` : rebonds
+	-- réglés du caoutchouc
+	dummy:SetAttribute("LaunchOrigin", origin)
+	dummy:SetAttribute("LaunchTime", Workspace:GetServerTimeNow())
+	dummy:SetAttribute("LaunchVelocity", dir * speed)
+	dummy:SetAttribute("ThrownIndex", thrownIndex)
+	dummy:SetAttribute("Bounces", 0)
 	dummy.Parent = dummiesFolder
 
 	local spin =
@@ -675,6 +683,7 @@ local function applyBehavior(flight: Flight, elapsed: number, dt: number, before
 		if bounced then
 			change += bounced - velocity
 			flight.bounces += 1
+			flight.dummy:SetAttribute("Bounces", flight.bounces)
 			flight.bounceUntil = elapsed + FlightArc.bounceTime(bounced, Workspace.Gravity)
 		end
 	end

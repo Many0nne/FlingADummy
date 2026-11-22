@@ -307,19 +307,11 @@ local function update(player: Player, state: State)
 	elseif action == "Training" then
 		local tier = (player:GetAttribute("GearTier") :: number?) or 1
 		local gear = Training.gear(tier)
-		-- Look du palier (#118) ; sans particules ni pièces animées en mouvement réduit (la clé reconstruit au changement
-		-- de réglage)
+		-- Look du palier (#118) ; sans particules en mouvement réduit (la clé reconstruit au changement de réglage), les
+		-- pièces ajoutées (anneaux, lunes) restant à leur repos par Client.DummyFx (#146)
 		local still = UIKit.reducedMotion()
 		setVisual(state, "Training" .. tier .. (if still then ":still" else "") .. shape, function()
-			local model =
-				DummyShape.buildVisual(gear.scale, TrainingLook.variant(tier, "lifted", still) :: DummyShape.Variant)
-			if still then
-				-- Pièces ajoutées figées à leur repos (anneaux, lunes) : Client.DummyFx n'anime que les pièces étiquetées
-				for _, part in model:GetChildren() do
-					part:RemoveTag(DummyShape.FX_TAG)
-				end
-			end
-			return model
+			return DummyShape.buildVisual(gear.scale, TrainingLook.variant(tier, "lifted", still) :: DummyShape.Variant)
 		end)
 		if state.visual then
 			state.visual:PivotTo(liftFrame(character, root, gear.scale))
