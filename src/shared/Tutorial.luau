@@ -37,6 +37,12 @@ function Tutorial.current(flags: number): string?
 	return nil
 end
 
+-- Cette méthode permet de savoir si le bouton THROW AGAIN de la révélation est permis (#76) lorsque le tirage s'affiche
+-- ou que le serveur reçoit la demande : pas avant la première pose (le tutoriel ramène d'abord le joueur à sa base).
+function Tutorial.canThrowAgain(flags: number): boolean
+	return bit32.band(flags, FLAG.Place) ~= 0
+end
+
 -- Cette méthode permet de déduire le tutoriel déjà fait d'une sauvegarde antérieure au tutoriel lorsqu'un ancien
 -- joueur arrive : un ancien joueur ne revoit pas les étapes qu'il a déjà faites (« poser » reste à faire : les
 -- anciennes sauvegardes n'ont pas de base).

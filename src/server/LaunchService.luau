@@ -548,10 +548,10 @@ local function checkSmashed(list: { Flight })
 	end
 end
 
--- Cette méthode permet de rendre la main au joueur (retour au hub derrière la bande) lorsque son résultat et son
--- tirage sont finis (GO BACK, ou délai RevealPlan.resultTime dépassé), et d'annoncer à tous un tirage rare ; sans
--- effet si ce résultat est déjà clos.
-local function closeResult(player: Player, flight: Flight)
+-- Cette méthode permet de rendre la main au joueur (retour au hub derrière la bande ; remis en prise sur la bande si
+-- `again`, THROW AGAIN #76, quand SlotService.holdAgain le permet) lorsque son résultat et son tirage sont finis (GO
+-- BACK, ou délai RevealPlan.resultTime dépassé), et d'annoncer à tous un tirage rare ; sans effet si déjà clos.
+local function closeResult(player: Player, flight: Flight, again: boolean?)
 	if results[player] ~= flight then
 		return
 	end
@@ -565,6 +565,14 @@ local function closeResult(player: Player, flight: Flight)
 		and SlotService.getSlot(player) == flight.slot
 		and player:GetAttribute("LaneState") == "Result"
 	then
+		-- Remise en prise avant « Ready » : Action « Holding » déjà posée, SlotService ne le renvoie pas au hub. Refusée
+		-- (tutoriel, mort, bande pleine) : retour au hub, comme GO BACK
+		local held = again == true and SlotService.holdAgain(player)
+		if again and RunService:IsStudio() then
+			print(
+				string.format("[Launch] ThrowAgain %s : %s", player.Name, if held then "en prise" else "repli GO BACK")
+			)
+		end
 		player:SetAttribute("LaneState", "Ready")
 	end
 end
@@ -835,6 +843,13 @@ function LaunchService.init(createdRemotes: Remotes.Remotes, dummies: Folder)
 		local flight = results[player]
 		if flight then
 			closeResult(player, flight)
+		end
+	end)
+	-- THROW AGAIN : ignoré hors d'un résultat ouvert (double clic, clic pendant le vol, résultat déjà clos)
+	remotes.ThrowAgain.OnServerEvent:Connect(function(player)
+		local flight = results[player]
+		if flight then
+			closeResult(player, flight, true)
 		end
 	end)
 	RunService.Heartbeat:Connect(function(dt)

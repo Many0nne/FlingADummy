@@ -9,6 +9,7 @@ local NAMES = {
 	"PlaceDummy",
 	"Inventory",
 	"ResultDone",
+	"ThrowAgain",
 	"LaunchStarted",
 	"LaunchRefused",
 	"LaunchResult",
@@ -29,6 +30,8 @@ export type Remotes = {
 	-- stock, "Remove" + présentoir, "SellRarity" + rareté, "PlaceBest", "BuyDisplay" (pad de sa base)
 	Inventory: RemoteEvent,
 	ResultDone: RemoteEvent, -- client → serveur : GO BACK, fin du résultat et du tirage
+	-- client → serveur : THROW AGAIN (#76), fin du résultat puis remise en prise sur la bande (sinon comme GO BACK)
+	ThrowAgain: RemoteEvent,
 	StopTraining: RemoteEvent, -- client → serveur : bouton STOP ou saut pendant l'entraînement
 	LaunchStarted: RemoteEvent, -- serveur → client : modèle du mannequin lancé, départ du vol (point, vitesse, mannequin)
 	LaunchRefused: RemoteEvent, -- serveur → client : sans charge, Launch refusé (le décoratif parti au lâcher s'efface)

@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local CourseLayout = require(ReplicatedStorage.Shared.CourseLayout)
+local Tutorial = require(ReplicatedStorage.Shared.Tutorial)
 local CollisionGroups = require(script.Parent.CollisionGroups)
 local CourseBuilder = require(script.Parent.CourseBuilder)
 
@@ -59,14 +60,14 @@ end
 
 -- Cette méthode permet de figer le joueur sur la bande (face à la piste, là où il est entré, écarté d'un voisin,
 -- debout sur la bande) et d'ouvrir sa jauge lorsqu'il y pose le pied, prêt à lancer.
-local function freeze(player: Player, character: Model, root: BasePart, humanoid: Humanoid)
+local function freeze(player: Player, character: Model, root: BasePart, humanoid: Humanoid): boolean
 	local taken = {}
 	for _, other in frozen do
 		table.insert(taken, other.x)
 	end
 	local x = CourseLayout.bandSpot(root.Position.X, taken)
 	if not x then
-		return -- bande pleine : il attend sans être figé
+		return false -- bande pleine : il attend sans être figé
 	end
 	-- Debout sur la bande même s'il y arrive en sautant : HumanoidRootPart à hauteur des jambes + sa demi-hauteur
 	-- (R6 : HipHeight vaut 0, jambes de 2 studs)
@@ -90,6 +91,7 @@ local function freeze(player: Player, character: Model, root: BasePart, humanoid
 	-- Ancré par le serveur : le client ne peut plus le déplacer
 	root.Anchored = true
 	player:SetAttribute("Action", "Holding")
+	return true
 end
 
 -- Cette méthode permet de mettre toutes les pièces du personnage dans le groupe Characters lorsqu'il apparaît
@@ -124,9 +126,10 @@ local function assign(player: Player)
 	if not slotOf[player] then
 		warn("[SlotService] aucune place libre pour " .. player.Name)
 	end
-	-- Retour au hub quand le lancer est fini (LaunchService repasse le joueur à « Ready » après le résultat)
+	-- Retour au hub quand le lancer est fini (LaunchService repasse le joueur à « Ready » après le résultat), sauf s'il
+	-- vient d'être remis en prise sur la bande (THROW AGAIN, SlotService.holdAgain)
 	player:GetAttributeChangedSignal("LaneState"):Connect(function()
-		if player:GetAttribute("LaneState") == "Ready" then
+		if player:GetAttribute("LaneState") == "Ready" and player:GetAttribute("Action") ~= "Holding" then
 			unfreeze(player, true)
 		end
 	end)
@@ -165,6 +168,37 @@ end
 function SlotService.gaugeOpenedAt(player: Player): number?
 	local state = frozen[player]
 	return state and state.since
+end
+
+-- Cette méthode permet de remettre le joueur en prise sur la bande (jauge rouverte : Action « Holding ») lorsqu'il
+-- clique THROW AGAIN à la fin de son résultat (#76), avant que LaunchService ne le repasse à « Ready » ; mêmes contrôles
+-- qu'une arrivée à pied. Il garde sa place s'il y est encore figé, sinon (réapparu) il en reçoit une libre près de lui.
+-- Renvoie false (le joueur repart au hub, comme GO BACK) si la remise en prise n'est pas permise ou la bande pleine.
+function SlotService.holdAgain(player: Player): boolean
+	if
+		player:GetAttribute("LaneState") ~= "Result"
+		or player:GetAttribute("Action") ~= nil
+		or not player:GetAttribute("DataReady")
+		or not slotOf[player]
+		or not Tutorial.canThrowAgain((player:GetAttribute("Tutorial") :: number?) or 0)
+	then
+		return false
+	end
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not character or not root or not humanoid or humanoid.Health <= 0 then
+		return false
+	end
+	local state = frozen[player]
+	if state and state.root == root and root.Anchored then
+		-- Toujours figé à sa place depuis le lancer : seule la jauge se rouvre (nouvelle heure d'ouverture)
+		state.since = os.clock()
+		player:SetAttribute("Action", "Holding")
+		return true
+	end
+	unfreeze(player, false)
+	return freeze(player, character, root, humanoid)
 end
 
 -- Cette méthode permet de donner les places sans joueur lorsque l'on lance des mannequins de test (Studio).
