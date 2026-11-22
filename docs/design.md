@@ -126,7 +126,8 @@ base, il rapporte des $/s, seule source d'argent.
   (`BOOST_*`). `DebugWipe` remet aussi le calendrier à celui d'un nouveau joueur. Studio : `DebugBoost = true` fait apparaître le bouton, `DebugBoostClaim = <numéro>`
   simule le clic du client (même validation), sortie « [Boost] ». Mesuré en Studio (joueur neuf, Iron Dummy, 30 s de
   séance) : + 1 665 de puissance et d'EXP sans bonus (37 répétitions × 45), + 3 420 avec (38 × 90) ; première
-  apparition à 33,9 s d'entraînement, clics à 0,9 s et 2,3 s acceptés, clic tardif (« Late »), en double
+  apparition à 33,9 s d'entraînement, clics à 0,9 s et 2,3 s acceptés, clics envoyés par le remote du client : tardif
+(« Late »), en double
   (« Duplicate ») ou d'une apparition remplacée (« Unknown ») refusés, bonus fini à 30,01 s, séance arrêtée : bonus,
   barre et contour retirés. Captures : `docs/captures/bonus-entrainement-119/`.
 - **Équipements** (achetés avec l'argent) : mannequin en bois +1, pierre +3, fer +10, or +40, diamant +160, néon +700,
@@ -501,8 +502,10 @@ deux. Rejoué (60 joueurs, 14 h, médianes ; `lune run tools/progression 60 14 "
 | Revenu à 10 / 60 min | $7.06K/s / $727K/s | $6.72K/s / $718K/s | bruit des tirages |
 | Achats : Diamond, Cosmic, Plasma, Omega, Infinite | 10, 18, 57, 90 min, 4,8 h | 11, 19, 57, 90 min, 4,9 h | ± 1 min |
 | Première renaissance, saut le plus fort du ratio | 10,5 h, × 1,67 | 10,6 h, × 1,67 | + 1 % |
-Aucun jalon de la première heure n'avance de plus de 15 % : les achats suivent l'argent (revenu de la base), que la
-puissance ne fait monter qu'à travers la distance, donc lentement. Prix inchangés. Non modélisé : un joueur qui
+Aucun jalon de la première heure (instant d'un palier : achat, puissance, bout de piste) n'avance de plus de 15 %
+(4 % au plus) : les achats suivent l'argent (revenu de la base), que la puissance ne fait monter qu'à travers la
+distance, donc lentement. La puissance **à un instant donné**, elle, monte de 20 à 26 % dans les 5 premières minutes
+(+ 6 à + 17 % ensuite) : signalé dans la PR de #119, prix inchangés (décision à part). Non modélisé : un joueur qui
 prolonge sa séance pour finir son bonus (un bonus entier vaut 30 s d'entraînement en plus, ≈ 2 séances de gain).
 
 ### Repères comparés aux références
