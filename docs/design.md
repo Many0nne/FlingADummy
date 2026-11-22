@@ -370,8 +370,11 @@ Saut le plus fort : **× 1,69** (× 4,29 avant #15 : Steel Dummy à 11 min, 11 m
 dans les 10 premières minutes). Un écart d'achat dépasse 5 min dès ≈ 45 min de jeu (5 à 7 min jusqu'à 1 h).
 
 Écarts aux références : la puissance monte ≈ 3 fois moins vite que 09 (× 10 toutes les ≈ 8 min au lieu de 3,5 min) ;
-le revenu suit 01 jusqu'à ≈ 10 min ($3.3K/s), puis plus lentement (01 : 391K/s à 17 min). Modèle non mesuré en jeu :
-la vérification Studio du compte rendu de #15 relève le premier achat réel.
+le revenu suit 01 jusqu'à ≈ 10 min ($3.3K/s), puis plus lentement (01 : 391K/s à 17 min). Mesuré en Studio (compte
+neuf, 5 min pilotées par attributs : lancer jauge pleine, pose, 15 s d'entraînement, achats dès que possible) : Stone
+Dummy à 44 s, Rubber Dummy à 2:07, Iron Dummy à 2:54, Glass Dummy à 4:29 (simulé : 45 s, 90 s, 3 min, 4 min) ; revenu
+$548/s à 4:48 (simulé : $790/s à 5 min). Le Rubber Dummy rebondit bien plus loin que le modèle (1,2 à 1,9 km à
+161 de puissance, Rare dès 2:24) mais allonge la boucle (vols de 15 à 21 s).
 
 ### Repères comparés aux références
 | Repère | Fling a Dummy (simulé) | 09 *Throw a Seed* | 01 *Throw Food For Animals* |
