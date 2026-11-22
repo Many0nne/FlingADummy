@@ -16,7 +16,8 @@ export type Gear = {
 	scale: number, -- taille du mannequin soulevé
 }
 
--- Paliers d'équipement : gain ×4 à ×9 par palier (calés sur Throw a Seed, #129 : 1K de puissance à 3 min, 100K à 12 min) ; prix calés par le joueur simulé (#15, tools/progression.luau) pour
+-- Paliers d'équipement : gain ≈ ×4 à ×9 par palier (calés sur Throw a Seed, #129 :
+-- 1K de puissance à 3 min, 100K à 12 min) ; prix calés par le joueur simulé (#15, tools/progression.luau) pour
 -- un achat (équipement, mannequin à lancer ou présentoir) toutes les 1 à 5 min la première heure, puis de plus en plus
 -- espacés, sans mur : le ratio « prix du suivant / revenu » ne double jamais d'un achat au suivant
 Training.GEARS = {

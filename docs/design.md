@@ -271,7 +271,7 @@ dans la barre d'outils (icône de rareté jusqu'à Secret, nom au-delà).
 | Nebula Rubber | 55x | $30B | 4,9 h | $9.4B, 6,0 h |
 | Plasma Glass | 75x | $80B | 6,8 h | $16B, 7,2 h |
 | Quantum Glider | 100x | $120B | 8,2 h | $28B, 7,9 h |
-| Infinite Rocket | 135x | $200B | 9,6 h | $47B, 8,9 h |
+| Infinite Rocket | 135x | $200B | 9,2 h | $47B, 8,9 h |
 
 Prix calés par #15 (section « Rythme et économie ») : la règle Rocket × (chance / 3)^1,8 de #94 laissait un trou de
 × 6 à × 12 entre les mannequins dessinés et les équipements ($300K → $2M → $4M → $25M), le « mur » de la review 2.
@@ -294,7 +294,7 @@ Prix calés par #15 (section « Rythme et économie ») : la règle Rocket × (c
 Puissance (gains de #129) : 1 K à 3 min, 100 K à 12 min, 1 M à 17 min, 100 M à 43 min, 10 B à 2,1 h (avant #129 :
 5 min, 21 min, 32 min, 85 min, 6,4 h ; avant #15 : 5 min, 20 min, 45 min, 3,2 h, 7,8 h). Avec la piste de 2,4 km, le bout était atteint dès ≈ 760 K de puissance et la puissance
 n'ajoutait ensuite que des os et des objets ; la piste de 6 km (#97) donne un but aux paliers prolongés (tableau
-« Fin de piste » ci-dessous). Bout de piste simulé à 4,2 h (4,6 h avec le modèle de distance d'avant #113, 6,8 h
+« Fin de piste » ci-dessous). Bout de piste simulé à 105 min depuis #129 (4,2 h avant #129, 4,6 h avec le modèle de distance d'avant #113, 6,8 h
 avant #15), avec la distance recalée sur les vols mesurés par #113.
 
 ### Rythme et économie (#15)
@@ -363,8 +363,8 @@ Achat par achat (le moins cher d'abord : même ordre pour tous les joueurs ; rat
 | 31 | Infinite Dummy | $50B | 5,8 h | 78 min | × 1,2 |
 | 32 | Plasma Glass Dummy | $80B | 6,8 h | 90 min | × 1,1 |
 | 33 | Quantum Glider Dummy | $120B | 8,2 h | 111 min | × 1,2 |
-| 34 | Infinite Rocket Dummy | $200B | 9,6 h | 2,3 h | × 1,3 |
-| | Renaissance 1 | $350B | 11,5 h | | |
+| 34 | Infinite Rocket Dummy | $200B | 9,2 h | 2,3 h | × 1,3 |
+| | Renaissance 1 | $350B | 11,1 h | | |
 
 Saut le plus fort : **× 1,69** (× 4,29 avant #15 : Steel Dummy à 11 min, 11 min d'attente pour le Glider ; puis
 × 3,3 au Glider, 32 min d'attente pour le Cosmic, le mur du point 10). 19 achats la première heure (15 avant, dont 10
@@ -379,7 +379,7 @@ $548/s à 4:48 (simulé : $790/s à 5 min). Le Rubber Dummy rebondit bien plus l
 
 ### Gains des équipements calés sur 09 (#129)
 Le joueur simulé montait ≈ 2 fois moins vite que *Throw a Seed* (09) : #15 avait recalé les prix, pas les gains de
-`Training.GEARS`. Gains relevés (Stone +6, Iron +45, Gold +400, Diamond +2.2K, Neon +9K, Cosmic +35K, soit × 4 à
+`Training.GEARS`. Gains relevés (Stone +6, Iron +45, Gold +400, Diamond +2.2K, Neon +9K, Cosmic +35K, soit ≈ × 4 à
 × 9 par palier au lieu de × 3 à × 4,5 ; la suite garde × `GAIN_STEP` = 4), prix, répétitions par séance et niveaux
 inchangés. Cible : ≈ 1 K vers 4 min, ≈ 100 K vers 11-12 min, tolérance ± 30 %. Joueur simulé rejoué (60 joueurs, 14 h,
 médianes) :
@@ -397,7 +397,7 @@ Puissance à 14 h : 137 B (11,8 B avant). Le rythme de 09 est tenu sur les 20 pr
 (inchangés) bornent la montée des équipements : × 10 toutes les 10 à 16 min jusqu'à 100 M. La fin de piste arrive à 105 min
 (> 45 min) : pas de recalage de la renaissance, qui reste à 11,1 h (le prix en $ pilote le calendrier). Garde-fou
 `Progression.spec` : écart maximal entre deux achats de la première heure porté de 6 à 7 min (le 20e achat tombe à 375 s
-d'écart : les prix de #15 ne bougent pas, cause non investiguée).
+d'écart : les prix de #15 ne bougent pas, cause non investiguée ; l'écart de 5 à 7 min jusqu'à 1 h était déjà documenté).
 Planche `entrainement.jpg` : les gains affichés sur l'appareil changent, à régénérer en Studio (manifeste déjà à jour).
 
 ### Repères comparés aux références
@@ -424,7 +424,7 @@ Planche `entrainement.jpg` : les gains affichés sur l'appareil changent, à ré
    | 2,4 km (fin de Moon Base) | 557 | 760 K | 30 min | × 18 | (#14, #33) |
    | 3,6 km (Neon City) | 685 | 22 M | 57 min | × 27 | 3 590 à 3 630 m |
    | 4,8 km (Haunted Castle) | 791 | 360 M | 117 min | × 40 | 4 867 à 4 991 m, 5 021 à 5 510 m après un piège |
-   | 6 km (bout) | 886 | 4,4 B | 4,2 h | × 60 | bout de piste 6 fois sur 6 (6 043-6 048 m) |
+   | 6 km (bout) | 886 | 4,4 B | 105 min (#129 ; 4,2 h avant) | × 60 | bout de piste 6 fois sur 6 (6 043-6 048 m) |
    Avant #113, les vols montaient à ≈ 590 studs à 4,4 B puis glissaient au hasard (4,1 à 6,0 km à 4,4 B, mesures de
    #97) ; le vol plafonné (#113, section « Vol plafonné ») tient ces paliers à ± 2 % hors pièges. Effet simulé de la
    piste de 6 km : CHANCE finale × 3,3 (17 K au lieu de 5,1 K à 24 h), Divine à 7,1 h au lieu de 12,3 h.
@@ -463,7 +463,7 @@ le faisait monter toujours plus haut (≈ 590 studs à 4,4 B, carte vue de très
   0,2 h (Infinite Rocket 9,4 h au lieu de 9,6 h), bout de piste 4,2 h au lieu de 4,6 h.
 
 ### Renaissance (#108, `Shared.Rebirth`)
-Le levier après tout le catalogue d'achats (≈ 11,5 h simulées depuis #15 ; 9,6 h avant), comme la
+Le levier après tout le catalogue d'achats (≈ 11,1 h simulées depuis #129 ; 9,6 h avant), comme la
 RENAISSANCE de *Net a Fish!* (12) et
 d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour toujours.
 - **Condition** : posséder le dernier équipement d'entraînement (Infinite) **et** payer **$350B × 2^k** (k renaissances
