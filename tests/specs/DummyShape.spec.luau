@@ -30,6 +30,9 @@ return function(T, Loader)
 			part.Name = name
 			part.Parent = folder
 		end
+		local marks = roblox.Instance.new("SurfaceAppearance")
+		marks.Name = DummyShape.MARKS
+		marks.Parent = folder
 		folder:SetAttribute("Ready", true)
 		return folder
 	end
@@ -139,6 +142,46 @@ return function(T, Loader)
 			T.expectEqual(model.Torso.Material, roblox.Enum.Material.Neon)
 			T.expectEqual(model.Torso.Color, red)
 			T.expectEqual(model.LeftLowerArm.Color, DummyShape.DARK, "pièces sombres gardées sans atlas")
+		end)
+		T.it("repose visage et cibles sur une coque quand le matériau retire l'atlas (#126)", function()
+			local model = DummyShape.buildVisual(2, { material = roblox.Enum.Material.Ice })
+			for _, piece in DummyShape.PIECES do
+				local part = model[piece.name]
+				local shell = model:FindFirstChild(piece.name .. "Marks")
+				if not DummyShape.MARKED[piece.name] then
+					T.expectEqual(shell, nil, piece.name .. " : pas de coque sur un membre")
+					continue
+				end
+				T.expect(shell ~= nil, piece.name .. " : coque")
+				T.expect(shell:FindFirstChild(DummyShape.MARKS) ~= nil, piece.name .. " : atlas des marques")
+				T.expectEqual(shell:FindFirstChild(DummyShape.SURFACE), nil, piece.name .. " : sans l'atlas Overlay")
+				T.expectEqual(shell:GetAttribute("Accessory"), true)
+				T.expectEqual(shell.CanCollide, false)
+				T.expectEqual(shell.Massless, true)
+				T.expectEqual(shell.Transparency, 0)
+				local weld = shell:FindFirstChildOfClass("WeldConstraint")
+				T.expect(weld ~= nil and weld.Part0 == part, piece.name .. " : soudée à sa pièce")
+				T.expectNear((shell.CFrame.Position - part.CFrame.Position).Magnitude, 0, 1e-5)
+				T.expectNear(shell.CFrame.LookVector:Dot(part.CFrame.LookVector), 1, 1e-5, "même orientation")
+				local gap = DummyShape.MARKS_GAP * 2 * 2
+				T.expectNear((shell.Size - part.Size - Vector3.one * gap).Magnitude, 0, 1e-5, "à peine plus grande")
+			end
+		end)
+		T.it("pas de coque sur une pièce qui garde l'atlas ou une pièce masquée", function()
+			local plain = DummyShape.buildVisual(1, { color = Color3.new(1, 0, 0) })
+			T.expectEqual(plain:FindFirstChild("TorsoMarks"), nil)
+			local ghost = DummyShape.buildVisual(1, {
+				material = roblox.Enum.Material.Neon,
+				hidden = { "LeftUpperLeg" },
+				accessories = { "ghost_GhostTail" },
+			})
+			T.expect(ghost:FindFirstChild("HeadMarks") ~= nil, "visage du fantôme")
+			local headless = DummyShape.buildVisual(1, {
+				material = roblox.Enum.Material.Neon,
+				hidden = { "Head" },
+				accessories = { "ghost_GhostTail" },
+			})
+			T.expectEqual(headless:FindFirstChild("HeadMarks"), nil, "pièce masquée")
 		end)
 		T.it(
 			"pose les pièces ajoutées sur leur pièce, sans masse ni collision, couleur et matériau du modèle",
@@ -491,8 +534,8 @@ return function(T, Loader)
 					or hi.Z > carrier.Z
 				T.expect(outside, name .. " dépasse de " .. def.piece)
 			end
-			for _, dummy in ThrowDummies.LIST do
-				for i, block in dummy.blocks or {} do
+			for index, dummy in ThrowDummies.LIST do
+				for i, block in ThrowDummies.variant(index).blocks or {} do
 					local half, carrier = block.size / 2, boxes[block.piece] / 2
 					local lo, hi = block.offset - half, block.offset + half
 					T.expect(
@@ -532,6 +575,15 @@ return function(T, Loader)
 			local model = serde.decode("json", fs.readFile("src/shared/DummySurface.model.json"))
 			T.expectEqual(model.className, "SurfaceAppearance")
 			T.expectEqual(model.properties.AlphaMode, "Overlay")
+			T.expectEqual(model.properties.ColorMap, "rbxassetid://" .. Assets.DUMMY_TEXTURE)
+		end)
+		T.it("Shared.DummyMarks : même atlas en Transparency (seules les marques se voient, #126)", function()
+			local fs = require("@lune/fs")
+			local serde = require("@lune/serde")
+			local Assets = Loader.new():require("src/shared/Assets")
+			local model = serde.decode("json", fs.readFile("src/shared/DummyMarks.model.json"))
+			T.expectEqual(model.className, "SurfaceAppearance")
+			T.expectEqual(model.properties.AlphaMode, "Transparency")
 			T.expectEqual(model.properties.ColorMap, "rbxassetid://" .. Assets.DUMMY_TEXTURE)
 		end)
 	end)

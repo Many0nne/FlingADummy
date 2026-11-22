@@ -96,6 +96,11 @@ function DummyAssets.init()
 		folder:Destroy() -- tout ou rien pour le corps : le jeu garde les blocs du gabarit
 		return
 	end
+	-- Atlas des marques (visage, cibles) des pièces qui perdent l'atlas sous un matériau (#126, DummyShape.addMarks)
+	local marks = ReplicatedStorage.Shared:FindFirstChild(DummyShape.MARKS)
+	if marks then
+		marks:Clone().Parent = folder
+	end
 	folder:SetAttribute("Ready", true)
 	folder.Parent = ReplicatedStorage
 	local addons = {}
