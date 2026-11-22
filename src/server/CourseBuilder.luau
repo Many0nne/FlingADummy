@@ -965,9 +965,8 @@ local function baseFence(folder: Instance, slot: Slot, fence: BaseLook.Fence): (
 	return gate, corners
 end
 
--- Cette méthode permet de garder l'ancien habillage d'une base quelques secondes hors du monde (ReplicatedStorage), où
--- chaque client le reprend pour l'animation de construction (Client.BaseFx), lorsque la base monte de palier ; renvoie
--- false si celui d'une montée de la même image est gardé à sa place.
+-- Cette méthode permet de garder l'ancien habillage d'une base 5 s dans ReplicatedStorage pour l'animation des clients
+-- lorsque la base monte de palier ; false si celui d'une montée de la même image est gardé à sa place.
 local function keepPrevious(base: Base, old: Folder): boolean
 	local store = ReplicatedStorage:FindFirstChild(BaseUpgrade.STORE)
 	if not store then

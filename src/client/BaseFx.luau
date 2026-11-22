@@ -249,7 +249,9 @@ local function start(base: Model)
 	local at = base:GetAttribute(BaseUpgrade.AT_ATTRIBUTE)
 	local now = Workspace:GetServerTimeNow()
 	if not BaseUpgrade.isFresh(at, now) then
-		celebrateNow(base)
+		if not runs[base] then -- une animation en cours fera ses confettis
+			celebrateNow(base)
+		end
 		return
 	end
 	local previous = runs[base]
