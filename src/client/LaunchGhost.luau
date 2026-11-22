@@ -44,6 +44,7 @@ type Active = {
 	shown: Vector3?, -- position affichée du torse (copie locale) à l'image en cours
 	velocity: Vector3?, -- vitesse affichée du torse à l'image en cours
 	previous: Vector3?, -- position de la copie répliquée à l'image précédente
+	added: RBXScriptConnection?, -- pièces et effets arrivés après le départ
 }
 
 local LaunchGhost = {}
@@ -59,6 +60,9 @@ function LaunchGhost.stop()
 	end
 	active = nil
 	RunService:UnbindFromRenderStep(BIND_NAME)
+	if current.added then
+		current.added:Disconnect()
+	end
 	-- Copie masquée tout de suite, retirée plus tard : les particules déjà émises et la traînée finissent leur vie
 	for _, descendant in current.copy:GetDescendants() do
 		if descendant:IsA("BasePart") or descendant:IsA("Decal") then
@@ -102,19 +106,27 @@ local function copyPart(source: BasePart): BasePart
 	return copy
 end
 
--- Cette méthode permet de masquer pour le joueur local la copie répliquée (pièces copiées, décalcomanies, effets)
--- lorsque la copie locale la remplace à l'écran.
-local function hideSource(model: Model, current: Active)
-	for _, descendant in model:GetDescendants() do
-		-- Pièces : les enfants directs, celles que la copie locale reprend (Shared.DummyShape n'en imbrique pas)
-		local copied = descendant:IsA("BasePart") and descendant.Parent == model
-		if copied or descendant:IsA("Decal") then
-			current.hidden[descendant] = descendant.LocalTransparencyModifier
-			descendant.LocalTransparencyModifier = 1
-		elseif EFFECTS[descendant.ClassName] then
-			current.effects[descendant] = (descendant :: any).Enabled;
-			(descendant :: any).Enabled = false
-		end
+-- Cette méthode permet de masquer pour le joueur local un élément de la copie répliquée (pièce copiée, décalcomanie,
+-- effet) lorsque la copie locale la remplace à l'écran.
+local function hide(model: Model, current: Active, instance: Instance)
+	-- Pièces : les enfants directs, celles que la copie locale reprend (Shared.DummyShape n'en imbrique pas)
+	local copied = instance:IsA("BasePart") and instance.Parent == model
+	if copied or instance:IsA("Decal") then
+		current.hidden[instance] = (instance :: any).LocalTransparencyModifier;
+		(instance :: any).LocalTransparencyModifier = 1
+	elseif EFFECTS[instance.ClassName] then
+		current.effects[instance] = (instance :: any).Enabled;
+		(instance :: any).Enabled = false
+	end
+end
+
+-- Cette méthode permet d'ajouter à la copie locale une pièce du mannequin répliqué (enfant direct) lorsque
+-- l'affichage anticipé démarre ou qu'elle arrive après.
+local function mirror(current: Active, source: Instance)
+	if source:IsA("BasePart") then
+		local part = copyPart(source)
+		part.Parent = current.copy
+		table.insert(current.pairs, { source = source, copy = part })
 	end
 end
 
@@ -144,15 +156,21 @@ function LaunchGhost.start(model: Model, launch: any)
 		shown = nil,
 		velocity = nil,
 		previous = nil,
+		added = nil,
 	}
 	for _, child in model:GetChildren() do
-		if child:IsA("BasePart") then
-			local part = copyPart(child)
-			part.Parent = copy
-			table.insert(current.pairs, { source = child, copy = part })
-		end
+		mirror(current, child)
 	end
-	hideSource(model, current)
+	for _, descendant in model:GetDescendants() do
+		hide(model, current, descendant)
+	end
+	-- Arrivé après le départ (réplication en plusieurs paquets) : copié s'il s'agit d'une pièce, masqué dans tous les cas
+	current.added = model.DescendantAdded:Connect(function(descendant)
+		if descendant.Parent == model then
+			mirror(current, descendant)
+		end
+		hide(model, current, descendant)
+	end)
 	copy.Parent = Workspace
 	active = current
 	-- Avant la caméra (Client.FlightCamera, Camera + 1) : elle cadre la position affichée de cette image
@@ -181,8 +199,15 @@ function LaunchGhost.start(model: Model, launch: any)
 			return
 		end
 		for _, pair in current.pairs do
-			pair.copy.CFrame = pair.source.CFrame + offset
-			pair.copy.Color = pair.source.Color -- os cassés teintés par le serveur pendant l'affichage anticipé
+			local source, part = pair.source, pair.copy
+			if not source.Parent then
+				part.LocalTransparencyModifier = 1 -- pièce retirée par le serveur
+				continue
+			end
+			part.CFrame = source.CFrame + offset
+			-- Os cassés teintés, pièces rendues transparentes par le serveur pendant l'affichage anticipé
+			part.Color = source.Color
+			part.Transparency = source.Transparency
 		end
 		-- Vitesse de la copie répliquée telle qu'affichée (en retard), pas sa vitesse répliquée du moment
 		local position = torso.Position

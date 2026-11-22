@@ -77,8 +77,9 @@ remotes.LaunchStarted.OnClientEvent:Connect(function(model: Model, launch: any)
 	prizeToken += 1
 	ThrowCinematic.finish()
 	CharacterPoser.handOff()
-	-- Départ anticipé sur le plan du vol : pas de mannequin figé à l'apparition (#117)
-	LaunchGhost.start(model, launch)
+	-- Départ anticipé sur le plan du vol : pas de mannequin figé à l'apparition (#117) ; sans retarder l'écran de vol
+	-- si le torse se fait attendre
+	task.spawn(LaunchGhost.start, model, launch)
 	FlightView.show(model)
 	FlightCamera.follow(model, LaunchGhost.torso)
 	Effects.setFlying(model)
