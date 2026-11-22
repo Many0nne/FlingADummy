@@ -331,6 +331,26 @@ return function(T, Loader)
 			end
 		end)
 
+		T.it("ne prend pas la remontée suivante pour un compteur arrivé en retard (plus de MATCH)", function()
+			local display, contacts = bouncing(UPS)
+			-- Rebond 1 compté 0,5 s après sa remontée affichée, les suivants à l'heure
+			local run = replay(cues, v, display, contacts[#contacts] + 1, function(t)
+				local count = 0
+				for i = 1, 4 do
+					local at = if i == 1 then contacts[1] + 0.5 else contacts[i] - 0.1
+					if t >= at then
+						count = i
+					end
+				end
+				return count
+			end)
+			T.expectEqual(#run.bounces, 4, "4 boing")
+			T.expectNear(run.bounces[1], contacts[1] + 0.5 + FlightFx.MATCH, 2 * DT, "boing 1 par repli")
+			for i = 2, 4 do
+				T.expectNear(run.bounces[i], contacts[i], 2 * DT, "boing " .. i .. " à son rebond")
+			end
+		end)
+
 		T.it("ignore les rebonds physiques non comptés et borne aux rebonds du plan", function()
 			local display, contacts = bouncing(UPS)
 			local none = replay(cues, v, display, contacts[#contacts] + 1)

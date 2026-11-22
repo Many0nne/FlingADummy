@@ -187,12 +187,12 @@ local function stopJet(flight: Flight)
 	end
 end
 
--- Cette méthode permet de poser les traînées d'air blanches au bout des bras lorsque un Glider part (éteintes jusqu'à
--- la descente planée).
+-- Cette méthode permet de poser les traînées d'air blanches au bout des bras (éteintes jusqu'à la descente planée)
+-- lorsque un Glider part, puis à chaque image tant qu'un bras manque (réplication en plusieurs paquets).
 local function addTrails(flight: Flight)
 	for _, name in ARMS do
 		local source = flight.model:FindFirstChild(name)
-		if not source or not source:IsA("BasePart") then
+		if not source or not source:IsA("BasePart") or flight.root:FindFirstChild("Trail" .. name) then
 			continue
 		end
 		local rig = rigPart("Trail" .. name, flight.root)
@@ -386,6 +386,9 @@ local function step(flight: Flight, dt: number)
 	end
 	flight.boosting = frame.boosting
 
+	if flight.tracker.cues.glide and #flight.arms < #ARMS then
+		addTrails(flight)
+	end
 	for _, arm in flight.arms do
 		arm.rig.CFrame = arm.source.CFrame + offset
 		if arm.trail.Enabled ~= frame.gliding then
@@ -408,6 +411,8 @@ function FlightFx.init()
 	folder = UIKit.create("Folder", { Name = "FlightFx", Parent = Workspace })
 	burstPart = rigPart("Bounce", folder)
 	burstAnchor = UIKit.create("Attachment", { Parent = burstPart })
+	rayParams.FilterType = Enum.RaycastFilterType.Exclude
+	rayParams.FilterDescendantsInstances = { folder }
 	dust = UIKit.create("ParticleEmitter", {
 		Texture = SMOKE,
 		Color = ColorSequence.new(Color3.fromRGB(215, 200, 175)),
@@ -444,7 +449,6 @@ function FlightFx.init()
 	end)
 	task.spawn(function()
 		local dummies = Workspace:WaitForChild("Course"):WaitForChild("Dummies")
-		rayParams.FilterType = Enum.RaycastFilterType.Exclude
 		rayParams.FilterDescendantsInstances = { dummies, folder }
 		-- Cette méthode permet de suivre un mannequin du dossier dès que son départ est lisible.
 		local function watch(child: Instance)

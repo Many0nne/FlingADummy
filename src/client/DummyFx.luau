@@ -74,6 +74,12 @@ local function place(part: BasePart, data: Record, t: number, rest: boolean)
 	else
 		weld.Enabled = false -- sinon déplacer la pièce entraînerait tout le mannequin
 		part.CFrame = carrier.CFrame * offset
+		if rest then
+			-- Au repos, soudure rendue comme à la construction (pièce déjà à sa place) : la pièce suit son porteur
+			-- s'il est déplacé ou désancré plus tard, sans autre passage
+			weld.C0 = offset
+			weld.Enabled = true
+		end
 	end
 end
 
