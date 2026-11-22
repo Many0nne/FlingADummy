@@ -20,9 +20,15 @@ local GameConfig = {
 	THROW_SIDE          = 2.1,    -- départ du mannequin à droite du HumanoidRootPart (main qui lance, mesuré)
 	LAUNCH_PITCH_DEG    = 32,     -- angle du lancer au-dessus de l'horizontale
 	GRAVITY             = 120,    -- Workspace.Gravity (196,2 par défaut) : vols plus longs, plus lisibles
-	SPEED_BASE          = 110,    -- vitesse de lancer à la puissance de départ (studs/s)
-	SPEED_PER_LOG       = 30,     -- + 30 studs/s chaque fois que la puissance est multipliée par e
+	SPEED_BASE          = 130,    -- vitesse de lancer à la puissance de départ (studs/s ; 110 avant #113, glissade bornée)
+	SPEED_PER_LOG       = 38,     -- + 38 studs/s chaque fois que la puissance est multipliée par e (30 avant #113)
 	THROW_RELEASE_TIME  = 0.7,    -- lâcher dans l'animation de lancer (marqueur Release, s) : republier Throw si modifié
+
+	-- Vol plafonné et glissade bornée (#113, Shared.FlightArc)
+	APEX_HEIGHT         = 100,    -- hauteur max du vol (studs au-dessus de la piste) : au-delà, la puissance part en distance
+	GROUND_BRAKE        = 600,    -- frein au sol après le premier contact (studs/s²) : glissade = vitesse² / 1 200
+	BRAKE_HEIGHT        = 6,      -- le frein agit sous cette hauteur du torse (studs) : pas en l'air après un rebond
+	LATERAL_DAMP        = 6,      -- amortissement de la vitesse latérale après le premier contact (1/s) : reste dans sa colonne
 
 	-- Jauge (1 clic : l'aiguille court toute seule, le clic l'arrête)
 	GAUGE_PERIOD        = 1.2,    -- durée d'un aller-retour de l'aiguille (s)
@@ -68,7 +74,7 @@ local GameConfig = {
 	-- Fin de vol
 	REST_SPEED          = 3,      -- vitesse du torse en dessous de laquelle le mannequin est arrêté
 	REST_TIME           = 1.0,    -- durée d'arrêt avant de compter le résultat (s)
-	MAX_FLIGHT_TIME     = 22,     -- garde-fou (s) : un vol de 4,4 B met 14 à 16 s pour glisser jusqu'au bout des 6 km (#97)
+	MAX_FLIGHT_TIME     = 20,     -- garde-fou (s) : un vol de 4,4 B met 10 à 12 s jusqu'au bout des 6 km (#113 ; 22 s avant)
 	KILL_Y              = -40,    -- mannequin tombé du parcours
 	RESULT_MAX_TIME     = 20,     -- résultat et tirage : fin forcée si le client ne signale pas GO BACK (s, minimum ; plus long selon la rareté : Shared.RevealPlan.resultTime)
 	RESULT_CLEAR_TIME   = 4.5,    -- mannequin d'un joueur parti pendant son résultat retiré après ce délai (s)

@@ -35,7 +35,8 @@ base, il rapporte des $/s, seule source d'argent.
    clic estimé depuis l'arrivée de `Launch` (lâcher de l'animation et latence déduits, lâcher en retard de
    `GAUGE_RELEASE_SLACK` = 0,25 s au plus, constante partagée avec le lâcher de secours du client).
 3. **Élan** : l'avatar se penche en arrière puis projette le mannequin (0,35 s).
-4. **Vol** : bandes noires, caméra qui suit (derrière et un peu sur le côté au ras du sol ; plus le mannequin monte,
+4. **Vol** (hauteur plafonnée à 100 studs, glissade bornée : section « Vol plafonné », #113) : bandes noires,
+   caméra qui suit (derrière et un peu sur le côté au ras du sol ; plus le mannequin monte,
    plus elle plonge vers la piste et se recale dans son axe, distance bornée selon la vitesse : `Shared.FlightFraming`,
    #88, comme la caméra de suivi de 01 et 09), bannière **CHANCE** (« 1.36X / CHANCE / 🍀 MEADOW ») qui monte pendant le
    vol, compteurs (distance, os, objets), radio du mannequin ; chaque choc a son son, ses particules et son popup
@@ -98,8 +99,8 @@ base, il rapporte des $/s, seule source d'argent.
   `Training.EXTENDED`) : ruby, emerald, plasma, omega, infinite, gain × 4 par palier (+12 K à +3 M), prix $20M, $50M,
   $300M, $1.8B, $50B (le dernier, condition de la renaissance, après la plupart des mannequins à lancer) ; section
   « Progression longue ».
-- Vitesse de lancer = 110 + 30 × ln(puissance / 10) studs/s : la puissance explose (10 → 1 M), la distance monte
-  régulièrement (≈ 145 m → 2,2 km).
+- Vitesse de lancer = 130 + 38 × ln(puissance / 10) studs/s (110 + 30 avant #113, qui borne la glissade) : la
+  puissance explose (10 → 4,4 B), la distance monte régulièrement (≈ 140 m → 6 km).
 
 ## Deux courbes
 Comme 01 et 09 : le lancer fait le lien entre les deux.
@@ -202,10 +203,10 @@ puis des jours avec la renaissance plus bas ; revenus et prix recalés par #15, 
 joueurs sur 14 h ; garde-fou : `tests/specs/Progression.spec.luau`) : vrais modules
 du jeu (tirage, entraînement, CHANCE des zones, prix), une boucle = un lancer (15 s, comme 09) puis 15 s
 d'entraînement, achats dès que possible (le moins cher d'abord), mannequins hors présentoirs vendus aussitôt. Distance
-≈ 0,012 × vitesse² (vols mesurés de #14 : 145-168 m à la puissance 10, ≈ 1 150 m à 10,5 K), os et objets ≈ +30 % de
-CHANCE au départ, +55 % à 10,5 K. Modèle non mesuré en jeu : les pièges, les comportements des mannequins à lancer et
-le temps réel d'une boucle le décaleront. Depuis #97, la piste fait 6 km (temps ci-dessous rejoués avec elle) ; les
-vols mesurés au-delà de 2,4 km s'écartent du modèle (tableau « Fin de piste » plus bas).
+du vol plafonné (#113, `Shared.FlightArc` : premier contact au sol prévu, plus 0,4 de la glissade freinée, recalée
+sur les vols mesurés de 10 K à 4,4 B), os et objets ≈ +30 % de CHANCE au départ, +55 % à 10,5 K. Non mesurés en jeu :
+les pièges, les comportements des mannequins à lancer et le temps réel d'une boucle. Depuis #97, la piste fait 6 km
+(temps ci-dessous rejoués avec elle).
 
 **Grands nombres** (`Shared.Format`) : K, M, B, T, Qa, Qi, Sx, Sp, Oc, No, Dc (10^33), puis notation scientifique ;
 3 chiffres significatifs tronqués ; cote « 1 IN 300Qa » (`Format.odds`), cote complète du secret avec séparateurs
@@ -293,8 +294,8 @@ Prix calés par #15 (section « Rythme et économie ») : la règle Rocket × (c
 Puissance : 1 K à 5 min, 100 K à 20 min, 1 M à 32 min, 100 M à 85 min, 10 B à 6,4 h (avant #15 : 5 min, 20 min,
 45 min, 3,2 h, 7,8 h). Avec la piste de 2,4 km, le bout était atteint dès ≈ 760 K de puissance et la puissance
 n'ajoutait ensuite que des os et des objets ; la piste de 6 km (#97) donne un but aux paliers prolongés (tableau
-« Fin de piste » ci-dessous). Bout de piste simulé à 4,6 h (6,8 h avant #15) : modèle de distance optimiste au-delà
-de 22 M (#113), le vrai bout vient plus tard.
+« Fin de piste » ci-dessous). Bout de piste simulé à 4,2 h (4,6 h avec le modèle de distance d'avant #113, 6,8 h
+avant #15), avec la distance recalée sur les vols mesurés par #113.
 
 ### Rythme et économie (#15)
 Retours de la review 2 (compte neuf) : les présentoirs s'achetaient trop vite (point 2 : les quatre en 7 min), et « à
@@ -393,23 +394,50 @@ $548/s à 4:48 (simulé : $790/s à 5 min). Le Rubber Dummy rebondit bien plus l
 
 ### Piste prolongée (#97) et renaissance (#108) : les deux leviers
 1. **Piste prolongée à 6 km** (#97) : six thèmes de plus après Moon Base, un tous les 600 m (section « Zones de la
-   piste »), CHANCE des zones de × 18 à × 60. Joueur simulé rejoué (60 joueurs, 24 h) et vols mesurés en Studio
+   piste »), CHANCE des zones de × 18 à × 60. Joueur simulé rejoué (60 joueurs, 14 h, après #15 et #113) et vols mesurés en Studio
    (Crash Dummy, jauge pleine, `DebugLaunch`) :
-   | Fin de piste | Vitesse | Puissance | Atteinte (simulé) | CHANCE des zones | Vols mesurés à cette puissance |
+   | Fin de piste | Vitesse | Puissance | Atteinte (simulé) | CHANCE des zones | Vols mesurés (#113, 6 par puissance) |
    |---|---|---|---|---|---|
-   | 2,4 km (fin de Moon Base) | 447 | 760 K | 43 min | × 18 | (#14, #33) |
-   | 3,6 km (Neon City) | 548 | 22 M | 2,1 h | × 27 | 3 811 m (48.6X), 2 994 m (42.8X, geyser déclenché) |
-   | 4,8 km (Haunted Castle) | 632 | 360 M | 4,0 h | × 40 | 3 591 m (47.4X), 3 139 m (39.6X) |
-   | 6 km (bout) | 707 | 4,4 B | 6,8 h | × 60 | 6 037 m (96.6X), 5 903 m, 4 860 m, 4 343 m, 4 090 m |
-   **Mesures comparées au modèle** : jusqu'à 22 M le modèle tient (± 10 %) ; au-delà, il est optimiste. Les vols
-   montent très haut (≈ 590 studs à 4,4 B), atterrissent tous vers 3,6-3,9 km puis **glissent** : la distance finale
-   dépend de la glissade (obstacles traversés en diagonale, pièges), d'où 4,1 à 6,0 km à 4,4 B (bout atteint 1 fois
-   sur 5, frôlé une fois : 5 903 m coupé par l'ancienne limite de vol de 16 s, portée à 22 s) et 3,1-3,6 km à 360 M.
-   Le bout de piste est donc plutôt atteint vers 10-50 B de puissance (≈ 8 à 10 h simulées, non mesuré). Effet
-   simulé : CHANCE finale × 3,3 (17 K au lieu de 5,1 K à 24 h), Divine à 7,1 h au lieu de 12,3 h.
+   | 2,4 km (fin de Moon Base) | 557 | 760 K | 30 min | × 18 | (#14, #33) |
+   | 3,6 km (Neon City) | 685 | 22 M | 57 min | × 27 | 3 590 à 3 630 m |
+   | 4,8 km (Haunted Castle) | 791 | 360 M | 117 min | × 40 | 4 867 à 4 991 m, 5 021 à 5 510 m après un piège |
+   | 6 km (bout) | 886 | 4,4 B | 4,2 h | × 60 | bout de piste 6 fois sur 6 (6 043-6 048 m) |
+   Avant #113, les vols montaient à ≈ 590 studs à 4,4 B puis glissaient au hasard (4,1 à 6,0 km à 4,4 B, mesures de
+   #97) ; le vol plafonné (#113, section « Vol plafonné ») tient ces paliers à ± 2 % hors pièges. Effet simulé de la
+   piste de 6 km : CHANCE finale × 3,3 (17 K au lieu de 5,1 K à 24 h), Divine à 7,1 h au lieu de 12,3 h.
 2. **Renaissance** : faite (#108), section suivante. L'estimation de conception (une renaissance refaite en 1 à 2 h)
    était trop optimiste : avec la piste de 6 km, le joueur simulé met 4 à 80 h entre deux renaissances avec le prix
    × 4 de #108, 4 à 11 h jusqu'à la 7e avec le prix × 2 de #15.
+
+### Vol plafonné et glissade bornée (#113, `Shared.FlightArc`)
+Retours de la sprint review 2 : le mannequin glissait parfois de 4 ou 5 thèmes après l'atterrissage, et la puissance
+le faisait monter toujours plus haut (≈ 590 studs à 4,4 B, carte vue de très haut par la caméra de vol).
+- **Hauteur max 100 studs** (`APEX_HEIGHT`) : le lâcher ne change pas (32°, vitesse de la puissance et de la jauge).
+  Si le sommet naturel dépasse le plafond, la montée est freinée pour s'arrêter pile à 100 studs, le mannequin y file
+  à plat, puis retombe librement pour toucher le sol là où l'aurait posé l'arc naturel (`FlightArc.plan`) : la
+  puissance en trop part en distance. Sous ≈ 600 de puissance, l'arc reste naturel. La caméra de vol reste à ≈ 130
+  studs de la piste, obstacles et pièges lisibles (captures : `docs/captures/vol/`).
+- **Glissade bornée** : après le premier choc (sol, obstacle), frein de 600 studs/s² sur l'élan le long de la piste
+  (sous 6 studs de haut seulement : pas en l'air après un rebond) et vitesse latérale amortie (× e^-6t) : le mannequin
+  reste dans sa colonne et s'arrête en ≈ 1 s. Hauteur comptée depuis le fond de la piste (y = 0) : posé sur un
+  gradin ou un obstacle de plus de 6 studs, le mannequin n'est pas freiné (rare : il reste dans sa colonne). Glissade théorique = vitesse² / 1 200 (470 m au plus à 4,4 B), mesurée
+  à 0,3 à 0,75 de cette valeur (obstacles et rebonds au point de chute).
+- **Pièges** : un piège qui projette lève le plafond pour le reste du vol (son rebond peut le passer, c'est voulu) ;
+  l'élan n'est ni freiné ni amorti pendant 0,5 s après un piège (`TRAP_COAST` : la poussée d'un canon ou d'un ventilateur au
+  sol se voit, non mesuré), puis le frein reprend au sol.
+- **Mesures** (Studio, `DebugLaunchBots`, Crash Dummy, jauge pleine, 6 vols par puissance) :
+  | Puissance | Sommet avant → après | Premier contact | Glissade avant → après | Distance finale avant | Distance finale après |
+  |---|---|---|---|---|---|
+  | 10 K | 123 → 100 studs | 746-756 m → 1 149 m | 67-109 → 60-80 m | 823-865 m (± 2,5 %) | 1 210-1 265 m (± 2,3 %) |
+  | 22 M | 356 → 100 | 2 245 m → 3 509-3 525 m | 253-1 116 → 66-121 m | 2 501-3 365 m (± 15 %) | 3 590-3 630 m (± 0,6 %) |
+  | 360 M | 472 → 100 | 2 993 m → 4 726 m | 289-556 → 141-265 m | 3 282-3 548 m (± 4 %) | 4 867-4 991 m (± 1,3 %) ; 5 021-5 510 m après un piège |
+  | 4,4 B | 589 → 100 | 3 744 m → 5 720-6 008 m | 660-2 071 → 40-323 m | 4 400-5 819 m (± 14 %) | 6 043-6 048 m (± 0,1 %) : bout de piste 6 sur 6, contre la paroi (trou de ver à 5 848 m) |
+  Durée d'un vol à 4,4 B : 10 à 12 s (12 à 16,5 s avant). La vitesse de lancer est relevée (110 + 30 × ln → 130 +
+  38 × ln) pour garder les paliers du modèle malgré la glissade raccourcie : 22 M → 3,6 km, 360 M → 4,8-5 km, 4,4 B →
+  bout de piste.
+- **Joueur simulé recalé** : distance = premier contact de `FlightArc.plan` + 0,4 × la glissade théorique
+  (`tools/ProgressionSim.luau`). Temps rejoués avec l'économie de #15 (60 joueurs, 14 h) : achats décalés de 0 à
+  0,2 h (Infinite Rocket 9,4 h au lieu de 9,6 h), bout de piste 4,2 h au lieu de 4,6 h.
 
 ### Renaissance (#108, `Shared.Rebirth`)
 Le levier après tout le catalogue d'achats (≈ 11,5 h simulées depuis #15 ; 9,6 h avant), comme la
@@ -550,7 +578,7 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
   (ou neige, sable…) voxel qui déborde de chaque marche, décor voxel sur les terre-pleins et au pied des parois
   (traversable). **Arche d'arrivée** à 6 km (ligne et bandeau à damier, panneau « FINISH 6 KM »), traversable : le
   mannequin passe dessous et s'arrête contre la paroi en gradins du bout (6 040 m ; vol mesuré à 6 037 m). Limite d'un
-  vol portée de 16 à 22 s (`MAX_FLIGHT_TIME`) : un vol de 4,4 B met 14 à 16 s pour glisser jusqu'au bout.
+  vol de 20 s (`MAX_FLIGHT_TIME`, 22 s avant #113) : un vol de 4,4 B met 10 à 12 s jusqu'au bout.
 - **Coût du décor généré** (#97, mesuré en Studio, journal `[Course]` du serveur, 3 démarrages) : 25 160 instances
   construites en 307-485 ms (hub et zone de lancer 11-20 ms, piste 100-196 ms, obstacles 91-124 ms). Avant / après,
   répartis sur la même construction (le décor avant 2,4 km est identique) : hub et 12 premiers thèmes ≈ 12 600
@@ -613,17 +641,18 @@ animées par chaque client (`Client.TrapMotion`) sur l'horloge du serveur, avec 
 décider si le piège agit (`Traps.CYCLES`, `Traps.active`, #79) : la presse n'écrase que pendant sa descente, le diable
 n'éjecte que sorti, l'aimant n'arrache que plaque allumée (néon et étincelles), le rondin ne frappe que le torse qu'il
 touche, en passant en bas de son balancement, et pousse le mannequin dans l'axe de la piste, dans le sens où il va (vers l'avant ou en arrière).
-Hors de cette phase, le mannequin passe sans rien. L'anneau propulseur est un cerceau néon suspendu (centre à 85 studs : hauteur
-d'un vol de 32° qui retomberait ≈ 150 m plus loin, aux sites de la Moon Base) ; seule son ouverture déclenche (boîte
+Hors de cette phase, le mannequin passe sans rien. L'anneau propulseur est un cerceau néon suspendu (centre à 85 studs : sous le
+plafond du vol (100 studs, #113), traversé au début de la chute d'un vol qui retombe dans la Moon Base) ; seule son ouverture déclenche (boîte
 carrée de 8 studs, #85), ni colonne ni pad au sol.
 Pièges de la piste prolongée (#97) : le **geyser** (Mars) projette à la verticale pendant son éruption (bouche et
 panache allumés, 35 % d'un cycle de 3 s) ; le **massif de cristaux** (Crystal Cave) renvoie haut en gardant l'élan ;
 le **portique laser** (Neon City) grille pendant sa phase allumée (faisceaux visibles la moitié d'un cycle de 2 s) et
 freine un peu ; le **toboggan arc-en-ciel** (Sky Kingdom) relance vers l'avant et le haut ; le **fantôme** (Haunted
 Castle) jaillit de sa tombe comme le diable en boîte et emporte le mannequin en tournoyant ; le **trou de ver**
-(Galaxy) est un portail dressé sur la piste qui propulse vers l'avant. Les vols à pleine puissance atterrissent vers
-3,7 km puis glissent : après 3,6 km, aucun piège ne garde moins de 80 % d'un élan de 300 studs/s (un laser à 55 %
-arrêtait un vol de 4,4 B à 4,1 km, mesuré).
+(Galaxy) est un portail dressé sur la piste qui propulse vers l'avant. Depuis #113, les vols touchent le sol au point
+prévu puis freinent fort (section « Vol plafonné ») : un piège traversé à l'atterrissage relance encore le mannequin
+(toboggan à 360 M : jusqu'à + 12 %, trou de ver à 4,4 B : jusqu'au bout) ; après 3,6 km, aucun piège ne garde moins de
+80 % d'un élan de 300 studs/s.
 
 ## Dégâts lisibles
 Chaque membre (10 pièces) suit les chocs : une variation brusque de vitesse au-delà d'un seuil casse un os (2 au-delà d'un

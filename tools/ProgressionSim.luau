@@ -1,16 +1,18 @@
 -- Joueur simulé de la progression (#94, #15) : estime le temps de jeu pour atteindre chaque palier (équipement
 -- d'entraînement, mannequin à lancer, présentoir, rareté, renaissance) avec les vrais modules du jeu (tirage
 -- Shared.Collection, entraînement Shared.Training, CHANCE Shared.Economy, prix Shared.ThrowDummies, Shared.Inventory,
--- Shared.Rebirth). Modèle simple : distance ∝ vitesse² (calée sur les vols mesurés de #14), une boucle = un lancer
--- (THROW_TIME s) puis TRAIN_TIME s d'entraînement, achats dès que possible (le moins cher d'abord), mannequins hors
--- présentoirs vendus aussitôt, renaissance dès que possible après les achats moins chers.
+-- Shared.Rebirth). Modèle simple : distance d'un vol plafonné (Shared.FlightArc, recalée sur les vols de #113), une
+-- boucle = un lancer (THROW_TIME s) puis TRAIN_TIME s d'entraînement, achats dès que possible (le moins cher
+-- d'abord), mannequins hors présentoirs vendus aussitôt, renaissance dès que possible après les achats moins chers.
 -- Partagé par tools/progression.luau (tableaux) et tests/specs/Progression.spec.luau (règle du « pas de mur »).
 local ProgressionSim = {}
 
 ProgressionSim.THROW_TIME = 15 -- lancer, vol, tirage et retour (s ; 15 s mesurés sur Throw a Seed)
 ProgressionSim.TRAIN_TIME = 15 -- entraînement entre deux lancers (s)
--- Distance (m) ≈ DIST_K × vitesse² : 145-168 m à la puissance 10, ≈ 1 150 m à 10,5 K (vols mesurés de #14)
-ProgressionSim.DIST_K = 0.012
+-- Distance (m) : premier contact au sol prévu par Shared.FlightArc (main à ORIGIN_HEIGHT au-dessus de la piste), plus
+-- SLIDE_SHARE de la glissade freinée théorique (0,3 à 0,75 mesuré par #113 : obstacles et rebonds au point de chute)
+ProgressionSim.ORIGIN_HEIGHT = 5.3
+ProgressionSim.SLIDE_SHARE = 0.4
 -- Bonus des os et objets (part ajoutée à la CHANCE) : ≈ +30 % au départ, ≈ +55 % à 10,5 K de puissance (mesures #14)
 ProgressionSim.BONUS_BASE = 0.3
 ProgressionSim.BONUS_PER_LOG = 0.035
@@ -47,6 +49,7 @@ function ProgressionSim.modules(loader: any): { [string]: any }
 		{
 			"Collection",
 			"Economy",
+			"FlightArc",
 			"Format",
 			"GameConfig",
 			"Inventory",
@@ -63,8 +66,12 @@ end
 
 -- Cette méthode permet d'estimer la distance d'un lancer jauge pleine lorsque le joueur a `power` de Throw Power.
 function ProgressionSim.distanceFor(m: { [string]: any }, power: number): number
-	local v = m.Economy.launchSpeed(power)
-	return math.min(ProgressionSim.DIST_K * v * v, m.GameConfig.COURSE_LENGTH)
+	local speed = m.Economy.launchSpeed(power)
+	local pitch = math.rad(m.GameConfig.LAUNCH_PITCH_DEG)
+	local forward = speed * math.cos(pitch)
+	local plan = m.FlightArc.plan(forward, speed * math.sin(pitch), ProgressionSim.ORIGIN_HEIGHT, m.GameConfig.GRAVITY)
+	local slide = ProgressionSim.SLIDE_SHARE * m.FlightArc.slide(forward)
+	return math.min(plan.range + slide, m.GameConfig.COURSE_LENGTH)
 end
 
 -- Cette méthode permet d'estimer la CHANCE d'un lancer lorsque le joueur a `power` et lance un mannequin de chance
