@@ -209,15 +209,16 @@ function BaseLook.rackTiers(tier: number): { number }
 	return { last - 2, last - 1, last }
 end
 
--- Texte flottant au-dessus d'une base : nom (« MANYONNE'S BASE »), revenu (« $223/s ») et Throw Power (« 💪 1.2K »)
-export type Label = { title: string, income: string, power: string }
+-- Texte flottant au-dessus d'une base : nom (« MANYONNE'S BASE »), revenu (« $223/s »), record (« 🏆 BEST 3.6 km »,
+-- #44 : vu de tous) et Throw Power (« 💪 1.2K »)
+export type Label = { title: string, income: string, best: string, power: string }
 
--- Cette méthode permet de donner les trois lignes du texte flottant d'une base lorsque son propriétaire ou ses
--- valeurs changent ; `owner` nil : base vide ; `power` nil (données pas chargées) : ligne vide ; `rebirths` > 0 :
--- compteur violet « 🌟 3 » à côté de la Throw Power (ligne en RichText).
-function BaseLook.label(owner: string?, income: number?, power: number?, rebirths: number?): Label
+-- Cette méthode permet de donner les lignes du texte flottant d'une base lorsque son propriétaire ou ses valeurs
+-- changent ; `owner` nil : base vide ; `power` nil (données pas chargées) : ligne vide ; `rebirths` > 0 : compteur
+-- violet « 🌟 3 » à côté de la Throw Power (ligne en RichText) ; `best` sous 1 m ou nil : pas de ligne de record.
+function BaseLook.label(owner: string?, income: number?, power: number?, rebirths: number?, best: number?): Label
 	if not owner then
-		return { title = "EMPTY BASE", income = "$0/s", power = "" }
+		return { title = "EMPTY BASE", income = "$0/s", best = "", power = "" }
 	end
 	local powerText = if power then "💪 " .. Format.short(math.max(0, power)) else ""
 	if power and rebirths and rebirths >= 1 then
@@ -226,6 +227,7 @@ function BaseLook.label(owner: string?, income: number?, power: number?, rebirth
 	return {
 		title = string.upper(owner) .. "'S BASE",
 		income = Format.money(math.max(0, income or 0)) .. "/s",
+		best = if best and best >= 1 then "🏆 BEST " .. Format.distance(best) else "",
 		power = powerText,
 	}
 end

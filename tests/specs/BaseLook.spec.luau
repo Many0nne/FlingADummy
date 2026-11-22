@@ -207,5 +207,12 @@ return function(T, Loader)
 				T.expectEqual(BaseLook.label(nil, 0, 10, 3).power, "", "base vide")
 			end
 		)
+		T.it("affiche le record du propriétaire (#44), rien sans record ni propriétaire", function()
+			T.expectEqual(BaseLook.label("Bob", 0, 10, 0, 3650).best, "🏆 BEST 3.6 km")
+			T.expectEqual(BaseLook.label("Bob", 0, 10, 0, 145.7).best, "🏆 BEST 145 m")
+			T.expectEqual(BaseLook.label("Bob", 0, 10, 0, 0).best, "")
+			T.expectEqual(BaseLook.label("Bob", 0, 10).best, "", "données pas chargées")
+			T.expectEqual(BaseLook.label(nil, 0, 10, 0, 3650).best, "", "base vide")
+		end)
 	end)
 end
