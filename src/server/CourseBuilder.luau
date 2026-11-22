@@ -102,9 +102,12 @@ export type Base = {
 	plot: BasePart, -- terrain, teinté au palier
 	look: Folder, -- clôture et décor du palier visuel (Shared.BaseLook), refaits à chaque palier
 	tier: number, -- palier visuel affiché
+	big: boolean, -- agrandie vers le fond (passe Big Base, #160) : terrain et clôture pour DISPLAY_ROOM présentoirs
 	label: BaseLabel,
 	burst: BasePart, -- confettis d'achat de présentoir (CourseBuilder.celebrate)
-	displays: { BasePart }, -- dessus des DISPLAY_MAX présentoirs (invite « Place » dedans), grisés tant que pas achetés
+	-- dessus des DISPLAY_ROOM présentoirs (invite « Place » dedans), grisés tant que pas achetés ; ceux au-delà de
+	-- DISPLAY_MAX (Big Base) cachés quand la base n'est pas agrandie
+	displays: { BasePart },
 	pedestals: { BasePart }, -- socles des présentoirs
 	facing: Vector3, -- direction de l'entrée (vers la bande) : les mannequins posés regardent par là
 	pad: Pad,
@@ -1018,9 +1021,11 @@ local function baseLabel(parent: Instance, position: Vector3): BaseLabel
 	-- Record (#44) sous le revenu, un peu plus petit : le revenu reste la ligne la plus lisible
 	local power = line("Power", 0.84, 0.16, LABEL_CYAN)
 	power.RichText = true -- compteur de renaissances en violet à côté de la Throw Power (Shared.BaseLook.label)
+	local title = line("Title", 0.27, 0.22, Color3.new(1, 1, 1))
+	title.RichText = true -- badge VIP doré devant le nom (passe de la boutique Robux, #160)
 	return {
 		avatar = avatar,
-		title = line("Title", 0.27, 0.22, Color3.new(1, 1, 1)),
+		title = title,
 		income = line("Income", 0.49, 0.2, LABEL_GREEN),
 		best = line("Best", 0.69, 0.15, LABEL_GOLD),
 		power = power,
@@ -1030,8 +1035,7 @@ end
 -- Cette méthode permet de poser la clôture d'une base au style `fence` (ouverte côté bande, entrée de 10 studs) dans
 -- `folder` lorsque la base est habillée ; renvoie les deux bouts de l'entrée et les quatre coins, au sol.
 local function baseFence(folder: Instance, slot: Slot, fence: BaseLook.Fence): ({ Vector3 }, { Vector3 })
-	local center = CourseLayout.basePosition(slot.index)
-	local size = CourseLayout.BASE_SIZE
+	local center, size = CourseLayout.baseBox(slot.index, slot.base.big)
 	local hx, hz = size.X / 2, size.Z / 2
 	local corners = {
 		center + Vector3.new(-hx, 0, -hz),
@@ -1101,8 +1105,8 @@ function CourseBuilder.styleBase(slot: Slot, tier: number, upgrade: boolean?): b
 	local old = base.look
 	local oldPlot = base.plot.Color
 	base.plot.Color = look.plot or Build.shade(slot.color, 0.6)
-	local center = CourseLayout.basePosition(slot.index)
-	local hx, hz = CourseLayout.BASE_SIZE.X / 2, CourseLayout.BASE_SIZE.Z / 2
+	local center, size = CourseLayout.baseBox(slot.index, base.big)
+	local hx, hz = size.X / 2, size.Z / 2
 	local gate, corners = baseFence(folder, slot, fence)
 	local lift = Vector3.new(0, BaseLook.postTop(fence), 0)
 	-- Arche d'entrée : les lanternes de l'entrée montent sur son linteau
@@ -1174,6 +1178,22 @@ function CourseBuilder.styleBase(slot: Slot, tier: number, upgrade: boolean?): b
 	return true
 end
 
+-- Cette méthode permet d'agrandir la base d'une place vers le fond (ou de la rendre à sa taille) lorsque son
+-- propriétaire a le passe Big Base (#160) ou qu'il part : terrain étiré, clôture et décor refaits au même palier.
+function CourseBuilder.setBaseBig(slot: Slot, big: boolean)
+	local base = slot.base
+	if base.big == big then
+		return
+	end
+	base.big = big
+	local center, size = CourseLayout.baseBox(slot.index, big)
+	base.plot.Size = Vector3.new(size.X, PLOT_TOP, size.Z)
+	base.plot.Position = center + Vector3.new(0, PLOT_TOP / 2, 0)
+	local tier = base.tier
+	base.tier = 0 -- habillage refait au même palier, sans animation de construction
+	CourseBuilder.styleBase(slot, tier)
+end
+
 -- Cette méthode permet de construire la base d'une place (terrain, présentoirs vides, texte flottant, confettis
 -- d'achat, habillage du premier palier, pad d'amélioration de l'équipement) lorsque le hub est construit.
 local function buildBase(parent: Instance, slot: Slot)
@@ -1195,7 +1215,7 @@ local function buildBase(parent: Instance, slot: Slot)
 	look.Parent = model
 	local displays: { BasePart } = {}
 	local pedestals: { BasePart } = {}
-	for index, position in CourseLayout.displayPositions(slot.index) do
+	for index, position in CourseLayout.displayPositions(slot.index, CourseLayout.DISPLAY_ROOM) do
 		local side = CourseLayout.PEDESTAL_SIZE
 		local pedestal = Build.block(
 			model,
@@ -1237,6 +1257,7 @@ local function buildBase(parent: Instance, slot: Slot)
 		plot = plot,
 		look = look,
 		tier = 0,
+		big = false,
 		-- Au-dessus du centre de la base, plus haut que les plus grands mannequins posés (comme les jardins de 09)
 		label = baseLabel(model, center + Vector3.new(0, LABEL_HEIGHT, 0)),
 		burst = upgradeBurst(model, center + Vector3.new(0, 3, 0), slot.color),

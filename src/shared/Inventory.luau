@@ -15,8 +15,9 @@ type Entry = Collection.Entry
 local Inventory = {}
 
 export type Data = {
-	base: { [number]: Entry | false }, -- DISPLAY_MAX présentoirs (false = vide ; au-delà de `displays` : pas acheté)
+	base: { [number]: Entry | false }, -- DISPLAY_ROOM présentoirs (false = vide ; au-delà de la capacité : fermé)
 	displays: number, -- présentoirs achetés (DISPLAY_START à DISPLAY_MAX)
+	bonus: number, -- présentoirs ajoutés par la boutique (passe Big Base, #160), à la suite des achetés ; pas sauvegardé
 	stock: { Entry }, -- mannequins possédés non posés, dans l'ordre d'arrivée
 	index: { [string]: number }, -- Index : identifiant déjà obtenu → meilleure taille obtenue
 	last: Entry?, -- dernier gagné, montré par le panneau « Place your … » tant qu'il est en stock et pas rangé
@@ -25,14 +26,20 @@ export type Data = {
 -- Ligne de la fenêtre d'inventaire : un présentoir occupé, ou les doublons d'une clé du stock
 export type Row = { key: string, entry: Entry, display: number?, count: number }
 
--- Cette méthode permet de créer une collection vide (DISPLAY_START présentoirs libres, stock vide) lorsqu'un joueur
--- arrive sans sauvegarde.
-function Inventory.new(): Data
+-- Cette méthode permet de créer une collection vide (DISPLAY_START présentoirs libres, `bonus` de la boutique en plus,
+-- stock vide) lorsqu'un joueur arrive sans sauvegarde.
+function Inventory.new(bonus: number?): Data
 	local base = {}
-	for display = 1, CourseLayout.DISPLAY_MAX do
+	for display = 1, CourseLayout.DISPLAY_ROOM do
 		base[display] = false
 	end
-	return { base = base, displays = GameConfig.DISPLAY_START, stock = {}, index = {}, last = nil }
+	return { base = base, displays = GameConfig.DISPLAY_START, bonus = bonus or 0, stock = {}, index = {}, last = nil }
+end
+
+-- Cette méthode permet de donner le nombre de présentoirs utilisables (achetés + boutique) lorsque l'on pose, calcule
+-- le revenu ou publie la base.
+function Inventory.capacity(data: Data): number
+	return math.min(data.displays + data.bonus, CourseLayout.DISPLAY_ROOM)
 end
 
 -- Cette méthode permet de donner la clé « id:taille » d'une entrée lorsque le client désigne un mannequin du stock ou
@@ -87,9 +94,9 @@ end
 -- Cette méthode permet de relire la collection sauvegardée (entrées inconnues ou abîmées ignorées) lorsque les données
 -- d'un joueur sont chargées. Migration de #13 : l'ancien mannequin en main (`pending`) passe au stock, la liste
 -- `discovered` devient l'Index (taille 1, relevée par ce qui est possédé). Renvoie aussi l'argent des mannequins vendus
--- d'office si le stock dépasse INVENTORY_MAX (à créditer).
-function Inventory.read(saved: any): (Data, number)
-	local data = Inventory.new()
+-- d'office si le stock dépasse INVENTORY_MAX (à créditer). `bonus` : présentoirs de la boutique (Big Base).
+function Inventory.read(saved: any, bonus: number?): (Data, number)
+	local data = Inventory.new(bonus)
 	if type(saved) ~= "table" then
 		return data, 0
 	end
@@ -105,9 +112,10 @@ function Inventory.read(saved: any): (Data, number)
 		end
 	end
 	if type(saved.base) == "table" then
-		for display = 1, CourseLayout.DISPLAY_MAX do
+		local capacity = Inventory.capacity(data)
+		for display = 1, CourseLayout.DISPLAY_ROOM do
 			local entry = copyEntry(saved.base[display])
-			if entry and display <= data.displays then
+			if entry and display <= capacity then
 				data.base[display] = entry
 			elseif entry then
 				table.insert(data.stock, entry) -- présentoir pas (plus) acheté : rien ne se perd
@@ -143,7 +151,7 @@ function Inventory.read(saved: any): (Data, number)
 	for _, entry in data.stock do
 		Inventory.discover(data, entry)
 	end
-	for display = 1, data.displays do
+	for display = 1, Inventory.capacity(data) do
 		local entry = data.base[display]
 		if entry then
 			Inventory.discover(data, entry)
@@ -207,7 +215,7 @@ function Inventory.isFree(data: Data, display: any): boolean
 	return typeof(display) == "number"
 		and display == math.floor(display)
 		and display >= 1
-		and display <= data.displays
+		and display <= Inventory.capacity(data)
 		and not data.base[display]
 end
 
@@ -216,7 +224,7 @@ end
 -- nil si rien ne lui va (elle reste au stock).
 function Inventory.autoTarget(data: Data, entry: Entry): number?
 	local worst, worstIncome = nil, math.huge
-	for display = 1, data.displays do
+	for display = 1, Inventory.capacity(data) do
 		local placed = data.base[display]
 		if not placed then
 			return display
@@ -262,7 +270,12 @@ end
 -- Cette méthode permet de rendre au stock le mannequin du présentoir `display` lorsque le joueur clique Remove ;
 -- refusé si le présentoir est vide ou si le stock est plein. Renvoie true s'il a bougé.
 function Inventory.remove(data: Data, display: any): boolean
-	if typeof(display) ~= "number" or display < 1 or display > data.displays or display ~= math.floor(display) then
+	if
+		typeof(display) ~= "number"
+		or display < 1
+		or display > Inventory.capacity(data)
+		or display ~= math.floor(display)
+	then
 		return false
 	end
 	local entry = data.base[display]
@@ -280,7 +293,8 @@ end
 function Inventory.placeBest(data: Data): boolean
 	type Item = { entry: Entry, display: number?, position: number?, income: number }
 	local pool: { Item } = {}
-	for display = 1, data.displays do
+	local capacity = Inventory.capacity(data)
+	for display = 1, capacity do
 		local entry = data.base[display]
 		if entry then
 			table.insert(pool, { entry = entry, display = display, income = Collection.income(entry) })
@@ -300,7 +314,7 @@ function Inventory.placeBest(data: Data): boolean
 	end)
 	local keep: { [number]: boolean } = {} -- présentoirs dont le mannequin reste
 	local incoming: { Item } = {} -- mannequins du stock à poser
-	for rank = 1, math.min(data.displays, #pool) do
+	for rank = 1, math.min(capacity, #pool) do
 		local item = pool[rank]
 		if item.display then
 			keep[item.display] = true
@@ -313,7 +327,7 @@ function Inventory.placeBest(data: Data): boolean
 	end
 	-- Les posés écartés retournent au stock ; les nouveaux quittent le stock (positions décroissantes)
 	local leaving: { Entry } = {}
-	for display = 1, data.displays do
+	for display = 1, capacity do
 		if data.base[display] and not keep[display] then
 			table.insert(leaving, data.base[display] :: Entry)
 			data.base[display] = false
@@ -330,7 +344,7 @@ function Inventory.placeBest(data: Data): boolean
 		table.remove(data.stock, position)
 	end
 	local nextItem = 1
-	for display = 1, data.displays do
+	for display = 1, capacity do
 		if not data.base[display] and incoming[nextItem] then
 			data.base[display] = incoming[nextItem].entry
 			nextItem += 1
@@ -392,7 +406,7 @@ end
 
 -- Cette méthode permet de calculer le revenu ($/s) des présentoirs achetés lorsque la base change.
 function Inventory.income(data: Data): number
-	return Collection.baseIncome(data.base, data.displays)
+	return Collection.baseIncome(data.base, Inventory.capacity(data))
 end
 
 -- Cette méthode permet de donner les lignes de la fenêtre d'inventaire lorsque le stock ou la base changent : les
@@ -466,8 +480,8 @@ end
 -- Cette méthode permet d'encoder les présentoirs (une clé ou rien par présentoir, dans l'ordre) lorsque le serveur
 -- publie la base dans un attribut du joueur.
 function Inventory.encodeBase(base: { [number]: Entry | false }): string
-	local parts = table.create(CourseLayout.DISPLAY_MAX)
-	for display = 1, CourseLayout.DISPLAY_MAX do
+	local parts = table.create(CourseLayout.DISPLAY_ROOM)
+	for display = 1, CourseLayout.DISPLAY_ROOM do
 		local entry = base[display]
 		table.insert(parts, if entry then Inventory.key(entry) else "")
 	end
@@ -477,7 +491,7 @@ end
 -- Cette méthode permet de relire les présentoirs encodés (false = vide) lorsque le client lit la base.
 function Inventory.decodeBase(text: any): { [number]: Entry | false }
 	local base: { [number]: Entry | false } = {}
-	for display = 1, CourseLayout.DISPLAY_MAX do
+	for display = 1, CourseLayout.DISPLAY_ROOM do
 		base[display] = false
 	end
 	if type(text) ~= "string" then
@@ -486,7 +500,7 @@ function Inventory.decodeBase(text: any): { [number]: Entry | false }
 	local display = 0
 	for key in string.gmatch(text .. ",", "([^,]*),") do
 		display += 1
-		if display > CourseLayout.DISPLAY_MAX then
+		if display > CourseLayout.DISPLAY_ROOM then
 			break
 		end
 		base[display] = Inventory.parseKey(key) or false

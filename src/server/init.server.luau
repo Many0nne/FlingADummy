@@ -1,5 +1,5 @@
 -- Amorçage du serveur : groupes de collision, gabarits maillés du mannequin, décor (et cibles des objectifs), remotes,
--- données joueur, places du lobby, bases (collection et revenu), entraînement, lancers, renaissance et tableaux de
+-- données joueur, boutique Robux, places du lobby, bases (collection et revenu), entraînement, lancers, renaissance et tableaux de
 -- scores ; en Studio, attributs de test et scène des planches de référence.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -17,6 +17,7 @@ local LeaderboardService = require(script.LeaderboardService)
 local PhotoStudio = require(script.PhotoStudio)
 local PlayerData = require(script.PlayerData)
 local SlotService = require(script.SlotService)
+local StoreService = require(script.StoreService)
 local TrainingService = require(script.TrainingService)
 
 Workspace.Gravity = GameConfig.GRAVITY
@@ -25,6 +26,7 @@ task.spawn(DummyAssets.init)
 local course = CourseBuilder.build()
 local remotes = Remotes.create()
 PlayerData.init()
+StoreService.init(remotes.Store)
 SlotService.init(course.slots)
 TrainingService.init(course.slots, remotes.StopTraining, remotes.TrainingBoost)
 BaseService.init(course.slots, remotes.PlaceDummy, remotes.Inventory)

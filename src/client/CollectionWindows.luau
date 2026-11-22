@@ -98,7 +98,9 @@ local knownDisplays: number? = nil
 local function state(): Inventory.Data
 	return {
 		base = Inventory.decodeBase(player:GetAttribute("BaseDummies")),
+		-- Attribut Displays : présentoirs utilisables, Big Base compris (#160) : pas de bonus à ajouter
 		displays = (player:GetAttribute("Displays") :: number?) or GameConfig.DISPLAY_START,
+		bonus = 0,
 		stock = Inventory.decodeList(player:GetAttribute("Stock")),
 		index = Inventory.decodeIndex(player:GetAttribute("DummyIndex")),
 		last = nil,

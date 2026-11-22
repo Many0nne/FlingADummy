@@ -6,6 +6,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local DummyFamilies = require(Shared:WaitForChild("DummyFamilies"))
 local DummyModels = require(Shared:WaitForChild("DummyModels"))
 local DummyShape = require(Shared:WaitForChild("DummyShape"))
+local Store = require(Shared:WaitForChild("Store"))
 local Tutorial = require(Shared:WaitForChild("Tutorial"))
 
 local ThrowDummies = {}
@@ -411,9 +412,53 @@ do
 	end
 end
 
--- Cette méthode permet de donner le mannequin `index` du catalogue (borné) lorsque l'on lance, affiche ou valide.
+-- Rainbow Dummy (passe de la boutique Robux, #160 ; « Rainbow Seed » de 09) : hors du catalogue séquentiel (ni acheté
+-- avec l'argent du jeu ni compté dans ThrowTier), équipé sous l'indice RAINBOW. Comportement et physique du Crash Dummy,
+-- pièces aux couleurs de l'arc-en-ciel ; sa chance dépend du meilleur mannequin possédé (ThrowDummies.luckOf).
+ThrowDummies.RAINBOW = #ThrowDummies.LIST + 1
+local RAINBOW_COLORS = {
+	Head = rgb(255, 70, 70),
+	Torso = rgb(255, 150, 40),
+	LeftUpperArm = rgb(255, 230, 50),
+	RightUpperArm = rgb(255, 230, 50),
+	LeftLowerArm = rgb(80, 220, 90),
+	RightLowerArm = rgb(80, 220, 90),
+	LeftUpperLeg = rgb(60, 160, 255),
+	RightUpperLeg = rgb(60, 160, 255),
+	LeftLowerLeg = rgb(170, 90, 255),
+	RightLowerLeg = rgb(170, 90, 255),
+}
+do
+	local rainbow = table.clone(ThrowDummies.LIST[1])
+	rainbow.id = "rainbow"
+	rainbow.name = "Rainbow Dummy"
+	rainbow.cost = 0
+	rainbow.luck = Store.RAINBOW_MIN
+	rainbow.behavior = "1.5x your best"
+	rainbow.color = RAINBOW_COLORS.Torso
+	rainbow.material = Enum.Material.SmoothPlastic
+	rainbow.pieceColors = RAINBOW_COLORS
+	rainbow.ornaments = ornaments(1, rgb(255, 255, 255))
+	rainbow.card = rgb(255, 170, 230)
+	ThrowDummies.RAINBOW_DUMMY = rainbow
+end
+
+-- Cette méthode permet de donner le mannequin `index` du catalogue (borné ; RAINBOW : le Rainbow Dummy) lorsque l'on
+-- lance, affiche ou valide.
 function ThrowDummies.get(index: number): Dummy
+	if index == ThrowDummies.RAINBOW then
+		return ThrowDummies.RAINBOW_DUMMY
+	end
 	return ThrowDummies.LIST[math.clamp(math.floor(index), 1, #ThrowDummies.LIST)]
+end
+
+-- Cette méthode permet de donner la chance du mannequin `index` pour un joueur qui possède les `owned` premiers
+-- (Rainbow Dummy : 1,5 × le meilleur possédé, 15x au moins) lorsque un lancer part ou qu'une carte l'affiche.
+function ThrowDummies.luckOf(index: number, owned: number): number
+	if index == ThrowDummies.RAINBOW then
+		return Store.rainbowLuck(ThrowDummies.get(owned).luck)
+	end
+	return ThrowDummies.get(index).luck
 end
 
 -- Cette méthode permet de savoir si `value` désigne un mannequin du catalogue (entier dans la liste) lorsque le serveur
@@ -435,21 +480,36 @@ function ThrowDummies.canBuy(owned: number, index: any, money: number): boolean
 	return ThrowDummies.isIndex(index) and index == owned + 1 and money >= ThrowDummies.LIST[index].cost
 end
 
--- Cette méthode permet de savoir si le joueur (`owned` mannequins) peut équiper le mannequin `index` lorsqu'il clique
--- EQUIP : seulement un mannequin possédé.
-function ThrowDummies.canEquip(owned: number, index: any): boolean
+-- Cette méthode permet de savoir si le joueur (`owned` mannequins, `rainbow` : passe Rainbow Dummy) peut équiper le
+-- mannequin `index` lorsqu'il clique EQUIP : seulement un mannequin possédé.
+function ThrowDummies.canEquip(owned: number, index: any, rainbow: boolean?): boolean
+	if index == ThrowDummies.RAINBOW then
+		return rainbow == true
+	end
 	return ThrowDummies.isIndex(index) and index <= owned
 end
 
 export type Purchase = { owned: number, equipped: number, cost: number }
 
 -- Cette méthode permet d'appliquer une demande de la boutique (`action` = "Buy" : le suivant seulement, avec l'argent,
--- aussitôt équipé ; "Equip" : un mannequin possédé, autre que l'équipé) lorsque le serveur la reçoit ; renvoie le
--- nouvel état et la dépense, ou nil si la demande est refusée.
-function ThrowDummies.act(owned: number, equipped: number, money: number, action: any, index: any): Purchase?
+-- aussitôt équipé sauf Rainbow Dummy équipé ; "Equip" : un mannequin possédé, ou le Rainbow Dummy avec son passe
+-- `rainbow`, autre que l'équipé) lorsque le serveur la reçoit ; renvoie le nouvel état et la dépense, ou nil si refusée.
+function ThrowDummies.act(
+	owned: number,
+	equipped: number,
+	money: number,
+	action: any,
+	index: any,
+	rainbow: boolean?
+): Purchase?
 	if action == "Buy" and ThrowDummies.canBuy(owned, index, money) then
-		return { owned = index, equipped = index, cost = ThrowDummies.LIST[index].cost }
-	elseif action == "Equip" and ThrowDummies.canEquip(owned, index) and index ~= equipped then
+		-- Le Rainbow Dummy équipé le reste : un achat ne le remplace pas
+		return {
+			owned = index,
+			equipped = if equipped == ThrowDummies.RAINBOW then equipped else index,
+			cost = ThrowDummies.LIST[index].cost,
+		}
+	elseif action == "Equip" and ThrowDummies.canEquip(owned, index, rainbow) and index ~= equipped then
 		return { owned = owned, equipped = index, cost = 0 }
 	end
 	return nil
@@ -475,11 +535,14 @@ function ThrowDummies.cardState(owned: number, equipped: number, index: number):
 end
 
 -- Cette méthode permet de lire un niveau sauvegardé ou répliqué (nombre possédé, mannequin équipé) lorsque l'on
--- charge les données : entier dans le catalogue, `owned` au plus pour l'équipé ; 1 sinon.
+-- charge les données : entier dans le catalogue, `owned` au plus pour l'équipé (ou RAINBOW) ; 1 sinon.
 function ThrowDummies.sanitize(owned: any, equipped: any): (number, number)
 	local count = if typeof(owned) == "number" and owned == owned
 		then math.clamp(math.floor(owned), 1, #ThrowDummies.LIST)
 		else 1
+	if equipped == ThrowDummies.RAINBOW then
+		return count, equipped -- le passe est vérifié à l'équipement et au chargement (Server.PlayerData)
+	end
 	local current = if typeof(equipped) == "number" and equipped == equipped
 		then math.clamp(math.floor(equipped), 1, count)
 		else 1

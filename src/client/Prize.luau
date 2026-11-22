@@ -1043,6 +1043,7 @@ local function refreshPanel()
 		and Inventory.autoTarget({
 			base = Inventory.decodeBase(player:GetAttribute("BaseDummies")),
 			displays = (player:GetAttribute("Displays") :: number?) or 0,
+			bonus = 0, -- Displays compte déjà les présentoirs de Big Base
 			stock = {},
 			index = {},
 		}, candidate)
