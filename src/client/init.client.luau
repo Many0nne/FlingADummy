@@ -18,6 +18,7 @@ local Hud = require(script.Hud)
 local HubShops = require(script.HubShops)
 local Music = require(script.Music)
 local Objective = require(script.Objective)
+local PhotoCamera = require(script.PhotoCamera)
 local Prize = require(script.Prize)
 local ThrowCinematic = require(script.ThrowCinematic)
 local ThrowController = require(script.ThrowController)
@@ -58,6 +59,10 @@ FlightCamera.init(player)
 Effects.init(player, remotes.Impact)
 TrapMotion.init()
 ZoneSky.init()
+-- Studio : cadrage des prises de vue des planches de référence (#121, attribut PhotoShot de Workspace)
+if RunService:IsStudio() then
+	PhotoCamera.init()
+end
 Music.init(player, remotes)
 UserInputService.JumpRequest:Connect(stopTraining)
 
