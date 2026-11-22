@@ -1,10 +1,11 @@
 -- Boutique Robux (#160), calée sur la « Boutique » de Throw a Seed (09) : bandeau rose à icône cadeau, une seule liste
 -- qui défile (Packs, Passes, Boosts, Cash), chaque section titrée avec sa pastille (« Yours forever »), cartes à
--- vignette colorée (icône dessinée, emoji de repli), nom, effet et bouton violet au prix en Robux ; colonne d'onglets à droite qui font défiler
--- jusqu'à leur section (ancres). Pack de démarrage à compte à rebours, passes possédés (OWNED), boosts en cours (minuteur
--- sur la vignette), montant de l'argent rapide au revenu du moment. Achat : invite Roblox (identifiant créé) ; article
--- pas encore créé sur l'expérience (identifiant 0) : simulé par le serveur en Studio, bouton inerte ailleurs. Popups
--- d'achat attribué et de chance du serveur ; minuteurs des boosts dans le HUD (badges calés sur la bannière CHANCE).
+-- vignette colorée (icône dessinée, emoji de repli), nom, effet et bouton violet au prix en Robux ; colonne d'onglets à
+-- droite qui font défiler jusqu'à leur section (ancres). Pack de démarrage à compte à rebours, passes possédés (OWNED),
+-- boosts en cours (minuteur sur la vignette), montant de l'argent rapide au revenu du moment. Achat : invite Roblox
+-- (identifiant créé) ; article pas encore créé sur l'expérience (identifiant 0) : simulé par le serveur en Studio,
+-- bouton inerte ailleurs. Popups d'achat attribué et de chance du serveur ; minuteurs des boosts dans le HUD (badges
+-- calés sur la bannière CHANCE).
 local MarketplaceService = game:GetService("MarketplaceService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")

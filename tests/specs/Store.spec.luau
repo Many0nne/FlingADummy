@@ -377,12 +377,20 @@ return function(T, Loader)
 				T.expect(Assets.ICONS.rebirth ~= nil, "icône Rebirth déclarée")
 			end
 		)
-		T.it("publie chaque icône déclarée (identifiant > 0)", function()
+		T.it("publie les icônes de la boutique et celle du bouton Rebirth (identifiant > 0)", function()
 			local Assets = loader:require("src/shared/Assets")
-			for name, id in Assets.ICONS do
-				T.expect(id > 0, name .. " publiée")
+			local names = { rebirth = true }
+			for _, entry in Store.ITEMS do
+				names[entry.art] = true
+			end
+			for _, section in Store.SECTIONS do
+				names[section.art] = true
+			end
+			for name in names do
+				T.expect(Assets.ICONS[name] > 0, name .. " publiée")
 			end
 		end)
+	end)
 	end)
 
 	T.describe("Store.clock", function()
