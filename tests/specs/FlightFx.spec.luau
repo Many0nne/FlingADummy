@@ -38,6 +38,7 @@ return function(T, Loader)
 		glideOn: number?, -- temps où la glisse commence
 		glideStarts: number, -- souffles joués
 		glideFrames: number,
+		lastGlide: number?, -- dernier instant de glisse
 		bounces: { number }, -- temps de chaque « boing »
 		ranks: { number }, -- rang de chaque « boing »
 	}
@@ -60,6 +61,7 @@ return function(T, Loader)
 			glideOn = nil,
 			glideStarts = 0,
 			glideFrames = 0,
+			lastGlide = nil,
 			bounces = {},
 			ranks = {},
 		}
@@ -80,6 +82,7 @@ return function(T, Loader)
 			end
 			if frame.gliding then
 				run.glideFrames += 1
+				run.lastGlide = t
 			end
 			if frame.bounce then
 				table.insert(run.bounces, t)
@@ -247,6 +250,41 @@ return function(T, Loader)
 			-- Glisse seulement pendant la descente : pas au-delà de l'atterrissage
 			T.expect(run.glideFrames * DT <= landing - (run.glideOn :: number) + DT, "pas de glisse après le plancher")
 		end)
+
+		T.it(
+			"ne rallume pas les traînées après une pose sur un obstacle haut (Studio : y = 8, puis chute de y = 11)",
+			function()
+				local glider = dummyOf("Glides")
+				local v = launchVelocity(22e6)
+				local cues = FlightFx.cues(ORIGIN, v, G, glider)
+				local path = FlightGhost.path(ORIGIN, v, G, glider, 20)
+				local duration = FlightGhost.duration(path)
+				local landing = duration
+				for i, p in path.positions do
+					if p.Y <= 8 and i * path.dt > 1 then -- dans la descente, pas au départ (main à 5,3 studs)
+						landing = (i - 1) * path.dt
+						break
+					end
+				end
+				local stop = FlightGhost.sample(path, landing)
+				-- Posé 0,3 s sur un obstacle à 8 studs, puis saut à 11 studs et chute jusqu'au sol
+				local run = replay(cues, v, function(t)
+					if t <= landing then
+						return (FlightGhost.sample(path, t))
+					end
+					local dt = t - landing
+					if dt < 0.3 then
+						return Vector3.new(stop.X, 8, stop.Z + 40 * dt)
+					end
+					local jump = dt - 0.3
+					local height = 8 + 26 * jump - G * jump * jump / 2
+					return Vector3.new(stop.X, math.max(height, 1), stop.Z + 40 * dt)
+				end, landing + 1.5)
+				T.expectEqual(run.glideStarts, 1)
+				-- Arrêt de la glisse sur l'obstacle le temps que la vitesse lissée retombe, puis plus jamais
+				T.expect((run.lastGlide :: number) <= landing + 0.3, "pas de glisse après la pose")
+			end
+		)
 	end)
 
 	T.describe("FlightFx.step : Rubber", function()

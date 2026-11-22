@@ -577,8 +577,9 @@ sien et ceux des voisins) :
   du plan où la poussée finit (au plus 0,6 s après sa fin prévue : un piège peut la dévier). Mesuré en Studio à
   22 M : flamme éteinte à 2,10-2,14 s pour 2 s de poussée, à 1 303-1 310 studs affichés pour 1 301 prévus.
 - **Glider** : deux traînées d'air blanches au bout des bras pendant la descente planée (torse qui descend à plus de
-  8 studs/s, au-dessus de 6 studs), souffle léger au début ; finie au premier contact ou au plancher des traînées (les
-  sauts contre les obstacles qui suivent n'en rallument pas). Mesuré : de 5,1 s (au plafond) à 7,4 s (y = 7) à 22 M.
+  8 studs/s, au-dessus de 6 studs), souffle léger au début ; une seule descente planée par vol, finie quand elle
+  s'arrête (sol, dessus d'un obstacle) : les sauts contre les obstacles qui suivent n'en rallument pas. Mesuré à 22 M
+  (5 vols, lanceur et autres joueurs) : de 5,1 s (au plafond) à 7,4-7,5 s (y = 4 à 9), une seule plage par vol.
 - **Rubber** : à chaque rebond réglé, « boing » de plus en plus aigu (× 1 ; 1,15 ; 1,3 ; 1,45), anneau de poussière
   à plat sur le sol, bouffée de poussière en étoile et étoiles jaunes, de plus en plus petits. Le serveur compte les
   rebonds (attribut `Bounces`) ; le client joue le k-ième quand le torse affiché repart du sol, apparié au compteur
@@ -594,7 +595,7 @@ sien et ceux des voisins) :
 - **Lisibilité** : flamme et fumée collées au mannequin (quelques studs), traînées de 0,3 s, éclats du rebond de moins
   d'une seconde au point de contact : rien devant les obstacles pour la caméra de vol (captures :
   `docs/captures/effets-vol-138/`). Distances inchangées (effets visuels seulement ; Studio, 22 M : Crash 3 590-3 605 m,
-  Rubber 4 163-4 326 m, Glider 4 248-4 389 m, Rocket 4 268-4 384 m, dans la dispersion de #130).
+  Rubber 4 084-4 326 m, Glider 4 248-4 553 m, Rocket 4 268-4 509 m, dans la dispersion de #130).
 - **Mouvement réduit** : débits et éclats à 40 %, pas d'anneau qui s'étend.
 
 ### Renaissance (#108, `Shared.Rebirth`)
