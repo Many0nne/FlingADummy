@@ -986,7 +986,7 @@ Interface : section suivante.
   (0,4 s) de latence, le reste est un maintien à la main. Caméra de vol, coup de champ de vision, souffle et effets
   du vol (#138) partent avec le décoratif. Lancer refusé (remote `LaunchRefused`, envoyé par le serveur à
   chaque Launch qui ne lance rien ; filet : aucun départ 2 s après le lâcher) : le décoratif s'efface en 0,15 s, un
-  aller-retour après le lâcher, et la caméra revient sur l'avatar ; le souffle et le coup de champ de vision du lâcher
+  aller-retour après le lâcher (mesuré : 0,35 s à 150 ms), et la caméra revient sur l'avatar ; le souffle et le coup de champ de vision du lâcher
   ont déjà été joués (le geste a bien eu lieu). Relais impossible (torse du serveur pas arrivé 2 s après le lâcher) : la
   copie répliquée est montrée telle quelle, effets repris. Studio : `DebugNoAnticipate` (attribut de Workspace, true) garde l'ancien
   départ (décoratif figé jusqu'à la réponse du serveur), pour comparer.
