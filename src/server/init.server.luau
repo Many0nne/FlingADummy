@@ -72,6 +72,7 @@ if RunService:IsStudio() then
 			if player:GetAttribute("DebugWipe") == true then
 				player:SetAttribute("DebugWipe", nil)
 				TrainingService.stop(player)
+				TrainingService.resetBoost(player) -- calendrier du bouton « 2x TRAINING! » d'un nouveau joueur
 				PlayerData.wipe(player)
 			end
 		end)

@@ -39,6 +39,7 @@ local hooks: Hooks
 local holder: Frame -- bouton, anneau et bandeau
 local disc: TextButton
 local halves: { UIGradient } = {} -- moitiés droite puis gauche de l'anneau
+local ringTweens: { Tween } = {} -- tweens de l'anneau en cours
 local offerId: number? = nil -- apparition affichée (nil : bouton caché)
 local offerToken = 0 -- invalide la disparition programmée d'une apparition remplacée ou cliquée
 local pill: Frame -- barre de durée du bonus
@@ -188,11 +189,21 @@ local function buildPill(trainBar: Frame)
 	})
 end
 
+-- Cette méthode permet d'arrêter les tweens de l'anneau en cours lorsque le bouton se cache ou qu'un autre apparaît
+-- (sinon un tween de l'apparition précédente viderait le nouvel anneau trop tôt).
+local function stopRing()
+	for _, tween in ringTweens do
+		tween:Cancel()
+	end
+	table.clear(ringTweens)
+end
+
 -- Cette méthode permet de cacher le bouton (rétréci, sauf en mouvement réduit) lorsque l'apparition est cliquée,
 -- ratée ou annulée.
 local function hideButton()
 	offerId = nil
 	offerToken += 1
+	stopRing()
 	if not holder.Visible then
 		return
 	end
@@ -215,12 +226,18 @@ local function drainRing(token: number, left: number)
 	local total = GameConfig.BOOST_OFFER_TIME
 	local elapsed = math.clamp(1 - left / total, 0, 1) -- part du tour déjà écoulée (annonce arrivée en retard)
 	local right, leftHalf = halves[1], halves[2]
+	stopRing()
 	-- Cette méthode permet de vider la moitié gauche (rotation 0 → 180) depuis la part `from` du tour lorsque la
 	-- moitié droite est vide.
 	local function drainLeft(from: number)
 		leftHalf.Rotation = (from - 0.5) * 360
-		TweenService:Create(leftHalf, TweenInfo.new((1 - from) * total, Enum.EasingStyle.Linear), { Rotation = 180 })
-			:Play()
+		local tween = TweenService:Create(
+			leftHalf,
+			TweenInfo.new((1 - from) * total, Enum.EasingStyle.Linear),
+			{ Rotation = 180 }
+		)
+		table.insert(ringTweens, tween)
+		tween:Play()
 	end
 	if elapsed >= 0.5 then
 		right.Rotation = 360
@@ -231,11 +248,12 @@ local function drainRing(token: number, left: number)
 	local first = TweenService:Create(right, TweenInfo.new((0.5 - elapsed) * total, Enum.EasingStyle.Linear), {
 		Rotation = 360,
 	})
-	first.Completed:Once(function()
-		if token == offerToken then
+	first.Completed:Once(function(state)
+		if token == offerToken and state == Enum.PlaybackState.Completed then
 			drainLeft(0.5)
 		end
 	end)
+	table.insert(ringTweens, first)
 	first:Play()
 end
 
@@ -393,11 +411,8 @@ function BoostButton.init(localPlayer: Player, boostRemote: RemoteEvent, gui: Sc
 			hideButton()
 		end
 	end)
+	-- Avatar réapparu : la séance s'arrête, donc le bonus aussi (attribut retiré par le serveur), rien à rhabiller
 	player:GetAttributeChangedSignal("TrainBoostEnds"):Connect(onBoostChanged)
-	-- Avatar réapparu pendant un bonus (rare : la séance s'arrête) : contour remis ou retiré selon l'attribut
-	player.CharacterAdded:Connect(function()
-		dressAvatar(shownEnds ~= nil)
-	end)
 	onBoostChanged()
 end
 

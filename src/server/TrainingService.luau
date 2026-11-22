@@ -97,6 +97,12 @@ function TrainingService.stop(player: Player)
 	end
 end
 
+-- Cette méthode permet de remettre le calendrier du bouton « 2x TRAINING! » d'un joueur à celui d'un nouveau joueur
+-- lorsque sa progression est effacée (DebugWipe, Studio) ; à appeler hors séance.
+function TrainingService.resetBoost(player: Player)
+	boosts[player] = nil
+end
+
 -- Cette méthode permet de démarrer l'entraînement lorsque le joueur active l'invite de SON appareil et que son lancer
 -- précédent est fini.
 function TrainingService.start(player: Player)
