@@ -269,6 +269,72 @@ return function(T, Loader)
 			T.expectEqual(Store.STARTER.boosts.Money, 900)
 			T.expect(Store.STARTER.minutes > 0, "argent")
 		end)
+		T.it(
+			"deux reçus d'identifiants différents : pack attribué une fois, le second donne l'article de même prix",
+			function()
+				local state = Store.new()
+				local pack = Store.get("StarterPack") :: any
+				local given = {}
+				-- Cette méthode permet de rejouer l'attribution du serveur (état, puis argent) lorsque un reçu arrive.
+				local function grant()
+					local granted, minutes = Store.applyProduct(state, pack)
+					table.insert(given, { id = granted and granted.id, minutes = minutes })
+					return granted ~= nil
+				end
+				T.expect(Store.applyReceipt(state, "r1", grant), "premier reçu attribué")
+				T.expect(Store.applyReceipt(state, "r2", grant), "second reçu traité (pas de NotProcessedYet)")
+				T.expect(Store.applyReceipt(state, "r2", grant), "rejeu du second : déjà attribué")
+				T.expectEqual(#given, 2)
+				T.expectEqual(given[1].id, "StarterPack")
+				T.expectEqual(given[1].minutes, Store.STARTER.minutes)
+				local replacement = Store.get(Store.STARTER_REPLACEMENT) :: any
+				T.expectEqual(given[2].id, replacement.id)
+				T.expectEqual(given[2].minutes, replacement.minutes)
+				T.expectEqual(replacement.price, pack.price)
+				-- Contenu du pack (lancers, boosts) donné une seule fois
+				T.expectEqual(state.lucky, Store.STARTER.throws)
+				T.expectEqual(state.boosts.Luck2, Store.STARTER.boosts.Luck2)
+				T.expectEqual(state.boosts.Money, Store.STARTER.boosts.Money)
+				T.expect(state.starter, "pack noté acheté")
+			end
+		)
+		T.it("applyProduct : effets des autres produits inchangés, passes refusés", function()
+			local state = Store.new()
+			local potion, minutes = Store.applyProduct(state, Store.get("LuckPotion") :: any)
+			T.expectEqual((potion :: any).id, "LuckPotion")
+			T.expectEqual(minutes, nil)
+			T.expectEqual(state.boosts.Luck2, 900)
+			Store.applyProduct(state, Store.get("LuckyThrow5") :: any)
+			T.expectEqual(state.lucky, 5)
+			local cash, cashMinutes = Store.applyProduct(state, Store.get("CashLarge") :: any)
+			T.expectEqual((cash :: any).id, "CashLarge")
+			T.expectEqual(cashMinutes, 720)
+			local luck = Store.applyProduct(state, Store.get("ServerLuck") :: any)
+			T.expectEqual((luck :: any).id, "ServerLuck")
+			T.expectEqual(Store.applyProduct(state, Store.get("VIP") :: any), nil)
+		end)
+		T.it(
+			"canPrompt : invite du pack seulement pendant l'offre, une à la fois, plus après un achat confirmé",
+			function()
+				local state = Store.new()
+				local pack = Store.get("StarterPack") :: any
+				T.expect(Store.promptedByServer(pack), "invite ouverte par le serveur")
+				T.expect(
+					not Store.promptedByServer(Store.get("CashSmall") :: any),
+					"autres produits : invite du client"
+				)
+				T.expect(Store.canPrompt(state, pack, nil), "offre en cours")
+				T.expect(not Store.canPrompt(state, pack, 2), "invite déjà ouverte (double clic)")
+				T.expect(Store.canPrompt(state, pack, Store.PROMPT_TIMEOUT), "invite perdue : rouverte")
+				T.expect(not Store.canPrompt(state, pack, Store.PROMPT_TIMEOUT, true), "achat confirmé, reçu attendu")
+				state.starter = true
+				T.expect(not Store.canPrompt(state, pack, nil), "déjà acheté")
+				state.starter = false
+				Store.tick(state, Store.STARTER_WINDOW)
+				T.expect(not Store.canPrompt(state, pack, nil), "offre passée")
+				T.expect(not Store.canPrompt(state, Store.get("VIP") :: any, nil), "passe : pas un produit")
+			end
+		)
 	end)
 
 	T.describe("Rainbow Dummy", function()

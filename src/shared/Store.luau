@@ -59,6 +59,10 @@ Store.STARTER = {
 	boosts = { Luck2 = 15 * 60, Money = 15 * 60 },
 	minutes = 120, -- deux heures de revenu
 }
+-- Pack de démarrage déjà acheté (reçu en double : deux invites, deux serveurs) : article au même prix attribué à la
+-- place, pour que le joueur ne perde rien sans recevoir le pack deux fois (#176)
+Store.STARTER_REPLACEMENT = "CashMedium"
+Store.PROMPT_TIMEOUT = 60 -- s : invite du pack de démarrage tenue pour ouverte (une seule à la fois)
 
 Store.RECEIPT_KEEP = 50 -- derniers reçus attribués gardés dans la sauvegarde (rejeu d'un reçu par Roblox)
 
@@ -131,6 +135,10 @@ for _, item in Store.ITEMS do
 	assert(not byId[item.id], "Store : identifiant en double " .. item.id)
 	byId[item.id] = item
 end
+assert(
+	byId[Store.STARTER_REPLACEMENT] and byId[Store.STARTER_REPLACEMENT].minutes,
+	"Store : remplacement du pack de démarrage"
+)
 
 -- Cette méthode permet de donner un article du catalogue par son identifiant lorsque le serveur l'attribue ou que la
 -- fenêtre l'affiche ; nil s'il n'existe pas.
@@ -399,6 +407,56 @@ function Store.starterLeft(state: State): number?
 	end
 	local left = Store.STARTER_WINDOW - state.played
 	return if left > 0 then left else nil
+end
+
+-- Cette méthode permet de savoir si l'invite d'achat d'un article passe par le serveur (offre unique revérifiée avant
+-- de l'ouvrir) lorsque le joueur clique sur son prix.
+function Store.promptedByServer(item: Item): boolean
+	return item.id == "StarterPack"
+end
+
+-- Cette méthode permet de savoir si l'invite d'achat d'un produit peut s'ouvrir (pack de démarrage : offre en cours,
+-- pas d'invite déjà ouverte ni d'achat confirmé en attente de son reçu) lorsque le serveur reçoit le clic du joueur ;
+-- `since` : secondes depuis l'ouverture de l'invite précédente (nil sans invite), `bought` : achat confirmé.
+function Store.canPrompt(state: State, item: Item, since: number?, bought: boolean?): boolean
+	if item.kind ~= "Product" then
+		return false
+	end
+	if item.id ~= "StarterPack" then
+		return true
+	end
+	return Store.starterLeft(state) ~= nil and not bought and (since == nil or since >= Store.PROMPT_TIMEOUT)
+end
+
+-- Cette méthode permet d'appliquer à l'état d'achat un produit acheté (pack de démarrage, boost, lancers chanceux ;
+-- pack déjà acheté remplacé par STARTER_REPLACEMENT) lorsque son reçu est attribué pour la première fois ; renvoie
+-- l'article attribué et les minutes d'argent rapide à donner, nil si le produit n'a pas d'effet connu.
+function Store.applyProduct(state: State, item: Item): (Item?, number?)
+	if item.kind ~= "Product" then
+		return nil
+	end
+	if item.id == "StarterPack" then
+		if state.starter then
+			return Store.applyProduct(state, byId[Store.STARTER_REPLACEMENT])
+		end
+		state.starter = true
+		state.lucky = math.min(state.lucky + Store.STARTER.throws, Store.LUCKY_MAX)
+		for kind, seconds in Store.STARTER.boosts do
+			Store.addBoost(state, kind, seconds)
+		end
+		return item, Store.STARTER.minutes
+	elseif item.id == "ServerLuck" then
+		return item -- chance de tout le serveur : appliquée par le serveur, rien dans l'état du joueur
+	elseif item.boost then
+		Store.addBoost(state, item.boost, item.seconds or 0)
+		return item
+	elseif item.throws then
+		state.lucky = math.min(state.lucky + item.throws, Store.LUCKY_MAX)
+		return item
+	elseif item.minutes then
+		return item, item.minutes
+	end
+	return nil
 end
 
 -- Cette méthode permet de donner la chance du Rainbow Dummy (1,5 × la chance `best` du meilleur mannequin possédé,
