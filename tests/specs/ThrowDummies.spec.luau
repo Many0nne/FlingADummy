@@ -21,17 +21,17 @@ return function(T, Loader)
 			end
 			T.expect(LIST[#LIST].luck >= 100 and LIST[#LIST].luck <= 150, "dernier : " .. LIST[#LIST].luck)
 		end)
-		T.it("mannequins dessinés : prix calés sur les graines de 09, ×10 à ×25 entre deux", function()
-			for i = 3, ThrowDummies.SHOWCASE do
-				local ratio = LIST[i].cost / LIST[i - 1].cost
-				T.expect(ratio >= 10 and ratio <= 25, "rapport " .. i .. " : " .. ratio)
-			end
+		T.it("deuxième mannequin comme la graine 1.25x de 09 ($1.2K) : entre $1K et $2K", function()
+			T.expectEqual(LIST[2].luck, 1.25)
+			T.expect(LIST[2].cost >= 1000 and LIST[2].cost <= 2000, "prix " .. LIST[2].cost)
 		end)
-		T.it("suite générée : prix de Rocket × (chance / 3) ^ PRICE_EXPONENT, arrondi à 2 chiffres", function()
-			local rocket = LIST[ThrowDummies.SHOWCASE]
-			for i = ThrowDummies.SHOWCASE + 1, #LIST do
-				local expected = rocket.cost * (LIST[i].luck / rocket.luck) ^ ThrowDummies.PRICE_EXPONENT
-				T.expect(math.abs(LIST[i].cost / expected - 1) < 0.05, LIST[i].id .. " : " .. LIST[i].cost)
+		T.it("suite générée : le prix de sa ligne de EXTENDED, nombre rond (2 chiffres significatifs)", function()
+			for index, spec in ThrowDummies.EXTENDED do
+				local dummy = LIST[ThrowDummies.SHOWCASE + index]
+				T.expectEqual(dummy.cost, spec.cost, dummy.id)
+				T.expectEqual(dummy.luck, spec.luck, dummy.id)
+				local magnitude = 10 ^ (math.floor(math.log10(spec.cost)) - 1)
+				T.expect(spec.cost % magnitude == 0, dummy.id .. " rond : " .. spec.cost)
 			end
 		end)
 		T.it("mannequins dessinés : chacun a un comportement en vol distinct (un seul réglage propre)", function()

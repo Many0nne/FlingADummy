@@ -86,15 +86,21 @@ return function(T, Loader, Lib)
 				T.expectEqual(dummy.name, DummyFamilies.PALETTES[paletteId :: string].name .. " " .. base.name)
 			end
 		end)
-		T.it("au-delà de Secret : cotes dans la plage de la rareté, revenu de la règle (± arrondi)", function()
+		T.it("au-delà de Secret : cotes dans la plage de la rareté", function()
 			for _, dummy in generated() do
 				local range = DummyFamilies.RANGES[dummy.rarity]
 				if range then
 					T.expect(dummy.n >= range[1] * 0.95 and dummy.n <= range[2] * 1.05, dummy.id .. " cote")
-					local rule = DummyFamilies.incomeFor(dummy.n)
-					T.expect(math.abs(dummy.income / rule - 1) < 0.06, dummy.id .. " revenu " .. dummy.income)
 				end
 			end
+		end)
+		T.it("bandIncome : du bas au haut de la plage de revenu de la rareté, géométrique, arrondi", function()
+			local band = Rarity.get(5).income
+			T.expectEqual(DummyFamilies.bandIncome(5, 1, 6), band[1])
+			T.expectEqual(DummyFamilies.bandIncome(5, 6, 6), band[2])
+			T.expectEqual(DummyFamilies.bandIncome(5, 1, 1), band[1], "seul de sa rareté")
+			local middle = DummyFamilies.bandIncome(5, 3, 5)
+			T.expect(math.abs(middle / math.sqrt(band[1] * band[2]) - 1) < 0.05, "milieu " .. middle)
 		end)
 		T.it("raretés dessinées : les générés au-dessus des dessinés, sous la rareté suivante", function()
 			local topDrawn = {}

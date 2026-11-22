@@ -124,7 +124,7 @@ local function styleDisplay(slot: Slot, display: number, unlocked: boolean)
 	top:SetAttribute("Locked", if unlocked then nil else true)
 end
 
--- Cette méthode permet d'afficher sur le pad d'achat le présentoir suivant et son prix (« 6 > 7 », « $1K »), ou MAX,
+-- Cette méthode permet d'afficher sur le pad d'achat le présentoir suivant et son prix (« 6 > 7 », « $450K »), ou MAX,
 -- lorsque la base change ; le client n'active l'invite que pour le propriétaire tant que le maximum n'est pas atteint.
 local function stylePad(slot: Slot, displays: number?)
 	local pad = slot.base.pad

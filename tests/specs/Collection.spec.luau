@@ -2,6 +2,7 @@
 return function(T, Loader)
 	local loader = Loader.new()
 	local Collection = loader:require("src/shared/Collection")
+	local DummyFamilies = loader:require("src/shared/DummyFamilies")
 	local GameConfig = loader:require("src/shared/GameConfig")
 	local Rarity = loader:require("src/shared/Rarity")
 
@@ -38,29 +39,32 @@ return function(T, Loader)
 				end
 			end
 		)
-		T.it("sauvegardes : les 21 mannequins dessinés gardent leur identifiant, rareté, revenu et cote", function()
+		T.it(
+			"sauvegardes : les 21 mannequins dessinés gardent leur identifiant, rareté et cote (revenus de #15)",
+			function()
 			-- stylua: ignore
 			local saved = {
 				crash = { 1, 4, 2 }, rookie = { 1, 5, 3 }, traffic = { 1, 6, 5 },
-				mint = { 2, 15, 10 }, biker = { 2, 22, 15 }, nerd = { 2, 30, 25 },
-				ocean = { 3, 70, 60 }, hero = { 3, 100, 100 }, pilot = { 3, 150, 150 },
-				ice = { 4, 400, 500 }, toxic = { 4, 550, 800 }, royal = { 4, 700, 1200 },
-				gold = { 5, 2500, 4000 }, lava = { 5, 3500, 7000 }, diamond = { 5, 5000, 10000 },
-				galaxy = { 6, 20000, 40000 }, ghost = { 6, 30000, 70000 }, neon = { 6, 40000, 100000 },
-				king = { 7, 150000, 500000 }, void = { 7, 200000, 1000000 }, cosmic = { 7, 300000, 2000000 },
+				mint = { 2, 25, 10 }, biker = { 2, 29, 15 }, nerd = { 2, 33, 25 },
+				ocean = { 3, 150, 60 }, hero = { 3, 170, 100 }, pilot = { 3, 200, 150 },
+				ice = { 4, 900, 500 }, toxic = { 4, 1000, 800 }, royal = { 4, 1200, 1200 },
+				gold = { 5, 5500, 4000 }, lava = { 5, 6300, 7000 }, diamond = { 5, 7300, 10000 },
+				galaxy = { 6, 33000, 40000 }, ghost = { 6, 38000, 70000 }, neon = { 6, 44000, 100000 },
+				king = { 7, 200000, 500000 }, void = { 7, 230000, 1000000 }, cosmic = { 7, 260000, 2000000 },
 			}
-			local count = 0
-			for id, values in saved do
-				local dummy = Collection.get(id)
-				T.expect(dummy ~= nil, id .. " toujours au catalogue")
-				T.expectEqual(dummy.rarity, values[1], id .. " rareté")
-				T.expectEqual(dummy.income, values[2], id .. " revenu")
-				T.expectEqual(dummy.n, values[3], id .. " cote")
-				T.expect(Collection.isEntry({ id = id, size = 4 }), id .. " entrée valide")
-				count += 1
+				local count = 0
+				for id, values in saved do
+					local dummy = Collection.get(id)
+					T.expect(dummy ~= nil, id .. " toujours au catalogue")
+					T.expectEqual(dummy.rarity, values[1], id .. " rareté")
+					T.expectEqual(dummy.income, values[2], id .. " revenu")
+					T.expectEqual(dummy.n, values[3], id .. " cote")
+					T.expect(Collection.isEntry({ id = id, size = 4 }), id .. " entrée valide")
+					count += 1
+				end
+				T.expectEqual(count, #Collection.DRAWN)
 			end
-			T.expectEqual(count, #Collection.DRAWN)
-		end)
+		)
 		T.it("identifiants et noms uniques", function()
 			local ids, names = {}, {}
 			for _, dummy in Collection.DUMMIES do
@@ -110,6 +114,37 @@ return function(T, Loader)
 				T.expect(ratio >= 3 and ratio <= 10, string.format("revenu ×%.1f à la rareté %d", ratio, index))
 			end
 		end)
+		T.it(
+			"revenus dans la plage de la rareté, sur la règle des générés (#15 : × 3 au passage de rareté)",
+			function()
+				local byRarity = {}
+				for _, dummy in Collection.DUMMIES do
+					byRarity[dummy.rarity] = byRarity[dummy.rarity] or {}
+					table.insert(byRarity[dummy.rarity], dummy)
+				end
+				for rarity, list in byRarity do
+					local band = Rarity.get(rarity).income
+					for rank, dummy in list do
+						local rule = DummyFamilies.bandIncome(rarity, rank, #list)
+						T.expectEqual(dummy.income, rule, dummy.id .. " revenu de la règle")
+					end
+					T.expectEqual(
+						list[1].income,
+						band[1],
+						Rarity.get(rarity).name .. " : le plus courant au bas de la plage"
+					)
+					T.expectEqual(list[#list].income, band[2], Rarity.get(rarity).name .. " : le plus rare en haut")
+					local nextBand = Rarity.LIST[rarity + 1]
+					if nextBand then
+						local step = nextBand.income[1] / band[2]
+						T.expect(
+							step >= 2.9 and step <= 3.5,
+							string.format("passage %d → %d : ×%.2f", rarity, rarity + 1, step)
+						)
+					end
+				end
+			end
+		)
 		T.it("le premier mannequin est un Common à ≈ 4 $/s", function()
 			local starter = Collection.get(Collection.STARTER)
 			T.expectEqual(starter.rarity, 1)
@@ -174,7 +209,7 @@ return function(T, Loader)
 	T.describe("Collection.income / label", function()
 		T.it("la taille multiplie le revenu et préfixe le nom", function()
 			local huge = { id = "gold", size = 3 }
-			T.expectEqual(Collection.income(huge), 2500 * Collection.SIZES[3].income)
+			T.expectEqual(Collection.income(huge), 5500 * Collection.SIZES[3].income)
 			T.expectEqual(Collection.label(huge), "Huge Gold Dummy")
 			T.expectEqual(Collection.label({ id = "gold", size = 1 }), "Gold Dummy")
 		end)
@@ -220,13 +255,13 @@ return function(T, Loader)
 
 	T.describe("Collection.baseIncome", function()
 		local crash = { id = "crash", size = 1 } -- 4 $/s
-		local mint = { id = "mint", size = 1 } -- 15 $/s
+		local mint = { id = "mint", size = 1 } -- 25 $/s
 		T.it("revenu de la base = somme des présentoirs occupés", function()
-			T.expectEqual(Collection.baseIncome({ mint, false, crash }, 3), 19)
+			T.expectEqual(Collection.baseIncome({ mint, false, crash }, 3), 29)
 			T.expectEqual(Collection.baseIncome({ false, false }, 2), 0)
 			T.expectEqual(
 				Collection.baseIncome({ mint, crash }, 1),
-				15,
+				25,
 				"présentoirs au-delà de la capacité ignorés"
 			)
 		end)

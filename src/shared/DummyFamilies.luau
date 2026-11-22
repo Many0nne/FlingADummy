@@ -8,6 +8,7 @@
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local DummyAura = require(Shared:WaitForChild("DummyAura"))
 local DummyModels = require(Shared:WaitForChild("DummyModels"))
+local Rarity = require(Shared:WaitForChild("Rarity"))
 
 local DummyFamilies = {}
 
@@ -86,12 +87,6 @@ DummyFamilies.RANGES = {
 	[11] = { 5e12, 1e14 },
 } :: { [number]: { number } }
 
--- Revenu ($/s) d'un mannequin de cote `n` au-delà de Secret : depuis le plus rare des dessinés (Cosmic, 300 K à « 1 en
--- 2 M »), × (n / 2 M) ^ 0,45. Les dessinés suivent ≈ n ^ 0,81 ; au-delà, deux décades de cote par rareté donnent ainsi
--- un revenu × 8 (règle des références : × 3 à × 10 d'une rareté à l'autre), au lieu de × 40.
-DummyFamilies.INCOME_ANCHOR = { n = 2e6, income = 300000 }
-DummyFamilies.INCOME_EXPONENT = 0.45
-
 -- Cette méthode permet d'arrondir un nombre à 2 chiffres significatifs (au moins 1 ; entier si `integer`) lorsque l'on
 -- génère une cote ou un revenu lisible (« 1 IN 3.2M », « $45K/s »).
 function DummyFamilies.nice(x: number, integer: boolean?): number
@@ -111,11 +106,12 @@ function DummyFamilies.nice(x: number, integer: boolean?): number
 	return math.floor(x / magnitude + 0.5) * magnitude
 end
 
--- Cette méthode permet de donner le revenu de la règle pour une cote `n` lorsque l'on génère un mannequin au-delà de
--- Secret.
-function DummyFamilies.incomeFor(n: number): number
-	local anchor = DummyFamilies.INCOME_ANCHOR
-	return anchor.income * (n / anchor.n) ^ DummyFamilies.INCOME_EXPONENT
+-- Cette méthode permet de donner le revenu ($/s, taille normale) du `rank`-ième des `count` mannequins de la rareté
+-- `rarity` (cote croissante) lorsque l'on génère le catalogue : géométrique dans la plage de Shared.Rarity.
+function DummyFamilies.bandIncome(rarity: number, rank: number, count: number): number
+	local band = Rarity.get(rarity).income
+	local t = if count > 1 then (rank - 1) / (count - 1) else 0
+	return DummyFamilies.nice(band[1] * (band[2] / band[1]) ^ t, true)
 end
 
 -- Cette méthode permet d'interpoler une valeur en échelle logarithmique entre deux points (`a` → `b`, `t` de 0 à 1)
@@ -138,13 +134,12 @@ function DummyFamilies.specs(drawn: { Spec }): { Spec }
 			tops[dummy.rarity] = dummy
 		end
 	end
-	-- Cette méthode permet de donner le bas d'une rareté (cote et revenu : début de sa plage au-delà de Secret, sinon son
+	-- Cette méthode permet de donner la cote du plus courant d'une rareté (début de sa plage au-delà de Secret, sinon son
 	-- mannequin dessiné le plus courant) lorsque l'on place les générés de la rareté précédente.
-	local function floorOf(rarity: number): (number?, number?)
+	local function floorOf(rarity: number): number?
 		local range = DummyFamilies.RANGES[rarity]
 		if range then
-			local n = DummyFamilies.nice(range[1])
-			return n, DummyFamilies.nice(DummyFamilies.incomeFor(n), true)
+			return DummyFamilies.nice(range[1])
 		end
 		local low: Spec? = nil
 		for _, dummy in drawn do
@@ -152,10 +147,11 @@ function DummyFamilies.specs(drawn: { Spec }): { Spec }
 				low = dummy
 			end
 		end
-		if low then
-			return low.n, low.income
-		end
-		return nil
+		return if low then low.n else nil
+	end
+	local drawnCount: { [number]: number } = {}
+	for _, dummy in drawn do
+		drawnCount[dummy.rarity] = (drawnCount[dummy.rarity] or 0) + 1
 	end
 	local result: { Spec } = {}
 	for rarity, pairs in DummyFamilies.PAIRS do
@@ -166,19 +162,19 @@ function DummyFamilies.specs(drawn: { Spec }): { Spec }
 			local palette = DummyFamilies.PALETTES[paletteId]
 			local base = byId[family]
 			assert(base and palette, "DummyFamilies : famille ou palette inconnue " .. family .. "/" .. paletteId)
-			local n, income
+			local n
 			if range then
 				n = DummyFamilies.nice(geometric(range[1], range[2], (i - 1) / math.max(count - 1, 1)))
-				income = DummyFamilies.nice(DummyFamilies.incomeFor(n), true)
 			else
 				-- Entre le plus rare des dessinés de la rareté et le plus courant de la suivante, sans les toucher
 				local top = tops[rarity]
-				local nextN, nextIncome = floorOf(rarity + 1)
-				assert(top and nextN and nextIncome, "DummyFamilies : rareté sans bornes " .. rarity)
-				local t = i / (count + 1)
-				n = DummyFamilies.nice(geometric(top.n, nextN, t))
-				income = DummyFamilies.nice(geometric(top.income, nextIncome, t), true)
+				local nextN = floorOf(rarity + 1)
+				assert(top and nextN, "DummyFamilies : rareté sans bornes " .. rarity)
+				n = DummyFamilies.nice(geometric(top.n, nextN, i / (count + 1)))
 			end
+			-- Au-dessus des dessinés de la rareté (cotes plus hautes), dans la plage de revenu de la rareté
+			local below = drawnCount[rarity] or 0
+			local income = DummyFamilies.bandIncome(rarity, below + i, below + count)
 			table.insert(result, {
 				id = paletteId .. "_" .. family,
 				name = palette.name .. " " .. base.name,

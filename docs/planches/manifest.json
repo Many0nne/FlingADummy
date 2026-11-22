@@ -46,7 +46,7 @@
               "key": "pink_rookie",
               "lines": [
                 "1 IN 10",
-                "$9/s"
+                "$8/s"
               ],
               "look": "6fccb03a27",
               "title": "Pink Rookie Dummy"
@@ -65,7 +65,7 @@
               "key": "mint",
               "lines": [
                 "1 IN 13",
-                "$15/s"
+                "$25/s"
               ],
               "look": "c64b74a884",
               "title": "Mint Dummy"
@@ -74,7 +74,7 @@
               "key": "biker",
               "lines": [
                 "1 IN 18",
-                "$22/s"
+                "$29/s"
               ],
               "look": "7868b5debf",
               "title": "Biker Dummy"
@@ -83,7 +83,7 @@
               "key": "nerd",
               "lines": [
                 "1 IN 28",
-                "$30/s"
+                "$33/s"
               ],
               "look": "75d88664ce",
               "title": "Nerd Dummy"
@@ -92,7 +92,7 @@
               "key": "tangerine_nerd",
               "lines": [
                 "1 IN 34",
-                "$37/s"
+                "$38/s"
               ],
               "look": "36c40cab6d",
               "title": "Tangerine Nerd Dummy"
@@ -101,7 +101,7 @@
               "key": "grape_mint",
               "lines": [
                 "1 IN 42",
-                "$46/s"
+                "$44/s"
               ],
               "look": "839cfad28b",
               "title": "Grape Mint Dummy"
@@ -110,7 +110,7 @@
               "key": "cherry_biker",
               "lines": [
                 "1 IN 51",
-                "$57/s"
+                "$50/s"
               ],
               "look": "7570063115",
               "title": "Cherry Biker Dummy"
@@ -129,7 +129,7 @@
               "key": "ocean",
               "lines": [
                 "1 IN 62",
-                "$70/s"
+                "$150/s"
               ],
               "look": "946e06818e",
               "title": "Ocean Dummy"
@@ -138,7 +138,7 @@
               "key": "hero",
               "lines": [
                 "1 IN 102",
-                "$100/s"
+                "$170/s"
               ],
               "look": "14b7da8481",
               "title": "Hero Dummy"
@@ -147,7 +147,7 @@
               "key": "pilot",
               "lines": [
                 "1 IN 153",
-                "$150/s"
+                "$200/s"
               ],
               "look": "86aba9d9a6",
               "title": "Pilot Dummy"
@@ -156,7 +156,7 @@
               "key": "emerald_ocean",
               "lines": [
                 "1 IN 203",
-                "$190/s"
+                "$230/s"
               ],
               "look": "838a154e8e",
               "title": "Emerald Ocean Dummy"
@@ -165,7 +165,7 @@
               "key": "ruby_hero",
               "lines": [
                 "1 IN 272",
-                "$240/s"
+                "$260/s"
               ],
               "look": "c69fd5e632",
               "title": "Ruby Hero Dummy"
@@ -174,7 +174,7 @@
               "key": "sapphire_pilot",
               "lines": [
                 "1 IN 372",
-                "$310/s"
+                "$300/s"
               ],
               "look": "b0db469507",
               "title": "Sapphire Pilot Dummy"
@@ -193,7 +193,7 @@
               "key": "ice",
               "lines": [
                 "1 IN 502",
-                "$400/s"
+                "$900/s"
               ],
               "look": "aa0853db7f",
               "title": "Ice Dummy"
@@ -202,7 +202,7 @@
               "key": "toxic",
               "lines": [
                 "1 IN 802",
-                "$550/s"
+                "$1K/s"
               ],
               "look": "7834b63f20",
               "title": "Toxic Dummy"
@@ -211,7 +211,7 @@
               "key": "royal",
               "lines": [
                 "1 IN 1.2K",
-                "$700/s"
+                "$1.2K/s"
               ],
               "look": "7bfea84994",
               "title": "Royal Dummy"
@@ -220,7 +220,7 @@
               "key": "shadow_ice",
               "lines": [
                 "1 IN 1.6K",
-                "$960/s"
+                "$1.4K/s"
               ],
               "look": "dd4eececf3",
               "title": "Shadow Ice Dummy"
@@ -229,7 +229,7 @@
               "key": "amber_royal",
               "lines": [
                 "1 IN 2.2K",
-                "$1.3K/s"
+                "$1.6K/s"
               ],
               "look": "82ca3f930f",
               "title": "Amber Royal Dummy"
@@ -257,7 +257,7 @@
               "key": "gold",
               "lines": [
                 "1 IN 4K",
-                "$2.5K/s"
+                "$5.5K/s"
               ],
               "look": "71e22c551f",
               "title": "Gold Dummy"
@@ -266,7 +266,7 @@
               "key": "lava",
               "lines": [
                 "1 IN 7K",
-                "$3.5K/s"
+                "$6.3K/s"
               ],
               "look": "b3a6432b40",
               "title": "Lava Dummy"
@@ -275,7 +275,7 @@
               "key": "diamond",
               "lines": [
                 "1 IN 10K",
-                "$5K/s"
+                "$7.3K/s"
               ],
               "look": "84efb2e994",
               "title": "Diamond Dummy"
@@ -284,7 +284,7 @@
               "key": "shadow_gold",
               "lines": [
                 "1 IN 14K",
-                "$7.1K/s"
+                "$8.3K/s"
               ],
               "look": "31f2e005fe",
               "title": "Shadow Gold Dummy"
@@ -293,7 +293,7 @@
               "key": "ruby_diamond",
               "lines": [
                 "1 IN 20K",
-                "$10K/s"
+                "$9.6K/s"
               ],
               "look": "39c7d0299d",
               "title": "Ruby Diamond Dummy"
@@ -302,7 +302,7 @@
               "key": "frost_lava",
               "lines": [
                 "1 IN 28K",
-                "$14K/s"
+                "$11K/s"
               ],
               "look": "3e7b8d7277",
               "title": "Frost Lava Dummy"
@@ -321,7 +321,7 @@
               "key": "galaxy",
               "lines": [
                 "1 IN 40K",
-                "$20K/s"
+                "$33K/s"
               ],
               "look": "02c30ee412",
               "title": "Galaxy Dummy"
@@ -330,7 +330,7 @@
               "key": "ghost",
               "lines": [
                 "1 IN 70K",
-                "$30K/s"
+                "$38K/s"
               ],
               "look": "b6271d9c7c",
               "title": "Ghost Dummy"
@@ -339,7 +339,7 @@
               "key": "neon",
               "lines": [
                 "1 IN 100K",
-                "$40K/s"
+                "$44K/s"
               ],
               "look": "ee89bf65ff",
               "title": "Neon Dummy"
@@ -348,7 +348,7 @@
               "key": "magma_ghost",
               "lines": [
                 "1 IN 150K",
-                "$56K/s"
+                "$50K/s"
               ],
               "look": "0ea9716687",
               "title": "Magma Ghost Dummy"
@@ -357,7 +357,7 @@
               "key": "golden_galaxy",
               "lines": [
                 "1 IN 220K",
-                "$77K/s"
+                "$57K/s"
               ],
               "look": "24b4c97a42",
               "title": "Golden Galaxy Dummy"
@@ -366,7 +366,7 @@
               "key": "frost_neon",
               "lines": [
                 "1 IN 330K",
-                "$110K/s"
+                "$66K/s"
               ],
               "look": "a90f21afc7",
               "title": "Frost Neon Dummy"
@@ -385,7 +385,7 @@
               "key": "king",
               "lines": [
                 "1 IN 500K",
-                "$150K/s"
+                "$200K/s"
               ],
               "look": "f95c0461ac",
               "title": "Crash King"
@@ -394,7 +394,7 @@
               "key": "void",
               "lines": [
                 "1 IN 1M",
-                "$200K/s"
+                "$230K/s"
               ],
               "look": "1f742354e9",
               "title": "Void Dummy"
@@ -403,7 +403,7 @@
               "key": "cosmic",
               "lines": [
                 "1 IN 2M",
-                "$300K/s"
+                "$260K/s"
               ],
               "look": "600db6022e",
               "title": "Cosmic Dummy"
@@ -412,7 +412,7 @@
               "key": "shadow_king",
               "lines": [
                 "1 IN 2.5M",
-                "$330K/s"
+                "$300K/s"
               ],
               "look": "68acd411ef",
               "title": "Shadow Crash King"
@@ -421,7 +421,7 @@
               "key": "golden_void",
               "lines": [
                 "1 IN 3.2M",
-                "$370K/s"
+                "$350K/s"
               ],
               "look": "d9b82aa200",
               "title": "Golden Void Dummy"
@@ -430,7 +430,7 @@
               "key": "magma_cosmic",
               "lines": [
                 "1 IN 4M",
-                "$410K/s"
+                "$400K/s"
               ],
               "look": "2c0a61b501",
               "title": "Magma Cosmic Dummy"
@@ -449,7 +449,7 @@
               "key": "angelic_royal",
               "lines": [
                 "1 IN 5M",
-                "$450K/s"
+                "$1.2M/s"
               ],
               "look": "d684e8dc21",
               "title": "Angelic Royal Dummy"
@@ -458,7 +458,7 @@
               "key": "radiant_galaxy",
               "lines": [
                 "1 IN 9.1M",
-                "$590K/s"
+                "$1.4M/s"
               ],
               "look": "de8ed46c2a",
               "title": "Radiant Galaxy Dummy"
@@ -467,7 +467,7 @@
               "key": "angelic_hero",
               "lines": [
                 "1 IN 17M",
-                "$790K/s"
+                "$1.6M/s"
               ],
               "look": "c1e9baf1d4",
               "title": "Angelic Hero Dummy"
@@ -476,7 +476,7 @@
               "key": "radiant_diamond",
               "lines": [
                 "1 IN 30M",
-                "$1M/s"
+                "$1.8M/s"
               ],
               "look": "db5e98c7b1",
               "title": "Radiant Diamond Dummy"
@@ -485,7 +485,7 @@
               "key": "angelic_ghost",
               "lines": [
                 "1 IN 55M",
-                "$1.3M/s"
+                "$2.1M/s"
               ],
               "look": "62af0753f6",
               "title": "Angelic Ghost Dummy"
@@ -494,7 +494,7 @@
               "key": "radiant_king",
               "lines": [
                 "1 IN 100M",
-                "$1.7M/s"
+                "$2.4M/s"
               ],
               "look": "513bf03ea5",
               "title": "Radiant Crash King"
@@ -513,7 +513,7 @@
               "key": "starlight_hero",
               "lines": [
                 "1 IN 500M",
-                "$3.6M/s"
+                "$7.5M/s"
               ],
               "look": "041b8ed735",
               "title": "Starlight Hero Dummy"
@@ -522,7 +522,7 @@
               "key": "nebula_galaxy",
               "lines": [
                 "1 IN 910M",
-                "$4.7M/s"
+                "$8.6M/s"
               ],
               "look": "b15f21064d",
               "title": "Nebula Galaxy Dummy"
@@ -531,7 +531,7 @@
               "key": "aurora_ghost",
               "lines": [
                 "1 IN 1.7B",
-                "$6.2M/s"
+                "$9.9M/s"
               ],
               "look": "d1db62a3a6",
               "title": "Aurora Ghost Dummy"
@@ -540,7 +540,7 @@
               "key": "starlight_cosmic",
               "lines": [
                 "1 IN 3B",
-                "$8.1M/s"
+                "$11M/s"
               ],
               "look": "b209cf587c",
               "title": "Starlight Cosmic Dummy"
@@ -549,7 +549,7 @@
               "key": "nebula_king",
               "lines": [
                 "1 IN 5.5B",
-                "$11M/s"
+                "$13M/s"
               ],
               "look": "4ef026fa92",
               "title": "Nebula Crash King"
@@ -558,7 +558,7 @@
               "key": "starlight_void",
               "lines": [
                 "1 IN 10B",
-                "$14M/s"
+                "$15M/s"
               ],
               "look": "547aef8204",
               "title": "Starlight Void Dummy"
@@ -577,7 +577,7 @@
               "key": "prism_ice",
               "lines": [
                 "1 IN 50B",
-                "$29M/s"
+                "$45M/s"
               ],
               "look": "71356c6d39",
               "title": "Prism Ice Dummy"
@@ -586,7 +586,7 @@
               "key": "aurora_royal",
               "lines": [
                 "1 IN 91B",
-                "$37M/s"
+                "$52M/s"
               ],
               "look": "a73395d4d5",
               "title": "Aurora Royal Dummy"
@@ -595,7 +595,7 @@
               "key": "plasma_neon",
               "lines": [
                 "1 IN 170B",
-                "$50M/s"
+                "$59M/s"
               ],
               "look": "7c1091c0c3",
               "title": "Plasma Neon Dummy"
@@ -604,7 +604,7 @@
               "key": "prism_diamond",
               "lines": [
                 "1 IN 300B",
-                "$64M/s"
+                "$68M/s"
               ],
               "look": "650303fd29",
               "title": "Prism Diamond Dummy"
@@ -613,7 +613,7 @@
               "key": "plasma_void",
               "lines": [
                 "1 IN 550B",
-                "$84M/s"
+                "$78M/s"
               ],
               "look": "e3cc72de83",
               "title": "Plasma Void Dummy"
@@ -622,7 +622,7 @@
               "key": "quantum_cosmic",
               "lines": [
                 "1 IN 1T",
-                "$110M/s"
+                "$90M/s"
               ],
               "look": "5bfe346552",
               "title": "Quantum Cosmic Dummy"
@@ -641,7 +641,7 @@
               "key": "solar_galaxy",
               "lines": [
                 "1 IN 5T",
-                "$230M/s"
+                "$270M/s"
               ],
               "look": "1b1c04c70f",
               "title": "Solar Galaxy Dummy"
@@ -650,7 +650,7 @@
               "key": "omega_ghost",
               "lines": [
                 "1 IN 9.1T",
-                "$300M/s"
+                "$310M/s"
               ],
               "look": "02ad3fd59a",
               "title": "Omega Ghost Dummy"
@@ -659,7 +659,7 @@
               "key": "infinite_neon",
               "lines": [
                 "1 IN 17T",
-                "$390M/s"
+                "$360M/s"
               ],
               "look": "0b51de0058",
               "title": "Infinite Neon Dummy"
@@ -668,7 +668,7 @@
               "key": "omega_void",
               "lines": [
                 "1 IN 30T",
-                "$510M/s"
+                "$410M/s"
               ],
               "look": "9c35d29bcd",
               "title": "Omega Void Dummy"
@@ -677,7 +677,7 @@
               "key": "infinite_cosmic",
               "lines": [
                 "1 IN 55T",
-                "$670M/s"
+                "$470M/s"
               ],
               "look": "0250576834",
               "title": "Infinite Cosmic Dummy"
@@ -686,7 +686,7 @@
               "key": "infinite_king",
               "lines": [
                 "1 IN 100T",
-                "$870M/s"
+                "$540M/s"
               ],
               "look": "a90c3c2eee",
               "title": "Infinite Crash King"
@@ -715,7 +715,7 @@
             {
               "key": "rubber",
               "lines": [
-                "$1.2K",
+                "$1.5K",
                 "LUCK x1.25"
               ],
               "look": "3089108b9f",
@@ -724,7 +724,7 @@
             {
               "key": "glass",
               "lines": [
-                "$15K",
+                "$40K",
                 "LUCK x1.5"
               ],
               "look": "aabc2d01ca",
@@ -733,7 +733,7 @@
             {
               "key": "steel",
               "lines": [
-                "$300K",
+                "$250K",
                 "LUCK x2"
               ],
               "look": "00e6ab347b",
@@ -742,7 +742,7 @@
             {
               "key": "glider",
               "lines": [
-                "$4M",
+                "$1.2M",
                 "LUCK x2.5"
               ],
               "look": "a71914902e",
@@ -751,7 +751,7 @@
             {
               "key": "rocket",
               "lines": [
-                "$50M",
+                "$3M",
                 "LUCK x3"
               ],
               "look": "d47c8bf11f",
@@ -766,7 +766,7 @@
             {
               "key": "ruby_rubber",
               "lines": [
-                "$84M",
+                "$12M",
                 "LUCK x4"
               ],
               "look": "12929e932d",
@@ -775,7 +775,7 @@
             {
               "key": "emerald_glass",
               "lines": [
-                "$130M",
+                "$25M",
                 "LUCK x5"
               ],
               "look": "d8be15c61c",
@@ -784,7 +784,7 @@
             {
               "key": "sapphire_steel",
               "lines": [
-                "$200M",
+                "$35M",
                 "LUCK x6.5"
               ],
               "look": "6d9df0f965",
@@ -793,7 +793,7 @@
             {
               "key": "amber_glider",
               "lines": [
-                "$290M",
+                "$120M",
                 "LUCK x8"
               ],
               "look": "a55901bef5",
@@ -802,7 +802,7 @@
             {
               "key": "golden_rocket",
               "lines": [
-                "$440M",
+                "$180M",
                 "LUCK x10"
               ],
               "look": "c261727128",
@@ -811,7 +811,7 @@
             {
               "key": "frost_rubber",
               "lines": [
-                "$700M",
+                "$600M",
                 "LUCK x13"
               ],
               "look": "d2d87c5380",
@@ -826,7 +826,7 @@
             {
               "key": "magma_glass",
               "lines": [
-                "$1.1B",
+                "$1B",
                 "LUCK x17"
               ],
               "look": "c95d6ad633",
@@ -835,7 +835,7 @@
             {
               "key": "shadow_steel",
               "lines": [
-                "$1.8B",
+                "$5B",
                 "LUCK x22"
               ],
               "look": "ab4b6371f4",
@@ -844,7 +844,7 @@
             {
               "key": "radiant_glider",
               "lines": [
-                "$3.2B",
+                "$9B",
                 "LUCK x30"
               ],
               "look": "f5f3d05a63",
@@ -853,7 +853,7 @@
             {
               "key": "starlight_rocket",
               "lines": [
-                "$5.3B",
+                "$15B",
                 "LUCK x40"
               ],
               "look": "cf4cfcc5f2",
@@ -862,7 +862,7 @@
             {
               "key": "nebula_rubber",
               "lines": [
-                "$9.4B",
+                "$30B",
                 "LUCK x55"
               ],
               "look": "54aace13aa",
@@ -871,7 +871,7 @@
             {
               "key": "plasma_glass",
               "lines": [
-                "$16B",
+                "$80B",
                 "LUCK x75"
               ],
               "look": "2497d55c53",
@@ -886,7 +886,7 @@
             {
               "key": "quantum_glider",
               "lines": [
-                "$28B",
+                "$120B",
                 "LUCK x100"
               ],
               "look": "9700507519",
@@ -895,7 +895,7 @@
             {
               "key": "infinite_rocket",
               "lines": [
-                "$47B",
+                "$200B",
                 "LUCK x135"
               ],
               "look": "1123624ba3",
@@ -1022,7 +1022,7 @@
             {
               "key": 3,
               "lines": [
-                "$1.5K",
+                "$8K",
                 "+10 EXP / rep"
               ],
               "look": "b1531e1088",
@@ -1037,7 +1037,7 @@
             {
               "key": 4,
               "lines": [
-                "$25K",
+                "$120K",
                 "+40 EXP / rep"
               ],
               "look": "5b6f3412f8",
@@ -1052,7 +1052,7 @@
             {
               "key": 5,
               "lines": [
-                "$150K",
+                "$800K",
                 "+160 EXP / rep"
               ],
               "look": "1f03bbeef7",
@@ -1067,7 +1067,7 @@
             {
               "key": 6,
               "lines": [
-                "$2M",
+                "$1.8M",
                 "+700 EXP / rep"
               ],
               "look": "e4d0095e34",
@@ -1082,7 +1082,7 @@
             {
               "key": 7,
               "lines": [
-                "$25M",
+                "$4.5M",
                 "+3K EXP / rep"
               ],
               "look": "c487cbeeb4",
@@ -1097,7 +1097,7 @@
             {
               "key": 8,
               "lines": [
-                "$88M",
+                "$20M",
                 "+12K EXP / rep"
               ],
               "look": "78e8cde226",
@@ -1112,7 +1112,7 @@
             {
               "key": 9,
               "lines": [
-                "$310M",
+                "$50M",
                 "+48K EXP / rep"
               ],
               "look": "80e6a79543",
@@ -1127,7 +1127,7 @@
             {
               "key": 10,
               "lines": [
-                "$1.1B",
+                "$300M",
                 "+190K EXP / rep"
               ],
               "look": "d0a5028312",
@@ -1142,7 +1142,7 @@
             {
               "key": 11,
               "lines": [
-                "$3.9B",
+                "$1.8B",
                 "+760K EXP / rep"
               ],
               "look": "a34f9899ec",
@@ -1157,7 +1157,7 @@
             {
               "key": 12,
               "lines": [
-                "$14B",
+                "$50B",
                 "+3M EXP / rep"
               ],
               "look": "21e18d3472",

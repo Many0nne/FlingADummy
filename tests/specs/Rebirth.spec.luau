@@ -1,4 +1,4 @@
--- Renaissance (#108) : prix $50B × 4^k, condition (dernier équipement et prix), état après renaissance (remis à zéro /
+-- Renaissance (#108) : prix $350B × 2^k (#15, #109), condition (dernier équipement et prix), état après renaissance (remis à zéro /
 -- gardé), multiplicateur de CHANCE × 2^k, lecture d'une ancienne sauvegarde, annonce aux joueurs du serveur.
 return function(T, Loader)
 	local loader = Loader.new()
@@ -10,15 +10,15 @@ return function(T, Loader)
 	local LAST = #Training.GEARS
 
 	T.describe("Rebirth.price", function()
-		T.it("vaut $50B, puis × 4 à chaque renaissance", function()
-			T.expectEqual(Rebirth.price(0), 50e9)
-			T.expectEqual(Rebirth.price(1), 200e9)
-			T.expectEqual(Rebirth.price(2), 800e9)
-			T.expectEqual(Rebirth.price(3), 3.2e12)
+		T.it("vaut $350B, puis × 2 à chaque renaissance (#109)", function()
+			T.expectEqual(Rebirth.price(0), 350e9)
+			T.expectEqual(Rebirth.price(1), 700e9)
+			T.expectEqual(Rebirth.price(2), 1.4e12)
+			T.expectEqual(Rebirth.price(3), 2.8e12)
 		end)
 		T.it("lit un compteur illisible comme 0", function()
-			T.expectEqual(Rebirth.price(-3), 50e9)
-			T.expectEqual(Rebirth.price(0 / 0), 50e9)
+			T.expectEqual(Rebirth.price(-3), 350e9)
+			T.expectEqual(Rebirth.price(0 / 0), 350e9)
 		end)
 	end)
 
@@ -29,10 +29,10 @@ return function(T, Loader)
 			T.expectEqual(Rebirth.missing({ gearTier = LAST - 1, money = 1e15, rebirths = 0 }), "Gear")
 		end)
 		T.it("demande ensuite le prix de la renaissance suivante", function()
-			T.expectEqual(Rebirth.missing({ gearTier = LAST, money = 50e9 - 1, rebirths = 0 }), "Money")
-			T.expectEqual(Rebirth.missing({ gearTier = LAST, money = 50e9, rebirths = 0 }), nil)
-			T.expectEqual(Rebirth.missing({ gearTier = LAST, money = 50e9, rebirths = 1 }), "Money")
-			T.expectEqual(Rebirth.missing({ gearTier = LAST, money = 200e9, rebirths = 1 }), nil)
+			T.expectEqual(Rebirth.missing({ gearTier = LAST, money = 350e9 - 1, rebirths = 0 }), "Money")
+			T.expectEqual(Rebirth.missing({ gearTier = LAST, money = 350e9, rebirths = 0 }), nil)
+			T.expectEqual(Rebirth.missing({ gearTier = LAST, money = 350e9, rebirths = 1 }), "Money")
+			T.expectEqual(Rebirth.missing({ gearTier = LAST, money = 700e9, rebirths = 1 }), nil)
 		end)
 		T.it("signale l'équipement avant l'argent quand les deux manquent", function()
 			T.expectEqual(Rebirth.missing({ gearTier = 1, money = 0, rebirths = 0 }), "Gear")
@@ -52,7 +52,7 @@ return function(T, Loader)
 			T.expectEqual(Rebirth.apply({ gearTier = 3, money = 1e15, rebirths = 0 }), nil)
 		end)
 		T.it("remet argent, puissance, entraînement, équipement et mannequins à lancer à leur départ", function()
-			local after = Rebirth.apply({ gearTier = LAST, money = 75e9, rebirths = 0 }) :: any
+			local after = Rebirth.apply({ gearTier = LAST, money = 400e9, rebirths = 0 }) :: any
 			T.expect(after ~= nil, "renaissance acceptée")
 			T.expectEqual(after.Money, 0)
 			T.expectEqual(after.ThrowPower, GameConfig.START_POWER)
@@ -64,7 +64,7 @@ return function(T, Loader)
 			T.expectEqual(after.Rebirths, 1)
 		end)
 		T.it("garde collection, tutoriel, records, tirages et réglages (rien d'autre n'est touché)", function()
-			local after = Rebirth.apply({ gearTier = LAST, money = 200e9, rebirths = 1 }) :: any
+			local after = Rebirth.apply({ gearTier = LAST, money = 700e9, rebirths = 1 }) :: any
 			T.expectEqual(after.Rebirths, 2)
 			for _, kept in { "Collection", "Tutorial", "BestDistance", "Draws", "MusicOff", "Displays" } do
 				T.expectEqual(after[kept], nil, kept .. " gardé")
@@ -76,7 +76,7 @@ return function(T, Loader)
 			T.expectEqual(count, 8, "7 valeurs remises à zéro + le compteur")
 		end)
 		T.it("ne modifie pas la table des valeurs de départ", function()
-			local after = Rebirth.apply({ gearTier = LAST, money = 50e9, rebirths = 0 }) :: any
+			local after = Rebirth.apply({ gearTier = LAST, money = 350e9, rebirths = 0 }) :: any
 			after.Money = 123
 			T.expectEqual(Rebirth.RESET.Money, 0)
 			T.expectEqual(Rebirth.RESET.Rebirths, nil)
