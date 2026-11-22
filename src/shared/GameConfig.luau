@@ -72,7 +72,7 @@ local GameConfig = {
 	-- Fin de vol
 	REST_SPEED          = 3,      -- vitesse du torse en dessous de laquelle le mannequin est arrêté
 	REST_TIME           = 1.0,    -- durée d'arrêt avant de compter le résultat (s)
-	MAX_FLIGHT_TIME     = 16,     -- garde-fou (s) : un vol de 4,4 B met 10 à 12 s jusqu'au bout des 6 km (#113 ; 22 s avant)
+	MAX_FLIGHT_TIME     = 20,     -- garde-fou (s) : un vol de 4,4 B met 10 à 12 s jusqu'au bout des 6 km (#113 ; 22 s avant)
 	KILL_Y              = -40,    -- mannequin tombé du parcours
 	RESULT_MAX_TIME     = 20,     -- résultat et tirage : fin forcée si le client ne signale pas GO BACK (s, minimum ; plus long selon la rareté : Shared.RevealPlan.resultTime)
 	RESULT_CLEAR_TIME   = 4.5,    -- mannequin d'un joueur parti pendant son résultat retiré après ce délai (s)

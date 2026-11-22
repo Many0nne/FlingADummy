@@ -475,7 +475,7 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
   (ou neige, sable…) voxel qui déborde de chaque marche, décor voxel sur les terre-pleins et au pied des parois
   (traversable). **Arche d'arrivée** à 6 km (ligne et bandeau à damier, panneau « FINISH 6 KM »), traversable : le
   mannequin passe dessous et s'arrête contre la paroi en gradins du bout (6 040 m ; vol mesuré à 6 037 m). Limite d'un
-  vol de 16 s (`MAX_FLIGHT_TIME`, 22 s avant #113) : un vol de 4,4 B met 10 à 12 s jusqu'au bout.
+  vol de 20 s (`MAX_FLIGHT_TIME`, 22 s avant #113) : un vol de 4,4 B met 10 à 12 s jusqu'au bout.
 - **Coût du décor généré** (#97, mesuré en Studio, journal `[Course]` du serveur, 3 démarrages) : 25 160 instances
   construites en 307-485 ms (hub et zone de lancer 11-20 ms, piste 100-196 ms, obstacles 91-124 ms). Avant / après,
   répartis sur la même construction (le décor avant 2,4 km est identique) : hub et 12 premiers thèmes ≈ 12 600

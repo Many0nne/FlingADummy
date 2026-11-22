@@ -14,6 +14,7 @@ FlightArc.HOLD_GAIN = 4 -- rappel vers le plafond pendant la croisière (1/s)
 FlightArc.HOLD_MAX = 15 -- vitesse verticale de rappel au plus (studs/s)
 FlightArc.IMPACT_DV = 60 -- choc du torse en une frame (studs/s) qui compte comme premier contact
 FlightArc.GROUND_HEIGHT = 4 -- torse plus bas que ça (studs au-dessus de la piste) : premier contact au sol
+FlightArc.CRUISE_MARGIN = 10 -- une montée qui retombe plus bas que le plafond moins ça (studs) ne croise pas
 FlightArc.TRAP_COAST = 0.5 -- après un piège, l'élan n'est pas freiné pendant ce temps (s) : sa poussée se voit
 
 -- "Rise" : montée freinée vers le plafond ; "Cruise" : à plat au plafond ; "Free" : arc naturel ou chute après la
@@ -109,7 +110,8 @@ function FlightArc.step(plan: Plan, state: State): (Phase, Vector3)
 	end
 	local remaining = plan.ceiling - state.height
 	if phase == "Rise" and (velocity.Y <= 0 or remaining <= 0.5) then
-		phase = "Cruise"
+		-- Montée stoppée loin du plafond (accroc, frame longue) : chute libre, pas de remontée sans cause visible
+		phase = if remaining <= FlightArc.CRUISE_MARGIN then "Cruise" else "Free"
 	end
 	if phase == "Cruise" then
 		local target = math.clamp(remaining * FlightArc.HOLD_GAIN, -FlightArc.HOLD_MAX, FlightArc.HOLD_MAX)

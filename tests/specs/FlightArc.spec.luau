@@ -150,6 +150,25 @@ return function(T, Loader)
 			T.expectNear(free.Y, 0, 1e-9, "rebond de piège laissé libre")
 		end)
 
+		T.it("ne remonte pas au plafond une montée stoppée bien plus bas", function()
+			local plan = FlightArc.plan(600, 300, ORIGIN_HEIGHT, G)
+			local phase, change = FlightArc.step(plan, {
+				phase = "Rise",
+				along = 80,
+				height = 40,
+				velocity = Vector3.new(0, -5, 600),
+				forward = FORWARD,
+				armed = true,
+				impact = false,
+				trapped = false,
+				coasting = false,
+				dt = DT,
+				gravity = G,
+			})
+			T.expect(phase == "Free", "chute libre, obtenu " .. phase)
+			T.expect(change.Y <= 0, "pas de remontée")
+		end)
+
 		T.it("laisse un arc sous le plafond sans contrôle", function()
 			local plan = FlightArc.plan(100, 60, ORIGIN_HEIGHT, G)
 			local phase, change = FlightArc.step(plan, {
