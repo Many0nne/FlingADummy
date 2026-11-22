@@ -39,7 +39,8 @@ export type Remotes = {
 	-- client → serveur : boutique de mannequins à lancer (Shared.ThrowDummies) : "Buy" / "Equip" + indice du catalogue
 	ThrowDummy: RemoteEvent,
 	Rebirth: RemoteEvent, -- client → serveur : sans charge, bouton REBIRTH de la fenêtre (Shared.Rebirth)
-	-- Bouton « 2x TRAINING! » (Shared.TrainingBoost) : serveur → client "Offer" + numéro (bouton à montrer) ou "Cancel"
+	-- Bouton « 2x TRAINING! » (Shared.TrainingBoost) : serveur → client "Offer" + numéro + fin de l'affichage en temps
+	-- serveur (bouton à montrer) ou "Cancel"
 	-- (séance arrêtée) ; client → serveur : numéro de l'apparition cliquée. Bonus accordé : attribut TrainBoostEnds
 	TrainingBoost: RemoteEvent,
 }

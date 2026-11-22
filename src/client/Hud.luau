@@ -711,8 +711,7 @@ end
 local function onRepProgress()
 	if player:GetAttribute("Action") == "Training" and os.clock() - lastRepFloat > REP_DEBOUNCE then
 		lastRepFloat = os.clock()
-		local multiplier =
-			TrainingBoost.displayMultiplier(player:GetAttribute("TrainBoostEnds"), Workspace:GetServerTimeNow())
+		local multiplier = TrainingBoost.grantedMultiplier(player:GetAttribute("TrainBoostEnds"))
 		floatExp(Training.gear(stat("GearTier", 1)).gain * multiplier, multiplier > 1)
 	end
 end

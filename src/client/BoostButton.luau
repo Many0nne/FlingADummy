@@ -24,6 +24,7 @@ local DISC = 140 -- px : diamètre du bouton
 local AREA_X = { 0.3, 0.7 }
 local AREA_Y = { 0.42, 0.58 }
 local GOLD = Color3.fromRGB(255, 200, 40)
+local MIN_SHOWN = 0.4 -- s : une annonce qui laisse moins de temps que ça n'est pas montrée (clic impossible à temps)
 
 local BoostButton = {}
 
@@ -208,10 +209,43 @@ local function hideButton()
 	end)
 end
 
+-- Cette méthode permet de vider l'anneau dans le sens horaire depuis midi (moitié droite, puis moitié gauche) en
+-- `left` s, à partir de la part déjà écoulée, lorsque le bouton apparaît pour l'apparition `token`.
+local function drainRing(token: number, left: number)
+	local total = GameConfig.BOOST_OFFER_TIME
+	local elapsed = math.clamp(1 - left / total, 0, 1) -- part du tour déjà écoulée (annonce arrivée en retard)
+	local right, leftHalf = halves[1], halves[2]
+	-- Cette méthode permet de vider la moitié gauche (rotation 0 → 180) depuis la part `from` du tour lorsque la
+	-- moitié droite est vide.
+	local function drainLeft(from: number)
+		leftHalf.Rotation = (from - 0.5) * 360
+		TweenService:Create(leftHalf, TweenInfo.new((1 - from) * total, Enum.EasingStyle.Linear), { Rotation = 180 })
+			:Play()
+	end
+	if elapsed >= 0.5 then
+		right.Rotation = 360
+		drainLeft(elapsed)
+		return
+	end
+	right.Rotation, leftHalf.Rotation = 180 + elapsed * 360, 0
+	local first = TweenService:Create(right, TweenInfo.new((0.5 - elapsed) * total, Enum.EasingStyle.Linear), {
+		Rotation = 360,
+	})
+	first.Completed:Once(function()
+		if token == offerToken then
+			drainLeft(0.5)
+		end
+	end)
+	first:Play()
+end
+
 -- Cette méthode permet de montrer l'apparition `id` (endroit au hasard, rebond, son, anneau qui se vide) lorsque le
--- serveur l'annonce pendant la séance ; elle disparaît seule au bout de BOOST_OFFER_TIME s.
-local function showOffer(id: number)
-	if player:GetAttribute("Action") ~= "Training" then
+-- serveur l'annonce pendant la séance ; elle disparaît seule à `deadline` (fin de l'affichage en temps serveur), quand
+-- le serveur cesse d'attendre le clic.
+local function showOffer(id: number, deadline: unknown)
+	local left = TrainingBoost.offerTimeLeft(deadline, Workspace:GetServerTimeNow())
+	-- Annonce arrivée trop tard pour être cliquée à temps : rien à montrer
+	if player:GetAttribute("Action") ~= "Training" or left < MIN_SHOWN then
 		return
 	end
 	offerId = id
@@ -229,18 +263,8 @@ local function showOffer(id: number)
 		UIKit.playKeys(holder, UIMotion.POPUP_IN)
 	end
 	UIKit.playSound("BoostAppear", 1.3)
-	-- Anneau plein, puis vidé dans le sens horaire depuis midi : moitié droite, puis moitié gauche
-	local half = GameConfig.BOOST_OFFER_TIME / 2
-	local right, left = halves[1], halves[2]
-	right.Rotation, left.Rotation = 180, 0
-	local first = TweenService:Create(right, TweenInfo.new(half, Enum.EasingStyle.Linear), { Rotation = 360 })
-	first.Completed:Once(function()
-		if token == offerToken then
-			TweenService:Create(left, TweenInfo.new(half, Enum.EasingStyle.Linear), { Rotation = 180 }):Play()
-		end
-	end)
-	first:Play()
-	task.delay(GameConfig.BOOST_OFFER_TIME, function()
+	drainRing(token, left)
+	task.delay(left, function()
 		if token == offerToken then
 			hideButton()
 		end
@@ -357,9 +381,9 @@ function BoostButton.init(localPlayer: Player, boostRemote: RemoteEvent, gui: Sc
 	hooks = hudHooks
 	buildButton(gui, onClick)
 	buildPill(hooks.trainBar)
-	remote.OnClientEvent:Connect(function(kind, id)
+	remote.OnClientEvent:Connect(function(kind, id, deadline)
 		if kind == "Offer" and typeof(id) == "number" then
-			showOffer(id)
+			showOffer(id, deadline)
 		elseif kind == "Cancel" then
 			hideButton()
 		end

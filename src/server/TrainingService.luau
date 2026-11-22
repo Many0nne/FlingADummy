@@ -145,7 +145,9 @@ local function stepBoost(player: Player, dt: number)
 	if event == "Offer" then
 		trace(player, "apparition #" .. boost.lastId)
 		if boostRemote then
-			boostRemote:FireClient(player, "Offer", boost.lastId)
+			-- Fin de l'affichage en temps serveur : le client cache le bouton quand la fenêtre de clic se ferme
+			local deadline = Workspace:GetServerTimeNow() + GameConfig.BOOST_OFFER_TIME
+			boostRemote:FireClient(player, "Offer", boost.lastId, deadline)
 		end
 	elseif event == "Missed" then
 		trace(player, "raté #" .. boost.lastId)
