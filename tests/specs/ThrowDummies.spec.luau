@@ -49,13 +49,13 @@ return function(T, Loader)
 				if dummy.boneFactor > 1 then
 					own += 1
 				end
-				if dummy.lift > 0 then
+				if dummy.glide > 0 then
 					own += 1
 				end
 				if dummy.thrust > 0 then
 					own += 1
 				end
-				if (dummy.bounce or 0) > 0 then
+				if dummy.bounce > 0 then
 					own += 1
 				end
 				if i == 2 then
@@ -75,8 +75,9 @@ return function(T, Loader)
 				T.expect(base ~= nil, dummy.id .. " : comportement " .. dummy.behavior)
 				T.expectEqual(dummy.physics, base.physics, dummy.id .. " physique")
 				T.expectEqual(dummy.boneFactor, base.boneFactor, dummy.id .. " os")
-				T.expectEqual(dummy.lift, base.lift, dummy.id .. " portance")
+				T.expectEqual(dummy.glide, base.glide, dummy.id .. " planeur")
 				T.expectEqual(dummy.thrust, base.thrust, dummy.id .. " poussée")
+				T.expectEqual(dummy.thrustTime, base.thrustTime, dummy.id .. " durée de poussée")
 				T.expectEqual(dummy.bounce, base.bounce, dummy.id .. " rebond")
 				T.expectEqual(#(dummy.blocks or {}), #(base.blocks or {}), dummy.id .. " blocs")
 				T.expect(string.find(dummy.name, base.name, 1, true) ~= nil, dummy.name)
@@ -178,59 +179,21 @@ return function(T, Loader)
 			T.expectEqual(ThrowDummies.boneImpact(glass, 40), 40 * glass.boneFactor)
 			T.expectEqual(ThrowDummies.boneImpact(LIST[1], 40), 40)
 		end)
-		T.it("le planeur porte seulement quand il redescend", function()
-			local glider
-			for _, dummy in LIST do
-				if dummy.lift > 0 then
-					glider = dummy
+		T.it("planeur, réacteur et caoutchouc gagnent chacun 10 à 25 % de la portée naturelle (#130)", function()
+			local found = {}
+			for i = 1, ThrowDummies.SHOWCASE do
+				local dummy = LIST[i]
+				for _, field in { "glide", "thrust", "bounce" } do
+					local share = (dummy :: any)[field]
+					if share > 0 then
+						found[field] = true
+						T.expect(share >= 0.1 and share <= 0.25, dummy.id .. " " .. field .. " = " .. share)
+					end
 				end
+				T.expectEqual(dummy.thrustTime > 0, dummy.thrust > 0, dummy.id .. " durée de poussée")
 			end
-			T.expect(glider ~= nil, "un planeur")
-			local up = ThrowDummies.flightAccel(glider, Vector3.new(0, 30, 80), Vector3.zAxis, 2, 120)
-			local down = ThrowDummies.flightAccel(glider, Vector3.new(0, -30, 80), Vector3.zAxis, 2, 120)
-			local ground = ThrowDummies.flightAccel(glider, Vector3.new(0, -1, 20), Vector3.zAxis, 5, 120)
-			T.expectEqual(up, Vector3.zero)
-			T.expectNear(down.Y, 120 * glider.lift)
-			T.expectEqual(ground, Vector3.zero, "pas au sol")
-		end)
-		T.it("le réacteur pousse vers l'avant à plat, seulement au départ", function()
-			local rocket
-			for _, dummy in LIST do
-				if dummy.thrust > 0 then
-					rocket = dummy
-				end
-			end
-			T.expect(rocket ~= nil, "un réacteur")
-			local pitched = Vector3.new(0, math.sin(math.rad(32)), math.cos(math.rad(32)))
-			local early = ThrowDummies.flightAccel(rocket, Vector3.new(0, 20, 90), pitched, 0.2, 120)
-			T.expectNear(early.Y, 0, 1e-3)
-			T.expectNear(early.Z, rocket.thrust, 1e-3)
-			local late = ThrowDummies.flightAccel(rocket, Vector3.new(0, 20, 90), pitched, rocket.thrustTime + 0.1, 120)
-			T.expectEqual(late, Vector3.zero)
-		end)
-		T.it("le caoutchouc rebondit vers le haut en gardant son élan vers l'avant, seulement au sol", function()
-			local rubber = LIST[2]
-			T.expect((rubber.bounce or 0) > 0, "rebondissant")
-			local before = Vector3.new(0, -60, 80)
-			local stopped = Vector3.new(3, 0, 20)
-			local out = ThrowDummies.bounce(rubber, before, stopped, Vector3.zAxis) :: any
-			T.expect(out ~= nil, "rebond au sol")
-			T.expectNear(out.Y, 60 * rubber.bounce, 1e-3)
-			T.expectNear(out.Z, 80 * rubber.bounce, 1e-3)
-			T.expectNear(out.X, 3, 1e-3)
-			T.expectEqual(
-				ThrowDummies.bounce(rubber, Vector3.new(0, -10, 80), stopped, Vector3.zAxis),
-				nil,
-				"chute faible"
-			)
-			T.expectEqual(ThrowDummies.bounce(rubber, before, Vector3.new(0, -50, 80), Vector3.zAxis), nil, "en l'air")
-			T.expectEqual(ThrowDummies.bounce(LIST[1], before, stopped, Vector3.zAxis), nil, "pas rebondissant")
-		end)
-		T.it("le Crash Dummy n'a aucun comportement propre", function()
-			T.expectEqual(
-				ThrowDummies.flightAccel(LIST[1], Vector3.new(0, -50, 90), Vector3.zAxis, 0.1, 120),
-				Vector3.zero
-			)
+			T.expect(found.glide and found.thrust and found.bounce, "un planeur, un réacteur, un caoutchouc")
+			T.expectEqual(LIST[1].glide + LIST[1].thrust + LIST[1].bounce, 0, "Crash Dummy sans comportement")
 		end)
 	end)
 
