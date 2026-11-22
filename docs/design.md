@@ -963,7 +963,8 @@ Interface : section suivante.
   rend la main vers 1 s sans latence, 1,6 à 1,7 s à 150 ms (simulé, tests Lune). Au-delà de `RELEASE_LEAD_MAX`
   (0,4 s) de latence, le reste est un maintien à la main. Caméra de vol, coup de champ de vision, souffle et effets
   du vol (#138) partent avec le décoratif. Lancer refusé (pas de départ du serveur après la latence + 0,3 s, couloir pas
-  en vol) : le décoratif s'efface en 0,15 s.
+  en vol) : le décoratif s'efface en 0,15 s. Studio : `DebugNoAnticipate` (attribut de Workspace, true) garde l'ancien
+  départ (décoratif figé jusqu'à la réponse du serveur), pour comparer.
 - Les chocs sont annoncés à tous les clients (`Impact`), qui jouent sons, particules et popups.
 - Effets des comportements en vol (#138) : déduits du plan par chaque client d'après les attributs du mannequin lancé
   (section « Effets des comportements en vol »).

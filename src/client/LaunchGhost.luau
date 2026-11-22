@@ -98,7 +98,7 @@ local function retire(model: Model)
 end
 
 -- Cette méthode permet d'effacer en VANISH s le décoratif d'un lancer refusé (pièces de plus en plus transparentes,
--- effets coupés), puis de le retirer.
+-- effets coupés), puis de le détruire.
 local function vanish(model: Model)
 	local parts = {}
 	for _, descendant in model:GetDescendants() do
@@ -117,7 +117,7 @@ local function vanish(model: Model)
 		end
 		if k >= 1 or not model.Parent then
 			connection:Disconnect()
-			Debris:AddItem(model, FADE_OUT)
+			model:Destroy() -- la caméra de vol qui le suivait rend la main au personnage
 		end
 	end)
 end

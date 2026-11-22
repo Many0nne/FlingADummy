@@ -6,6 +6,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 
 local Remotes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Remotes"))
 local Announce = require(script.Announce)
@@ -64,6 +65,10 @@ LaunchGhost.init(player)
 -- Lâcher anticipé (#144) : le décoratif part dès le marqueur Release, sans attendre l'aller-retour du serveur ; la
 -- caméra de vol, le coup de champ de vision et le souffle partent avec lui
 ThrowController.onReleased = function(gauge: number)
+	-- Studio : DebugNoAnticipate (attribut de Workspace) garde l'ancien départ, pour comparer
+	if RunService:IsStudio() and Workspace:GetAttribute("DebugNoAnticipate") == true then
+		return
+	end
 	local visual, scale = CharacterPoser.released()
 	if visual and LaunchGhost.anticipate(visual, scale, gauge) then
 		CharacterPoser.forgetReleased()
