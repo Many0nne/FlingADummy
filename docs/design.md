@@ -273,7 +273,7 @@ dans la barre d'outils (icône de rareté jusqu'à Secret, nom au-delà).
 | Nebula Rubber | 55x | $30B | 4,9 h | $9.4B, 6,0 h |
 | Plasma Glass | 75x | $80B | 6,8 h | $16B, 7,2 h |
 | Quantum Glider | 100x | $120B | 8,2 h | $28B, 7,9 h |
-| Infinite Rocket | 135x | $200B | 9,6 h | $47B, 8,9 h |
+| Infinite Rocket | 135x | $200B | 9,2 h | $47B, 8,9 h |
 
 Prix calés par #15 (section « Rythme et économie ») : la règle Rocket × (chance / 3)^1,8 de #94 laissait un trou de
 × 6 à × 12 entre les mannequins dessinés et les équipements ($300K → $2M → $4M → $25M), le « mur » de la review 2.
@@ -281,22 +281,22 @@ Prix calés par #15 (section « Rythme et économie ») : la règle Rocket × (c
 ### Training Gear : 12 paliers
 | Équipement | EXP / rép. | Prix | Atteint (simulé) | Avant #15 |
 |---|---|---|---|---|
-| Stone | +3 | $100 | 45 s | $100, 45 s |
-| Iron | +10 | $8K | 3 min | $1.5K, 2 min |
-| Gold | +40 | $120K | 6 min | $25K, 5 min |
-| Diamond | +160 | $800K | 12 min | $150K, 9 min |
-| Neon | +700 | $1.8M | 18 min | $2M, 18 min |
-| Cosmic | +3K | $4.5M | 24 min | $25M, 41 min |
-| Ruby | +12K | $20M | 35 min | $88M, 88 min |
-| Emerald | +48K | $50M | 49 min | $310M, 2,5 h |
-| Plasma | +190K | $300M | 79 min | $1.1B, 3,3 h |
-| Omega | +760K | $1.8B | 2,2 h | $3.9B, 4,9 h |
-| Infinite | +3M | $50B | 5,8 h | $14B, 6,6 h |
+| Stone | +6 (+3 avant #129) | $100 | 45 s | $100, 45 s |
+| Iron | +45 (+10) | $8K | 3 min | $1.5K, 2 min |
+| Gold | +400 (+40) | $120K | 6 min | $25K, 5 min |
+| Diamond | +2.2K (+160) | $800K | 11 min | $150K, 9 min |
+| Neon | +9K (+700) | $1.8M | 15 min | $2M, 18 min |
+| Cosmic | +35K (+3K) | $4.5M | 21 min | $25M, 41 min |
+| Ruby | +140K (+12K) | $20M | 30 min | $88M, 88 min |
+| Emerald | +560K (+48K) | $50M | 42 min | $310M, 2,5 h |
+| Plasma | +2.2M (+190K) | $300M | 66 min | $1.1B, 3,3 h |
+| Omega | +8.8M (+760K) | $1.8B | 106 min | $3.9B, 4,9 h |
+| Infinite | +35M (+3M) | $50B | 5,4 h | $14B, 6,6 h |
 
-Puissance : 1 K à 5 min, 100 K à 20 min, 1 M à 32 min, 100 M à 85 min, 10 B à 6,4 h (avant #15 : 5 min, 20 min,
-45 min, 3,2 h, 7,8 h). Avec la piste de 2,4 km, le bout était atteint dès ≈ 760 K de puissance et la puissance
+Puissance (gains de #129) : 1 K à 3 min, 100 K à 12 min, 1 M à 17 min, 100 M à 43 min, 10 B à 2,1 h (avant #129 :
+5 min, 21 min, 32 min, 85 min, 6,4 h ; avant #15 : 5 min, 20 min, 45 min, 3,2 h, 7,8 h). Avec la piste de 2,4 km, le bout était atteint dès ≈ 760 K de puissance et la puissance
 n'ajoutait ensuite que des os et des objets ; la piste de 6 km (#97) donne un but aux paliers prolongés (tableau
-« Fin de piste » ci-dessous). Bout de piste simulé à 4,2 h (4,6 h avec le modèle de distance d'avant #113, 6,8 h
+« Fin de piste » ci-dessous). Bout de piste simulé à 105 min depuis #129 (4,2 h avant #129, 4,6 h avec le modèle de distance d'avant #113, 6,8 h
 avant #15), avec la distance recalée sur les vols mesurés par #113.
 
 ### Rythme et économie (#15)
@@ -310,66 +310,68 @@ fait jamais de saut de plus de × 2 d'un achat au suivant. Prix trouvés en cala
 (section « CHANCE et tirage ») ; présentoirs vers 10 min, 30 min, 1 h et 2,5 h ; renaissance à $350B × 2^k.
 
 Relevés (60 joueurs, 14 h, médianes ; achats : équipements, mannequins à lancer, présentoirs, renaissances, rachats
-après une renaissance compris) :
+après une renaissance compris ; depuis #130, distance du mannequin équipé avec son comportement) :
 | Relevé | Achats | Revenu | Puissance | Rareté max | Avant #15 : achats, revenu, puissance, rareté |
 |---|---|---|---|---|---|
-| 2 min | 2 | $98/s | 161 | Uncommon | 3, $91/s, 161, Uncommon |
-| 5 min | 4 | $790/s | 1.05K | Rare | 6, $432/s, 1.19K, Rare |
-| 10 min | 6 | $3.28K/s | 7.1K | Epic | 10, $2.18K/s, 15.3K, Epic |
-| 30 min | 13 | $45.3K/s | 831K | Legendary | 13, $18.7K/s, 339K, Legendary |
-| 60 min | 19 | $281K/s | 27M | Mythic | 15, $63.9K/s, 2.52M, Legendary |
-| 3 h | 27 | $3.36M/s | 1.78B | Secret | 23, $707K/s, 80.6M, Mythic |
-| 8 h | 32 | $26.4M/s | 20.3B | Divine | 33, $10.8M/s, 11B, Divine |
-| 14 h | 65 (1 renaissance) | $70.8M/s | 11.6B | Divine | 94 (2 renaissances), $34.8M/s, 9.23B, Divine |
+| 2 min | 2 | $110/s | 336 | Uncommon | 3, $91/s, 161, Uncommon |
+| 5 min | 4 | $1K/s | 4.05K | Rare | 6, $432/s, 1.19K, Rare |
+| 10 min | 7 | $7.06K/s | 74.3K | Epic | 10, $2.18K/s, 15.3K, Epic |
+| 30 min | 15 | $117K/s | 25.1M | Legendary | 13, $18.7K/s, 339K, Legendary |
+| 60 min | 21 | $758K/s | 557M | Mythic | 15, $63.9K/s, 2.52M, Legendary |
+| 3 h | 28 | $6.73M/s | 30.4B | Secret | 23, $707K/s, 80.6M, Mythic |
+| 8 h | 33 | $35.6M/s | 291B | Divine | 33, $10.8M/s, 11B, Divine |
+| 14 h | 65 (1 renaissance) | $90.6M/s | 137B | Divine | 94 (2 renaissances), $34.8M/s, 9.23B, Divine |
 
 Prix suivant / revenu, minute par minute (médiane, `lune run tools/progression 60 14 "" courbe.csv` pour la courbe
 complète) :
 | Minute | 1 | 5 | 10 | 15 | 20 | 30 | 60 | 2 h | 4 h | 6 h | 8 h | 10 h |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Après #15 | 51 s | 2 min | 3 min | 3 min | 4 min | 5 min | 8 min | 23 min | 50 min | 66 min | 89 min | 110 min |
+| Après #129 | 51 s | 2 min | 2 min | 3 min | 3 min | 5 min | 9 min | 22 min | 51 min | 73 min | 96 min | 104 min |
+| Après #130 | 51 s | 2 min | 2 min | 2 min | 3 min | 4 min | 9 min | 23 min | 53 min | 77 min | 94 min | 92 min |
 | Avant #15 | 52 s | 68 s | 3 min | 8 min | 9 min | 22 min | 18 min | 18 min | 25 min | 38 min | 50 min | 29 min |
 
-Achat par achat (le moins cher d'abord : même ordre pour tous les joueurs ; ratio juste après l'achat) :
+Achat par achat (le moins cher d'abord : même ordre pour tous les joueurs ; ratio juste après l'achat ; rejoué après #130) :
 | # | Achat | Prix | Atteint | Prix suivant / revenu | Saut |
 |---|---|---|---|---|---|
 | 1 | Stone Dummy (équipement) | $100 | 45 s | 51 s | × 1,0 |
-| 2 | Rubber Dummy (à lancer) | $1.5K | 90 s | 101 s | × 1,7 |
-| 3 | Iron Dummy | $8K | 3 min | 3 min | × 1,6 |
+| 2 | Rubber Dummy (à lancer) | $1.5K | 90 s | 100 s | × 1,7 |
+| 3 | Iron Dummy | $8K | 3 min | 2 min | × 1,3 |
 | 4 | Glass Dummy | $40K | 4 min | 3 min | × 1,2 |
 | 5 | Gold Dummy | $120K | 6 min | 3 min | × 1,0 |
-| 6 | Steel Dummy | $250K | 8 min | 3 min | × 0,8 |
-| 7 | Présentoir 7 | $450K | 10 min | 3 min | × 1,2 |
-| 8 | Diamond Dummy | $800K | 12 min | 3 min | × 0,9 |
-| 9 | Glider Dummy | $1.2M | 15 min | 4 min | × 1,2 |
-| 10 | Neon Dummy | $1.8M | 18 min | 4 min | × 1,1 |
-| 11 | Rocket Dummy | $3M | 21 min | 4 min | × 1,0 |
-| 12 | Cosmic Dummy | $4.5M | 24 min | 4 min | × 1,0 |
-| 13 | Présentoir 8 | $7M | 27 min | 5 min | × 1,3 |
-| 14 | Ruby Rubber Dummy | $12M | 30 min | 6 min | × 1,1 |
-| 15 | Ruby Dummy | $20M | 35 min | 5 min | × 0,9 |
-| 16 | Emerald Glass Dummy | $25M | 39 min | 6 min | × 1,0 |
-| 17 | Sapphire Steel Dummy | $35M | 44 min | 6 min | × 1,1 |
-| 18 | Emerald Dummy | $50M | 49 min | 7 min | × 1,1 |
-| 19 | Présentoir 9 | $70M | 54 min | 9 min | × 1,3 |
-| 20 | Amber Glider Dummy | $120M | 61 min | 10 min | × 1,1 |
-| 21 | Golden Rocket Dummy | $180M | 69 min | 12 min | × 1,3 |
-| 22 | Plasma Dummy | $300M | 79 min | 17 min | × 1,4 |
-| 23 | Frost Rubber Dummy | $600M | 92 min | 21 min | × 1,2 |
-| 24 | Magma Glass Dummy | $1B | 108 min | 26 min | × 1,2 |
-| 25 | Omega Dummy | $1.8B | 2,2 h | 27 min | × 1,0 |
-| 26 | Présentoir 10 (Golden) | $3B | 2,5 h | 33 min | × 1,2 |
-| 27 | Shadow Steel Dummy | $5B | 2,9 h | 45 min | × 1,4 |
-| 28 | Radiant Glider Dummy | $9B | 3,4 h | 52 min | × 1,2 |
-| 29 | Starlight Rocket Dummy | $15B | 4,1 h | 65 min | × 1,2 |
-| 30 | Nebula Rubber Dummy | $30B | 4,9 h | 67 min | × 1,0 |
-| 31 | Infinite Dummy | $50B | 5,8 h | 78 min | × 1,2 |
-| 32 | Plasma Glass Dummy | $80B | 6,8 h | 90 min | × 1,1 |
-| 33 | Quantum Glider Dummy | $120B | 8,2 h | 111 min | × 1,2 |
-| 34 | Infinite Rocket Dummy | $200B | 9,6 h | 2,3 h | × 1,3 |
-| | Renaissance 1 | $350B | 11,5 h | | |
+| 6 | Steel Dummy | $250K | 7 min | 2 min | × 0,8 |
+| 7 | Présentoir 7 | $450K | 9 min | 3 min | × 1,2 |
+| 8 | Diamond Dummy | $800K | 10 min | 2 min | × 0,9 |
+| 9 | Glider Dummy | $1.2M | 12 min | 2 min | × 1,0 |
+| 10 | Neon Dummy | $1.8M | 15 min | 2 min | × 1,0 |
+| 11 | Rocket Dummy | $3M | 16 min | 3 min | × 1,1 |
+| 12 | Cosmic Dummy | $4.5M | 18 min | 3 min | × 1,3 |
+| 13 | Présentoir 8 | $7M | 21 min | 4 min | × 1,3 |
+| 14 | Ruby Rubber Dummy | $12M | 24 min | 5 min | × 1,1 |
+| 15 | Ruby Dummy | $20M | 27 min | 4 min | × 0,9 |
+| 16 | Emerald Glass Dummy | $25M | 31 min | 4 min | × 1,1 |
+| 17 | Sapphire Steel Dummy | $35M | 35 min | 5 min | × 1,2 |
+| 18 | Emerald Dummy | $50M | 39 min | 5 min | × 1,0 |
+| 19 | Présentoir 9 | $70M | 43 min | 7 min | × 1,3 |
+| 20 | Amber Glider Dummy | $120M | 48 min | 7 min | × 1,0 |
+| 21 | Golden Rocket Dummy | $180M | 54 min | 9 min | × 1,2 |
+| 22 | Plasma Dummy | $300M | 60 min | 11 min | × 1,3 |
+| 23 | Frost Rubber Dummy | $600M | 69 min | 14 min | × 1,3 |
+| 24 | Magma Glass Dummy | $1B | 80 min | 19 min | × 1,3 |
+| 25 | Omega Dummy | $1.8B | 94 min | 20 min | × 1,1 |
+| 26 | Présentoir 10 (Golden) | $3B | 113 min | 29 min | × 1,4 |
+| 27 | Shadow Steel Dummy | $5B | 2,2 h | 37 min | × 1,3 |
+| 28 | Radiant Glider Dummy | $9B | 2,7 h | 48 min | × 1,3 |
+| 29 | Starlight Rocket Dummy | $15B | 3,2 h | 62 min | × 1,3 |
+| 30 | Nebula Rubber Dummy | $30B | 4,0 h | 70 min | × 1,1 |
+| 31 | Infinite Dummy | $50B | 4,9 h | 72 min | × 1,0 |
+| 32 | Plasma Glass Dummy | $80B | 6,1 h | 89 min | × 1,2 |
+| 33 | Quantum Glider Dummy | $120B | 7,4 h | 103 min | × 1,2 |
+| 34 | Infinite Rocket Dummy | $200B | 8,8 h | 2,2 h | × 1,3 |
+| | Renaissance 1 | $350B | 10,6 h (11,1 h avant #130) | | |
 
-Saut le plus fort : **× 1,69** (× 4,29 avant #15 : Steel Dummy à 11 min, 11 min d'attente pour le Glider ; puis
-× 3,3 au Glider, 32 min d'attente pour le Cosmic, le mur du point 10). 19 achats la première heure (15 avant, dont 10
+Saut le plus fort : **× 1,67** depuis #129 (× 1,69 avant, × 4,29 avant #15 : Steel Dummy à 11 min, 11 min d'attente pour le Glider ; puis
+× 3,3 au Glider, 32 min d'attente pour le Cosmic, le mur du point 10). 21 achats la première heure (19 avant #129, 15 avant #15, dont 10
 dans les 10 premières minutes). Un écart d'achat dépasse 5 min dès ≈ 45 min de jeu (5 à 7 min jusqu'à 1 h).
 
 Écarts aux références : la puissance monte ≈ 3 fois moins vite que 09 (× 10 toutes les ≈ 8 min au lieu de 3,5 min) ;
@@ -379,33 +381,56 @@ Dummy à 44 s, Rubber Dummy à 2:07, Iron Dummy à 2:54, Glass Dummy à 4:29 (si
 $548/s à 4:48 (simulé : $790/s à 5 min). Le Rubber Dummy rebondit bien plus loin que le modèle (1,2 à 1,9 km à
 161 de puissance, Rare dès 2:24) mais allonge la boucle (vols de 15 à 21 s).
 
+### Gains des équipements calés sur 09 (#129)
+Le joueur simulé montait ≈ 2 fois moins vite que *Throw a Seed* (09) : #15 avait recalé les prix, pas les gains de
+`Training.GEARS`. Gains relevés (Stone +6, Iron +45, Gold +400, Diamond +2.2K, Neon +9K, Cosmic +35K, soit ≈ × 4 à
+× 9 par palier au lieu de × 3 à × 4,5 ; la suite garde × `GAIN_STEP` = 4), prix, répétitions par séance et niveaux
+inchangés. Cible : ≈ 1 K vers 4 min, ≈ 100 K vers 11-12 min, tolérance ± 30 %. Joueur simulé rejoué (60 joueurs, 14 h,
+médianes) :
+| Repère | Avant #129 | Après #129 | 09 *Throw a Seed* |
+|---|---|---|---|
+| Puissance 1 K | 5 min | 3 min | 1.34K à 4 min |
+| Puissance 100 K | 21 min | 12 min | 114K à 11 min |
+| Puissance 1 M | 32 min | 17 min | — |
+| × 10 (1 M → 10 M → 100 M) | 19 min, 34 min | 10 min, 16 min | ≈ 3,5 min |
+| Fin de Moon Base (2,4 km) | 30 min | 17 min | — |
+| Fin de piste (6 km) | 4,2 h | 105 min | — |
+| Première renaissance | 11,5 h | 11,1 h | — |
+| Saut le plus fort du ratio d'achat | × 1,73 | × 1,67 | — |
+Puissance à 14 h : 137 B (11,8 B avant). Le rythme de 09 est tenu sur les 20 premières minutes ; ensuite les prix de #15
+(inchangés) bornent la montée des équipements (**cible × 10 toutes les 3,5 à 5 min manquée après 12 min**, écart connu : levier suivant = prix ou répétitions, hors périmètre de #129) : × 10 toutes les 10 à 16 min jusqu'à 100 M. La fin de piste arrive à 105 min
+(> 45 min) : pas de recalage de la renaissance, qui reste à 11,1 h (le prix en $ pilote le calendrier). Garde-fou
+`Progression.spec` : écart maximal entre deux achats de la première heure porté de 6 à 7 min (le 20e achat tombe à 375 s
+d'écart : les prix de #15 ne bougent pas, cause non investiguée ; l'écart de 5 à 7 min jusqu'à 1 h était déjà documenté).
+Planche `entrainement.jpg` : les gains affichés sur l'appareil changent, à régénérer en Studio (manifeste déjà à jour).
+
 ### Repères comparés aux références
 | Repère | Fling a Dummy (simulé) | 09 *Throw a Seed* | 01 *Throw Food For Animals* |
 |---|---|---|---|
 | Première récompense | 15 s | 21 s | 24 s |
 | Premier équipement | 45 s ($100) | 1:45 ($500) | 0:42 ($1) |
 | Deuxième projectile | 90 s (1.25x, $1.5K) | 1:42 (1.25x, $1.2K) | 1:27 (pomme) |
-| Puissance | 1K à 5 min, 100K à 20 min | 1.34K à 4 min, 114K à 11 min | 503 à 17 min |
-| Revenu | 1K/s à 6 min, 100K/s à 40 min | 2.19K/s à 3:36 | 1.08K/s vers 9 min, 391K/s à 17 min |
-| Projectile le plus fort | 135x à 9,6 h | 135x (durée inconnue) | non observé |
+| Puissance | 1K à 3 min, 100K à 12 min | 1.34K à 4 min, 114K à 11 min | 503 à 17 min |
+| Revenu | 1K/s à 6 min, 100K/s à 32 min | 2.19K/s à 3:36 | 1.08K/s vers 9 min, 391K/s à 17 min |
+| Projectile le plus fort | 135x à 9,2 h | 135x (durée inconnue) | non observé |
 | Cote la plus haute | 1 IN 100T (50Qa en Giant) | 1 IN 300Qa | non observé |
 | Collection | 64 mannequins, 11 raretés | 110 plantes, 10 raretés + Royal | non observé |
 
-Écarts : la puissance monte ≈ 2 fois moins vite que 09 après 5 min, le revenu ≈ 2 fois plus vite qu'avant #15 (100K/s à
+Écarts : la puissance suit 09 sur les 20 premières minutes depuis #129 (≈ 2 fois moins vite avant), le revenu ≈ 2 fois plus vite qu'avant #15 (100K/s à
 40 min au lieu de 83) ; la collection reste plus petite que celle de 09 (familles et palettes à ajouter sans dessin).
 
 ### Piste prolongée (#97) et renaissance (#108) : les deux leviers
 1. **Piste prolongée à 6 km** (#97) : six thèmes de plus après Moon Base, un tous les 600 m (section « Zones de la
    piste »), CHANCE des zones de × 18 à × 60. Joueur simulé rejoué (60 joueurs, 14 h, après #15 et #113) et vols mesurés en Studio
    (Crash Dummy, jauge pleine, `DebugLaunch`) :
-   | Fin de piste | Vitesse | Puissance (Crash Dummy) | Atteinte (simulé, #130 : mannequin équipé) | CHANCE des zones | Vols mesurés (#113, 6 par puissance) |
+   | Fin de piste | Vitesse | Puissance (Crash Dummy) | Atteinte (simulé, mannequin équipé : #130 ; #129 avant) | CHANCE des zones | Vols mesurés (#113, 6 par puissance) |
    |---|---|---|---|---|---|
-   | 2,4 km (fin de Moon Base) | 557 | 760 K | 25 min (30 avant #130) | × 18 | (#14, #33) |
-   | 3,6 km (Neon City) | 685 | 22 M | 56 min (57) | × 27 | 3 590 à 3 630 m |
-   | 4,8 km (Haunted Castle) | 791 | 360 M | 72 min (117) | × 40 | 4 867 à 4 991 m, 5 021 à 5 510 m après un piège |
-   | 6 km (bout) | 886 | 4,4 B | 3,4 h (4,2 h) | × 60 | bout de piste 6 fois sur 6 (6 043-6 048 m) |
-   Depuis #130, le joueur simulé compte la distance du mannequin équipé (Golden Rocket à 66 min : 4,8 km atteints avec
-   ≈ 40 % de puissance en moins).
+   | 2,4 km (fin de Moon Base) | 557 | 760 K | 13 min (17) | × 18 | (#14, #33) |
+   | 3,6 km (Neon City) | 685 | 22 M | 20 min (32) | × 27 | 3 590 à 3 630 m |
+   | 4,8 km (Haunted Castle) | 791 | 360 M | 48 min (54) | × 40 | 4 867 à 4 991 m, 5 021 à 5 510 m après un piège |
+   | 6 km (bout) | 886 | 4,4 B | 58 min (105 ; 4,2 h avant #129) | × 60 | bout de piste 6 fois sur 6 (6 043-6 048 m) |
+   Depuis #130, le joueur simulé compte la distance du mannequin équipé : la fin de piste arrive avec moins de
+   puissance (Golden Rocket à 54 min, + 20 %).
    Avant #113, les vols montaient à ≈ 590 studs à 4,4 B puis glissaient au hasard (4,1 à 6,0 km à 4,4 B, mesures de
    #97) ; le vol plafonné (#113, section « Vol plafonné ») tient ces paliers à ± 2 % hors pièges. Effet simulé de la
    piste de 6 km : CHANCE finale × 3,3 (17 K au lieu de 5,1 K à 24 h), Divine à 7,1 h au lieu de 12,3 h.
@@ -472,12 +497,13 @@ Dummy à même puissance et jauge), quelle que soit la puissance, sans passer le
   au plus) pour tous ; vol le plus long 16 s (Rubber à 4,4 B) : `MAX_FLIGHT_TIME` (20 s) suffit. À 4,4 B le Crash
   Dummy finit déjà contre la paroi : l'avantage s'y lit en CHANCE de zone avant le bout de piste, pas à l'arrivée.
 - **Joueur simulé** : distance et CHANCE du mannequin équipé (`ProgressionSim.distanceFor` avec son comportement,
-  glissade à la vitesse d'arrivée du plan). Rejoué (60 joueurs, 14 h) : achats décalés de − 6 à + 3 min (Amber Glider
-  59 min au lieu de 61, Magma Glass 102 min au lieu de 108, Infinite Rocket 9,7 h au lieu de 9,4 h), saut le plus fort
-  inchangé (× 1,73), bout de piste 3,4 h au lieu de 4,2 h.
+  glissade à la vitesse d'arrivée du plan). Rejoué sur l'économie de #129 (60 joueurs, 14 h) : achats avancés de 0 à
+  5 min la première heure (Golden Rocket 54 min au lieu de 59), de 10 à 25 min ensuite (Magma Glass 80 min au lieu de
+  91, Infinite Rocket 8,8 h au lieu de 9,2 h), renaissance 10,6 h au lieu de 11,1 h, saut le plus fort inchangé
+  (× 1,67), bout de piste 58 min au lieu de 105.
 
 ### Renaissance (#108, `Shared.Rebirth`)
-Le levier après tout le catalogue d'achats (≈ 11,5 h simulées depuis #15 ; 9,6 h avant), comme la
+Le levier après tout le catalogue d'achats (≈ 11,1 h simulées depuis #129 ; 9,6 h avant), comme la
 RENAISSANCE de *Net a Fish!* (12) et
 d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour toujours.
 - **Condition** : posséder le dernier équipement d'entraînement (Infinite) **et** payer **$350B × 2^k** (k renaissances
@@ -507,17 +533,17 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
 - **Sauvegarde** : champ `Rebirths` (entier, `Rebirth.read` : 0 pour une sauvegarde antérieure, borné à 60).
 - **Joueur simulé** (`lune run tools/progression 40 300`, médianes ; 3e argument : facteur de prix pour les essais),
   piste de 6 km, prix de #15 ; prix × 2 (#109, appliqué) comparé au × 4 de #108 :
-  | Renaissance | Prix (× 2) | CHANCE | Atteinte (× 2) | Atteinte (× 4 : $350B, $1.4T, $5.6T…) |
+  | Renaissance | Prix (× 2) | CHANCE | Atteinte (× 2, après #129) | Atteinte (× 4 : $350B, $1.4T, $5.6T…) |
   |---|---|---|---|---|
-  | 1 | $350B | x2 | 11,5 h | 11,5 h |
-  | 2 | $700B | x4 | 15,8 h | 17,7 h |
-  | 3 | $1.4T | x8 | 20 h | 27 h |
-  | 4 | $2.8T | x16 | 24,5 h | 48,3 h |
-  | 5 | $5.6T | x32 | 30,2 h | 88 h |
-  | 6 | $11.2T | x64 | 37,2 h | 173 h |
-  | 7 | $22.4T | x128 | 46,4 h | > 300 h |
-  | 10 | $179T | x1.02K | 97 h | |
-  | 14 | $2.86Qa | x16.3K | 293 h | |
+  | 1 | $350B | x2 | 10,8 h | 11,5 h |
+  | 2 | $700B | x4 | 15,2 h | 17,7 h |
+  | 3 | $1.4T | x8 | 19,3 h | 27 h |
+  | 4 | $2.8T | x16 | 23,7 h | 48,3 h |
+  | 5 | $5.6T | x32 | 29,1 h | 88 h |
+  | 6 | $11.2T | x64 | 36,5 h | 173 h |
+  | 7 | $22.4T | x128 | 44,8 h | > 300 h |
+  | 10 | $179T | x1.02K | 96,4 h | |
+  | 14 | $2.86Qa | x16.3K | 294 h | |
   Premières sorties : Celestial 26 h (× 4 : 33 h), Ethereal 73 h (225 h), Infinity 262 h (> 300 h).
   Avec le prix × 4, l'écart entre deux renaissances double presque à chaque fois (6, 10, 21, 40, 84 h) : le revenu ne
   monte qu'avec la CHANCE (× 2) et le nombre de tirages. Avec × 2 (#109), il reste de 4 à 9 h jusqu'à la 7e, puis 11 à
