@@ -657,8 +657,10 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
   près et à travers tout le hub (affiché jusqu'à 600 studs). Comparaison entre joueurs d'un coup d'œil ; plus de panneau à l'entrée.
   Sans chevauchement (#150) : chaque client borne la largeur du texte à 44 studs à sa distance
   (`BaseLook.labelPixels`, `Client.BaseFx` : 4 studs d'écart avec le texte voisin, 48 studs d'un centre à l'autre),
-  taille d'avant inchangée de près et depuis la bande ; texte dessiné par-dessus les étiquettes des mannequins posés
-  (`AlwaysOnTop`), affichées à 60 studs au plus (120 avant : elles encombraient le texte vu de la bande).
+  taille d'avant inchangée de près et depuis la bande ; texte ancré par son bas à 26 studs (il grandit vers le haut :
+  nom, revenu et record restent au-dessus des mannequins géants vus de la bande) ; l'étiquette d'un mannequin posé
+  (nom, $/s) est masquée tant qu'elle passerait devant un texte de base à l'écran (`BaseLook.overlaps`) et n'est
+  affichée qu'à 60 studs au plus (120 avant : elles encombraient le texte vu de la bande).
 - **Paliers visuels de la base** (#61, `Shared.BaseLook`) : la base change d'aspect à chaque présentoir acheté, un
   joueur voit de loin les bases les plus avancées du serveur.
   | Présentoirs | Palier | Clôture | Sol | Décor |
@@ -677,7 +679,9 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
   pièces. Vue de tous : le serveur pose l'état final tout de suite (aucune attente, rien de bloqué), garde l'ancien
   habillage 5 s dans `ReplicatedStorage` et publie l'heure du changement (`UpgradeAt`) ; chaque client anime un double
   (pièces sans collision jusqu'à leur arrivée). Un joueur arrivé après (changement de plus d'1 s) voit l'état final.
-  Mouvement réduit : fondu de 0,3 s, sans chute ni poussière.
+  Mouvement réduit : fondu de 0,3 s, sans chute ni poussière. Mesuré en Studio (réception → confettis) : Wood → Garden
+  55 pièces 2,22-2,29 s, Garden → Stone 59 pièces 2,24 s, Stone → Noble 63 pièces 2,23 s ; base sans propriétaire vue
+  d'un autre client 36 pièces 1,94 s (captures : `docs/captures/base-122/`).
 - Revenu versé chaque seconde (attribut `Income`, compteur « +$N/s ») : **seule source d'argent**.
 - **Stock** (inventaire) : les mannequins possédés non posés, doublons compris, dans l'ordre d'arrivée ; tout mannequin
   gagné y entre. Plafond technique 200 (`INVENTORY_MAX`) : au-delà, le moins rentable du stock est vendu d'office.
@@ -931,7 +935,8 @@ Interface : section suivante.
   mannequin à lancer ; `DebugWipe` (true) remet toute la sauvegarde du joueur à l'état d'un nouveau joueur
   (renaissances, collection, tutoriel et records compris ; écrite à son départ : remise à zéro du compte du testeur
   avant une sprint review, #95) ; `FreshPlayer` sur
-  Workspace : nouveau joueur sans sauvegarde.
+  Workspace : nouveau joueur sans sauvegarde ; `DebugUpgradeSpeed` sur Workspace (0,2 : cinq fois plus lent) ralentit
+  l'animation de construction des bases, dont chaque client écrit la durée mesurée (`[BaseFx]`).
 - Le décor est généré par le code (`CourseBuilder`) : rien à exporter depuis Studio.
 
 ## Feuille de route

@@ -244,6 +244,13 @@ return function(T, Loader)
 				T.expectNear(size.Y, expected.Y, 1e-6, "hauteur à " .. depth)
 			end
 		end)
+		T.it("repère le chevauchement de deux étiquettes à l'écran (BaseLook.overlaps)", function()
+			local size = Vector2.new(100, 40)
+			T.expect(BaseLook.overlaps(Vector2.new(0, 0), size, Vector2.new(90, 30), size), "coins qui se recouvrent")
+			T.expect(not BaseLook.overlaps(Vector2.new(0, 0), size, Vector2.new(100, 0), size), "côte à côte")
+			T.expect(not BaseLook.overlaps(Vector2.new(0, 0), size, Vector2.new(0, 41), size), "l'une sous l'autre")
+			T.expect(BaseLook.overlaps(Vector2.new(0, 0), size, Vector2.new(0, 0), Vector2.new(10, 10)), "incluse")
+		end)
 		T.it("garde les proportions du texte quand il est borné", function()
 			local unit = units[2]
 			local depth = 400

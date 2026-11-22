@@ -1,6 +1,6 @@
 -- Bases du hub côté client : animation de construction quand une base monte de palier visuel (#122, déroulé dans
--- Shared.BaseUpgrade) et taille du texte flottant bornée pour que les textes des bases voisines ne se chevauchent pas
--- (#150, Shared.BaseLook.labelPixels).
+-- Shared.BaseUpgrade) et texte flottant lisible (#150) : taille bornée pour que les textes des bases voisines ne se
+-- chevauchent pas (Shared.BaseLook.labelPixels), étiquette d'un mannequin posé masquée tant qu'elle passerait devant.
 -- Le serveur pose l'habillage final tout de suite (Server.CourseBuilder.styleBase) et garde l'ancien quelques secondes
 -- dans ReplicatedStorage : chaque client en anime un double local qui s'enfonce, cache les nouvelles pièces puis les
 -- fait tomber une à une (sans collision jusqu'à leur arrivée), poussière et chocs de briques à l'impact, sol en fondu,
@@ -50,8 +50,11 @@ type Run = {
 
 local BaseFx = {}
 
+local DISPLAYED = "Displayed_" -- préfixe des mannequins posés (Server.BaseService), étiquette nom et $/s au-dessus
+
 local runs: { [Model]: Run } = {}
-local labels: { [Model]: BillboardGui } = {}
+local labels: { [Model]: BillboardGui } = {} -- texte flottant de chaque base
+local tags: { [BillboardGui]: boolean } = {} -- étiquettes des mannequins posés
 
 -- Cette méthode permet de relever les pièces d'une base (pièce = enfant de l'habillage : modèle ou bloc seul) avec
 -- leur étage, leur centre et leur bas, lorsque l'animation démarre.
@@ -339,23 +342,36 @@ local function step(run: Run, now: number)
 	end
 end
 
+-- Cette méthode permet de donner le centre (pixels) d'un point du monde à l'écran et sa profondeur devant la caméra
+-- lorsque l'on place une étiquette (nil derrière la caméra).
+local function project(camera: Camera, position: Vector3): (Vector2?, number)
+	local point = camera:WorldToViewportPoint(position)
+	if point.Z <= 0 then
+		return nil, point.Z
+	end
+	return Vector2.new(point.X, point.Y), point.Z
+end
+
 -- Cette méthode permet de borner la taille du texte flottant de chaque base à sa distance (largeur sous l'écart entre
--- deux bases, #150) lorsque RenderStepped tourne.
-local function sizeLabels()
+-- deux bases) et de masquer l'étiquette d'un mannequin posé qui passerait devant l'un de ces textes (#150) lorsque
+-- RenderStepped tourne.
+local function arrangeLabels()
 	local camera = Workspace.CurrentCamera
 	if not camera then
 		return
 	end
-	local view = camera.CFrame
+	local eye = camera.CFrame.Position
 	local unit = camera.ViewportSize.Y / (2 * math.tan(math.rad(camera.FieldOfView) / 2))
+	-- Textes des bases affichés : centre et taille à l'écran
+	local shown: { { center: Vector2, size: Vector2 } } = {}
 	for base, gui in labels do
 		local anchor = gui.Parent
 		if not base.Parent or not anchor or not anchor:IsA("BasePart") then
 			labels[base] = nil
 			continue
 		end
-		local depth = (anchor.Position - view.Position):Dot(view.LookVector)
-		if depth <= 0 then
+		local center, depth = project(camera, anchor.Position)
+		if not center then
 			continue -- derrière la caméra : pas affiché
 		end
 		local size = BaseLook.labelPixels(depth, unit)
@@ -363,10 +379,53 @@ local function sizeLabels()
 		if math.abs(current.X.Offset - size.X) > 0.5 or current.X.Scale ~= 0 then
 			gui.Size = UDim2.fromOffset(size.X, size.Y)
 		end
+		if (anchor.Position - eye).Magnitude <= gui.MaxDistance then
+			-- Décalage du texte (SizeOffset, en tailles ; vers le haut quand Y > 0, l'écran compte Y vers le bas)
+			local shift = gui.SizeOffset * size
+			table.insert(shown, { center = center + Vector2.new(shift.X, -shift.Y), size = size })
+		end
+	end
+	for gui in tags do
+		local adornee = gui.Adornee
+		if not gui:IsDescendantOf(Workspace) or not adornee or not adornee:IsA("BasePart") then
+			tags[gui] = nil
+			continue
+		end
+		local position = adornee.Position + gui.StudsOffsetWorldSpace
+		local center, depth = project(camera, position)
+		local hidden = false
+		if center and (position - eye).Magnitude <= gui.MaxDistance then
+			local perStud = unit / math.max(depth, 1)
+			local size = Vector2.new(
+				gui.Size.X.Scale * perStud + gui.Size.X.Offset,
+				gui.Size.Y.Scale * perStud + gui.Size.Y.Offset
+			)
+			for _, label in shown do
+				if BaseLook.overlaps(center, size, label.center, label.size) then
+					hidden = true
+					break
+				end
+			end
+		end
+		if gui.Enabled == hidden then
+			gui.Enabled = not hidden
+		end
 	end
 end
 
--- Cette méthode permet de suivre une base (changements de palier, texte flottant) lorsqu'elle apparaît.
+-- Cette méthode permet de suivre l'étiquette d'un mannequin posé (nom, $/s) lorsque le serveur le construit dans une
+-- base.
+local function trackTag(model: Instance)
+	if model:IsA("Model") and string.sub(model.Name, 1, #DISPLAYED) == DISPLAYED then
+		local gui = model:FindFirstChildOfClass("BillboardGui")
+		if gui then
+			tags[gui] = true
+		end
+	end
+end
+
+-- Cette méthode permet de suivre une base (changements de palier, texte flottant, étiquettes des mannequins posés)
+-- lorsqu'elle apparaît.
 local function track(base: Instance)
 	if not base:IsA("Model") then
 		return
@@ -374,6 +433,10 @@ local function track(base: Instance)
 	base:GetAttributeChangedSignal(BaseUpgrade.AT_ATTRIBUTE):Connect(function()
 		start(base)
 	end)
+	for _, child in base:GetChildren() do
+		trackTag(child)
+	end
+	base.ChildAdded:Connect(trackTag)
 	task.spawn(function()
 		local anchor = base:WaitForChild("BaseLabel", 10)
 		local gui = anchor and anchor:FindFirstChildOfClass("BillboardGui")
@@ -394,7 +457,7 @@ function BaseFx.init()
 		for _, run in runs do
 			step(run, now)
 		end
-		sizeLabels()
+		arrangeLabels()
 	end)
 end
 

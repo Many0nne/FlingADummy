@@ -231,6 +231,14 @@ function BaseLook.labelPixels(depth: number, unit: number): Vector2
 	return size
 end
 
+-- Cette méthode permet de savoir si deux étiquettes (centre et taille à l'écran, en pixels) se chevauchent lorsque le
+-- client masque l'étiquette d'un mannequin posé qui passerait devant le texte d'une base (#150).
+function BaseLook.overlaps(centerA: Vector2, sizeA: Vector2, centerB: Vector2, sizeB: Vector2): boolean
+	local gap = (centerA - centerB)
+	local reach = (sizeA + sizeB) / 2
+	return math.abs(gap.X) < reach.X and math.abs(gap.Y) < reach.Y
+end
+
 -- Cette méthode permet de donner les lignes du texte flottant d'une base lorsque son propriétaire ou ses valeurs
 -- changent ; `owner` nil : base vide ; `power` nil (données pas chargées) : ligne vide ; `rebirths` > 0 : compteur
 -- violet « 🌟 3 » à côté de la Throw Power (ligne en RichText) ; `best` sous 1 m ou nil : pas de ligne de record.

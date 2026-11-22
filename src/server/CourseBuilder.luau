@@ -65,7 +65,9 @@ local GATE_WIDTH = 10 -- entrée de la base, côté hub
 local BED_INSET = 2.2 -- du bord de la base à l'axe d'un massif de fleurs
 local BED_END = 5 -- massifs arrêtés à cette distance des clôtures de côté
 local FLAG_INSET = 2.5 -- drapeaux plantés à l'intérieur des coins
-local LABEL_HEIGHT = 24 -- texte flottant de la base, au-dessus de son centre (au-dessus des plus grands mannequins posés)
+-- Bas du texte flottant de la base, au-dessus de son centre : au-dessus des plus grands mannequins posés vus de la bande
+-- (#150 ; le texte grandit vers le haut, sa marge en pixels ne le fait plus descendre derrière eux)
+local LABEL_HEIGHT = 26
 local LABEL_DISTANCE = 600 -- distance d'affichage du texte flottant (tout le hub et la zone de lancer)
 local LABEL_GREEN = Color3.fromRGB(80, 215, 70) -- revenu (vert du HUD)
 local LABEL_CYAN = Color3.fromRGB(90, 205, 255) -- Throw Power (cyan du HUD)
@@ -879,10 +881,9 @@ local function baseLabel(parent: Instance, position: Vector3): BaseLabel
 	-- Taille de départ ; chaque client la borne ensuite à chaque image (Client.BaseFx, BaseLook.labelPixels, #150)
 	local studs, pixels = BaseLook.LABEL_STUDS, BaseLook.LABEL_PIXELS
 	gui.Size = UDim2.new(studs.X, pixels.X, studs.Y, pixels.Y)
+	gui.SizeOffset = Vector2.new(0, 0.5) -- ancré par le bas
 	gui.LightInfluence = 0
 	gui.MaxDistance = LABEL_DISTANCE
-	-- Par-dessus les étiquettes des mannequins posés, qui passaient devant de près (#150)
-	gui.AlwaysOnTop = true
 	gui.Parent = anchor
 	local avatar = Instance.new("ImageLabel")
 	avatar.Name = "Avatar"
