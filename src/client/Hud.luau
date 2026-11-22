@@ -30,6 +30,7 @@ local Overlay = require(Shared:WaitForChild("Overlay"))
 
 local CollectionWindows = require(script.Parent.CollectionWindows)
 local RebirthWindow = require(script.Parent.RebirthWindow)
+local StoreWindow = require(script.Parent.StoreWindow)
 local ThrowShop = require(script.Parent.ThrowShop)
 local UIKit = require(script.Parent.UIKit)
 
@@ -245,8 +246,7 @@ local function buildButtons()
 		Shine = true,
 		Parent = left,
 	}, function()
-		-- Ouvre encore la fenêtre Training Gear ; passera à la boutique Robux avec #160 (l'équipement s'achète au pad, #159)
-		toggle("Shop")
+		toggle("Store") -- boutique Robux (#160) ; Training Gear s'ouvre au pad devant l'appareil (#159)
 	end)
 	anchors.Rebirth = UIKit.iconButton("rebirth", "Rebirth", BUTTON_SIZE, {
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -657,7 +657,8 @@ function Hud.refresh()
 		Format.short(math.max(0, stat("ThrowPower", GameConfig.START_POWER) - counters.ThrowPower.pending))
 
 	local gearCost = Training.nextGearCost(stat("GearTier", 1))
-	UIKit.setBadge(anchors.Shop, if gearCost ~= nil and money >= gearCost then "!" else nil)
+	-- Pastille du bouton Shop : pack de démarrage en offre (boutique Robux, #160)
+	UIKit.setBadge(anchors.Shop, if StoreWindow.starterOffered() then "!" else nil)
 	if windows.Shop.Visible then
 		buildModels()
 		refreshGear(money)
@@ -1119,6 +1120,12 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 		UIKit.closeWindow(windows.DummyShop)
 		Hud.refresh()
 	end)
+	-- Boutique Robux (bouton Shop du menu de gauche, #160) et minuteurs de ses boosts dans le HUD
+	windows.Store = StoreWindow.init(player, remotes, gui, root, { popup = Hud.popup }, function()
+		UIKit.closeWindow(windows.Store)
+		Hud.refresh()
+	end)
+	player:GetAttributeChangedSignal("StarterEnds"):Connect(Hud.refresh)
 	-- Fenêtre REBIRTH (bouton du menu de gauche)
 	windows.Rebirth = RebirthWindow.init(player, remotes, gui, {
 		popup = Hud.popup,

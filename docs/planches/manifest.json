@@ -900,6 +900,15 @@
               ],
               "look": "5570d1f642",
               "title": "Infinite Rocket Dummy"
+            },
+            {
+              "key": "rainbow",
+              "lines": [
+                "GAMEPASS",
+                "LUCK 1.5x BEST"
+              ],
+              "look": "54367936b2",
+              "title": "Rainbow Dummy"
             }
           ],
           "name": "a-lancer-4"

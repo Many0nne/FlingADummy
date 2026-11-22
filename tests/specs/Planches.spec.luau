@@ -28,7 +28,7 @@ return function(T, Loader, Lib)
 		T.it("chaque planche montre tout son catalogue, une fois chacun", function()
 			local expected = {
 				collection = #Collection.DUMMIES,
-				["a-lancer"] = #ThrowDummies.LIST,
+				["a-lancer"] = #ThrowDummies.LIST + 1, -- Rainbow Dummy (passe de la boutique Robux, #160)
 				base = #BaseLook.BASE_TIERS,
 				entrainement = #Training.GEARS,
 			}

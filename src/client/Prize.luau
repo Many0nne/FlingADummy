@@ -31,6 +31,7 @@ local Inventory = require(Shared:WaitForChild("Inventory"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local RevealPlan = require(Shared:WaitForChild("RevealPlan"))
+local Store = require(Shared:WaitForChild("Store"))
 local Tutorial = require(Shared:WaitForChild("Tutorial"))
 
 local FlightCamera = require(script.Parent.FlightCamera)
@@ -1035,7 +1036,8 @@ local function refreshPanel()
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local slot = player:GetAttribute("Slot")
-	local near = root ~= nil and typeof(slot) == "number" and CourseLayout.isNearBase(slot, root.Position)
+	local big = Store.decodePasses(player:GetAttribute("Passes")).BigBase -- base agrandie (Big Base, #160)
+	local near = root ~= nil and typeof(slot) == "number" and CourseLayout.isNearBase(slot, root.Position, big)
 	-- AUTO pose le mannequin tenu, sinon le dernier gagné ; caché si la règle AUTO ne lui trouve aucun présentoir (base
 	-- pleine de plus rentables : un clic ne ferait rien)
 	local candidate = toPlace()
