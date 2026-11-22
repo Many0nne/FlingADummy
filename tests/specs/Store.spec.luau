@@ -391,7 +391,6 @@ return function(T, Loader)
 			end
 		end)
 	end)
-	end)
 
 	T.describe("Store.clock", function()
 		T.it("écrit les minuteurs en m:ss ou h:mm:ss", function()
