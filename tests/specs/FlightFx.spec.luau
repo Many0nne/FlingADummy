@@ -201,6 +201,34 @@ return function(T, Loader)
 			end, FlightGhost.duration(path) + 1)
 			T.expectEqual(run.glideFrames, 0)
 		end)
+
+		T.it("ne rallume pas les traînées sur les sauts contre les obstacles après la descente (Studio)", function()
+			local glider = dummyOf("Glides")
+			local v = launchVelocity(22e6)
+			local cues = FlightFx.cues(ORIGIN, v, G, glider)
+			local path = FlightGhost.path(ORIGIN, v, G, glider, 20)
+			local duration = FlightGhost.duration(path)
+			-- Descente jusqu'à 5 studs (posé sur une caisse, sans passer sous GROUND_HEIGHT), puis un saut de 15 studs
+			local landing = duration
+			for i, p in path.positions do
+				if p.Y <= 5 then
+					landing = (i - 1) * path.dt
+					break
+				end
+			end
+			local stop = FlightGhost.sample(path, landing)
+			local run = replay(cues, v, function(t)
+				if t <= landing then
+					return (FlightGhost.sample(path, t))
+				end
+				local dt = t - landing
+				local height = 5 + 30 * dt - G * dt * dt / 2
+				return Vector3.new(stop.X, math.max(height, 5), stop.Z + 80 * dt)
+			end, landing + 1)
+			T.expectEqual(run.glideStarts, 1)
+			-- Glisse seulement pendant la descente : pas au-delà de l'atterrissage
+			T.expect(run.glideFrames * DT <= landing - (run.glideOn :: number) + DT, "pas de glisse après le plancher")
+		end)
 	end)
 
 	T.describe("FlightFx.step : Rubber", function()

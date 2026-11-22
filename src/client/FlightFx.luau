@@ -123,10 +123,10 @@ local function addJet(flight: Flight)
 			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 70, 20)),
 		}),
 		LightEmission = 1,
-		Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2.2), NumberSequenceKeypoint.new(1, 0.4) }),
+		Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 3.2), NumberSequenceKeypoint.new(1, 0.5) }),
 		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 0.6) }),
-		Lifetime = NumberRange.new(0.12, 0.2),
-		Speed = NumberRange.new(18, 26),
+		Lifetime = NumberRange.new(0.14, 0.2),
+		Speed = NumberRange.new(22, 30),
 		SpreadAngle = Vector2.new(12, 12),
 		Rate = 110 * rate,
 		LockedToPart = true,
@@ -152,7 +152,7 @@ local function addJet(flight: Flight)
 	flight.light = UIKit.create("PointLight", {
 		Color = Color3.fromRGB(255, 160, 60),
 		Brightness = 3,
-		Range = 12,
+		Range = 16,
 		Parent = jet,
 	})
 	flight.roar = sound("Rocket", jet, 0.9)
@@ -202,7 +202,7 @@ local function addTrails(flight: Flight)
 			Color = ColorSequence.new(Color3.fromRGB(255, 255, 255)),
 			Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) }),
 			WidthScale = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0.3) }),
-			Lifetime = 0.45,
+			Lifetime = 0.3, -- courte : la traînée n'atteint pas la caméra de vol
 			MinLength = 0.1,
 			FaceCamera = true,
 			LightEmission = 0.4,

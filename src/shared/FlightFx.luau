@@ -122,8 +122,10 @@ function FlightFx.step(tracker: Tracker, position: Vector3, dt: number, counted:
 	tracker.boosting = not tracker.boostDone
 	frame.boosting = tracker.boosting
 
-	-- Premier contact affiché (après le départ, qui peut partir bas) : la descente planée est finie
-	if now > GameConfig.IMPACT_GRACE_TIME and height < FlightArc.GROUND_HEIGHT then
+	-- Premier contact affiché (après le départ, qui peut partir bas), ou planeur descendu au plancher des traînées
+	-- (posé sur un obstacle) : la descente planée est finie, les sauts sur les obstacles qui suivent n'en sont pas
+	local floored = tracker.glided and height <= FlightFx.GLIDE_FLOOR
+	if (now > GameConfig.IMPACT_GRACE_TIME and height < FlightArc.GROUND_HEIGHT) or floored then
 		tracker.landed = true
 	end
 	if cues.glide and not tracker.landed then
