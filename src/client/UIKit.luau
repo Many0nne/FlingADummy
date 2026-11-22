@@ -17,6 +17,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Assets = require(Shared:WaitForChild("Assets"))
 local DummyShape = require(Shared:WaitForChild("DummyShape"))
 local Sounds = require(Shared:WaitForChild("Sounds"))
+local TouchLayout = require(Shared:WaitForChild("TouchLayout"))
 local UIMotion = require(Shared:WaitForChild("UIMotion"))
 
 local UIKit = {}
@@ -350,12 +351,58 @@ function UIKit.centerPivot(gui: GuiObject)
 	gui.AnchorPoint = Vector2.new(0.5, 0.5)
 end
 
+-- Cette méthode permet de donner l'échelle cumulée des UIScale qui agissent sur `gui` (le sien, ses parents, le HUD)
+-- lorsque l'on convertit des px d'écran en unités de l'interface.
+local function scaleChain(gui: Instance): number
+	local scale = 1
+	local node: Instance? = gui
+	while node and (node:IsA("GuiBase2d")) do
+		local own = node:FindFirstChildOfClass("UIScale")
+		if own then
+			scale *= own.Scale
+		end
+		node = node.Parent
+	end
+	return scale
+end
+
+-- Cette méthode permet d'élargir la zone tactile d'un bouton à TouchLayout.MIN_TARGET px d'écran (cadre transparent
+-- posé dessus, qui relaie le toucher au bouton) lorsque l'écran est tactile ; recalée quand la taille affichée change.
+local function touchPad(button: GuiButton): GuiButton
+	local pad = UIKit.create("TextButton", {
+		Name = "TouchPad",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		AutoButtonColor = false,
+		Selectable = false,
+		Text = "",
+		ZIndex = button.ZIndex,
+		Parent = button,
+	})
+	-- Cette méthode permet de recaler la zone tactile lorsque le bouton change de taille affichée (échelle, animation).
+	local function fit()
+		local size = button.AbsoluteSize
+		local scale = scaleChain(pad)
+		pad.Size = UDim2.new(1, TouchLayout.padExtra(size.X, scale), 1, TouchLayout.padExtra(size.Y, scale))
+	end
+	button:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
+	fit()
+	return pad
+end
+
 -- Cette méthode permet de brancher un bouton (rebond au survol 1,06, enfoncement 0,92 puis retour, son, action)
--- lorsque l'on construit un bouton ; un bouton marqué Disabled reste inerte.
+-- lorsque l'on construit un bouton ; un bouton marqué Disabled reste inerte. Sur écran tactile, sa zone tactile fait au
+-- moins TouchLayout.MIN_TARGET px (#19).
 local function bindPress(button: GuiButton, onClick: () -> ())
 	UIKit.centerPivot(button)
 	local hovered = false
 	local pressed = false
+	local sources: { GuiButton } = { button }
+	if UserInputService.TouchEnabled then
+		table.insert(sources, touchPad(button))
+	end
 	-- Cette méthode permet de savoir si le bouton refuse les clics (possédé, verrouillé) lorsque le joueur le touche.
 	local function disabled(): boolean
 		return button:GetAttribute("Disabled") == true
@@ -375,7 +422,8 @@ local function bindPress(button: GuiButton, onClick: () -> ())
 		pressed = false
 		UIKit.scaleTo(button, 1, 0.12)
 	end)
-	button.InputBegan:Connect(function(input)
+	-- Cette méthode permet d'enfoncer le bouton lorsque le doigt ou le clic arrive sur lui ou sur sa zone tactile.
+	local function onInput(input: InputObject)
 		local kind = input.UserInputType
 		if (kind ~= Enum.UserInputType.MouseButton1 and kind ~= Enum.UserInputType.Touch) or disabled() then
 			return
@@ -396,14 +444,19 @@ local function bindPress(button: GuiButton, onClick: () -> ())
 				UIKit.scaleTo(button, rest, UIMotion.RELEASE_TIME, Enum.EasingStyle.Back)
 			end
 		end)
-	end)
-	button.Activated:Connect(function()
+	end
+	-- Cette méthode permet de déclencher l'action lorsque le bouton ou sa zone tactile est activé.
+	local function onActivated()
 		if disabled() then
 			return
 		end
 		UIKit.playSound("Click")
 		onClick()
-	end)
+	end
+	for _, source in sources do
+		source.InputBegan:Connect(onInput)
+		source.Activated:Connect(onActivated)
+	end
 	-- Bouton masqué (lui ou un parent : croix, STOP, HUD en vol) : MouseLeave n'arrivera pas, il reprendrait à 1,06
 	local node: Instance? = button
 	while node and node:IsA("GuiObject") do

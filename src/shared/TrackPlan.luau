@@ -136,4 +136,18 @@ function TrackPlan.trapBoxes(sites: { Site }): { TrapBox }
 	return boxes
 end
 
+-- Cette méthode permet de savoir si un point du sol (`x`, `z`) est à plus de `margin` studs de l'emprise au sol de toutes
+-- les boîtes de pièges `boxes` lorsque le décor du pied des parois cherche où poser un accessoire (#115).
+function TrackPlan.clearOfTraps(boxes: { TrapBox }, x: number, z: number, margin: number): boolean
+	for _, box in boxes do
+		if
+			math.abs(x - box.center.X) < box.size.X / 2 + margin
+			and math.abs(z - box.center.Z) < box.size.Z / 2 + margin
+		then
+			return false
+		end
+	end
+	return true
+end
+
 return TrackPlan

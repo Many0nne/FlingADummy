@@ -11,6 +11,7 @@
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -23,6 +24,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local ThrowDummies = require(Shared:WaitForChild("ThrowDummies"))
 local Training = require(Shared:WaitForChild("Training"))
 local TrainingBoost = require(Shared:WaitForChild("TrainingBoost"))
+local TouchLayout = require(Shared:WaitForChild("TouchLayout"))
 local TrainingLook = require(Shared:WaitForChild("TrainingLook"))
 local Tutorial = require(Shared:WaitForChild("Tutorial"))
 local UIMotion = require(Shared:WaitForChild("UIMotion"))
@@ -886,14 +888,45 @@ local function announceLevelUp()
 	UIKit.playSound("LevelUp")
 end
 
--- Cette méthode permet d'adapter l'échelle du HUD à la taille de l'écran lorsque la fenêtre change (mobile compris).
+-- Cette méthode permet d'adapter l'échelle du HUD à la taille de l'écran lorsque la fenêtre change (mobile compris :
+-- interface un peu plus grosse sur écran tactile, Shared.TouchLayout).
 local function bindScale(scale: UIScale)
 	local camera = Workspace.CurrentCamera
 	local function update()
 		local size = camera.ViewportSize
-		scale.Scale = math.clamp(math.min(size.X / 1280, size.Y / 720), 0.5, 1.3)
+		scale.Scale = TouchLayout.hudScale(size.X, size.Y, UserInputService.TouchEnabled)
 	end
 	camera:GetPropertyChangedSignal("ViewportSize"):Connect(update)
+	update()
+end
+
+-- Cette méthode permet de garder les boutons et compteurs du HUD (`main`) hors de l'encoche et de la barre d'accueil
+-- d'un téléphone (#19) lorsque l'écran ou l'échelle changent ; le reste du HUD (bandes, éclairs) couvre tout l'écran.
+local function bindSafeArea(main: Frame)
+	-- Repère vide aux marges sûres de l'appareil (sans la barre du haut, que le HUD recouvre déjà)
+	local probe = UIKit.create("ScreenGui", {
+		Name = "SafeArea",
+		ResetOnSpawn = false,
+		Parent = gui.Parent,
+	})
+	probe.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
+	local function update()
+		local from, size = gui.AbsolutePosition, gui.AbsoluteSize
+		local safeFrom, safeSize = probe.AbsolutePosition, probe.AbsoluteSize
+		local low = Vector2.new(math.max(0, safeFrom.X - from.X), math.max(0, safeFrom.Y - from.Y))
+		local high = Vector2.new(
+			math.max(0, from.X + size.X - safeFrom.X - safeSize.X),
+			math.max(0, from.Y + size.Y - safeFrom.Y - safeSize.Y)
+		)
+		local scale = math.max(hudScale.Scale, 0.01)
+		main.Position = UDim2.fromOffset(low.X / scale, low.Y / scale)
+		main.Size = UDim2.new(1, -(low.X + high.X) / scale, 1, -(low.Y + high.Y) / scale)
+	end
+	for _, source in { probe, gui } :: { GuiBase2d } do
+		source:GetPropertyChangedSignal("AbsolutePosition"):Connect(update)
+		source:GetPropertyChangedSignal("AbsoluteSize"):Connect(update)
+	end
+	hudScale:GetPropertyChangedSignal("Scale"):Connect(update)
 	update()
 end
 
@@ -1095,6 +1128,7 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 		BackgroundTransparency = 1,
 		Parent = gui,
 	})
+	bindSafeArea(root)
 	buildCounters()
 	buildButtons()
 	buildGearOffer()

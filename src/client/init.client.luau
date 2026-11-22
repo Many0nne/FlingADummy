@@ -2,7 +2,7 @@
 -- effets des crashs et des comportements en vol, pièces mobiles des pièges, tirage du mannequin de collection (et
 -- annonces des tirages rares) et pose dans la base, animation des mannequins de collection, stands du hub (boutique des
 -- mannequins à lancer), construction des bases qui montent de palier et taille de leur texte, musique de fond, ciel de
--- nuit de la Galaxy, branchés sur les remotes du serveur.
+-- nuit de la Galaxy, contrôles tactiles cachés quand le joueur ne peut pas bouger, branchés sur les remotes du serveur.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -29,6 +29,7 @@ local Prize = require(script.Prize)
 local SlotWait = require(script.SlotWait)
 local ThrowCinematic = require(script.ThrowCinematic)
 local ThrowController = require(script.ThrowController)
+local TouchControls = require(script.TouchControls)
 local TrapMotion = require(script.TrapMotion)
 local ZoneSky = require(script.ZoneSky)
 
@@ -92,6 +93,8 @@ if RunService:IsStudio() then
 end
 Music.init(player, remotes)
 UserInputService.JumpRequest:Connect(stopTraining)
+-- Joystick et bouton de saut cachés quand le joueur ne peut pas bouger : un toucher n'importe où lance (#19)
+task.spawn(TouchControls.init, player)
 
 local prizeToken = 0 -- invalide un tirage programmé si le couloir redevient prêt ou qu'un autre vol part
 
