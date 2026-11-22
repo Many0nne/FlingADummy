@@ -176,8 +176,8 @@ function UIKit.gradientText(label: TextLabel, top: Color3, bottom: Color3): UIGr
 end
 
 -- Cette méthode permet d'afficher une icône dessinée (image publiée, sinon emoji de repli) lorsque l'on construit un
--- bouton ou un compteur ; `props` place l'icône.
-function UIKit.icon(name: string, props: { [string]: any }): GuiObject
+-- bouton ou un compteur ; `props` place l'icône, `fallback` remplace l'emoji de repli par défaut (identifiant à 0).
+function UIKit.icon(name: string, props: { [string]: any }, fallback: string?): GuiObject
 	local uri = Assets.uri(Assets.ICONS[name])
 	local icon: GuiObject
 	if uri then
@@ -190,7 +190,7 @@ function UIKit.icon(name: string, props: { [string]: any }): GuiObject
 		icon = UIKit.create("TextLabel", {
 			BackgroundTransparency = 1,
 			Font = UIKit.FONT,
-			Text = EMOJI[name] or "?",
+			Text = fallback or EMOJI[name] or "?",
 			TextScaled = true,
 		})
 	end
@@ -1071,6 +1071,55 @@ local function sparkle(parent: Instance, position: UDim2, size: number, zIndex: 
 		})
 	end
 	return holder
+end
+
+-- Cette méthode permet d'afficher un message court (texte blanc à contour sur un bandeau teinté, qui monte un peu puis
+-- s'efface) lorsqu'une action n'a pas pu avoir lieu (#70) ; `position` : milieu bas du message, un seul message à la fois.
+function UIKit.notice(parent: Instance, text: string, color: Color3, position: UDim2, duration: number?)
+	local old = parent:FindFirstChild("Notice")
+	if old then
+		old:Destroy()
+	end
+	local time = duration or 3
+	local strip = UIKit.create("Frame", {
+		Name = "Notice",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = position,
+		Size = UDim2.new(0.9, 0, 0, 46), -- 90 % de l'écran au plus, 680 px au plus : le texte entier tient
+		BackgroundColor3 = Color3.new(1, 1, 1), -- teinté par le dégradé
+		BackgroundTransparency = 0.05,
+		ZIndex = 25,
+		Parent = parent,
+	})
+	UIKit.create("UISizeConstraint", { MaxSize = Vector2.new(680, 46), Parent = strip })
+	UIKit.corner(strip, 12)
+	UIKit.outline(strip, 3, color)
+	UIKit.shade(strip, color:Lerp(Color3.new(0, 0, 0), 0.4), Color3.fromRGB(20, 18, 30))
+	local label = UIKit.text({
+		Size = UDim2.fromScale(1, 1),
+		Text = text,
+		TextSize = 22,
+		TextScaled = true, -- rétrécit sur écran étroit plutôt que de couper la fin du message
+		ZIndex = 26,
+		Parent = strip,
+	})
+	UIKit.playSound("Click", 0.8)
+	UIKit.playKeys(strip, UIMotion.POPUP_IN)
+	task.delay(time, function()
+		if not strip.Parent then
+			return
+		end
+		local fade = TweenInfo.new(0.35)
+		TweenService:Create(strip, fade, { BackgroundTransparency = 1 }):Play()
+		TweenService:Create(label, fade, { TextTransparency = 1 }):Play()
+		for _, stroke in strip:GetDescendants() do
+			if stroke:IsA("UIStroke") then
+				TweenService:Create(stroke, fade, { Transparency = 1 }):Play()
+			end
+		end
+		task.wait(0.4)
+		strip:Destroy()
+	end)
 end
 
 -- Cette méthode permet de faire scintiller `count` étincelles au hasard dans une zone `area` (px, centrée dans

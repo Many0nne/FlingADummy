@@ -206,6 +206,17 @@ Assets.ICONS = {
 	cash = 137592441201082,
 	arrow = 75483474828645,
 	music = 120854274168520,
+	-- Boutique Robux (#173) et bouton Rebirth (#111)
+	clover = 75759090692530,
+	moneybag = 123878922852377,
+	crown = 131814175710956,
+	house = 94319824781617,
+	rainbow = 128500868407362,
+	potion = 78711211640154,
+	globe = 99737101131154,
+	dice = 109605842500290,
+	ticket = 98052057439621,
+	rebirth = 84593824295515,
 } :: { [string]: number }
 
 -- Icônes des mannequins dans la barre d'outils (Backpack, #54), une par rareté (indice de Shared.Rarity) : buste du

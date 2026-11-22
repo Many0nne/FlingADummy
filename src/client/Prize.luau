@@ -28,6 +28,7 @@ local CourseLayout = require(Shared:WaitForChild("CourseLayout"))
 local DummyShape = require(Shared:WaitForChild("DummyShape"))
 local Format = require(Shared:WaitForChild("Format"))
 local Inventory = require(Shared:WaitForChild("Inventory"))
+local PlaceRule = require(Shared:WaitForChild("PlaceRule"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local RevealPlan = require(Shared:WaitForChild("RevealPlan"))
@@ -112,6 +113,7 @@ local placeHint: TextLabel
 local placeViewport: ViewportFrame
 local placeAuto: TextButton
 local placeKey: string? = nil
+local autoClick: () -> () = function() end -- clic sur AUTO (défini avec le retour au joueur, plus bas)
 local lastPromptRefresh = 0
 local backpackShown: boolean? = nil -- barre d'outils Roblox affichée (dernier état demandé)
 local glows: { [Instance]: Highlight } = {} -- présentoirs libres en surbrillance pendant qu'on tient un mannequin
@@ -132,7 +134,7 @@ end
 -- Cette méthode permet de savoir si la première pose du tutoriel reste à faire (panneau « Place your … », pose à la
 -- main du dernier gagné) lorsque le panneau et les invites se mettent à jour.
 local function firstPlacePending(): boolean
-	return Tutorial.current((player:GetAttribute("Tutorial") :: number?) or 0) == "Place"
+	return PlaceRule.firstPending(player:GetAttribute("Tutorial") :: number?)
 end
 
 -- Cette méthode permet de donner le mannequin que l'invite « Place » et AUTO poseraient lorsque l'on les met à jour :
@@ -994,7 +996,7 @@ local function buildPlacePanel()
 		ZIndex = 8,
 		Parent = gui,
 	}, function()
-		remotes.PlaceDummy:FireServer(nil)
+		autoClick()
 	end)
 end
 
@@ -1017,6 +1019,57 @@ local function canPlace(): boolean
 	return player:GetAttribute("LaneState") == "Ready" and player:GetAttribute("Action") == nil and not showing
 end
 
+-- Cette méthode permet de savoir si l'avatar est dans sa base ou tout près (base agrandie comprise) lorsque AUTO se
+-- met à jour ou qu'un retour doit expliquer pourquoi rien n'est posé.
+local function nearBase(): boolean
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local slot = player:GetAttribute("Slot")
+	local big = Store.decodePasses(player:GetAttribute("Passes")).BigBase -- base agrandie (Big Base, #160)
+	return root ~= nil and typeof(slot) == "number" and CourseLayout.isNearBase(slot, root.Position, big)
+end
+
+-- Cette méthode permet de donner l'état de la pose AUTO (règle partagée Shared.PlaceRule) pour le mannequin tenu, sinon
+-- le dernier gagné, lorsque le bouton se met à jour ou que le joueur clique dessus.
+local function placeStatus(): PlaceRule.Status
+	local candidate = toPlace()
+	local target = candidate
+		and Inventory.autoTarget({
+			base = Inventory.decodeBase(player:GetAttribute("BaseDummies")),
+			displays = (player:GetAttribute("Displays") :: number?) or 0,
+			bonus = 0, -- Displays compte déjà les présentoirs de Big Base
+			stock = {},
+			index = {},
+		}, candidate)
+	return PlaceRule.status({
+		tutorialStep = player:GetAttribute("Tutorial") :: number?,
+		hasEntry = candidate ~= nil,
+		near = nearBase(),
+		hasTarget = target ~= nil,
+	})
+end
+
+-- Cette méthode permet d'expliquer au joueur pourquoi rien n'est posé (message court au-dessus du bouton AUTO, rouge ;
+-- orange pour l'attente d'un nouveau mannequin) lorsqu'il clique AUTO ou revient d'un vol loin de sa base.
+local function explain(key: string)
+	local text = PlaceRule.message(key)
+	if text then
+		local color = if key == "waiting" then C.orange else C.red
+		UIKit.notice(gui, text, color, UDim2.new(0.5, 0, 1, -(AUTO_BOTTOM + 54)))
+	end
+end
+
+-- Cette méthode permet de poser avec AUTO lorsque la règle le permet, sinon d'expliquer pourquoi non (trop loin de la
+-- base, base pleine) lorsque le joueur clique sur le bouton.
+autoClick = function()
+	local status = placeStatus()
+	if status == "ok" then
+		remotes.PlaceDummy:FireServer(nil)
+	else
+		explain(status)
+	end
+end
+
 -- Cette méthode permet d'afficher le panneau « Place your … » pendant l'étape « Place » du tutoriel, ou le bouton AUTO
 -- près de sa base ensuite, lorsque le mannequin en main ou l'état du joueur changent.
 local function refreshPanel()
@@ -1032,24 +1085,14 @@ local function refreshPanel()
 	local entry = pendingEntry()
 	local ready = entry ~= nil and free
 	local visible = ready and firstPlace
-	-- Hors tutoriel : seul le bouton AUTO compact, dans sa base ou tout près
-	local character = player.Character
-	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-	local slot = player:GetAttribute("Slot")
-	local big = Store.decodePasses(player:GetAttribute("Passes")).BigBase -- base agrandie (Big Base, #160)
-	local near = root ~= nil and typeof(slot) == "number" and CourseLayout.isNearBase(slot, root.Position, big)
-	-- AUTO pose le mannequin tenu, sinon le dernier gagné ; caché si la règle AUTO ne lui trouve aucun présentoir (base
-	-- pleine de plus rentables : un clic ne ferait rien)
-	local candidate = toPlace()
-	local target = candidate
-		and Inventory.autoTarget({
-			base = Inventory.decodeBase(player:GetAttribute("BaseDummies")),
-			displays = (player:GetAttribute("Displays") :: number?) or 0,
-			bonus = 0, -- Displays compte déjà les présentoirs de Big Base
-			stock = {},
-			index = {},
-		}, candidate)
-	placeAuto.Visible = free and target ~= nil and near and not firstPlace
+	-- Hors tutoriel : seul le bouton AUTO compact, tant qu'il y a un mannequin tenu ou gagné à poser. Grisé (« FULL »
+	-- base pleine de plus rentables, ou AUTO loin de la base), un clic dit pourquoi rien n'est posé (#70)
+	local status = placeStatus()
+	placeAuto.Visible = free and not firstPlace and status ~= "none"
+	local blocked = status == "far" or status == "full"
+	placeAuto.Text = if status == "full" then "FULL" else "AUTO"
+	placeAuto.BackgroundTransparency = if blocked then 0.55 else 0
+	placeAuto.TextTransparency = if blocked then 0.35 else 0
 	if visible and entry then
 		-- L'étape des maillages fait partie de la clé : le rendu est refait quand les pièces ajoutées arrivent
 		local key = Inventory.key(entry) .. ":" .. DummyShape.meshStage()
@@ -1148,6 +1191,17 @@ function Prize.init(localPlayer: Player, createdRemotes: Remotes.Remotes, screen
 		if player:GetAttribute("LaneState") ~= "Result" and showing then
 			cleanup()
 		end
+	end)
+	-- Retour au hub avec un mannequin gagné à poser, loin de sa base : le dire (#70), après la fin du tirage
+	player:GetAttributeChangedSignal("LaneState"):Connect(function()
+		if player:GetAttribute("LaneState") ~= "Ready" then
+			return
+		end
+		task.delay(0.6, function()
+			if canPlace() and placeStatus() == "far" then
+				explain("waiting")
+			end
+		end)
 	end)
 	RunService.Heartbeat:Connect(refreshPrompts)
 	-- Clic ou toucher : passe le tirage (après la première seconde) ; Espace et A : action SKIP_ACTION

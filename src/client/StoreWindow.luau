@@ -1,10 +1,11 @@
 -- Boutique Robux (#160), calée sur la « Boutique » de Throw a Seed (09) : bandeau rose à icône cadeau, une seule liste
 -- qui défile (Packs, Passes, Boosts, Cash), chaque section titrée avec sa pastille (« Yours forever »), cartes à
--- vignette colorée (emoji), nom, effet et bouton violet au prix en Robux ; colonne d'onglets à droite qui font défiler
--- jusqu'à leur section (ancres). Pack de démarrage à compte à rebours, passes possédés (OWNED), boosts en cours (minuteur
--- sur la vignette), montant de l'argent rapide au revenu du moment. Achat : invite Roblox (identifiant créé) ; article
--- pas encore créé sur l'expérience (identifiant 0) : simulé par le serveur en Studio, bouton inerte ailleurs. Popups
--- d'achat attribué et de chance du serveur ; minuteurs des boosts dans le HUD (badges calés sur la bannière CHANCE).
+-- vignette colorée (icône dessinée, emoji de repli), nom, effet et bouton violet au prix en Robux ; colonne d'onglets à
+-- droite qui font défiler jusqu'à leur section (ancres). Pack de démarrage à compte à rebours, passes possédés (OWNED),
+-- boosts en cours (minuteur sur la vignette), montant de l'argent rapide au revenu du moment. Achat : invite Roblox
+-- (identifiant créé) ; article pas encore créé sur l'expérience (identifiant 0) : simulé par le serveur en Studio,
+-- bouton inerte ailleurs. Popups d'achat attribué et de chance du serveur ; minuteurs des boosts dans le HUD (badges
+-- calés sur la bannière CHANCE).
 local MarketplaceService = game:GetService("MarketplaceService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -118,7 +119,7 @@ local function priceButton(parent: Instance, item: Store.Item, props: { [string]
 	end)
 end
 
--- Cette méthode permet de poser la vignette colorée d'un article (dégradé, emoji au centre) lorsque une carte se
+-- Cette méthode permet de poser la vignette colorée d'un article (dégradé, icône au centre) lorsque une carte se
 -- construit ; renvoie la vignette.
 local function tile(parent: Instance, item: Store.Item, props: { [string]: any }): Frame
 	local options: { [string]: any } = { BackgroundColor3 = Color3.new(1, 1, 1), ZIndex = 13, Parent = parent }
@@ -132,21 +133,17 @@ local function tile(parent: Instance, item: Store.Item, props: { [string]: any }
 		"UIGradient",
 		{ Color = ColorSequence.new(item.colors[1], item.colors[2]), Rotation = 90, Parent = box }
 	)
-	UIKit.create("TextLabel", {
+	UIKit.icon(item.art, {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.fromScale(0.8, 0.8),
-		BackgroundTransparency = 1,
-		Font = UIKit.FONT,
-		Text = item.icon,
-		TextScaled = true,
 		ZIndex = 14,
 		Parent = box,
-	})
+	}, item.icon)
 	return box
 end
 
--- Cette méthode permet de poser le titre d'une section (emoji, nom, pastille sombre à droite) lorsque la liste se
+-- Cette méthode permet de poser le titre d'une section (icône, nom, pastille sombre à droite) lorsque la liste se
 -- construit ; renvoie la ligne (ancre de son onglet).
 local function sectionHeader(section: any, order: number): Frame
 	local row = UIKit.create("Frame", {
@@ -157,16 +154,12 @@ local function sectionHeader(section: any, order: number): Frame
 		ZIndex = 12,
 		Parent = list,
 	})
-	UIKit.create("TextLabel", {
+	UIKit.icon(section.art, {
 		Position = UDim2.fromOffset(2, 2),
 		Size = UDim2.fromOffset(36, 36),
-		BackgroundTransparency = 1,
-		Font = UIKit.FONT,
-		Text = section.icon,
-		TextScaled = true,
 		ZIndex = 13,
 		Parent = row,
-	})
+	}, section.icon)
 	UIKit.text({
 		Position = UDim2.fromOffset(44, 0),
 		Size = UDim2.new(1, -220, 1, 0),
@@ -462,17 +455,13 @@ local function buildTabs(body: Frame)
 		}, function()
 			scrollTo(section.id)
 		end)
-		UIKit.create("TextLabel", {
+		UIKit.icon(section.art, {
 			AnchorPoint = Vector2.new(0.5, 0),
 			Position = UDim2.new(0.5, 0, 0, 4),
 			Size = UDim2.fromOffset(46, 46),
-			BackgroundTransparency = 1,
-			Font = UIKit.FONT,
-			Text = section.icon,
-			TextScaled = true,
 			ZIndex = 14,
 			Parent = tab,
-		})
+		}, section.icon)
 		UIKit.text({
 			AnchorPoint = Vector2.new(0.5, 1),
 			Position = UDim2.new(0.5, 0, 1, -4),

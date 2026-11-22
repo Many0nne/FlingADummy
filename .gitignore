@@ -21,3 +21,4 @@ __pycache__/
 
 # Worktrees des tâches parallèles (un dossier par branche, briefs et état d'exécution)
 /worktrees/
+assets/icons/export/sheet_partial.png

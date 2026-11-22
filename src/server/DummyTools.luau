@@ -12,7 +12,7 @@ local BackpackPlan = require(Shared.BackpackPlan)
 local Collection = require(Shared.Collection)
 local Format = require(Shared.Format)
 local Rarity = require(Shared.Rarity)
-local Tutorial = require(Shared.Tutorial)
+local PlaceRule = require(Shared.PlaceRule)
 
 local ATTRIBUTE = BackpackPlan.TOOL_ATTRIBUTE
 local REORDER_GAP = 0.2 -- s entre le retrait et la remise des outils réordonnés (vue par la barre du client)
@@ -29,7 +29,7 @@ local states: { [Player]: State } = {}
 local function canHold(player: Player): boolean
 	return player:GetAttribute("LaneState") == "Ready"
 		and player:GetAttribute("Action") == nil
-		and Tutorial.current((player:GetAttribute("Tutorial") :: number?) or 0) ~= "Place"
+		and not PlaceRule.firstPending(player:GetAttribute("Tutorial") :: number?)
 end
 
 -- Cette méthode permet de créer l'outil d'un mannequin (nom, info-bulle avec rareté et $/s, icône du mannequin sinon de sa rareté, sans
