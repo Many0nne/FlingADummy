@@ -12,7 +12,6 @@ export type Hit = { a: Box, b: Box, gap: number, at: roblox.Vector3, normal: rob
 
 local PROBE = 0.02 -- distance de la face où l'on cherche une pièce qui la cache
 local CELL = 16 -- côté des cellules de la recherche de pièces qui cachent une face
-local GROUND = 0.05 -- une face tournée vers le bas sous ce niveau n'est jamais vue (la caméra reste au-dessus du sol)
 
 -- Cette méthode permet de savoir si un point est dans une boîte (bords compris) lorsque l'on cherche ce qui cache une
 -- face.
@@ -43,7 +42,7 @@ function Coplanar.find(boxes: { Box }, SurfaceGap): { Hit }
 	for index, box in boxes do
 		for _, face in SurfaceGap.faces(box) do
 			local n = face.normal
-			if not (n.Y < -0.999 and -face.d <= GROUND) then
+			if not SurfaceGap.unseen(face) then
 				face.index = index
 				face.min, face.max = bounds(face)
 				-- Bornes en nombres : balayage rapide

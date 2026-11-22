@@ -91,9 +91,8 @@ local function eachColumn(kit: Kit, fn: (add: Add, x: number, column: number) ->
 	end
 end
 
--- Cette méthode permet de monter un mur en quinconce sur toute la largeur des colonnes (`rows` rangées de blocs
--- `brick`, deux teintes alternées, demi-blocs aux bouts des rangées décalées : Shared.ObstacleRules.staggeredWall)
--- lorsque l'on construit un mur de thème ; rien en porte-à-faux.
+-- Cette méthode permet de monter un mur en quinconce (Shared.ObstacleRules.staggeredWall : rien en porte-à-faux) sur
+-- toute la largeur des colonnes, deux teintes alternées, lorsque l'on construit un mur de thème.
 local function staggeredWall(
 	kit: Kit,
 	z: number,

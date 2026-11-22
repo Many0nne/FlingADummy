@@ -19,11 +19,11 @@ return function(T, Loader)
 	-- Cette méthode permet de poser `size` en `cframe` après les boîtes `boxes` lorsqu'un test vérifie l'ajustement ;
 	-- renvoie la boîte posée.
 	local function settle(boxes, size, cframe)
-		local placed = {}
+		local area = SurfaceGap.area()
 		for _, box in boxes do
-			table.insert(placed, SurfaceGap.place(box.size, box.cframe))
+			SurfaceGap.add(area, box.size, box.cframe)
 		end
-		local newSize, newCFrame = SurfaceGap.settle(placed, size, cframe)
+		local newSize, newCFrame = SurfaceGap.settle(area, size, cframe)
 		return { size = newSize, cframe = newCFrame }
 	end
 
@@ -78,7 +78,7 @@ return function(T, Loader)
 		T.it("règle une pile de blocs qui affleurent tous le même plan", function()
 			local boxes = {}
 			for i = 1, 6 do
-				local placed = settle(boxes, Vector3.new(4, 1, 1), CFrame.new(0, 0, 0) * CFrame.new(0, 0, i * 0.3))
+				local placed = settle(boxes, Vector3.new(4, 1, 1), CFrame.new(0, 5, i * 0.3))
 				for _, other in boxes do
 					T.expect(not clashing(other, placed), "bloc " .. i)
 				end

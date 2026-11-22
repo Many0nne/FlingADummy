@@ -143,9 +143,8 @@ end
 
 DecorBuild.SOURCE = "_DecorSource" -- attribut des pièces : générateur qui les a posées (« Props.build Pine »…)
 
--- Cette méthode permet de construire le décor lorsque un test en contrôle la géométrie ; renvoie le dossier `Course`
--- (pièces de la piste, du hub et des obstacles), le résultat de CourseBuilder.build (places), le module et son
--- chargeur.
+-- Cette méthode permet de construire le décor lorsqu'un test en contrôle la géométrie ; renvoie le dossier `Course`, le
+-- résultat de CourseBuilder.build (places), le module et son chargeur.
 function DecorBuild.build(Loader): any
 	local workspace = wrap(Instance.new("Workspace")) -- avec son Terrain
 	local source = "CourseBuilder"

@@ -106,7 +106,8 @@ return function(T, Loader)
 				local byRow = {}
 				for _, brick in bricks do
 					T.expect(math.abs(brick.x) + brick.width / 2 <= span / 2 + 1e-6, "hors des colonnes")
-					T.expect(brick.width >= wall.brick.X / 2 - gap, "brique trop étroite")
+					T.expect(brick.width >= wall.brick.X - 1e-6, "brique trop étroite")
+					T.expect(brick.width <= wall.brick.X * 1.5 + gap, "brique trop longue")
 					byRow[brick.row] = byRow[brick.row] or {}
 					table.insert(byRow[brick.row], brick)
 				end
@@ -119,7 +120,10 @@ return function(T, Loader)
 						local space = (list[i].x - list[i].width / 2) - (list[i - 1].x + list[i - 1].width / 2)
 						T.expect(space >= gap - 1e-6, "briques collées rangée " .. row)
 					end
-					-- Rangées décalées aussi larges que les autres : demi-briques aux deux bouts
+					-- Autant de pièces qu'un mur en quinconce classique (bonus de casse : une pièce par brique), rangées
+					-- décalées aussi larges que les autres
+					local count = math.floor(span / (wall.brick.X + gap))
+					T.expectEqual(#list, if row % 2 == 0 then count else count - 1, "briques rangée " .. row)
 					local first, last = list[1], list[#list]
 					local edge = byRow[0][1].x - byRow[0][1].width / 2
 					T.expect(math.abs((first.x - first.width / 2) - edge) < 1e-6, "bord gauche rangée " .. row)
