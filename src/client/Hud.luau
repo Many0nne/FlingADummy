@@ -64,7 +64,7 @@ local musicOff: Frame -- barre rouge en travers du bouton musique quand la musiq
 local windows: { [string]: Frame } = {}
 local gearCards: { UIKit.Card } = {}
 local gearRow: ScrollingFrame? -- rangée des cartes d'équipement (défile jusqu'au prochain achat à l'ouverture)
-local modelsMeshed: boolean? = nil -- forme (maillée ou blocs) des rendus 3D des cartes déjà construits
+local modelsStage: number? = nil -- étape des gabarits (DummyShape.meshStage) des rendus 3D des cartes déjà construits
 local trainBar: Frame
 local leftColumn: Frame -- colonne Index / Shop / Rebirth, centrée verticalement
 local BUTTON_GAP = 22 -- écart vertical entre deux boutons de la colonne de gauche
@@ -486,11 +486,11 @@ end
 -- Cette méthode permet de (re)construire les rendus 3D des cartes (mannequins soulevés) lorsque une
 -- fenêtre s'ouvre pour la première fois ou que les maillages publiés viennent d'arriver.
 local function buildModels()
-	local meshed = DummyShape.isMeshed()
-	if modelsMeshed == meshed then
+	local stage = DummyShape.meshStage()
+	if modelsStage == stage then
 		return
 	end
-	modelsMeshed = meshed
+	modelsStage = stage
 	for tier, card in gearCards do
 		UIKit.showModel(card.viewport, gearModel(tier))
 	end

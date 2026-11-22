@@ -28,6 +28,7 @@ local METAL = rgb(70, 72, 80)
 local POST_HALF = 0.8 -- demi-largeur d'un montant
 local BAR_HALF = 0.45 -- demi-épaisseur de la traverse
 local PLINTH_HALF = 1.25 -- demi-côté des socles de pierre
+local PLINTH_SHIFT = 0.4 -- socles décalés vers l'axe : ils ne débordent pas du podium plus que les montants
 local SIDES = { -1, 1 }
 
 -- Cette méthode permet de poser une pièce décorative (sans collision, matériau `material`, lisse par défaut) lorsque
@@ -91,7 +92,7 @@ function BUILDERS.plinths(model: Model, f: Frame, look: BaseLook.StationLook)
 		Build.decor({
 			Name = "Piece",
 			Size = Vector3.new(2 * PLINTH_HALF, 1, 2 * PLINTH_HALF),
-			CFrame = rackAt(f, side * f.postX, 0.5, 0),
+			CFrame = rackAt(f, side * (f.postX - PLINTH_SHIFT), 0.5, -0.05),
 			Color = look.postDark,
 			Variant = Build.FINE,
 			CastShadow = true,
@@ -189,7 +190,7 @@ end
 function BUILDERS.gems(model: Model, f: Frame, look: BaseLook.StationLook)
 	for _, side in SIDES do
 		gem(model, rackAt(f, side * 1.4, f.barY, -BAR_HALF - 0.06), 0.5, look.accent)
-		gem(model, rackAt(f, side * f.postX, 0.5, -PLINTH_HALF - 0.06), 0.4, look.accent)
+		gem(model, rackAt(f, side * f.postX, 0.5, -PLINTH_HALF - 0.11), 0.4, look.accent)
 	end
 end
 
@@ -226,8 +227,9 @@ end
 -- Cette méthode permet de poser un halo néon derrière la planète et des pointes de couronne sur les montants lorsque
 -- l'appareil atteint l'oméga.
 function BUILDERS.halo(model: Model, f: Frame, look: BaseLook.StationLook)
-	local center = rackAt(f, 0, 8.1, 0.4)
-	local segments, radius = 12, 1.55
+	-- Sous la planète, le bas du halo reste au-dessus de la traverse
+	local center = rackAt(f, 0, 8.15, 0.4)
+	local segments, radius = 12, 1.25
 	for i = 1, segments do
 		local angle = (i - 1) / segments * 2 * math.pi
 		local at = center * CFrame.Angles(0, 0, angle) * CFrame.new(radius, 0, 0)

@@ -484,9 +484,13 @@ local function rackDummy(parent: Instance, tier: number, hook: CFrame)
 	local variant = TrainingLook.variant(tier, "rack") :: DummyShape.Variant
 	local parts = DummyShape.buildPieces(model, RACK_SCALE, variant)
 	DummyShape.addAccessories(model, parts, RACK_SCALE, variant)
+	-- Sommet du mannequin, pièces ajoutées comprises (couronne, cornes) : la corde s'y accroche sans qu'elles touchent
+	-- la traverse
 	local highest = -math.huge
-	for _, part in parts do
-		highest = math.max(highest, part.Position.Y + part.Size.Y / 2)
+	for _, part in model:GetChildren() do
+		if part:IsA("BasePart") and part.Transparency < 1 then
+			highest = math.max(highest, part.Position.Y + part.Size.Y / 2)
+		end
 	end
 	-- Pas de cibles de crash-test peintes sur les blocs de repli : ce mannequin-là ne se lance pas. Maillé, il garde
 	-- visage et cibles de l'atlas (ou de sa coque sous un matériau, #126), comme tous les mannequins
