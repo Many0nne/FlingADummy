@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BaseLook = require(ReplicatedStorage.Shared.BaseLook)
 local CourseLayout = require(ReplicatedStorage.Shared.CourseLayout)
+local Leaderboard = require(ReplicatedStorage.Shared.Leaderboard)
 local Build = require(script.Parent.Build)
 
 local Props = {}
@@ -1349,6 +1350,159 @@ function Props.sellStand(parent: Instance, at: CFrame)
 	burst:SetAttribute("Sales", 0)
 	CollectionService:AddTag(burst, CourseLayout.SELL_BURST_TAG)
 	folder.Parent = parent
+end
+
+-- Tableaux de scores du hub (#120), au style des stands : cadre en bois sur deux poteaux coiffés de lanternes, bandeau
+-- à la couleur du tableau (titre en Fredoka One), dix lignes sur fond sombre (rang, joueur, valeur), remplies par
+-- Server.LeaderboardService.
+export type ScoreRow = { frame: Frame, rank: TextLabel, name: TextLabel, value: TextLabel }
+export type Scoreboard = { board: Leaderboard.Board, scope: TextLabel, rows: { ScoreRow } }
+
+local BOARD_WIDTH = 15 -- largeur du panneau (studs)
+local BOARD_BOTTOM = 2.4 -- bas de la zone des lignes au-dessus du sol
+local BOARD_BODY = 10 -- hauteur de la zone des lignes
+local BOARD_HEADER = 3.6 -- hauteur du bandeau
+local BOARD_PPS = 40 -- pixels par stud des textes du tableau
+local BOARD_INK = rgb(38, 32, 50) -- fond des lignes
+local MEDALS = { rgb(255, 210, 60), rgb(215, 225, 235), rgb(235, 150, 80) } -- rangs 1 à 3
+
+-- Cette méthode permet de poser un texte en Fredoka One à contour (taille ajustée, alignement `align`) dans `parent`
+-- lorsque l'on remplit le bandeau ou une ligne d'un tableau de scores.
+local function boardText(parent: Instance, position: UDim2, size: UDim2, color: Color3, align: Enum.TextXAlignment)
+	local label = Instance.new("TextLabel")
+	label.Position = position
+	label.Size = size
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.TextColor3 = color
+	label.TextXAlignment = align
+	label.Text = ""
+	local stroke = Instance.new("UIStroke")
+	stroke.Thickness = 2.5
+	stroke.Parent = label
+	label.Parent = parent
+	return label
+end
+
+-- Cette méthode permet de poser une SurfaceGui sur la face avant (-Z) d'une plaque lorsque l'on habille un tableau de
+-- scores.
+local function boardGui(plate: BasePart): SurfaceGui
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = BOARD_PPS
+	gui.LightInfluence = 0
+	gui.MaxDistance = 220
+	gui.Parent = plate
+	return gui
+end
+
+-- Cette méthode permet de construire un tableau de scores `board` (poteaux, cadre, bandeau titré, dix lignes vides)
+-- au repère `at` (au sol, face avant vers -Z) lorsque le hub est construit ; renvoie ses textes à remplir.
+function Props.scoreboard(parent: Instance, at: CFrame, board: Leaderboard.Board): Scoreboard
+	local model = Instance.new("Model")
+	model.Name = "Scoreboard" .. board.id
+	local top = BOARD_BOTTOM + BOARD_BODY + BOARD_HEADER
+	local postX = BOARD_WIDTH / 2 + 0.6
+	for _, side in { -1, 1 } do
+		put(model, at, Vector3.new(1.2, top + 0.6, 1.2), Vector3.new(side * postX, (top + 0.6) / 2, 0), WOOD_DARK, true)
+		Props.lantern(model, (at * CFrame.new(side * postX, top + 0.6, 0)).Position)
+	end
+	-- Fond en planches, rebord en bas, chapeau en haut
+	put(model, at, Vector3.new(BOARD_WIDTH, top - 1.6, 0.8), Vector3.new(0, (top + 1.6) / 2, 0.3), WOOD, true)
+	put(model, at, Vector3.new(BOARD_WIDTH + 0.4, 0.6, 1.4), Vector3.new(0, BOARD_BOTTOM - 0.4, -0.1), WOOD_DARK, true)
+	put(model, at, Vector3.new(BOARD_WIDTH + 2.6, 0.8, 2), Vector3.new(0, top + 0.4, 0), WOOD_DARK, true)
+	-- Bandeau à la couleur du tableau : titre, puis portée du classement (tous les serveurs ou ce serveur)
+	local header = put(
+		model,
+		at,
+		Vector3.new(BOARD_WIDTH, BOARD_HEADER, 0.4),
+		Vector3.new(0, top - BOARD_HEADER / 2, -0.2),
+		board.color,
+		false
+	)
+	local headerGui = boardGui(header)
+	local title = boardText(
+		headerGui,
+		UDim2.fromScale(0.03, 0.06),
+		UDim2.fromScale(0.94, 0.62),
+		Color3.new(1, 1, 1),
+		Enum.TextXAlignment.Center
+	)
+	title.Text = board.icon .. " " .. board.title
+	local scope = boardText(
+		headerGui,
+		UDim2.fromScale(0.03, 0.66),
+		UDim2.fromScale(0.94, 0.3),
+		rgb(255, 245, 200),
+		Enum.TextXAlignment.Center
+	)
+	-- Lignes : fond sombre lisse (pas de tenons sous le texte)
+	local plate = Build.decor({
+		Name = "Rows",
+		Size = Vector3.new(BOARD_WIDTH - 0.6, BOARD_BODY, 0.3),
+		CFrame = at * CFrame.new(0, BOARD_BOTTOM + BOARD_BODY / 2, -0.25),
+		Color = BOARD_INK,
+		Parent = model,
+	})
+	local gui = boardGui(plate)
+	local layout = Instance.new("UIListLayout")
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Padding = UDim.new(0, 2)
+	layout.Parent = gui
+	local padding = Instance.new("UIPadding")
+	for _, side in { "PaddingTop", "PaddingBottom", "PaddingLeft", "PaddingRight" } do
+		(padding :: any)[side] = UDim.new(0, 6)
+	end
+	padding.Parent = gui
+	local rows: { ScoreRow } = {}
+	for index = 1, Leaderboard.SIZE do
+		local row = Instance.new("Frame")
+		row.Name = "Row" .. index
+		row.LayoutOrder = index
+		row.Size = UDim2.new(1, 0, 1 / Leaderboard.SIZE, -2)
+		row.BackgroundColor3 = Color3.new(1, 1, 1)
+		row.BackgroundTransparency = if index % 2 == 0 then 0.94 else 1
+		row.BorderSizePixel = 0
+		row.Parent = gui
+		local rankColor = MEDALS[index] or rgb(200, 200, 215)
+		local rank =
+			boardText(row, UDim2.fromScale(0, 0.08), UDim2.fromScale(0.13, 0.84), rankColor, Enum.TextXAlignment.Center)
+		rank.Text = "#" .. index
+		local name = boardText(
+			row,
+			UDim2.fromScale(0.15, 0.1),
+			UDim2.fromScale(0.5, 0.8),
+			Color3.new(1, 1, 1),
+			Enum.TextXAlignment.Left
+		)
+		local value = boardText(
+			row,
+			UDim2.fromScale(0.66, 0.1),
+			UDim2.fromScale(0.32, 0.8),
+			board.color:Lerp(Color3.new(1, 1, 1), 0.35),
+			Enum.TextXAlignment.Right
+		)
+		table.insert(rows, { frame = row, rank = rank, name = name, value = value })
+	end
+	model.Parent = parent
+	return { board = board, scope = scope, rows = rows }
+end
+
+-- Cette méthode permet de planter la pancarte d'un emplacement réservé (deux poteaux, planche en bois, plaque violette
+-- `title` et bandeau jaune `subtitle`, lettres des enseignes des stands) au repère `at` (face avant vers -Z) lorsque
+-- l'on annonce la future zone d'événement du hub.
+function Props.comingSoon(parent: Instance, at: CFrame, title: string, subtitle: string)
+	for _, x in { -6.5, 6.5 } do
+		put(parent, at, Vector3.new(1.2, 11, 1.2), Vector3.new(x, 5.5, 0), WOOD_DARK, true)
+	end
+	put(parent, at, Vector3.new(14, 7.4, 0.8), Vector3.new(0, 7.6, 0.2), WOOD, true)
+	put(parent, at, Vector3.new(16, 0.8, 1.8), Vector3.new(0, 11.5, 0), WOOD_DARK, true)
+	local plate = put(parent, at, Vector3.new(12.6, 3.6, 0.3), Vector3.new(0, 8.8, -0.3), rgb(150, 70, 235), false)
+	Build.surfaceText(plate, Enum.NormalId.Front, title)
+	local ribbon = put(parent, at, Vector3.new(8, 2, 0.3), Vector3.new(0, 5.6, -0.3), rgb(255, 205, 40), false)
+	Build.surfaceText(ribbon, Enum.NormalId.Front, subtitle)
 end
 
 -- Cette méthode permet de planter un panneau en bois (poteau, planche à texte) au repère `at` lorsque l'on annonce

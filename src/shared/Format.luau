@@ -84,6 +84,17 @@ function Format.meters(n: number): string
 	return Format.thousands(math.max(0, n)) .. " m"
 end
 
+-- Cette méthode permet d'écrire une distance courte (`845 m`) ou en kilomètres au dixième, tronquée (`3.6 km`, `6 km`)
+-- dès 1 000 m, lorsque le texte d'une base ou un tableau de scores affiche un record.
+function Format.distance(n: number): string
+	local meters = math.floor(math.max(0, if n ~= n then 0 else n))
+	if meters < 1000 then
+		return meters .. " m"
+	end
+	local tenths = math.floor(meters / 100) / 10
+	return (string.gsub(string.format("%.1f", tenths), "%.0$", "")) .. " km"
+end
+
 -- Cette méthode permet d'écrire une cote « 1 IN N » abrégée (`1 IN 2.27K`, `1 IN 300Qa`) lorsque le tirage, l'Index
 -- ou une annonce l'affichent ; au moins « 1 IN 1 ».
 function Format.odds(n: number): string

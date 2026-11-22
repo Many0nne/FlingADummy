@@ -63,7 +63,7 @@ local rng = Random.new()
 
 -- Cette méthode permet de construire le mannequin posé sur un présentoir (pièces ancrées sans collision, regard vers
 -- l'entrée de la base, nom coloré et revenu au-dessus) lorsque la base est rendue.
-local function buildDisplayed(entry: Collection.Entry, top: BasePart, facing: number): Model
+local function buildDisplayed(entry: Collection.Entry, top: BasePart, facing: Vector3): Model
 	local dummy = Collection.get(entry.id) :: Collection.Dummy
 	local scale = Collection.displayScale(entry)
 	local model = Instance.new("Model")
@@ -86,7 +86,7 @@ local function buildDisplayed(entry: Collection.Entry, top: BasePart, facing: nu
 	end
 	model.PrimaryPart = parts.Torso
 	local position = top.Position + Vector3.new(0, top.Size.Y / 2 + FEET * scale, 0)
-	model:PivotTo(CFrame.lookAt(position, position + Vector3.new(facing, 0, 0)))
+	model:PivotTo(CFrame.lookAt(position, position + facing))
 	local gui = Instance.new("BillboardGui")
 	gui.Size = UDim2.fromScale(8, 2.6)
 	gui.StudsOffsetWorldSpace = Vector3.new(0, 3.4 * scale + 1.2, 0)
@@ -143,19 +143,22 @@ local function stylePad(slot: Slot, displays: number?)
 	pad.prompt:SetAttribute("Maxed", if displays and not price then true else nil)
 end
 
--- Cette méthode permet d'afficher au-dessus de la base le portrait, le nom, le revenu et la Throw Power de son
--- propriétaire (« EMPTY BASE » sans lui) lorsque la base change, qu'il arrive, part ou que sa puissance change.
+-- Cette méthode permet d'afficher au-dessus de la base le portrait, le nom, le revenu, le record et la Throw Power de
+-- son propriétaire (« EMPTY BASE » sans lui) lorsque la base change, qu'il arrive, part, ou que sa puissance ou son
+-- record change.
 local function updateLabel(slot: Slot, player: Player?)
 	local ready = player ~= nil and player:GetAttribute("DataReady") == true
 	local text = BaseLook.label(
 		if player then player.DisplayName else nil,
 		if ready and player then player:GetAttribute("Income") :: number? else 0,
 		if ready and player then player:GetAttribute("ThrowPower") :: number? else nil,
-		if ready and player then player:GetAttribute("Rebirths") :: number? else nil
+		if ready and player then player:GetAttribute("Rebirths") :: number? else nil,
+		if ready and player then player:GetAttribute("BestDistance") :: number? else nil
 	)
 	local label = slot.base.label
 	label.title.Text = text.title
 	label.income.Text = text.income
+	label.best.Text = text.best
 	label.power.Text = text.power
 	-- Joueurs de test de Studio (UserId négatif) : pas de portrait
 	local portrait = player ~= nil and player.UserId > 0
@@ -502,8 +505,8 @@ local function track(player: Player)
 	player:GetAttributeChangedSignal("DataReady"):Connect(function()
 		refresh(player)
 	end)
-	-- Throw Power et renaissances en direct au-dessus de la base (entraînement, renaissance)
-	for _, attribute in { "ThrowPower", "Rebirths" } do
+	-- Throw Power, renaissances et record en direct au-dessus de la base (entraînement, renaissance, lancer)
+	for _, attribute in { "ThrowPower", "Rebirths", "BestDistance" } do
 		player:GetAttributeChangedSignal(attribute):Connect(function()
 			if slotOf[player] == slot then
 				updateLabel(slot, player)

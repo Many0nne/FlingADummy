@@ -1,6 +1,6 @@
 -- Amorçage du serveur : groupes de collision, gabarits maillés du mannequin, décor (et cibles des objectifs), remotes,
--- données joueur, places du lobby, bases (collection et revenu), entraînement, lancers et renaissance ; en Studio,
--- attributs de test et scène des planches de référence.
+-- données joueur, places du lobby, bases (collection et revenu), entraînement, lancers, renaissance et tableaux de
+-- scores ; en Studio, attributs de test et scène des planches de référence.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -13,6 +13,7 @@ local CollisionGroups = require(script.CollisionGroups)
 local CourseBuilder = require(script.CourseBuilder)
 local DummyAssets = require(script.DummyAssets)
 local LaunchService = require(script.LaunchService)
+local LeaderboardService = require(script.LeaderboardService)
 local PhotoStudio = require(script.PhotoStudio)
 local PlayerData = require(script.PlayerData)
 local SlotService = require(script.SlotService)
@@ -28,6 +29,7 @@ SlotService.init(course.slots)
 TrainingService.init(course.slots, remotes.StopTraining, remotes.TrainingBoost)
 BaseService.init(course.slots, remotes.PlaceDummy, remotes.Inventory)
 LaunchService.init(remotes, course.dummies)
+LeaderboardService.init(course.boards)
 
 remotes.BuyUpgrade.OnServerEvent:Connect(function(player, kind)
 	PlayerData.buyUpgrade(player, kind)
