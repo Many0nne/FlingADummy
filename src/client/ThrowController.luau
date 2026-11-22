@@ -192,10 +192,12 @@ local function trigger(): boolean
 					task.delay(0.1, settle) -- borné : Client.LaunchGhost s'arrête au plus HANDOFF_TIME après le lâcher
 					return
 				end
-				ThrowCinematic.abort()
+				-- Toujours en prise : la caméra revient sur la bande depuis le gros plan ou le vol effacé, sans passer
+				-- par la caméra libre (champ de vision compris)
+				local holding = player:GetAttribute("Action") == "Holding"
+				ThrowCinematic.abort(holding)
 				CharacterPoser.handOff()
-				-- Toujours en prise : la caméra revient sur la bande depuis le gros plan ou le vol effacé
-				if player:GetAttribute("Action") == "Holding" then
+				if holding then
 					frameBand()
 				end
 			end
@@ -209,7 +211,9 @@ end
 
 -- Cette méthode permet d'afficher la jauge lorsque le serveur fige le joueur sur la bande, et de la masquer après.
 function refresh()
-	local holding = player:GetAttribute("Action") == "Holding"
+	-- Lancer accepté : LaneState passe à Flying avant qu'Action ne soit vidé (ordre des signaux) ; la jauge et la
+	-- caméra de la bande ne reviennent pas entre les deux
+	local holding = player:GetAttribute("Action") == "Holding" and player:GetAttribute("LaneState") ~= "Flying"
 	if holding and not frame.Visible then
 		shownAt = os.clock()
 		locked = nil

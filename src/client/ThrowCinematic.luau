@@ -176,8 +176,9 @@ function ThrowCinematic.finish()
 end
 
 -- Cette méthode permet d'arrêter la cinématique et de rendre la caméra lorsque le geste finit sans que le serveur
--- ait lancé le mannequin (lancer refusé) ; sans effet si le vol a déjà pris le relais.
-function ThrowCinematic.abort()
+-- ait lancé le mannequin (lancer refusé) ; sans effet si le vol a déjà pris le relais. `keepCamera` : l'appelant
+-- recadre lui-même depuis le gros plan (joueur toujours en prise sur la bande).
+function ThrowCinematic.abort(keepCamera: boolean?)
 	if not active then
 		return
 	end
@@ -185,7 +186,9 @@ function ThrowCinematic.abort()
 	setStreaks(false)
 	detachTrail()
 	ThrowCinematic.finish()
-	FlightCamera.stop()
+	if not keepCamera then
+		FlightCamera.stop()
+	end
 end
 
 -- Cette méthode permet de construire les bandes et les traînées (masquées) lorsque le client démarre.

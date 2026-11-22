@@ -81,10 +81,11 @@ function FlightCamera.band(root: BasePart)
 	banded = true
 	camera.CameraType = Enum.CameraType.Scriptable
 	local duration = fadeTime(GameConfig.BAND_CAM_IN)
+	local humanoid = root.Parent and root.Parent:FindFirstChildOfClass("Humanoid")
 	local start = os.clock()
 	RunService:BindToRenderStep(BIND_NAME, Enum.RenderPriority.Camera.Value + 1, function()
-		if not root.Parent then
-			FlightCamera.leaveBand() -- personnage mort ou réapparu sur la bande
+		if not root.Parent or (humanoid and humanoid.Health <= 0) then
+			FlightCamera.leaveBand() -- personnage mort (la caméra libre suit sa chute) ou réapparu
 			return
 		end
 		local k = ThrowFraming.progress(os.clock() - start, duration)

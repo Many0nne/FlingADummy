@@ -30,7 +30,7 @@ base, il rapporte des $/s, seule source d'argent.
    à la piste vers son bout, champ de vision 70 → 55 : avatar un peu à gauche du centre (≈ 38 % de la largeur),
    mannequin au-dessus de sa tête, jauge à droite. La caméra est cadrée (le joueur ne la tourne plus) ; le fondu
    tourne autour de l'avatar depuis la caméra libre (`Shared.ThrowFraming`). Sortie de bande sans lancer
-   (réapparition) : retour à la caméra libre en 0,25 s. Au clic, le gros plan du geste part de ce cadrage (fondu de
+   (mort, réapparition) : retour à la caméra libre en 0,25 s. Au clic, le gros plan du geste part de ce cadrage (fondu de
    0,45 s autour de l'avatar, sans saut) ; lancer refusé : la caméra revient sur la bande. Mouvement réduit : coupes
    directes. Valeurs : `GameConfig.BAND_CAM_*`, `THROW_CAM_BLEND`.
 2. **Jauge à 1 clic** : une jauge verticale apparaît, l'aiguille monte et descend seule (`+1` à `+20`) ; un clic, un toucher
