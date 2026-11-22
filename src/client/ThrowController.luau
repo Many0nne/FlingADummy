@@ -120,6 +120,14 @@ local function build(gui: ScreenGui)
 	})
 end
 
+-- Cette méthode permet de savoir si l'avatar du joueur est en vie lorsque la jauge s'affiche ou reçoit un clic : mort
+-- sur la bande, il reste en prise côté serveur jusqu'à sa réapparition.
+local function alive(): boolean
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	return humanoid ~= nil and humanoid.Health > 0
+end
+
 -- Cette méthode permet de donner la position courante de l'aiguille (0-1) lorsque la jauge est affichée.
 local function currentValue(): number
 	return locked or Gauge.value(os.clock() - shownAt)
@@ -166,7 +174,7 @@ local refresh: () -> ()
 -- qu'il tient le mannequin ; renvoie true si le clic a servi.
 local function trigger(): boolean
 	local character = player.Character
-	if not frame.Visible or locked or CharacterPoser.isThrowing() or not character then
+	if not frame.Visible or locked or CharacterPoser.isThrowing() or not character or not alive() then
 		return false
 	end
 	local value = currentValue()
@@ -213,7 +221,9 @@ end
 function refresh()
 	-- Lancer accepté : LaneState passe à Flying avant qu'Action ne soit vidé (ordre des signaux) ; la jauge et la
 	-- caméra de la bande ne reviennent pas entre les deux
-	local holding = player:GetAttribute("Action") == "Holding" and player:GetAttribute("LaneState") ~= "Flying"
+	local holding = player:GetAttribute("Action") == "Holding"
+		and player:GetAttribute("LaneState") ~= "Flying"
+		and alive()
 	if holding and not frame.Visible then
 		shownAt = os.clock()
 		locked = nil
@@ -234,6 +244,18 @@ function ThrowController.init(localPlayer: Player, createdRemotes: Remotes.Remot
 	build(gui)
 	ThrowCinematic.init(gui)
 	player:GetAttributeChangedSignal("Action"):Connect(refresh)
+	-- Mort sur la bande : jauge masquée et caméra libre rendue sans attendre la réapparition
+	-- Cette méthode permet de surveiller la mort de l'avatar lorsqu'il apparaît.
+	local function watchDeath(character: Model)
+		local humanoid = character:WaitForChild("Humanoid", 5) :: Humanoid?
+		if humanoid then
+			humanoid.Died:Connect(refresh)
+		end
+	end
+	player.CharacterAdded:Connect(watchDeath)
+	if player.Character then
+		task.spawn(watchDeath, player.Character)
+	end
 	player:GetAttributeChangedSignal("LaneState"):Connect(function()
 		if player:GetAttribute("LaneState") == "Flying" then
 			frame.Visible = false

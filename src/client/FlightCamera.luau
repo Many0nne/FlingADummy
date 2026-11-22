@@ -28,6 +28,7 @@ local player: Player
 local following = false
 local banded = false -- cadrage de la bande en cours (FlightCamera.band), jusqu'au geste ou à la sortie de bande
 local shake = 0
+local punchTween: Tween? = nil -- coup de champ de vision en cours (coupé par un retour sur la bande)
 local flightFocus: Vector3? = nil -- point visé par la caméra de vol à la dernière image (repris par un nouveau suivi)
 
 -- Cette méthode permet de donner la durée d'un fondu de la caméra (nulle en mouvement réduit : coupe directe) lorsqu'un
@@ -65,9 +66,25 @@ end
 function FlightCamera.punch()
 	local camera = Workspace.CurrentCamera
 	camera.FieldOfView = BASE_FOV + 18
-	TweenService:Create(camera, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+	local tween = TweenService:Create(camera, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 		FieldOfView = BASE_FOV,
-	}):Play()
+	})
+	tween:Play()
+	punchTween = tween
+end
+
+-- Cette méthode permet de savoir si `root` appartient encore au personnage affiché lorsqu'un cadrage de l'avatar
+-- se met à jour (faux après sa mort, sa réapparition ou sa destruction).
+local function standing(root: BasePart, humanoid: Humanoid?): boolean
+	return root:IsDescendantOf(Workspace) and (humanoid == nil or humanoid.Health > 0)
+end
+
+-- Cette méthode permet de donner l'inclinaison (radians, autour du regard) d'un cadrage lorsqu'un fondu en part et
+-- doit la rendre peu à peu (gros plan du geste incliné, lancer refusé).
+local function rollOf(view: CFrame): number
+	local level = CFrame.lookAt(view.Position, view.Position + view.LookVector)
+	local _, _, roll = level:ToObjectSpace(view):ToEulerAnglesXYZ()
+	return roll
 end
 
 -- Cette méthode permet de resserrer la caméra derrière l'épaule, regard vers le bout de la piste, en BAND_CAM_IN
@@ -76,6 +93,11 @@ function FlightCamera.band(root: BasePart)
 	local camera = Workspace.CurrentCamera
 	local fromView, fromFov = camera.CFrame, camera.FieldOfView
 	local fromFocus = ThrowFraming.focusOf(fromView, root.Position)
+	local fromRoll = rollOf(fromView)
+	if punchTween then
+		punchTween:Cancel() -- lâcher anticipé puis refusé : le fondu reprend le champ de vision où il en est
+		punchTween = nil
+	end
 	FlightCamera.stop()
 	following = true
 	banded = true
@@ -84,14 +106,14 @@ function FlightCamera.band(root: BasePart)
 	local humanoid = root.Parent and root.Parent:FindFirstChildOfClass("Humanoid")
 	local start = os.clock()
 	RunService:BindToRenderStep(BIND_NAME, Enum.RenderPriority.Camera.Value + 1, function()
-		if not root.Parent or (humanoid and humanoid.Health <= 0) then
+		if not standing(root, humanoid) then
 			FlightCamera.leaveBand() -- personnage mort (la caméra libre suit sa chute) ou réapparu
 			return
 		end
 		local k = ThrowFraming.progress(os.clock() - start, duration)
 		local toPosition, toFocus = ThrowFraming.band(root.CFrame)
 		local position, focus = ThrowFraming.blend(fromView.Position, fromFocus, toPosition, toFocus, root.Position, k)
-		camera.CFrame = CFrame.lookAt(position, focus)
+		camera.CFrame = CFrame.lookAt(position, focus) * CFrame.Angles(0, 0, fromRoll * (1 - k))
 		camera.FieldOfView = fromFov + (GameConfig.BAND_CAM_FOV - fromFov) * k
 	end)
 end
@@ -138,8 +160,8 @@ function FlightCamera.closeUp(root: BasePart, duration: number)
 	local base = root.CFrame
 	local start = os.clock()
 	RunService:BindToRenderStep(BIND_NAME, Enum.RenderPriority.Camera.Value + 1, function()
-		if not root.Parent then
-			FlightCamera.stop() -- personnage mort ou réapparu pendant le geste
+		if not root:IsDescendantOf(Workspace) then
+			FlightCamera.stop() -- personnage réapparu pendant le geste
 			return
 		end
 		local elapsed = os.clock() - start
