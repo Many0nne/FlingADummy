@@ -65,13 +65,20 @@ return function(T, Loader, Lib)
 			)
 		end)
 
-		T.it("un palier de base par présentoir acheté : la prise du dernier palier montre la base pleine", function()
+		T.it("chaque prise de palier de base montre un nombre de présentoirs possible (#156)", function()
 			local GameConfig = loader:require("src/shared/GameConfig")
 			local CourseLayout = loader:require("src/shared/CourseLayout")
-			T.expect(
-				#BaseLook.BASE_TIERS == CourseLayout.DISPLAY_MAX - GameConfig.DISPLAY_START + 1,
-				"paliers de base et présentoirs achetables décalés : PhotoStudio montrerait un pad « 11 / 10 »"
-			)
+			for tier, look in BaseLook.BASE_TIERS do
+				T.expect(
+					look.displays >= GameConfig.DISPLAY_START and look.displays <= CourseLayout.DISPLAY_MAX,
+					string.format(
+						"palier %d à %d présentoirs : PhotoStudio montrerait un pad impossible",
+						tier,
+						look.displays
+					)
+				)
+				T.expectEqual(BaseLook.baseTier(look.displays), tier, "prise du palier " .. tier)
+			end
 		end)
 
 		T.it("retrouve une prise par son nom, rien pour un nom inconnu", function()

@@ -3,7 +3,7 @@
 -- d'argent du jeu. Chaque mannequin du stock est un outil du Backpack (Server.DummyTools) : équipé près d'un
 -- présentoir libre, il se pose par l'invite « Place » ou le bouton AUTO ; sans mannequin équipé, AUTO pose le dernier
 -- gagné (attribut `PendingDummy`), comme l'invite pendant la première pose du tutoriel. Un nouveau lancer l'ajoute au
--- stock, rien ne se perd. Fenêtres de collection (remote Inventory) : poser, retirer, vendre, « Place best ». Pad « 6 > 7 » devant la base : achat du présentoir suivant. Le serveur publie la
+-- stock, rien ne se perd. Fenêtres de collection (remote Inventory) : poser, retirer, vendre, « Place best ». Pad « 8 > 9 » devant la base : achat du présentoir suivant. Le serveur publie la
 -- collection dans des attributs du joueur (Stock, BaseDummies, Displays, DummyIndex) que le client affiche. Les
 -- mannequins posés sont construits par le serveur, visibles de tous.
 local CollectionService = game:GetService("CollectionService")
@@ -130,7 +130,7 @@ local function styleDisplay(slot: Slot, display: number, unlocked: boolean)
 	top:SetAttribute("Locked", if unlocked then nil else true)
 end
 
--- Cette méthode permet d'afficher sur le pad d'achat le présentoir suivant et son prix (« 6 > 7 », « $450K »), ou MAX,
+-- Cette méthode permet d'afficher sur le pad d'achat le présentoir suivant et son prix (« 8 > 9 », « $450K »), ou MAX,
 -- lorsque la base change ; le client n'active l'invite que pour le propriétaire tant que le maximum n'est pas atteint.
 local function stylePad(slot: Slot, displays: number?)
 	local pad = slot.base.pad

@@ -9,12 +9,22 @@ return function(T, Loader)
 	local start = GameConfig.DISPLAY_START
 	local max = start + #GameConfig.DISPLAY_PRICES
 
-	T.describe("BaseLook.baseTier (un palier par présentoir acheté)", function()
-		T.it("a un palier par nombre de présentoirs, du départ au maximum", function()
-			T.expectEqual(#BaseLook.BASE_TIERS, max - start + 1)
-			for displays = start, max do
-				T.expectEqual(BaseLook.baseTier(displays), displays - start + 1, displays .. " présentoirs")
+	T.describe("BaseLook.baseTier (paliers par nombre de présentoirs, #156)", function()
+		T.it("premier palier au départ, seuils croissants, dernier atteint avant le maximum", function()
+			T.expectEqual(BaseLook.BASE_TIERS[1].displays, start)
+			T.expectEqual(BaseLook.BASE_TIERS[2].displays, start + 1, "le premier achat change la base")
+			for tier = 2, #BaseLook.BASE_TIERS do
+				T.expect(BaseLook.BASE_TIERS[tier].displays > BaseLook.BASE_TIERS[tier - 1].displays, "seuil " .. tier)
 			end
+			T.expect(BaseLook.BASE_TIERS[#BaseLook.BASE_TIERS].displays <= max, "dernier palier atteignable")
+			local previous = 0
+			for displays = start, max do
+				local tier = BaseLook.baseTier(displays)
+				T.expect(tier >= previous, displays .. " présentoirs : palier qui ne recule pas")
+				T.expect(BaseLook.BASE_TIERS[tier].displays <= displays, displays .. " présentoirs : seuil atteint")
+				previous = tier
+			end
+			T.expectEqual(BaseLook.baseTier(max), #BaseLook.BASE_TIERS)
 		end)
 		T.it("borne les valeurs hors plage et sans données", function()
 			T.expectEqual(BaseLook.baseTier(nil), 1)

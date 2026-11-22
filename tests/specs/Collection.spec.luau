@@ -50,7 +50,7 @@ return function(T, Loader)
 				ice = { 4, 900, 500 }, toxic = { 4, 1000, 800 }, royal = { 4, 1200, 1200 },
 				gold = { 5, 5500, 4000 }, lava = { 5, 6300, 7000 }, diamond = { 5, 7300, 10000 },
 				galaxy = { 6, 33000, 40000 }, ghost = { 6, 38000, 70000 }, neon = { 6, 44000, 100000 },
-				king = { 7, 200000, 500000 }, void = { 7, 230000, 1000000 }, cosmic = { 7, 260000, 2000000 },
+				king = { 7, 200000, 1500000 }, void = { 7, 230000, 3000000 }, cosmic = { 7, 260000, 6000000 }, -- cotes × 3 (#156)
 			}
 				local count = 0
 				for id, values in saved do

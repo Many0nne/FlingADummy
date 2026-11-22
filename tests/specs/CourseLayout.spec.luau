@@ -259,17 +259,54 @@ return function(T, Loader)
 	end)
 
 	T.describe("CourseLayout.displayPositions / padPosition", function()
-		T.it("présentoirs écartés les uns des autres, les 6 premiers aux places de #13", function()
-			local center = CourseLayout.basePosition(1)
-			local displays = CourseLayout.displayPositions(1)
-			T.expectEqual(displays[1], center + Vector3.new(-7, 0, -9))
-			T.expectEqual(displays[6], center + Vector3.new(7, 0, 9))
-			for i = 1, #displays do
-				for j = i + 1, #displays do
-					T.expect((displays[i] - displays[j]).Magnitude >= 7, string.format("présentoirs %d et %d", i, j))
+		T.it(
+			"présentoirs écartés les uns des autres, en rangées depuis l'entrée, remplies du milieu (#156)",
+			function()
+				local center = CourseLayout.basePosition(1)
+				local displays = CourseLayout.displayPositions(1, CourseLayout.DISPLAY_ROOM)
+				T.expectEqual(#displays, CourseLayout.DISPLAY_ROOM)
+				T.expectEqual(displays[1].X, center.X, "le premier face à l'entrée")
+				T.expectEqual(displays[1].Z, CourseLayout.BASE_FRONT - CourseLayout.DISPLAY_FIRST_ROW)
+				local gap = CourseLayout.DISPLAY_PITCH.X - CourseLayout.PEDESTAL_SIZE
+				T.expect(gap >= 3, "passage entre deux socles, obtenu " .. gap)
+				for i = 1, #displays do
+					for j = i + 1, #displays do
+						T.expect(
+							(displays[i] - displays[j]).Magnitude >= 7,
+							string.format("présentoirs %d et %d", i, j)
+						)
+					end
+				end
+				-- Base neuve : une rangée pleine et le milieu de la suivante, symétrique autour de l'entrée
+				local sum = 0
+				for i = 1, GameConfig.DISPLAY_START do
+					sum += displays[i].X - center.X
+				end
+				T.expect(math.abs(sum) < 1e-6, "présentoirs de départ centrés, décalage " .. sum)
+				-- Mêmes emplacements quel que soit le nombre demandé : un présentoir acheté ne déplace aucun autre
+				local built = CourseLayout.displayPositions(1)
+				for i, position in built do
+					T.expectEqual(position, displays[i])
 				end
 			end
-		end)
+		)
+		T.it(
+			"la base tient DISPLAY_MAX présentoirs, le hub la place prévue pour DISPLAY_ROOM (#156, #160)",
+			function()
+				T.expectEqual(CourseLayout.BASE_SIZE.Z, CourseLayout.baseDepthFor(CourseLayout.DISPLAY_MAX))
+				local depth = CourseLayout.baseDepthFor(CourseLayout.DISPLAY_ROOM)
+				T.expect(CourseLayout.BASE_FRONT - depth >= CourseLayout.HUB_BACK + 2, "base agrandie dans le hub")
+				local half = CourseLayout.BASE_SIZE.X / 2
+				for index = 1, count do
+					local center = CourseLayout.basePosition(index)
+					for _, position in CourseLayout.displayPositions(index, CourseLayout.DISPLAY_ROOM) do
+						local edge = math.abs(position.X - center.X) + CourseLayout.PEDESTAL_SIZE / 2
+						T.expect(edge <= half - 2, "socle loin de la clôture de côté, obtenu " .. edge)
+						T.expect(position.Z >= CourseLayout.BASE_FRONT - depth + 3, "dans la base agrandie")
+					end
+				end
+			end
+		)
 		T.it("pad devant la base, hors de la clôture, à côté de l'entrée, loin de l'appareil", function()
 			for index = 1, count do
 				local pad, facing = CourseLayout.padPosition(index)

@@ -55,9 +55,11 @@ end
 
 -- Palier visuel d'une base. `plot` : sol (nil = couleur de la place, en tapis) ; `lanterns` : 0, 2 (entrée) ou
 -- 6 (entrée et coins) ; `flowers` : massifs fleuris le long des clôtures ; `flags` : drapeaux à la couleur de la place
--- aux quatre coins ; `arch` : arche d'entrée à la couleur de la place.
+-- aux quatre coins ; `arch` : arche d'entrée à la couleur de la place ; `displays` : présentoirs achetés à partir
+-- desquels la base prend ce palier.
 export type BaseTier = {
 	name: string,
+	displays: number,
 	fence: string,
 	plot: Color3?,
 	lanterns: number,
@@ -66,10 +68,12 @@ export type BaseTier = {
 	arch: boolean,
 }
 
--- Un palier par présentoir acheté (6 au départ : palier 1 ; 10 : palier 5)
+-- Paliers par nombre de présentoirs (#156 : 8 au départ, jusqu'à 30) : Garden au premier achat (≈ 9 min), Stone vers
+-- 70 min, Noble vers 2 h, Golden vers 4,5 h de jeu simulées (un palier par présentoir de 6 à 10 avant #156)
 BaseLook.BASE_TIERS = {
 	{
 		name = "Wood",
+		displays = 8,
 		fence = "wood",
 		plot = rgb(175, 115, 65),
 		lanterns = 0,
@@ -79,6 +83,7 @@ BaseLook.BASE_TIERS = {
 	},
 	{
 		name = "Garden",
+		displays = 9,
 		fence = "wood",
 		plot = rgb(175, 115, 65),
 		lanterns = 2,
@@ -88,6 +93,7 @@ BaseLook.BASE_TIERS = {
 	},
 	{
 		name = "Stone",
+		displays = 12,
 		fence = "stone",
 		plot = rgb(205, 205, 215),
 		lanterns = 6,
@@ -97,6 +103,7 @@ BaseLook.BASE_TIERS = {
 	},
 	{
 		name = "Noble",
+		displays = 18,
 		fence = "stoneGold",
 		plot = rgb(235, 200, 140),
 		lanterns = 6,
@@ -104,7 +111,16 @@ BaseLook.BASE_TIERS = {
 		flags = true,
 		arch = false,
 	},
-	{ name = "Golden", fence = "gold", plot = nil, lanterns = 6, flowers = true, flags = true, arch = true },
+	{
+		name = "Golden",
+		displays = 25,
+		fence = "gold",
+		plot = nil,
+		lanterns = 6,
+		flowers = true,
+		flags = true,
+		arch = true,
+	},
 } :: { BaseTier }
 
 -- Habillage de l'appareil d'entraînement : planches du podium (deux tons), montants et marches du râtelier, socle (nil :
@@ -165,10 +181,16 @@ local function shade(color: Color3, factor: number): Color3
 end
 
 -- Cette méthode permet de donner le palier visuel de la base lorsque son propriétaire a acheté jusqu'à `displays`
--- présentoirs (borné : DISPLAY_START et moins → 1, maximum → dernier palier).
+-- présentoirs : le plus haut dont le seuil est atteint (1 en dessous du premier, sans données).
 function BaseLook.baseTier(displays: number?): number
-	local count = displays or GameConfig.DISPLAY_START
-	return math.clamp(math.floor(count) - GameConfig.DISPLAY_START + 1, 1, #BaseLook.BASE_TIERS)
+	local count = math.floor(displays or GameConfig.DISPLAY_START)
+	local tier = 1
+	for index, look in BaseLook.BASE_TIERS do
+		if count >= look.displays then
+			tier = index
+		end
+	end
+	return tier
 end
 
 -- Cette méthode permet de donner le palier visuel `tier` de la base et sa clôture lorsque l'on construit la base.
