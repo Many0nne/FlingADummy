@@ -661,6 +661,7 @@ local function applyBehavior(flight: Flight, elapsed: number, dt: number, before
 		armed = armed,
 		impact = armed and impact,
 		trapped = flight.trapped,
+		coasting = flight.lastTrap ~= nil and os.clock() - flight.lastTrap.at < FlightArc.TRAP_COAST,
 		dt = dt,
 		gravity = Workspace.Gravity,
 	})
@@ -695,8 +696,10 @@ local function step(flight: Flight, dt: number)
 	local position = torso.Position
 	local previous = flight.prevPosition
 	local before = flight.prevVelocity[torso] -- vitesse du torse à la frame précédente (rebond du caoutchouc)
-	-- Choc du torse cette frame (avant qu'un piège ne remplace sa vitesse) : fin de la montée ou premier contact
-	local impact = before ~= nil and (torso.AssemblyLinearVelocity - before).Magnitude > FlightArc.IMPACT_DV
+	-- Choc du torse cette frame (avant qu'un piège ne remplace sa vitesse), gravité de la frame déduite (pas de faux
+	-- choc sur un à-coup du serveur) : premier contact
+	local expected = if before then before - Vector3.new(0, Workspace.Gravity * dt, 0) else nil
+	local impact = expected ~= nil and (torso.AssemblyLinearVelocity - expected).Magnitude > FlightArc.IMPACT_DV
 	flight.prevPosition = position
 	flight.apex = math.max(flight.apex, position.Y)
 	checkBones(flight, elapsed)

@@ -42,6 +42,7 @@ return function(T, Loader)
 				armed = t > GameConfig.IMPACT_GRACE_TIME,
 				impact = false,
 				trapped = false,
+				coasting = false,
 				dt = DT,
 				gravity = G,
 			})
@@ -136,6 +137,7 @@ return function(T, Loader)
 				armed = true,
 				impact = true,
 				trapped = false,
+				coasting = false,
 				dt = DT,
 				gravity = G,
 			}
@@ -159,6 +161,7 @@ return function(T, Loader)
 				armed = true,
 				impact = false,
 				trapped = false,
+				coasting = false,
 				dt = DT,
 				gravity = G,
 			})
@@ -177,6 +180,7 @@ return function(T, Loader)
 				armed = false,
 				impact = false,
 				trapped = false,
+				coasting = false,
 				dt = DT,
 				gravity = G,
 			}
@@ -198,6 +202,12 @@ return function(T, Loader)
 			T.expectNear(FlightArc.brake(Vector3.new(0, 0, 5), FORWARD, 1, 0.1).Z, 0, 1e-9)
 			T.expectNear(FlightArc.brake(Vector3.new(0, 0, -5), FORWARD, 1, 0.1).Z, 0, 1e-9)
 			T.expectNear(FlightArc.brake(Vector3.new(0, 30, 300), FORWARD, 20, 0.1).Z, 300, 1e-9)
+		end)
+
+		T.it("laisse la poussée d'un piège au sol se voir (pas de frein juste après)", function()
+			local v = FlightArc.brake(Vector3.new(20, 5, 270), FORWARD, 2, 0.1, true)
+			T.expectNear(v.Z, 270, 1e-9)
+			T.expect(math.abs(v.X) < 20, "latéral toujours amorti")
 		end)
 	end)
 end

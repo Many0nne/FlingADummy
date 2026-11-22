@@ -317,10 +317,12 @@ le faisait monter toujours plus haut (≈ 590 studs à 4,4 B, carte vue de très
   studs de la piste, obstacles et pièges lisibles (captures : `docs/captures/vol/`).
 - **Glissade bornée** : après le premier choc (sol, obstacle), frein de 600 studs/s² sur l'élan le long de la piste
   (sous 6 studs de haut seulement : pas en l'air après un rebond) et vitesse latérale amortie (× e^-6t) : le mannequin
-  reste dans sa colonne et s'arrête en ≈ 1 s. Glissade théorique = vitesse² / 1 200 (470 m au plus à 4,4 B), mesurée
+  reste dans sa colonne et s'arrête en ≈ 1 s. Hauteur comptée depuis le fond de la piste (y = 0) : posé sur un
+  gradin ou un obstacle de plus de 6 studs, le mannequin n'est pas freiné (rare : il reste dans sa colonne). Glissade théorique = vitesse² / 1 200 (470 m au plus à 4,4 B), mesurée
   à 0,3 à 0,75 de cette valeur (obstacles et rebonds au point de chute).
 - **Pièges** : un piège qui projette lève le plafond pour le reste du vol (son rebond peut le passer, c'est voulu) ;
-  le frein reprend au sol.
+  l'élan n'est pas freiné pendant 0,5 s après un piège (`TRAP_COAST` : la poussée d'un canon ou d'un ventilateur au
+  sol se voit, non mesuré), puis le frein reprend au sol.
 - **Mesures** (Studio, `DebugLaunchBots`, Crash Dummy, jauge pleine, 6 vols par puissance) :
   | Puissance | Sommet avant → après | Premier contact | Glissade avant → après | Distance finale avant | Distance finale après |
   |---|---|---|---|---|---|

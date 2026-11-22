@@ -14,6 +14,7 @@ FlightArc.HOLD_GAIN = 4 -- rappel vers le plafond pendant la croisière (1/s)
 FlightArc.HOLD_MAX = 15 -- vitesse verticale de rappel au plus (studs/s)
 FlightArc.IMPACT_DV = 60 -- choc du torse en une frame (studs/s) qui compte comme premier contact
 FlightArc.GROUND_HEIGHT = 4 -- torse plus bas que ça (studs au-dessus de la piste) : premier contact au sol
+FlightArc.TRAP_COAST = 0.5 -- après un piège, l'élan n'est pas freiné pendant ce temps (s) : sa poussée se voit
 
 -- "Rise" : montée freinée vers le plafond ; "Cruise" : à plat au plafond ; "Free" : arc naturel ou chute après la
 -- croisière ; "Landed" : après le premier choc, frein au sol et amortissement latéral
@@ -36,15 +37,15 @@ export type State = {
 	armed: boolean, -- passé le délai de grâce du lancer (IMPACT_GRACE_TIME)
 	impact: boolean, -- le torse vient de subir un choc (plus de IMPACT_DV en une frame)
 	trapped: boolean, -- un piège a projeté le mannequin : plus de plafond
+	coasting: boolean, -- un piège vient d'agir (moins de TRAP_COAST s) : pas de frein sur l'élan
 	dt: number,
 	gravity: number,
 }
 
 -- Cette méthode permet de donner le plan d'un vol (sommet, distance au premier contact, fin de la croisière)
--- lorsqu'il part à `forwardSpeed` le long de la piste et `upSpeed` vers le haut, depuis `height` studs au-dessus de la
--- piste, sous `gravity` ; `ceiling` remplace GameConfig.APEX_HEIGHT (tests).
+-- lorsqu'il part à `forwardSpeed` le long de la piste et `upSpeed` vers le haut, depuis `height` studs, sous `gravity`.
 function FlightArc.plan(forwardSpeed: number, upSpeed: number, height: number, gravity: number, ceiling: number?): Plan
-	local top = ceiling or GameConfig.APEX_HEIGHT
+	local top = ceiling or GameConfig.APEX_HEIGHT -- `ceiling` : autre plafond (tests)
 	local vy = upSpeed
 	local apex = height + math.max(vy, 0) ^ 2 / (2 * gravity)
 	-- Contact quand le torse descend sous GROUND_HEIGHT
@@ -68,12 +69,12 @@ function FlightArc.startPhase(plan: Plan): Phase
 end
 
 -- Cette méthode permet de donner la vitesse après le frein au sol (élan le long de la piste réduit de GROUND_BRAKE ×
--- `dt` sous BRAKE_HEIGHT, vitesse latérale amortie partout) lorsque le mannequin a touché le sol.
-function FlightArc.brake(velocity: Vector3, forward: Vector3, height: number, dt: number): Vector3
+-- `dt` sous BRAKE_HEIGHT, sauf `coasting`, vitesse latérale amortie partout) lorsque le mannequin a touché le sol.
+function FlightArc.brake(velocity: Vector3, forward: Vector3, height: number, dt: number, coasting: boolean?): Vector3
 	local flat = Vector3.new(velocity.X, 0, velocity.Z)
 	local ahead = flat:Dot(forward)
 	local lateral = (flat - forward * ahead) * math.exp(-GameConfig.LATERAL_DAMP * dt)
-	if height < GameConfig.BRAKE_HEIGHT then
+	if height < GameConfig.BRAKE_HEIGHT and not coasting then
 		local slowed = math.max(math.abs(ahead) - GameConfig.GROUND_BRAKE * dt, 0)
 		ahead = if ahead < 0 then -slowed else slowed
 	end
@@ -120,7 +121,7 @@ function FlightArc.step(plan: Plan, state: State): (Phase, Vector3)
 		change = Vector3.new(0, -ceilingBrake(velocity.Y, remaining, state.gravity) * state.dt, 0)
 	end
 	if phase == "Landed" then
-		change += FlightArc.brake(velocity, state.forward, state.height, state.dt) - velocity
+		change += FlightArc.brake(velocity, state.forward, state.height, state.dt, state.coasting) - velocity
 	end
 	return phase, change
 end
