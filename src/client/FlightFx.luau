@@ -57,7 +57,7 @@ local FlightFx = {}
 local folder: Folder
 local burstPart: BasePart
 local burstAnchor: Attachment
-local ring: ParticleEmitter
+local rings: { [number]: ParticleEmitter } = {} -- anneau de poussière par rang de rebond (taille propre à chacun)
 local dust: ParticleEmitter
 local stars: ParticleEmitter
 local rayParams = RaycastParams.new()
@@ -155,7 +155,11 @@ local function addJet(flight: Flight)
 		Range = 16,
 		Parent = jet,
 	})
-	flight.roar = sound("Rocket", jet, 0.9)
+	local roar = sound("Rocket", jet, 0.9)
+	if roar then
+		roar.Looped = true -- toute la poussée, quelle que soit la longueur du clip ; stopJet l'éteint
+	end
+	flight.roar = roar
 	flight.jet = jet
 end
 
@@ -223,6 +227,38 @@ local function groundUnder(position: Vector3): Vector3
 	return Vector3.new(position.X, 0.2, position.Z)
 end
 
+-- Cette méthode permet de donner l'émetteur de l'anneau de poussière du k-ième rebond (créé à la première demande,
+-- taille fixée par son rang : changer la taille d'un émetteur partagé redimensionnerait les anneaux encore à l'écran)
+-- lorsque un rebond tombe.
+local function ringFor(k: number): ParticleEmitter
+	local rank = math.clamp(k, 1, 6)
+	local existing = rings[rank]
+	if existing then
+		return existing
+	end
+	local scale = FlightFxRules.bounceScale(rank)
+	-- Anneau à plat sur le sol (particule tournée vers sa vitesse, verticale et presque nulle) qui s'étend
+	local ring = UIKit.create("ParticleEmitter", {
+		Texture = DummyShape.fxTexture("ring"),
+		Color = ColorSequence.new(Color3.fromRGB(245, 235, 215)),
+		LightEmission = 0.2,
+		Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 2 * scale),
+			NumberSequenceKeypoint.new(1, 14 * scale),
+		}),
+		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(1, 1) }),
+		Lifetime = NumberRange.new(0.35),
+		Speed = NumberRange.new(0.01),
+		Orientation = Enum.ParticleOrientation.VelocityPerpendicular,
+		EmissionDirection = Enum.NormalId.Top,
+		SpreadAngle = Vector2.zero,
+		Enabled = false,
+		Parent = burstPart,
+	})
+	rings[rank] = ring
+	return ring
+end
+
 -- Cette méthode permet de jouer le k-ième rebond du Rubber (« boing » de plus en plus aigu, anneau de poussière au
 -- sol, étoiles) au torse affiché `position` lorsque le suivi l'annonce.
 local function playBounce(flight: Flight, k: number, position: Vector3)
@@ -232,11 +268,7 @@ local function playBounce(flight: Flight, k: number, position: Vector3)
 	soundAt("Boing", position, 0.8, FlightFxRules.boingPitch(k))
 	burstPart.CFrame = CFrame.new(ground)
 	if profile.ring then
-		ring.Size = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 2 * scale),
-			NumberSequenceKeypoint.new(1, 14 * scale),
-		})
-		ring:Emit(1)
+		ringFor(k):Emit(1)
 	end
 	-- Poussière en étoile, à plat sur le sol : une particule par direction
 	local rays = math.max(math.floor(DUST_RAYS * profile.burst * scale + 0.5), 3)
@@ -277,8 +309,19 @@ local function start(model: Model)
 	if cues.boostAlong <= 0 and not cues.glide and cues.bounces == 0 then
 		return
 	end
-	local torso = model:WaitForChild("Torso", 2)
-	if flights[model] or not torso or not torso:IsA("BasePart") or not model.Parent then
+	local torso = model:FindFirstChild("Torso")
+	if not torso then
+		-- Réplication en plusieurs paquets (connexion lente) : le suivi démarre à l'arrivée du torse
+		local added
+		added = model.ChildAdded:Connect(function(child)
+			if child.Name == "Torso" then
+				added:Disconnect()
+				task.spawn(start, model)
+			end
+		end)
+		return
+	end
+	if flights[model] or not torso:IsA("BasePart") or not model.Parent then
 		return
 	end
 	local root = UIKit.create("Folder", { Name = model.Name, Parent = folder })
@@ -327,10 +370,9 @@ local function step(flight: Flight, dt: number)
 	if previous and dt > 0 then
 		local moved = position - previous
 		if moved.Magnitude > 1e-3 then
-			flight.heading = flight.heading:Lerp(moved.Unit, math.min(dt * 20, 1))
-			if flight.heading.Magnitude > 1e-3 then
-				flight.heading = flight.heading.Unit
-			end
+			local heading = flight.heading:Lerp(moved.Unit, math.min(dt * 20, 1))
+			-- Demi-tour en une image (piège) : le mélange s'annule, on prend la nouvelle direction
+			flight.heading = if heading.Magnitude > 1e-3 then heading.Unit else moved.Unit
 		end
 	end
 
@@ -366,20 +408,6 @@ function FlightFx.init()
 	folder = UIKit.create("Folder", { Name = "FlightFx", Parent = Workspace })
 	burstPart = rigPart("Bounce", folder)
 	burstAnchor = UIKit.create("Attachment", { Parent = burstPart })
-	-- Anneau à plat sur le sol (particule tournée vers sa vitesse, verticale et presque nulle) qui s'étend
-	ring = UIKit.create("ParticleEmitter", {
-		Texture = DummyShape.fxTexture("ring"),
-		Color = ColorSequence.new(Color3.fromRGB(245, 235, 215)),
-		LightEmission = 0.2,
-		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(1, 1) }),
-		Lifetime = NumberRange.new(0.35),
-		Speed = NumberRange.new(0.01),
-		Orientation = Enum.ParticleOrientation.VelocityPerpendicular,
-		EmissionDirection = Enum.NormalId.Top,
-		SpreadAngle = Vector2.zero,
-		Enabled = false,
-		Parent = burstPart,
-	})
 	dust = UIKit.create("ParticleEmitter", {
 		Texture = SMOKE,
 		Color = ColorSequence.new(Color3.fromRGB(215, 200, 175)),

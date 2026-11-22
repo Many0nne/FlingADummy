@@ -65,6 +65,7 @@ export type Tracker = {
 	played: number, -- rebonds joués
 	reboundAt: number?, -- remontée affichée pas encore appariée à un rebond du serveur (temps)
 	waitingSince: number?, -- rebond du serveur pas encore vu remonter (temps)
+	owed: number, -- rebonds joués par repli dont la remontée affichée n'est pas encore passée
 }
 
 -- Ce que le client doit jouer à cette image
@@ -95,6 +96,7 @@ function FlightFx.tracker(cues: Cues, origin: Vector3, velocity: Vector3): Track
 		played = 0,
 		reboundAt = nil,
 		waitingSince = nil,
+		owed = 0,
 	}
 end
 
@@ -149,7 +151,13 @@ function FlightFx.step(tracker: Tracker, position: Vector3, dt: number, counted:
 			tracker.fall = math.max(tracker.fall, -raw)
 		elseif raw > FlightFx.REBOUND_UP then
 			if tracker.fall > FlightFx.REBOUND_FALL and height < FlightFx.REBOUND_HEIGHT then
-				tracker.reboundAt = now
+				if tracker.owed > 0 then
+					-- Remontée d'un rebond déjà joué par repli (affichage en retard de plus de MATCH) : elle ne
+					-- déclenche pas le suivant
+					tracker.owed -= 1
+				else
+					tracker.reboundAt = now
+				end
 			end
 			tracker.fall = 0
 		end
@@ -158,6 +166,9 @@ function FlightFx.step(tracker: Tracker, position: Vector3, dt: number, counted:
 			tracker.waitingSince = tracker.waitingSince or now
 			local seen = tracker.reboundAt ~= nil and now - tracker.reboundAt <= FlightFx.MATCH
 			if seen or now - tracker.waitingSince > FlightFx.MATCH then
+				if not seen then
+					tracker.owed += 1
+				end
 				tracker.played += 1
 				tracker.reboundAt = nil
 				tracker.waitingSince = nil

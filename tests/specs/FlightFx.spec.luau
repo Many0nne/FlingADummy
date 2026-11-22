@@ -242,6 +242,8 @@ return function(T, Loader)
 				t += 2 * up / G
 				table.insert(contacts, t)
 			end
+			-- Cette méthode permet de donner la position affichée du torse à l'instant `time` lorsque le suivi rejoue le
+			-- vol de rebonds.
 			local function display(time: number): Vector3
 				local start, up = 0, 0
 				local height = 40 - G * time * time / 2
@@ -302,6 +304,31 @@ return function(T, Loader)
 			)
 			T.expectEqual(#run.bounces, 1)
 			T.expectNear(run.bounces[1], 0.5 + FlightFx.MATCH, 2 * DT, "repli")
+		end)
+
+		T.it("garde chaque boing sur son rebond quand l'affichage a plus de MATCH de retard sur le serveur", function()
+			local display, contacts = bouncing(UPS)
+			-- Compteur du serveur 0,6 s avant chaque remontée affichée : chaque boing part par repli, 0,2 s tôt, sans que
+			-- la remontée d'un rebond déjà joué ne déclenche le suivant
+			local lead = 0.6
+			local run = replay(cues, v, display, contacts[#contacts] + 1, function(t)
+				local count = 0
+				for i = 1, 4 do
+					if t >= contacts[i] - lead then
+						count = i
+					end
+				end
+				return count
+			end)
+			T.expectEqual(#run.bounces, 4, "4 boing")
+			local previous = 0
+			for i = 1, 4 do
+				-- Attente du repli à partir du compteur, ou du boing précédent si le compteur l'a devancé
+				local expected = math.max(contacts[i] - lead, previous + DT) + FlightFx.MATCH
+				T.expectNear(run.bounces[i], expected, 2 * DT, "boing " .. i .. " par repli")
+				T.expect(run.bounces[i] <= contacts[i] + FlightFx.MATCH, "boing " .. i .. " pas après son rebond")
+				previous = run.bounces[i]
+			end
 		end)
 
 		T.it("ignore les rebonds physiques non comptés et borne aux rebonds du plan", function()
