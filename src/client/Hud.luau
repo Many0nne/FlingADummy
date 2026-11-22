@@ -3,8 +3,9 @@
 -- cartes d'objets (équipements d'entraînement ; collection, vente et Index : Client.CollectionWindows), barre
 -- d'entraînement avec STOP, « +N EXP » qui
 -- s'envole à chaque répétition, popups LEVEL UP! (Throw Power gagnée au niveau) / NEW EQUIPMENT!, popup « NEW GEAR! »
--- qui propose l'équipement suivant dès qu'il est abordable (achat en un clic) et popup « NEW DUMMY! » qui annonce le
--- mannequin à lancer suivant abordable (bouton SHOP vers la boutique, Client.ThrowShop). Fenêtre REBIRTH :
+-- qui propose l'équipement suivant dès qu'il est abordable (bouton vers sa carte de la fenêtre) et popup
+-- « NEW DUMMY! » qui annonce le mannequin à lancer suivant abordable (bouton SHOP vers la boutique, Client.ThrowShop).
+-- Fenêtre REBIRTH :
 -- Client.RebirthWindow. Invites du pad d'amélioration à côté de l'appareil (#159) : achat de l'équipement suivant
 -- (même remote que la fenêtre) et ouverture de la fenêtre Training Gear.
 local CollectionService = game:GetService("CollectionService")

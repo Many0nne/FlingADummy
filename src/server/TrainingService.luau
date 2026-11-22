@@ -205,6 +205,10 @@ end
 -- Cette méthode permet d'afficher sur le pad d'amélioration de la place `slot` l'équipement suivant de `player` et
 -- la couleur de son prix (Shared.GearPad) lorsque son équipement ou son argent changent.
 local function updateGearPad(player: Player, slot: CourseBuilder.Slot)
+	if player:GetAttribute("DataReady") ~= true then
+		CourseBuilder.styleGearPad(slot, 1, nil) -- sauvegarde pas encore lue : panneau neutre, pas un faux palier
+		return
+	end
 	local tier = (player:GetAttribute("GearTier") :: number?) or 1
 	local money = (player:GetAttribute("Money") :: number?) or 0
 	CourseBuilder.styleGearPad(slot, tier, money)
@@ -238,12 +242,14 @@ local function dressStation(player: Player, slots: { CourseBuilder.Slot })
 				updateGearPad(player, owned)
 			end)
 		)
-		table.insert(
-			connections,
-			player:GetAttributeChangedSignal("Money"):Connect(function()
-				updateGearPad(player, owned)
-			end)
-		)
+		for _, attribute in { "Money", "DataReady" } do
+			table.insert(
+				connections,
+				player:GetAttributeChangedSignal(attribute):Connect(function()
+					updateGearPad(player, owned)
+				end)
+			)
+		end
 		updateGearPad(player, owned)
 	end
 	-- SlotService pose l'attribut Slot dans son propre PlayerAdded : suivi sans attente bloquante (lobby plein : jamais)
