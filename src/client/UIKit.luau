@@ -7,6 +7,7 @@
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -225,8 +226,12 @@ function UIKit.playSound(name: string, pitch: number?)
 end
 
 -- Cette méthode permet de savoir si le joueur a demandé le mouvement réduit (réglage Roblox) lorsque l'interface
--- choisit de jouer un effet en boucle ; faux si le réglage n'existe pas.
+-- choisit de jouer un effet en boucle ; faux si le réglage n'existe pas. Studio : DebugReducedMotion (attribut de
+-- Workspace, true) le simule, le réglage étant en lecture seule pour les scripts.
 function UIKit.reducedMotion(): boolean
+	if RunService:IsStudio() and Workspace:GetAttribute("DebugReducedMotion") == true then
+		return true
+	end
 	local ok, value = pcall(function()
 		return (GuiService :: any).ReducedMotionEnabled
 	end)
