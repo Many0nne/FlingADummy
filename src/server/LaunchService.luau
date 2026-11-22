@@ -548,9 +548,8 @@ local function checkSmashed(list: { Flight })
 	end
 end
 
--- Cette méthode permet de rendre la main au joueur (retour au hub derrière la bande ; remis en prise sur la bande si
--- `again`, THROW AGAIN #76, quand SlotService.holdAgain le permet) lorsque son résultat et son tirage sont finis (GO
--- BACK, ou délai RevealPlan.resultTime dépassé), et d'annoncer à tous un tirage rare ; sans effet si déjà clos.
+-- Cette méthode permet de rendre la main au joueur (hub, ou bande si `again` : THROW AGAIN #76) et d'annoncer un tirage
+-- rare lorsque son résultat est fini (GO BACK, THROW AGAIN, délai dépassé) ; sans effet si déjà clos.
 local function closeResult(player: Player, flight: Flight, again: boolean?)
 	if results[player] ~= flight then
 		return

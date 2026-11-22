@@ -468,14 +468,14 @@ local function finish()
 	remotes.ResultDone:FireServer()
 end
 
--- Cette méthode permet de clore le tirage comme GO BACK, puis de demander au serveur de remettre l'avatar en prise sur
--- la bande (jauge rouverte, cadrage de Client.FlightCamera.band ; refusé : retour au hub) lorsque le joueur clique
--- THROW AGAIN (#76). La caméra revient d'abord sur l'avatar (coupe, comme GO BACK) : le fondu de la bande part de là.
+-- Cette méthode permet de clore le tirage comme GO BACK puis de demander la remise en prise sur la bande (refusée :
+-- retour au hub) lorsque le joueur clique THROW AGAIN (#76).
 local function again()
 	if not showing then
 		return
 	end
 	cleanup()
+	-- Caméra coupée sur l'avatar, comme GO BACK : le fondu de la bande (Client.FlightCamera.band) part de là
 	FlightCamera.stop()
 	remotes.ThrowAgain:FireServer()
 end

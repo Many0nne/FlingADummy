@@ -170,11 +170,10 @@ function SlotService.gaugeOpenedAt(player: Player): number?
 	return state and state.since
 end
 
--- Cette méthode permet de remettre le joueur en prise sur la bande (jauge rouverte : Action « Holding ») lorsqu'il
--- clique THROW AGAIN à la fin de son résultat (#76), avant que LaunchService ne le repasse à « Ready » ; mêmes contrôles
--- qu'une arrivée à pied. Il garde sa place s'il y est encore figé, sinon (réapparu) il en reçoit une libre près de lui.
--- Renvoie false (le joueur repart au hub, comme GO BACK) si la remise en prise n'est pas permise ou la bande pleine.
+-- Cette méthode permet de remettre le joueur en prise sur la bande (Action « Holding ») lorsqu'il clique THROW AGAIN
+-- (#76), avant son retour à « Ready » ; false (retour au hub, comme GO BACK) si refusé ou bande pleine.
 function SlotService.holdAgain(player: Player): boolean
+	-- Mêmes contrôles qu'une arrivée à pied, et pas avant la première pose du tutoriel
 	if
 		player:GetAttribute("LaneState") ~= "Result"
 		or player:GetAttribute("Action") ~= nil
@@ -197,7 +196,9 @@ function SlotService.holdAgain(player: Player): boolean
 		player:SetAttribute("Action", "Holding")
 		return true
 	end
-	unfreeze(player, false)
+	-- Plus figé (réapparu) : depuis le hub, une place libre près de lui, comme une arrivée à pied ; bande pleine : il y
+	-- reste, comme après GO BACK
+	unfreeze(player, true)
 	return freeze(player, character, root, humanoid)
 end
 
