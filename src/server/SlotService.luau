@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local CourseLayout = require(ReplicatedStorage.Shared.CourseLayout)
+local SlotQueue = require(ReplicatedStorage.Shared.SlotQueue)
 local Tutorial = require(ReplicatedStorage.Shared.Tutorial)
 local CollisionGroups = require(script.Parent.CollisionGroups)
 local CourseBuilder = require(script.Parent.CourseBuilder)
@@ -28,7 +29,7 @@ type Frozen = {
 local SlotService = {}
 
 local slots: { Slot } = {}
-local owners: { [number]: Player } = {}
+local queue = SlotQueue.new(0) :: SlotQueue.Queue<Player> -- places et file d'attente, remplacé dans init
 local slotOf: { [Player]: Slot } = {}
 local frozen: { [Player]: Frozen } = {}
 
@@ -112,19 +113,24 @@ local function setupCharacter(player: Player, character: Model)
 	end
 end
 
--- Cette méthode permet de donner au joueur la première place libre lorsqu'il arrive.
+-- Cette méthode permet de poser la place `index` sur le joueur (attributs lus par la base, l'appareil et le HUD) et de
+-- lui retirer le message d'attente lorsqu'une place lui est donnée, à son arrivée ou quand un autre joueur part.
+local function grant(player: Player, index: number)
+	slotOf[player] = slots[index]
+	player:SetAttribute("SlotWait", nil)
+	player:SetAttribute("Slot", index)
+	player:SetAttribute("LaneState", "Ready")
+end
+
+-- Cette méthode permet de donner au joueur la première place libre lorsqu'il arrive, ou de le mettre en attente
+-- (attribut SlotWait, message du client) quand le lobby est plein.
 local function assign(player: Player)
-	for index, slot in slots do
-		if owners[index] == nil then
-			owners[index] = player
-			slotOf[player] = slot
-			player:SetAttribute("Slot", index)
-			player:SetAttribute("LaneState", "Ready")
-			break
-		end
-	end
-	if not slotOf[player] then
-		warn("[SlotService] aucune place libre pour " .. player.Name)
+	local index = queue:join(player)
+	if index then
+		grant(player, index)
+	else
+		player:SetAttribute("SlotWait", true)
+		warn("[SlotService] lobby plein : " .. player.Name .. " attend une place")
 	end
 	-- Retour au hub quand le lancer est fini (LaunchService repasse le joueur à « Ready » après le résultat), sauf s'il
 	-- vient d'être remis en prise sur la bande (THROW AGAIN, SlotService.holdAgain)
@@ -206,7 +212,7 @@ end
 function SlotService.freeSlots(): { Slot }
 	local free = {}
 	for index, slot in slots do
-		if owners[index] == nil then
+		if queue:isFree(index) then
 			table.insert(free, slot)
 		end
 	end
@@ -217,16 +223,33 @@ end
 -- serveur démarre.
 function SlotService.init(builtSlots: { Slot })
 	slots = builtSlots
+	queue = SlotQueue.new(#builtSlots)
 	Players.PlayerAdded:Connect(assign)
 	for _, player in Players:GetPlayers() do
 		assign(player)
 	end
 	Players.PlayerRemoving:Connect(function(player)
 		frozen[player] = nil
-		local slot = slotOf[player]
-		if slot then
-			owners[slot.index] = nil
-			slotOf[player] = nil
+		slotOf[player] = nil
+		-- La place libérée passe au plus ancien joueur en attente (#142), reposé dans le hub devant sa base
+		local next, index = queue:leave(player)
+		if next and index then
+			-- Après les autres PlayerRemoving (BaseService et TrainingService remettent la place à neuf pour le
+			-- joueur parti) : sinon ils effaceraient l'aspect que le nouveau propriétaire vient de recevoir
+			task.defer(function()
+				if next.Parent ~= Players then
+					return -- parti entre-temps : sa propre sortie a déjà rendu la place
+				end
+				grant(next, index)
+				local character = next.Character
+				if
+					character
+					and character:FindFirstChild("HumanoidRootPart")
+					and next:GetAttribute("Action") == nil
+				then
+					character:PivotTo(slots[index].spawn)
+				end
+			end)
 		end
 	end)
 	RunService.Heartbeat:Connect(function()
