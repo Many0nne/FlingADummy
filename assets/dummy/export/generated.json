@@ -153,8 +153,8 @@
   },
   "angelic_ghost": {
     "color": [
-      200,
-      170,
+      165,
+      120,
       255
     ],
     "effects": [
@@ -353,8 +353,8 @@
   },
   "angelic_hero": {
     "color": [
-      170,
-      215,
+      110,
+      175,
       255
     ],
     "effects": [
@@ -823,24 +823,24 @@
     ],
     "pieces": {
       "LeftLowerArm": [
-        150,
         110,
-        255
+        60,
+        230
       ],
       "LeftUpperArm": [
-        150,
         110,
-        255
+        60,
+        230
       ],
       "RightLowerArm": [
-        150,
         110,
-        255
+        60,
+        230
       ],
       "RightUpperArm": [
-        150,
         110,
-        255
+        60,
+        230
       ]
     }
   },
@@ -997,24 +997,24 @@
     ],
     "pieces": {
       "LeftLowerLeg": [
-        150,
         110,
-        255
+        60,
+        230
       ],
       "LeftUpperLeg": [
-        150,
         110,
-        255
+        60,
+        230
       ],
       "RightLowerLeg": [
-        150,
         110,
-        255
+        60,
+        230
       ],
       "RightUpperLeg": [
-        150,
         110,
-        255
+        60,
+        230
       ]
     }
   },
@@ -3390,13 +3390,12 @@
         "preset": "motes"
       }
     ],
-    "material": "Foil",
     "parts": [
       {
         "color": [
-          242,
-          133,
-          227
+          114,
+          77,
+          211
         ],
         "material": "SmoothPlastic",
         "mesh": "galaxy_SpaceHelmet",
@@ -3405,9 +3404,9 @@
       },
       {
         "color": [
-          255,
-          128,
-          190
+          127,
+          72,
+          174
         ],
         "material": "Neon",
         "mesh": "galaxy_GoldVisor",
@@ -3416,9 +3415,9 @@
       },
       {
         "color": [
-          253,
-          137,
-          225
+          125,
+          81,
+          209
         ],
         "material": "Neon",
         "mesh": "galaxy_SuitCollar",
@@ -3427,9 +3426,9 @@
       },
       {
         "color": [
-          253,
-          137,
-          225
+          125,
+          81,
+          209
         ],
         "material": "Neon",
         "mesh": "galaxy_SuitPads",
@@ -3438,9 +3437,9 @@
       },
       {
         "color": [
-          255,
-          110,
-          216
+          127,
+          54,
+          200
         ],
         "material": "Neon",
         "mesh": "galaxy_SuitStripes",
@@ -3449,9 +3448,9 @@
       },
       {
         "color": [
-          253,
-          137,
-          225
+          125,
+          81,
+          209
         ],
         "material": "Neon",
         "mesh": "galaxy_LifePack",
@@ -3460,9 +3459,9 @@
       },
       {
         "color": [
-          222,
-          134,
-          227
+          94,
+          78,
+          211
         ],
         "material": "Neon",
         "mesh": "galaxy_PackLights",
@@ -3471,9 +3470,9 @@
       },
       {
         "color": [
-          255,
-          110,
-          216
+          127,
+          54,
+          200
         ],
         "material": "Neon",
         "mesh": "galaxy_PlanetRing",
@@ -3482,9 +3481,9 @@
       },
       {
         "color": [
-          255,
-          132,
-          192
+          127,
+          76,
+          176
         ],
         "material": "Neon",
         "mesh": "galaxy_RingRocks",
@@ -3493,9 +3492,9 @@
       },
       {
         "color": [
-          255,
-          132,
-          192
+          127,
+          76,
+          176
         ],
         "material": "Neon",
         "mesh": "galaxy_Moons",
@@ -3525,9 +3524,9 @@
         220
       ],
       "Torso": [
-        251,
-        135,
-        225
+        123,
+        79,
+        209
       ]
     }
   },
@@ -4505,8 +4504,8 @@
   },
   "plasma_void": {
     "color": [
-      140,
-      55,
+      85,
+      60,
       255
     ],
     "effects": [
@@ -4733,9 +4732,9 @@
   },
   "prism_diamond": {
     "color": [
-      200,
-      165,
-      255
+      130,
+      70,
+      230
     ],
     "effects": [
       {
@@ -4801,7 +4800,6 @@
         "preset": "glint"
       }
     ],
-    "material": "Ice",
     "parts": [
       {
         "color": [
@@ -5304,8 +5302,8 @@
   "radiant_diamond": {
     "color": [
       255,
-      165,
-      140
+      135,
+      105
     ],
     "effects": [
       {
@@ -7108,8 +7106,8 @@
   },
   "starlight_cosmic": {
     "color": [
-      185,
       145,
+      90,
       255
     ],
     "effects": [
@@ -7179,9 +7177,9 @@
     "parts": [
       {
         "color": [
-          211,
-          99,
-          195
+          111,
+          59,
+          211
         ],
         "material": "Neon",
         "mesh": "cosmic_GalaxyDisc",
@@ -7190,9 +7188,9 @@
       },
       {
         "color": [
-          255,
-          110,
-          220
+          155,
+          70,
+          236
         ],
         "material": "Neon",
         "mesh": "cosmic_GalaxyArmsA",
@@ -7201,9 +7199,9 @@
       },
       {
         "color": [
-          222,
-          140,
-          227
+          122,
+          100,
+          243
         ],
         "material": "Neon",
         "mesh": "cosmic_GalaxyArmsB",
@@ -7212,9 +7210,9 @@
       },
       {
         "color": [
-          253,
-          145,
-          225
+          153,
+          105,
+          241
         ],
         "material": "Neon",
         "mesh": "cosmic_GalaxyStars",
@@ -7223,9 +7221,9 @@
       },
       {
         "color": [
-          255,
-          145,
-          216
+          155,
+          105,
+          232
         ],
         "material": "Neon",
         "mesh": "cosmic_GalaxyCore",
@@ -7234,9 +7232,9 @@
       },
       {
         "color": [
-          255,
-          135,
-          184
+          155,
+          95,
+          200
         ],
         "material": "Neon",
         "mesh": "cosmic_GalaxyRim",
@@ -7245,9 +7243,9 @@
       },
       {
         "color": [
-          222,
-          140,
-          227
+          122,
+          100,
+          243
         ],
         "material": "Neon",
         "mesh": "cosmic_RimGems",
@@ -7256,9 +7254,9 @@
       },
       {
         "color": [
-          255,
-          135,
-          184
+          155,
+          95,
+          200
         ],
         "material": "Neon",
         "mesh": "cosmic_StarCrown",
@@ -7267,9 +7265,9 @@
       },
       {
         "color": [
-          255,
-          110,
-          220
+          155,
+          70,
+          236
         ],
         "material": "Neon",
         "mesh": "cosmic_CrownGems",
@@ -7278,9 +7276,9 @@
       },
       {
         "color": [
-          255,
-          142,
-          194
+          155,
+          102,
+          210
         ],
         "material": "Neon",
         "mesh": "cosmic_CrownStar",
@@ -7289,9 +7287,9 @@
       },
       {
         "color": [
-          255,
-          135,
-          184
+          155,
+          95,
+          200
         ],
         "material": "Neon",
         "mesh": "cosmic_CosmicArmor",
@@ -7300,9 +7298,9 @@
       },
       {
         "color": [
-          222,
-          140,
-          227
+          122,
+          100,
+          243
         ],
         "material": "Neon",
         "mesh": "cosmic_ArmorGems",
@@ -7311,9 +7309,9 @@
       },
       {
         "color": [
-          255,
-          135,
-          184
+          155,
+          95,
+          200
         ],
         "material": "Neon",
         "mesh": "cosmic_PauldronL",
@@ -7322,9 +7320,9 @@
       },
       {
         "color": [
-          255,
-          135,
-          184
+          155,
+          95,
+          200
         ],
         "material": "Neon",
         "mesh": "cosmic_PauldronR",
@@ -7333,9 +7331,9 @@
       },
       {
         "color": [
-          226,
-          147,
-          221
+          126,
+          107,
+          237
         ],
         "material": "Neon",
         "mesh": "cosmic_CosmicMoons",
@@ -7344,9 +7342,9 @@
       },
       {
         "color": [
-          255,
-          110,
-          220
+          155,
+          70,
+          236
         ],
         "material": "Neon",
         "mesh": "cosmic_MoonRings",
@@ -7376,9 +7374,9 @@
         220
       ],
       "Torso": [
-        215,
-        102,
-        204
+        115,
+        62,
+        220
       ]
     }
   },

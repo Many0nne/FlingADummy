@@ -85,23 +85,23 @@ DummyFamilies.STYLES = {
 	-- Divine : blanc et or, mais chacun sa couleur de corps et de gants
 	angelic_royal    = { trim = rgb(255, 190, 40),  trimPieces = "gloves" },                                     -- nacre, gants d'or
 	radiant_galaxy   = { body = rgb(255, 200, 60),  trim = rgb(120, 200, 255), trimPieces = "gloves" },          -- or, gants ciel
-	angelic_hero     = { body = rgb(170, 215, 255), trim = rgb(255, 190, 40),  trimPieces = "pants" },           -- ciel, jambes d'or
-	radiant_diamond  = { body = rgb(255, 165, 140), trim = rgb(255, 240, 225), trimPieces = "gloves" },          -- or rose, gants crème
-	angelic_ghost    = { body = rgb(200, 170, 255), trim = rgb(255, 190, 40),  trimPieces = "sleeves" },         -- lavande, bras d'or
+	angelic_hero     = { body = rgb(110, 175, 255), trim = rgb(255, 190, 40),  trimPieces = "pants" },           -- ciel, jambes d'or
+	radiant_diamond  = { body = rgb(255, 135, 105), trim = rgb(255, 240, 225), trimPieces = "gloves" },          -- or rose, gants crème
+	angelic_ghost    = { body = rgb(165, 120, 255), trim = rgb(255, 190, 40),  trimPieces = "sleeves" },         -- lavande, bras d'or
 	radiant_king     = { body = rgb(255, 180, 30),  trim = rgb(205, 30, 55),   trimPieces = "gloves", material = M.Foil }, -- or plein, gants pourpres
 	-- Celestial : rose, violet, turquoise
 	starlight_hero   = { body = rgb(255, 95, 185),  trim = rgb(255, 235, 120), trimPieces = "sleeves" },         -- fuchsia, bras or pâle
-	nebula_galaxy    = { trim = rgb(255, 130, 220), trimPieces = "gloves" },                                     -- violet, gants roses
-	aurora_ghost     = { trim = rgb(150, 110, 255), trimPieces = "sleeves" },                                    -- turquoise, bras violets
-	starlight_cosmic = { body = rgb(185, 145, 255), trim = rgb(255, 120, 220), trimPieces = "pants" },           -- lilas, jambes roses
+	nebula_galaxy    = { accent = rgb(95, 40, 200), trim = rgb(255, 130, 220), trimPieces = "gloves", material = M.SmoothPlastic }, -- combinaison violette sans Foil, gants roses
+	aurora_ghost     = { trim = rgb(110, 60, 230),  trimPieces = "sleeves" },                                    -- turquoise, bras violets
+	starlight_cosmic = { body = rgb(145, 90, 255),  accent = rgb(130, 70, 240), trim = rgb(255, 120, 220), trimPieces = "pants" }, -- armure violette, jambes roses
 	nebula_king      = { body = rgb(225, 55, 195),  trim = rgb(75, 30, 150),   trimPieces = "gloves", material = M.Foil }, -- magenta, gants violets
 	starlight_void   = { body = rgb(255, 185, 235), trim = rgb(45, 25, 70),    trimPieces = "pants" },           -- rose pâle, jambes du vide
 	-- Ethereal : irisé, glace et néon
 	prism_ice        = { trim = rgb(255, 140, 235), trimPieces = "gloves" },                                     -- glace bleue, gants roses
-	aurora_royal     = { trim = rgb(150, 110, 255), trimPieces = "pants" },                                      -- turquoise, jambes violettes
+	aurora_royal     = { trim = rgb(110, 60, 230),  trimPieces = "pants" },                                      -- turquoise, jambes violettes
 	plasma_neon      = { trim = rgb(80, 220, 255),  trimPieces = "gloves" },                                     -- néon magenta, gants cyan
-	prism_diamond    = { body = rgb(200, 165, 255), trim = rgb(110, 230, 255), trimPieces = "sleeves" },         -- glace lavande, bras aqua
-	plasma_void      = { body = rgb(140, 55, 255),  trim = rgb(255, 50, 200),  trimPieces = "pants" },           -- néon violet, jambes magenta
+	prism_diamond    = { body = rgb(130, 70, 230),  trim = rgb(110, 230, 255), trimPieces = "sleeves", material = M.SmoothPlastic }, -- violet sans glace, bras aqua
+	plasma_void      = { body = rgb(85, 60, 255),   trim = rgb(255, 50, 200),  trimPieces = "pants" },           -- néon violet, jambes magenta
 	quantum_cosmic   = { trim = rgb(170, 90, 255),  trimPieces = "gloves" },                                     -- néon cyan, gants violets
 } :: { [string]: Style }
 
@@ -118,6 +118,9 @@ function DummyFamilies.paletteOf(family: string, paletteId: string): Palette
 	merged.body = style.body or palette.body
 	merged.accent = style.accent or palette.accent
 	merged.material = style.material or palette.material
+	if merged.material == Enum.Material.SmoothPlastic then
+		merged.material = nil -- plastique : le corps garde l'atlas, comme sans matériau
+	end
 	merged.accessoryMaterial = style.accessoryMaterial or palette.accessoryMaterial
 	merged.glow = style.glow or palette.glow
 	return merged

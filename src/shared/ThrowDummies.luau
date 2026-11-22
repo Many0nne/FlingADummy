@@ -113,11 +113,11 @@ ThrowDummies.LIST = {
 		color = rgb(150, 235, 255),
 		material = Enum.Material.Glass,
 		blocks = {
-			-- Étiquette « FRAGILE » rouge sur le torse
+			-- Étiquette « FRAGILE » rouge sur le ventre, sous la cible du torse
 			{
 				piece = "Torso",
-				size = Vector3.new(1.4, 0.45, 0.1),
-				offset = Vector3.new(0, 0.3, -0.58),
+				size = Vector3.new(1.4, 0.38, 0.1),
+				offset = Vector3.new(0, -0.72, -0.58),
 				color = rgb(230, 40, 40),
 			},
 		},
@@ -311,10 +311,10 @@ local function ornaments(rank: number, glow: Color3): { Block }
 	if rank >= 3 then
 		-- Auréole carrée au-dessus de la couronne
 		for _, z in { -0.62, 0.62 } do
-			add(Vector3.new(1.42, 0.12, 0.18), Vector3.new(0, 1.55, z), glow, Enum.Material.Neon)
+			add(Vector3.new(1.42, 0.2, 0.2), Vector3.new(0, 1.55, z), glow, Enum.Material.Neon)
 		end
 		for _, x in { -0.62, 0.62 } do
-			add(Vector3.new(0.18, 0.12, 1.06), Vector3.new(x, 1.55, 0), glow, Enum.Material.Neon)
+			add(Vector3.new(0.2, 0.2, 1.04), Vector3.new(x, 1.55, 0), glow, Enum.Material.Neon)
 		end
 	end
 	return list
@@ -543,7 +543,7 @@ function ThrowDummies.variant(index: number, viewport: boolean?): { [string]: an
 		material = material,
 		pieceColors = dummy.pieceColors,
 		blocks = blocks,
-		effects = dummy.effects,
+		effects = if viewport then nil else dummy.effects, -- particules et lumière ne se rendent pas en fenêtre
 	}
 end
 

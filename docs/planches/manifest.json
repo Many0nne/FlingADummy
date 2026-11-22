@@ -469,7 +469,7 @@
                 "1 IN 17M",
                 "$1.6M/s"
               ],
-              "look": "6b80ae790f",
+              "look": "f2b1a47b71",
               "title": "Angelic Hero Dummy"
             },
             {
@@ -478,7 +478,7 @@
                 "1 IN 30M",
                 "$1.8M/s"
               ],
-              "look": "94e17d54fb",
+              "look": "4b39703579",
               "title": "Radiant Diamond Dummy"
             },
             {
@@ -487,7 +487,7 @@
                 "1 IN 55M",
                 "$2.1M/s"
               ],
-              "look": "1d079cb304",
+              "look": "ed700ac384",
               "title": "Angelic Ghost Dummy"
             },
             {
@@ -524,7 +524,7 @@
                 "1 IN 910M",
                 "$8.6M/s"
               ],
-              "look": "2f36f35981",
+              "look": "a4182afbaa",
               "title": "Nebula Galaxy Dummy"
             },
             {
@@ -533,7 +533,7 @@
                 "1 IN 1.7B",
                 "$9.9M/s"
               ],
-              "look": "f6bd3bf713",
+              "look": "a0c367520e",
               "title": "Aurora Ghost Dummy"
             },
             {
@@ -542,7 +542,7 @@
                 "1 IN 3B",
                 "$11M/s"
               ],
-              "look": "bb476799ca",
+              "look": "f9022ecda4",
               "title": "Starlight Cosmic Dummy"
             },
             {
@@ -588,7 +588,7 @@
                 "1 IN 91B",
                 "$52M/s"
               ],
-              "look": "650ebf9463",
+              "look": "ede100a290",
               "title": "Aurora Royal Dummy"
             },
             {
@@ -606,7 +606,7 @@
                 "1 IN 300B",
                 "$68M/s"
               ],
-              "look": "3b894eafc0",
+              "look": "19931dca6e",
               "title": "Prism Diamond Dummy"
             },
             {
@@ -615,7 +615,7 @@
                 "1 IN 550B",
                 "$78M/s"
               ],
-              "look": "1193814a4b",
+              "look": "9db9615d06",
               "title": "Plasma Void Dummy"
             },
             {
@@ -727,7 +727,7 @@
                 "$40K",
                 "LUCK x1.5"
               ],
-              "look": "aabc2d01ca",
+              "look": "000201a577",
               "title": "Glass Dummy"
             },
             {
@@ -778,7 +778,7 @@
                 "$25M",
                 "LUCK x5"
               ],
-              "look": "d8be15c61c",
+              "look": "9ede4743d7",
               "title": "Emerald Glass Dummy"
             },
             {
@@ -829,7 +829,7 @@
                 "$1B",
                 "LUCK x17"
               ],
-              "look": "dfa1909c18",
+              "look": "96b733018e",
               "title": "Magma Glass Dummy"
             },
             {
@@ -874,7 +874,7 @@
                 "$80B",
                 "LUCK x75"
               ],
-              "look": "0ee6c9f287",
+              "look": "dc65f3939c",
               "title": "Plasma Glass Dummy"
             }
           ],
@@ -889,7 +889,7 @@
                 "$120B",
                 "LUCK x100"
               ],
-              "look": "38cd79e893",
+              "look": "2d31f7885e",
               "title": "Quantum Glider Dummy"
             },
             {
@@ -898,7 +898,7 @@
                 "$200B",
                 "LUCK x135"
               ],
-              "look": "d1dad15357",
+              "look": "35beaa2526",
               "title": "Infinite Rocket Dummy"
             }
           ],
