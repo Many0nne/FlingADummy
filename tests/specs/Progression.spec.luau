@@ -1,16 +1,26 @@
 -- Rythme de la progression (#15) : le joueur simulé (tools/ProgressionSim, vrais modules du jeu) achète tout le
 -- catalogue (équipements, mannequins à lancer, présentoirs) puis renaît ; aucun « mur » entre deux achats, rythme de la
--- première heure, présentoirs étalés, première renaissance vers une douzaine d'heures.
+-- première heure, présentoirs étalés, première renaissance vers une douzaine d'heures. Modèle : mannequins hors
+-- présentoirs vendus aussitôt (un joueur qui ne passe pas au stand SELL touche le même argent, mais plus tard).
 return function(T, Loader, Lib)
 	local Sim = Lib.ProgressionSim
 	local m = Sim.modules(Loader.new())
 	local PLAYERS = 15
 
 	local runs = {}
-	for seed = 1, PLAYERS do
-		table.insert(runs, Sim.simulate(m, seed, 16 * 3600, true))
-	end
-	local steps = Sim.steps(runs)
+	local steps = {}
+
+	T.describe("Joueur simulé (#15) : partie", function()
+		T.it("15 joueurs simulés jusqu'à leur première renaissance", function()
+			for seed = 1, PLAYERS do
+				table.insert(runs, Sim.simulate(m, seed, 16 * 3600, true))
+			end
+			-- Le joueur simulé fixe la graine de math.random : les specs suivantes retrouvent un hasard non répété
+			math.randomseed(os.time())
+			steps = Sim.steps(runs)
+			T.expectEqual(#runs, PLAYERS)
+		end)
+	end)
 
 	-- Cette méthode permet de donner l'instant médian (s) d'un palier sur les joueurs simulés (nil si la moitié ne
 	-- l'atteint pas) lorsqu'un test vérifie un repère.
