@@ -13,11 +13,19 @@ local CourseLayout = {}
 CourseLayout.HUB_FRONT = -GameConfig.LAUNCH_DEPTH -- bord du hub côté bande (z)
 CourseLayout.HUB_BACK = CourseLayout.HUB_FRONT - GameConfig.HUB_DEPTH -- fond du hub (z)
 CourseLayout.ENTRANCE = Vector3.zAxis -- les entrées des bases regardent la bande
-CourseLayout.BASE_SIZE = Vector3.new(40, 0, 34) -- largeur le long de l'entrée (X), profondeur (Z)
+CourseLayout.BASE_SIZE = Vector3.new(40, 0, 48) -- largeur le long de l'entrée (X), profondeur (Z ; 34 avant #156)
 CourseLayout.BASE_PITCH = 48 -- d'un centre de base au suivant : 8 studs de passage entre deux clôtures
 CourseLayout.BASE_FRONT = -62 -- clôture d'entrée des bases (z) : place pour les appareils, une allée, puis les stands
--- Présentoirs par base : GameConfig.DISPLAY_START au départ (2 rangées de 3), puis achetés au pad jusqu'à DISPLAY_MAX
+-- Présentoirs par base (#156) : GameConfig.DISPLAY_START au départ, puis achetés au pad jusqu'à DISPLAY_MAX, en rangées
+-- de DISPLAY_COLUMNS depuis l'entrée ; DISPLAY_ROOM emplacements prévus (passe « Big Base » de #160 : + 10, deux
+-- rangées de plus au fond, la base s'allongera alors dans le hub)
 CourseLayout.DISPLAY_MAX = GameConfig.DISPLAY_START + #GameConfig.DISPLAY_PRICES
+CourseLayout.DISPLAY_ROOM = CourseLayout.DISPLAY_MAX + 10
+CourseLayout.DISPLAY_COLUMNS = 5
+CourseLayout.DISPLAY_PITCH = Vector3.new(7.5, 0, 7) -- d'une colonne à l'autre (X), d'une rangée à l'autre (Z)
+CourseLayout.DISPLAY_FIRST_ROW = 6 -- de la clôture d'entrée au centre de la première rangée
+CourseLayout.DISPLAY_BACK_GAP = 5 -- du bord de la dernière rangée à la clôture du fond
+CourseLayout.PEDESTAL_SIZE = 4 -- côté du socle d'un présentoir (5 avant #156)
 CourseLayout.PAD_SHIFT = 12 -- pad d'achat de présentoir : de l'autre côté de l'entrée que l'appareil (vers -X)
 CourseLayout.PAD_GAP = 6 -- de la clôture d'entrée au pad d'achat de présentoir (studs)
 CourseLayout.BASE_REACH = 12 -- bouton AUTO de pose : dans la base ou à moins de 12 studs de sa clôture
@@ -151,26 +159,34 @@ function CourseLayout.stationPosition(index: number): (Vector3, Vector3)
 	return Vector3.new(base.X + CourseLayout.STATION_SHIFT, 0, z), CourseLayout.ENTRANCE
 end
 
--- Présentoirs achetables (7 à 10) : deux le long de chaque clôture de côté, entre les rangées des 6 premiers
-local EXTRA_DISPLAYS =
-	{ Vector3.new(-15.5, 0, -4.5), Vector3.new(-15.5, 0, 4.5), Vector3.new(15.5, 0, -4.5), Vector3.new(15.5, 0, 4.5) }
+-- Ordre de remplissage d'une rangée : du milieu vers les côtés (une base à moitié remplie reste symétrique)
+local COLUMN_ORDER = { 0, -1, 1, -2, 2 }
 
--- Cette méthode permet de donner les emplacements des DISPLAY_MAX présentoirs d'une base (2 rangées de 3 dans la
--- profondeur, puis les 4 achetables le long des clôtures de côté) lorsque l'on construit la base ; les achetables
--- existent dès la construction (grisés tant qu'ils ne sont pas achetés), pour ne déplacer aucun autre présentoir.
--- Disposition de #61 (entrée vers +X) symétrique par la diagonale x = z : entrée vers +Z, même ordre des présentoirs.
-function CourseLayout.displayPositions(index: number): { Vector3 }
+-- Cette méthode permet de donner les emplacements des `count` premiers présentoirs d'une base (DISPLAY_MAX par défaut ;
+-- DISPLAY_ROOM pour la place prévue) lorsque l'on construit la base : rangées de DISPLAY_COLUMNS depuis l'entrée, chacune
+-- remplie du milieu vers les côtés (#156, comme les emplacements de jardin de 09) ; les achetables existent dès la
+-- construction (grisés tant qu'ils ne sont pas achetés).
+function CourseLayout.displayPositions(index: number, count: number?): { Vector3 }
 	local center = CourseLayout.basePosition(index)
 	local positions = {}
-	for row = 0, 1 do
-		for col = -1, 1 do
-			table.insert(positions, center + Vector3.new((row - 0.5) * 14, 0, col * 9))
-		end
-	end
-	for _, offset in EXTRA_DISPLAYS do
-		table.insert(positions, center + offset)
+	local columns, pitch = CourseLayout.DISPLAY_COLUMNS, CourseLayout.DISPLAY_PITCH
+	for i = 1, count or CourseLayout.DISPLAY_MAX do
+		local row = (i - 1) // columns
+		local column = COLUMN_ORDER[(i - 1) % columns + 1]
+		local z = CourseLayout.BASE_FRONT - CourseLayout.DISPLAY_FIRST_ROW - row * pitch.Z
+		table.insert(positions, Vector3.new(center.X + column * pitch.X, 0, z))
 	end
 	return positions
+end
+
+-- Cette méthode permet de donner la profondeur (Z) d'une base qui tient `count` présentoirs (de la clôture d'entrée à
+-- celle du fond) lorsque l'on vérifie la place prévue dans le hub pour le passe « Big Base » (#160).
+function CourseLayout.baseDepthFor(count: number): number
+	local rows = math.ceil(count / CourseLayout.DISPLAY_COLUMNS)
+	return CourseLayout.DISPLAY_FIRST_ROW
+		+ (rows - 1) * CourseLayout.DISPLAY_PITCH.Z
+		+ CourseLayout.PEDESTAL_SIZE / 2
+		+ CourseLayout.DISPLAY_BACK_GAP
 end
 
 -- Cette méthode permet de donner le centre au sol du pad d'achat de présentoir de la place `index` (devant la base, de

@@ -27,10 +27,14 @@ export type Chance = {
 }
 
 -- Cette méthode permet de calculer la vitesse de lancer (studs/s, jauge pleine) lorsque le joueur a `power` de Throw
--- Power ; courbe logarithmique : la puissance explose, la distance monte régulièrement.
+-- Power ; courbe logarithmique (la puissance explose, la distance monte régulièrement), moins pentue au-delà de
+-- SPEED_KNEE_POWER (#157 : le bout de piste arrive vers la fin des équipements, le premier kilomètre ne change pas).
 function Economy.launchSpeed(power: number): number
-	local ratio = math.max(power, GameConfig.START_POWER) / GameConfig.START_POWER
-	return GameConfig.SPEED_BASE + GameConfig.SPEED_PER_LOG * math.log(ratio)
+	local p = math.max(power, GameConfig.START_POWER)
+	local knee = GameConfig.SPEED_KNEE_POWER
+	local near = math.log(math.min(p, knee) / GameConfig.START_POWER)
+	local far = math.log(math.max(p, knee) / knee)
+	return GameConfig.SPEED_BASE + GameConfig.SPEED_PER_LOG * near + GameConfig.SPEED_PER_LOG_FAR * far
 end
 
 -- Cette méthode permet de donner la chance due à la distance lorsque le mannequin est à `distance` mètres : celle de

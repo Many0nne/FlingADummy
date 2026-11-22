@@ -96,10 +96,42 @@ return function(T, Loader, Lib)
 				T.expect(count >= 12, count .. " achats la première heure")
 			end
 		)
-		T.it("présentoirs étalés : le 10e (palier Golden) après la première heure, avant 3 h", function()
-			local last = m.GameConfig.DISPLAY_START + #m.GameConfig.DISPLAY_PRICES
-			local t = median("display:" .. last)
-			T.expect(t ~= nil and t > 3600 and t < 3 * 3600, "10e présentoir à " .. tostring(t) .. " s")
+		T.it(
+			"présentoirs étalés sur toute la courbe (#156) : pas plus d'une heure sans achat entre 1 h et 9 h",
+			function()
+				local start = m.GameConfig.DISPLAY_START
+				local last = start + #m.GameConfig.DISPLAY_PRICES
+				local fourth = median("display:" .. (start + 4))
+				T.expect(fourth ~= nil and fourth > 3600, "4e présentoir acheté à " .. tostring(fourth) .. " s")
+				local t = median("display:" .. last)
+				local rebirth = median("rebirth:1")
+				T.expect(t ~= nil and t > 8 * 3600, "dernier présentoir à " .. tostring(t) .. " s")
+				T.expect(t ~= nil and rebirth ~= nil and t < rebirth, "dernier présentoir avant la renaissance")
+				local count = 0
+				for k = 2, #steps do
+					local from, to = steps[k - 1].t, steps[k].t
+					if to > 3600 and from < 9 * 3600 then
+						count += 1
+						T.expect(
+							to - from <= 3600,
+							string.format("achat %d : %d s après le précédent", k, to - from)
+						)
+					end
+				end
+				T.expect(count >= 25, count .. " achats entre 1 h et 9 h")
+			end
+		)
+		T.it("raretés hautes rares (#156) : Secret vers 4 h, Divine vers 10 h de jeu", function()
+			local secret, divine = median("rarity:7"), median("rarity:8")
+			T.expect(
+				secret ~= nil and secret > 3 * 3600 and secret < 5 * 3600,
+				"Secret à " .. tostring(secret) .. " s"
+			)
+			T.expect(divine ~= nil and divine > 8 * 3600, "Divine à " .. tostring(divine) .. " s")
+		end)
+		T.it("bout de piste vers la fin des équipements (#157) : entre 3,5 h et 6 h", function()
+			local t = median("trackEnd")
+			T.expect(t ~= nil and t > 3.5 * 3600 and t < 6 * 3600, "bout de piste à " .. tostring(t) .. " s")
 		end)
 		T.it("première renaissance vers une douzaine d'heures de jeu", function()
 			local t = median("rebirth:1")

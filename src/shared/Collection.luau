@@ -60,10 +60,10 @@ Collection.DRAWN = {
 	{ id = "galaxy",   name = "Galaxy Dummy",   rarity = 6, income = 33000,   n = 40000 },
 	{ id = "ghost",    name = "Ghost Dummy",    rarity = 6, income = 38000,   n = 70000 },
 	{ id = "neon",     name = "Neon Dummy",     rarity = 6, income = 44000,   n = 100000 },
-	-- Secret
-	{ id = "king",     name = "Crash King",     rarity = 7, income = 200000,  n = 500000 },
-	{ id = "void",     name = "Void Dummy",     rarity = 7, income = 230000,  n = 1000000 },
-	{ id = "cosmic",   name = "Cosmic Dummy",   rarity = 7, income = 260000,  n = 2000000 },
+	-- Secret (cotes × 3 depuis #156 : 500 K, 1 M et 2 M avant ; Secret vers 4 h de jeu)
+	{ id = "king",     name = "Crash King",     rarity = 7, income = 200000,  n = 1500000 },
+	{ id = "void",     name = "Void Dummy",     rarity = 7, income = 230000,  n = 3000000 },
+	{ id = "cosmic",   name = "Cosmic Dummy",   rarity = 7, income = 260000,  n = 6000000 },
 } :: { Dummy }
 
 -- Catalogue complet (#94) : dessinés puis générés (famille × palette), par rareté puis cote croissante. Les dessinés
@@ -93,7 +93,7 @@ Collection.SIZES = {
 Collection.RARITY_SCALE = { 1, 1.1, 1.2, 1.32, 1.46, 1.62, 1.8, 1.86, 1.92, 1.98, 2.05 }
 -- Échelle maximale sur un présentoir de la base (un Giant Secret, ×4,1, déborderait sur ses voisins) ; le tirage et
 -- la main gardent l'échelle entière
-Collection.DISPLAY_SCALE_MAX = 2.5
+Collection.DISPLAY_SCALE_MAX = 2 -- 2,5 avant #156 (présentoirs à 9 studs, 7 à 7,5 depuis)
 
 Collection.STARTER = "crash" -- premier mannequin, garanti au premier lancer
 Collection.PROMPT_TAG = "DisplayPrompt" -- invites « Place » des présentoirs (attributs Slot, Display)
@@ -233,7 +233,7 @@ function Collection.scale(entry: Entry): number
 end
 
 -- Cette méthode permet de donner l'échelle d'une entrée posée sur un présentoir de la base (celle de Collection.scale,
--- plafonnée à DISPLAY_SCALE_MAX : les présentoirs sont à 9 studs les uns des autres) lorsque la base est rendue.
+-- plafonnée à DISPLAY_SCALE_MAX : les présentoirs sont à 7 studs les uns des autres) lorsque la base est rendue.
 function Collection.displayScale(entry: Entry): number
 	return math.min(Collection.scale(entry), Collection.DISPLAY_SCALE_MAX)
 end

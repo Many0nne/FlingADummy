@@ -347,7 +347,7 @@
             {
               "key": "magma_ghost",
               "lines": [
-                "1 IN 150K",
+                "1 IN 200K",
                 "$50K/s"
               ],
               "look": "0ea9716687",
@@ -356,7 +356,7 @@
             {
               "key": "golden_galaxy",
               "lines": [
-                "1 IN 220K",
+                "1 IN 390K",
                 "$57K/s"
               ],
               "look": "24b4c97a42",
@@ -365,7 +365,7 @@
             {
               "key": "frost_neon",
               "lines": [
-                "1 IN 330K",
+                "1 IN 760K",
                 "$66K/s"
               ],
               "look": "a90f21afc7",
@@ -384,7 +384,7 @@
             {
               "key": "king",
               "lines": [
-                "1 IN 500K",
+                "1 IN 1.5M",
                 "$200K/s"
               ],
               "look": "f95c0461ac",
@@ -393,7 +393,7 @@
             {
               "key": "void",
               "lines": [
-                "1 IN 1M",
+                "1 IN 3M",
                 "$230K/s"
               ],
               "look": "1f742354e9",
@@ -402,7 +402,7 @@
             {
               "key": "cosmic",
               "lines": [
-                "1 IN 2M",
+                "1 IN 6M",
                 "$260K/s"
               ],
               "look": "600db6022e",
@@ -411,7 +411,7 @@
             {
               "key": "shadow_king",
               "lines": [
-                "1 IN 2.5M",
+                "1 IN 7.5M",
                 "$300K/s"
               ],
               "look": "68acd411ef",
@@ -420,7 +420,7 @@
             {
               "key": "golden_void",
               "lines": [
-                "1 IN 3.2M",
+                "1 IN 9.5M",
                 "$350K/s"
               ],
               "look": "d9b82aa200",
@@ -429,7 +429,7 @@
             {
               "key": "magma_cosmic",
               "lines": [
-                "1 IN 4M",
+                "1 IN 12M",
                 "$400K/s"
               ],
               "look": "2c0a61b501",
@@ -448,7 +448,7 @@
             {
               "key": "angelic_royal",
               "lines": [
-                "1 IN 5M",
+                "1 IN 15M",
                 "$1.2M/s"
               ],
               "look": "91f9874e9e",
@@ -457,7 +457,7 @@
             {
               "key": "radiant_galaxy",
               "lines": [
-                "1 IN 9.1M",
+                "1 IN 27M",
                 "$1.4M/s"
               ],
               "look": "1ce8ed5d9c",
@@ -466,7 +466,7 @@
             {
               "key": "angelic_hero",
               "lines": [
-                "1 IN 17M",
+                "1 IN 50M",
                 "$1.6M/s"
               ],
               "look": "f2b1a47b71",
@@ -475,7 +475,7 @@
             {
               "key": "radiant_diamond",
               "lines": [
-                "1 IN 30M",
+                "1 IN 91M",
                 "$1.8M/s"
               ],
               "look": "4b39703579",
@@ -484,7 +484,7 @@
             {
               "key": "angelic_ghost",
               "lines": [
-                "1 IN 55M",
+                "1 IN 160M",
                 "$2.1M/s"
               ],
               "look": "ed700ac384",
@@ -493,7 +493,7 @@
             {
               "key": "radiant_king",
               "lines": [
-                "1 IN 100M",
+                "1 IN 300M",
                 "$2.4M/s"
               ],
               "look": "d3649ccf39",
@@ -811,7 +811,7 @@
             {
               "key": "frost_rubber",
               "lines": [
-                "$450M",
+                "$400M",
                 "LUCK x13"
               ],
               "look": "729010d98d",
@@ -826,7 +826,7 @@
             {
               "key": "magma_glass",
               "lines": [
-                "$1B",
+                "$2.7B",
                 "LUCK x17"
               ],
               "look": "96b733018e",
@@ -835,7 +835,7 @@
             {
               "key": "shadow_steel",
               "lines": [
-                "$5B",
+                "$3.8B",
                 "LUCK x22"
               ],
               "look": "2eafca6718",
@@ -844,7 +844,7 @@
             {
               "key": "radiant_glider",
               "lines": [
-                "$9B",
+                "$6.4B",
                 "LUCK x30"
               ],
               "look": "e56c87656f",
@@ -853,7 +853,7 @@
             {
               "key": "starlight_rocket",
               "lines": [
-                "$15B",
+                "$18B",
                 "LUCK x40"
               ],
               "look": "99389f1615",
@@ -862,7 +862,7 @@
             {
               "key": "nebula_rubber",
               "lines": [
-                "$30B",
+                "$23B",
                 "LUCK x55"
               ],
               "look": "84c39d9cb8",
@@ -871,7 +871,7 @@
             {
               "key": "plasma_glass",
               "lines": [
-                "$80B",
+                "$36B",
                 "LUCK x75"
               ],
               "look": "dc65f3939c",
@@ -886,7 +886,7 @@
             {
               "key": "quantum_glider",
               "lines": [
-                "$120B",
+                "$62B",
                 "LUCK x100"
               ],
               "look": "2d31f7885e",
@@ -895,7 +895,7 @@
             {
               "key": "infinite_rocket",
               "lines": [
-                "$200B",
+                "$97B",
                 "LUCK x135"
               ],
               "look": "35beaa2526",
@@ -916,9 +916,9 @@
             {
               "key": 1,
               "lines": [
-                "6 présentoirs"
+                "8 présentoirs"
               ],
-              "look": "9da4df5b49",
+              "look": "c1fd0a53dd",
               "title": "1. Wood"
             }
           ],
@@ -930,9 +930,9 @@
             {
               "key": 2,
               "lines": [
-                "7 présentoirs"
+                "9 présentoirs"
               ],
-              "look": "71ae0cdad7",
+              "look": "de8912caf0",
               "title": "2. Garden"
             }
           ],
@@ -944,9 +944,9 @@
             {
               "key": 3,
               "lines": [
-                "8 présentoirs"
+                "12 présentoirs"
               ],
-              "look": "0748339d4b",
+              "look": "ad2a2e22ac",
               "title": "3. Stone"
             }
           ],
@@ -958,9 +958,9 @@
             {
               "key": 4,
               "lines": [
-                "9 présentoirs"
+                "18 présentoirs"
               ],
-              "look": "132e7acd53",
+              "look": "bfc75c0987",
               "title": "4. Noble"
             }
           ],
@@ -972,9 +972,9 @@
             {
               "key": 5,
               "lines": [
-                "10 présentoirs"
+                "25 présentoirs"
               ],
-              "look": "e7ef3e6204",
+              "look": "94393439ae",
               "title": "5. Golden"
             }
           ],
@@ -1142,7 +1142,7 @@
             {
               "key": 11,
               "lines": [
-                "$1.8B",
+                "$1.3B",
                 "+8.8M EXP / rep"
               ],
               "look": "219f78518e",
@@ -1157,7 +1157,7 @@
             {
               "key": 12,
               "lines": [
-                "$50B",
+                "$11B",
                 "+35M EXP / rep"
               ],
               "look": "e936de3ffe",
