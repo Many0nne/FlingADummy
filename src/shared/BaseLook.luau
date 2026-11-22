@@ -133,9 +133,9 @@ BaseLook.STATION_PIECES = {
 	"crystals", -- Diamond : grappes de cristaux sur le podium
 	"tubes", -- Neon : tubes néon sur les montants, liseré néon (bordure du podium, sous la traverse)
 	"orbit", -- Cosmic : planète annelée et étoiles au-dessus de la traverse
-	"gems", -- Ruby : gemmes serties dans la traverse et la marche
+	"gems", -- Ruby : gemmes serties dans la traverse et les socles
 	"crest", -- Emerald : blason à gemme au centre de la traverse
-	"arcs", -- Plasma : éclairs le long des montants, lumière
+	"arcs", -- Plasma : éclairs entre pommeaux et étoiles, lumière
 	"halo", -- Omega : halo derrière la planète, pointes de couronne sur les montants
 	"aura", -- Infinite : anneau lumineux au sol, colonnes de lumière aux coins
 }
@@ -155,7 +155,7 @@ BaseLook.STATION_TONES = {
 	{ accent = rgb(70, 255, 160) },                                               -- Emerald
 	{ accent = rgb(90, 225, 255) },                                               -- Plasma
 	{ accent = rgb(255, 45, 35),   base = rgb(70, 12, 18) },                      -- Omega
-	{ accent = rgb(255, 165, 45),  plank = rgb(255, 245, 230), plankAlt = rgb(255, 190, 55), post = rgb(255, 195, 60), postDark = rgb(235, 125, 30), base = rgb(255, 175, 40) }, -- Infinite
+	{ accent = rgb(255, 130, 20),  plank = rgb(255, 245, 230), plankAlt = rgb(255, 190, 55), post = rgb(255, 195, 60), postDark = rgb(235, 125, 30), base = rgb(255, 175, 40) }, -- Infinite
 } :: { { [string]: Color3 } }
 
 -- Cette méthode permet de donner une teinte plus sombre (facteur < 1) ou plus claire (> 1) d'une couleur lorsque l'on

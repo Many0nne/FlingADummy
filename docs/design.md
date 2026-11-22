@@ -90,7 +90,7 @@ base, il rapporte des $/s, seule source d'argent.
 - **Chaque palier ajoute des pièces** (#118, retour de la sprint review 2 : « pas juste une couleur »,
   `BaseLook.STATION_PIECES`, construites par `Server.StationPieces`), cumulées : socles de pierre (Stone), frettes et
   rivets (Iron), pommeaux et bandeau dorés (Gold), cristaux (Diamond), tubes et liseré néon (Neon), planète annelée et
-  étoiles (Cosmic), gemmes serties (Ruby), blason (Emerald), éclairs et lumière (Plasma), halo et pointes de couronne
+  étoiles (Cosmic), gemmes serties dans la traverse et les socles (Ruby), blason (Emerald), éclairs entre pommeaux et étoiles, lumière (Plasma), halo et pointes de couronne
   (Omega), anneau lumineux au sol et colonnes de lumière (Infinite). Pièces fixes (rien à couper en mouvement réduit).
   Tons propres quand la couleur du mannequin se confondrait (`BaseLook.STATION_TONES`) : Diamond et Infinite ont des
   planches saturées et un socle coloré (plus de podium clair comme la pierre), le Plasma est bleu électrique (plus le

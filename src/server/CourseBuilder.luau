@@ -117,6 +117,37 @@ local rng = Random.new(SEED)
 -- Par place : repose les mannequins de son râtelier quand les gabarits maillés arrivent
 local rackPlacers: { [number]: () -> () } = {}
 
+-- Cette méthode permet de reposer les mannequins des râteliers à chaque étape de chargement des gabarits (corps maillé,
+-- puis pièces ajoutées des looks d'entraînement, #118) lorsque le hub est construit avant eux.
+local function watchRackTemplates()
+	-- Cette méthode permet de resuspendre les mannequins de tous les râteliers lorsque une étape de chargement arrive.
+	local function replace()
+		for _, place in rackPlacers do
+			place()
+		end
+	end
+	-- Cette méthode permet de suivre les étapes du dossier des gabarits lorsqu'il est (ou vient d'être) répliqué.
+	local function watch(folder: Instance)
+		folder:GetAttributeChangedSignal("Ready"):Connect(replace)
+		folder:GetAttributeChangedSignal(DummyShape.COMPLETE):Connect(replace)
+		if folder:GetAttribute("Ready") then
+			replace()
+		end
+	end
+	local folder = ReplicatedStorage:FindFirstChild(DummyShape.TEMPLATES)
+	if folder then
+		watch(folder)
+		return
+	end
+	local connection
+	connection = ReplicatedStorage.ChildAdded:Connect(function(child)
+		if child.Name == DummyShape.TEMPLATES then
+			connection:Disconnect()
+			watch(child)
+		end
+	end)
+end
+
 -- Cette méthode permet de désigner une pièce comme cible d'objectif du HUD (réservée au joueur de la place `slot`)
 -- lorsque l'on construit son appareil d'entraînement.
 local function markObjective(part: BasePart, objective: string, slot: number)
@@ -1356,16 +1387,8 @@ function CourseBuilder.build(): Course
 			table.concat(zoneTimes, ", ")
 		)
 	)
-	if not DummyShape.isMeshed() then
-		local connection
-		connection = ReplicatedStorage.ChildAdded:Connect(function(child)
-			if child.Name == DummyShape.TEMPLATES and DummyShape.isMeshed() then
-				connection:Disconnect()
-				for _, place in rackPlacers do
-					place()
-				end
-			end
-		end)
+	if DummyShape.meshStage() < 2 then
+		watchRackTemplates()
 	end
 	return { slots = slots, dummies = dummies }
 end

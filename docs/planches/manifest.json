@@ -995,7 +995,7 @@
                 "FREE",
                 "+1 EXP / rep"
               ],
-              "look": "ba08f03887",
+              "look": "aa34fc204e",
               "title": "1. Wooden Dummy"
             }
           ],
@@ -1010,7 +1010,7 @@
                 "$100",
                 "+6 EXP / rep"
               ],
-              "look": "04dd1306ea",
+              "look": "f2b1cb6b31",
               "title": "2. Stone Dummy"
             }
           ],
@@ -1025,7 +1025,7 @@
                 "$8K",
                 "+45 EXP / rep"
               ],
-              "look": "6a72c999db",
+              "look": "99f21605df",
               "title": "3. Iron Dummy"
             }
           ],
@@ -1040,7 +1040,7 @@
                 "$120K",
                 "+400 EXP / rep"
               ],
-              "look": "3f5d2df781",
+              "look": "2acbe0762e",
               "title": "4. Gold Dummy"
             }
           ],
@@ -1160,7 +1160,7 @@
                 "$50B",
                 "+35M EXP / rep"
               ],
-              "look": "ec4b3ce9e1",
+              "look": "e936de3ffe",
               "title": "12. Infinite Dummy"
             }
           ],

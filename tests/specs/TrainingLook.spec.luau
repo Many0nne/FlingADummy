@@ -86,7 +86,10 @@ return function(T, Loader)
 			for _, effect in TrainingLook.variant(last, "lifted", true).effects or {} do
 				T.expectEqual(effect.kind, "light", "seulement des lumières en mouvement réduit")
 			end
-			T.expect(TrainingLook.variant(1, "lifted").effects == nil, "pas d'effet au bois")
+			for tier, look in TrainingLook.LOOKS do
+				local has = TrainingLook.variant(tier, "lifted").effects ~= nil
+				T.expectEqual(has, look.aura >= TrainingLook.FX_AURA, "effets du palier " .. tier)
+			end
 		end)
 		T.it("râtelier : lumières seulement, pas de pièce plus large que l'écart des crochets", function()
 			for tier in Training.GEARS do

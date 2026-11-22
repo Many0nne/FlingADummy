@@ -27,6 +27,7 @@ local GOLD = rgb(255, 195, 45)
 local METAL = rgb(70, 72, 80)
 local POST_HALF = 0.8 -- demi-largeur d'un montant
 local BAR_HALF = 0.45 -- demi-épaisseur de la traverse
+local PLINTH_HALF = 1.25 -- demi-côté des socles de pierre
 local SIDES = { -1, 1 }
 
 -- Cette méthode permet de poser une pièce décorative (sans collision, matériau `material`, lisse par défaut) lorsque
@@ -89,7 +90,7 @@ function BUILDERS.plinths(model: Model, f: Frame, look: BaseLook.StationLook)
 	for _, side in SIDES do
 		Build.decor({
 			Name = "Piece",
-			Size = Vector3.new(2.5, 1, 2.5),
+			Size = Vector3.new(2 * PLINTH_HALF, 1, 2 * PLINTH_HALF),
 			CFrame = rackAt(f, side * f.postX, 0.5, 0),
 			Color = look.postDark,
 			Variant = Build.FINE,
@@ -183,14 +184,13 @@ function BUILDERS.orbit(model: Model, f: Frame, look: BaseLook.StationLook)
 	end
 end
 
--- Cette méthode permet de sertir des gemmes dans la traverse et la marche haute lorsque l'appareil atteint le rubis.
+-- Cette méthode permet de sertir des gemmes dans la traverse et sur la face avant des socles de pierre lorsque
+-- l'appareil atteint le rubis.
 function BUILDERS.gems(model: Model, f: Frame, look: BaseLook.StationLook)
 	for _, side in SIDES do
 		gem(model, rackAt(f, side * 1.4, f.barY, -BAR_HALF - 0.06), 0.5, look.accent)
+		gem(model, rackAt(f, side * f.postX, 0.5, -PLINTH_HALF - 0.06), 0.4, look.accent)
 	end
-	-- Contremarche de la marche haute (2/3 de la hauteur du podium, 1,2 stud de profondeur devant lui)
-	local riser = f.floor * CFrame.new(0, f.height / 3, -f.size / 2 - 1.2 - 0.06)
-	gem(model, riser, 0.42, look.accent)
 end
 
 -- Cette méthode permet de poser un blason doré à gemme au centre de la traverse lorsque l'appareil atteint l'émeraude.
@@ -201,21 +201,20 @@ function BUILDERS.crest(model: Model, f: Frame, look: BaseLook.StationLook)
 	gem(model, at * CFrame.new(0, 0.05, -0.2), 0.6, look.accent)
 end
 
--- Cette méthode permet de poser des éclairs néon le long de la face extérieure des montants, et une lumière, lorsque
--- l'appareil atteint le plasma.
+-- Cette méthode permet de poser des éclairs néon entre chaque pommeau et l'étoile voisine (au-dessus de la traverse,
+-- visibles de face), et une lumière, lorsque l'appareil atteint le plasma.
 function BUILDERS.arcs(model: Model, f: Frame, look: BaseLook.StationLook)
 	local first: BasePart? = nil
 	for _, side in SIDES do
-		local x = side * (f.postX + POST_HALF + 0.15)
 		local points = {}
-		for i, y in { 1.6, 2.8, 4, 5.2, 6.4 } do
-			table.insert(points, (f.top * CFrame.new(x, y, f.rackZ + (if i % 2 == 0 then 0.45 else -0.45))).Position)
+		for _, p in { { 3.35, 9 }, { 2.95, 8.25 }, { 2.6, 8.95 }, { 2.15, 8.35 } } do
+			table.insert(points, rackAt(f, side * p[1], p[2], -0.2).Position)
 		end
 		for i = 1, #points - 1 do
 			local a, b = points[i], points[i + 1]
 			local at = CFrame.lookAt((a + b) / 2, b)
 			local bolt =
-				piece(model, Vector3.new(0.22, 0.22, (b - a).Magnitude + 0.15), at, look.accent, Enum.Material.Neon)
+				piece(model, Vector3.new(0.25, 0.25, (b - a).Magnitude + 0.15), at, look.accent, Enum.Material.Neon)
 			first = first or bolt
 		end
 	end

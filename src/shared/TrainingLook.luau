@@ -153,6 +153,9 @@ TrainingLook.LOOKS = {
 -- ça à l'échelle 1 (ailes, disques, lunes) déborderaient sur le voisin
 TrainingLook.RACK_WIDTH = 4.2
 
+-- Aura à partir de laquelle un mannequin d'entraînement a des effets (thème de sa famille et aura de rareté)
+TrainingLook.FX_AURA = 3
+
 -- Cette méthode permet de recolorer un effet repris de la famille (couleurs tirées vers la lueur du palier) lorsque l'on
 -- construit la déclinaison d'un mannequin d'entraînement.
 local function recolor(effect: DummyModels.Effect, glow: Color3): DummyModels.Effect
@@ -171,7 +174,8 @@ end
 
 -- Cette méthode permet de donner la déclinaison (Shared.DummyShape.Variant) du mannequin d'entraînement du palier `tier`
 -- lorsque l'on le construit : `mode` « lifted » (soulevé : effets sauf ceux posés au sol, sans particules si `still`,
--- mouvement réduit), « rack » (suspendu : lumières seulement, sans pièces trop larges) ou « viewport » (sans effets).
+-- mouvement réduit), « rack » (suspendu : lumières seulement, sans pièces trop larges) ou « viewport » (sans effets) ;
+-- aucun effet sous FX_AURA.
 function TrainingLook.variant(tier: number, mode: string, still: boolean?): { [string]: any }
 	local gear = Training.gear(tier)
 	local look = TrainingLook.look(tier)
@@ -200,7 +204,8 @@ function TrainingLook.variant(tier: number, mode: string, still: boolean?): { [s
 		pieceColors = colors
 	end
 	local effects: { DummyModels.Effect } = {}
-	if mode ~= "viewport" then
+	-- Effets dès l'or (aura de rareté) : les premiers paliers restent sobres, la progression se voit
+	if mode ~= "viewport" and look.aura >= TrainingLook.FX_AURA then
 		local all: { DummyModels.Effect } = {}
 		for _, list in { base.effects or {}, DummyAura.THEMES[look.family] or {} } do
 			for _, effect in list do
