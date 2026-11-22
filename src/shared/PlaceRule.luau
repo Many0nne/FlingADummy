@@ -44,7 +44,7 @@ end
 
 -- Cette méthode permet de donner le message à afficher lorsque la pose n'a pas eu lieu ; nil si rien à dire (pose
 -- possible, tutoriel qui a son propre panneau, ou rien à poser).
-function PlaceRule.message(status: Status): string?
+function PlaceRule.message(status: string): string?
 	return PlaceRule.MESSAGES[status]
 end
 

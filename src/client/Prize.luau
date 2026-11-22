@@ -1052,7 +1052,7 @@ end
 -- Cette méthode permet d'expliquer au joueur pourquoi rien n'est posé (message court au-dessus du bouton AUTO, rouge ;
 -- orange pour l'attente d'un nouveau mannequin) lorsqu'il clique AUTO ou revient d'un vol loin de sa base.
 local function explain(key: string)
-	local text = PlaceRule.MESSAGES[key]
+	local text = PlaceRule.message(key)
 	if text then
 		local color = if key == "waiting" then C.orange else C.red
 		UIKit.notice(gui, text, color, UDim2.new(0.5, 0, 1, -(AUTO_BOTTOM + 54)))
@@ -1198,7 +1198,7 @@ function Prize.init(localPlayer: Player, createdRemotes: Remotes.Remotes, screen
 			return
 		end
 		task.delay(0.6, function()
-			if canPlace() and pendingEntry() and not firstPlacePending() and not nearBase() then
+			if canPlace() and placeStatus() == "far" then
 				explain("waiting")
 			end
 		end)

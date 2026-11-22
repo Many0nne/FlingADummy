@@ -17,7 +17,7 @@ local Inventory = require(Shared:WaitForChild("Inventory"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Store = require(Shared:WaitForChild("Store"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
-local Tutorial = require(Shared:WaitForChild("Tutorial"))
+local PlaceRule = require(Shared:WaitForChild("PlaceRule"))
 
 local UIKit = require(script.Parent.UIKit)
 
@@ -111,7 +111,7 @@ end
 -- Cette méthode permet de savoir si la première pose du tutoriel reste à faire (à la main, sur un présentoir) lorsque
 -- les boutons Place et « Place best » se rafraîchissent.
 local function firstPlacePending(): boolean
-	return Tutorial.current((player:GetAttribute("Tutorial") :: number?) or 0) == "Place"
+	return PlaceRule.firstPending(player:GetAttribute("Tutorial") :: number?)
 end
 
 -- Cette méthode permet d'habiller un bouton (texte, couleur) et de le rendre inerte ou non lorsque sa ligne se

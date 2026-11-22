@@ -1085,20 +1085,21 @@ function UIKit.notice(parent: Instance, text: string, color: Color3, position: U
 		Name = "Notice",
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = position,
-		Size = UDim2.fromOffset(560, 46),
+		Size = UDim2.new(0.9, 0, 0, 46), -- 90 % de l'écran au plus, 680 px au plus : le texte entier tient
 		BackgroundColor3 = Color3.new(1, 1, 1), -- teinté par le dégradé
 		BackgroundTransparency = 0.05,
 		ZIndex = 25,
 		Parent = parent,
 	})
+	UIKit.create("UISizeConstraint", { MaxSize = Vector2.new(680, 46), Parent = strip })
 	UIKit.corner(strip, 12)
 	UIKit.outline(strip, 3, color)
 	UIKit.shade(strip, color:Lerp(Color3.new(0, 0, 0), 0.4), Color3.fromRGB(20, 18, 30))
 	local label = UIKit.text({
 		Size = UDim2.fromScale(1, 1),
 		Text = text,
-		TextSize = 24,
-		TextTruncate = Enum.TextTruncate.AtEnd,
+		TextSize = 22,
+		TextScaled = true, -- rétrécit sur écran étroit plutôt que de couper la fin du message
 		ZIndex = 26,
 		Parent = strip,
 	})
