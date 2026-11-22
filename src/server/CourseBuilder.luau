@@ -13,6 +13,7 @@ local Collection = require(ReplicatedStorage.Shared.Collection)
 local CourseLayout = require(ReplicatedStorage.Shared.CourseLayout)
 local Drips = require(ReplicatedStorage.Shared.Drips)
 local DummyShape = require(ReplicatedStorage.Shared.DummyShape)
+local GearPad = require(ReplicatedStorage.Shared.GearPad)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local Leaderboard = require(ReplicatedStorage.Shared.Leaderboard)
 local Objectives = require(ReplicatedStorage.Shared.Objectives)
@@ -51,6 +52,10 @@ local COLORS = {
 	line = rgb(250, 250, 250),
 	pad = rgb(255, 225, 60),
 	padGreen = rgb(80, 200, 70),
+	padRed = rgb(225, 60, 60),
+	padGold = rgb(255, 190, 40),
+	padGrey = rgb(125, 125, 135),
+	gearPad = rgb(160, 70, 235), -- violet de la fenêtre Training Gear
 	plot = rgb(175, 115, 65),
 	wood = rgb(200, 140, 80),
 	woodDark = rgb(150, 95, 50),
@@ -76,6 +81,18 @@ local LABEL_GOLD = Color3.fromRGB(255, 205, 60) -- record (#44)
 
 -- Pad d'achat de présentoir devant la base (panneau « 8 > 9 » et prix, mis à jour par Server.BaseService)
 export type Pad = { title: TextLabel, price: TextLabel, prompt: ProximityPrompt }
+
+-- Pad d'amélioration de l'équipement à côté de l'appareil (#159) : panneau « NEXT: … », EXP par répétition et prix sur
+-- une plaque teintée (Shared.GearPad), mis à jour par Server.TrainingService ; invites « Upgrade » et « View all »
+export type GearPadParts = {
+	title: TextLabel,
+	gain: TextLabel,
+	price: TextLabel,
+	plate: BasePart,
+	buy: ProximityPrompt,
+	view: ProximityPrompt,
+	shown: string?, -- dernier contenu affiché (pas de mise à jour à chaque gain d'argent)
+}
 
 -- Texte flottant au-dessus de la base (#91), rempli par Server.BaseService (Shared.BaseLook.label)
 export type BaseLabel = { avatar: ImageLabel, title: TextLabel, income: TextLabel, best: TextLabel, power: TextLabel }
@@ -109,6 +126,7 @@ export type Slot = {
 	station: CFrame, -- position de l'avatar qui s'entraîne (sur le podium, face à la bande)
 	prompt: ProximityPrompt, -- « Lift » sur l'appareil d'entraînement, devant la base
 	trainer: Trainer, -- appareil d'entraînement, habillé par Server.TrainingService
+	gearPad: GearPadParts, -- pad d'amélioration de l'équipement, à côté de l'appareil
 	base: Base, -- présentoirs, remplis par Server.BaseService
 	direction: Vector3,
 	spawn: CFrame, -- réapparition et retour après un lancer : dans le hub, juste derrière la bande, face à la piste
@@ -831,6 +849,80 @@ local function buildStation(parent: Instance, slot: Slot)
 	Build.billboard(model, label.Position, "💪 TRAIN", Vector2.new(6, 1.8))
 end
 
+-- Couleur de la plaque de prix du pad d'amélioration selon son état (Shared.GearPad)
+local GEAR_PAD_TONES: { [GearPad.Tone]: Color3 } = {
+	Afford = COLORS.padGreen,
+	Short = COLORS.padRed,
+	Idle = COLORS.padGrey,
+	Max = COLORS.padGold,
+}
+
+-- Cette méthode permet d'afficher sur le pad d'amélioration d'une place l'équipement suivant du palier `tier`, son EXP
+-- par répétition et son prix (plaque verte si `money` suffit, rouge sinon, grise sans propriétaire), ou MAX, lorsque
+-- l'équipement ou l'argent du propriétaire changent ; sans effet si le panneau n'a pas changé.
+function CourseBuilder.styleGearPad(slot: Slot, tier: number, money: number?)
+	local pad = slot.gearPad
+	local panel = GearPad.panel(tier, money)
+	local key = panel.title .. "|" .. panel.price .. "|" .. panel.tone
+	if pad.shown == key then
+		return
+	end
+	pad.shown = key
+	pad.title.Text = panel.title
+	pad.gain.Text = panel.gain
+	pad.price.Text = panel.price
+	pad.plate.Color = GEAR_PAD_TONES[panel.tone]
+	pad.buy.ObjectText = panel.price
+	pad.buy:SetAttribute("Price", panel.cost)
+	pad.buy:SetAttribute("Maxed", if panel.tone == "Max" then true else nil)
+end
+
+-- Cette méthode permet de construire le pad d'amélioration de l'équipement d'une place (dalle violette au sol,
+-- panneau en bois « NEXT: … » avec l'EXP et le prix, comme le pad de la barre de traction de la référence 09) à côté
+-- de son appareil d'entraînement lorsque le hub est construit ; ses invites sont activées par le client du propriétaire.
+local function buildGearPad(parent: Instance, slot: Slot): GearPadParts
+	local spot, facing = CourseLayout.gearPadPosition(slot.index)
+	local model = Instance.new("Model")
+	model.Name = "GearPad" .. slot.index
+	-- Repère : regard vers la bande ; le panneau est derrière la dalle (même gabarit que le pad de présentoir)
+	local frame = CFrame.lookAt(spot, spot + facing)
+	local slab = Build.block(model, Vector3.new(6, 0.3, 6), frame * CFrame.new(0, 0.15, -3), COLORS.gearPad)
+	slab.Name = "Slab"
+	for _, side in { -1, 1 } do
+		Build.block(model, Vector3.new(1, 8.4, 1), frame * CFrame.new(side * 3.5, 4.2, 2), COLORS.woodDark)
+	end
+	Build.block(model, Vector3.new(6, 6.6, 0.8), frame * CFrame.new(0, 5, 2), COLORS.wood)
+	local titlePlate = Build.block(model, Vector3.new(5.6, 1.6, 0.2), frame * CFrame.new(0, 7.3, 1.5), COLORS.woodDark)
+	local title = Build.surfaceText(titlePlate, Enum.NormalId.Front, "")
+	local gainPlate = Build.block(model, Vector3.new(5.6, 1.2, 0.2), frame * CFrame.new(0, 5.7, 1.5), COLORS.woodDark)
+	local gain = Build.surfaceText(gainPlate, Enum.NormalId.Front, "", Color3.fromRGB(90, 205, 255))
+	local plate = Build.block(model, Vector3.new(4.6, 1.6, 0.3), frame * CFrame.new(0, 3.6, 1.45), COLORS.padGrey)
+	local price = Build.surfaceText(plate, Enum.NormalId.Front, "")
+	-- Cette méthode permet de poser une invite du pad (touche `key`, sur la dalle) lorsque le pad est construit.
+	local function padPrompt(name: string, action: string, key: Enum.KeyCode, button: Enum.KeyCode, tag: string)
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.Name = name
+		prompt.ActionText = action
+		prompt.ObjectText = ""
+		prompt.KeyboardKeyCode = key
+		prompt.GamepadKeyCode = button
+		prompt.HoldDuration = 0
+		prompt.MaxActivationDistance = 8
+		prompt.RequiresLineOfSight = false
+		prompt.Enabled = false
+		prompt:SetAttribute("Slot", slot.index)
+		CollectionService:AddTag(prompt, tag)
+		prompt.Parent = slab
+		return prompt
+	end
+	-- Achat à l'invite, pas au simple contact : pas d'achat involontaire en passant sur la dalle
+	local buy = padPrompt("BuyGear", "Upgrade", Enum.KeyCode.E, Enum.KeyCode.ButtonX, GearPad.BUY_TAG)
+	local view = padPrompt("ViewGear", "View all", Enum.KeyCode.F, Enum.KeyCode.ButtonY, GearPad.VIEW_TAG)
+	view.ObjectText = "Training Gear"
+	model.Parent = parent
+	return { title = title, gain = gain, price = price, plate = plate, buy = buy, view = view }
+end
+
 -- Cette méthode permet de construire le pad d'achat de présentoir d'une place (dalle en briques vertes au sol,
 -- panneau en bois « 8 > 9 » avec le prix sur une plaque verte, comme le pad « 8 > 9 » de la référence 09) devant la
 -- base, lorsque le hub est construit ; l'invite « Buy display » est activée par le client du propriétaire, qui envoie
@@ -1083,7 +1175,7 @@ function CourseBuilder.styleBase(slot: Slot, tier: number, upgrade: boolean?): b
 end
 
 -- Cette méthode permet de construire la base d'une place (terrain, présentoirs vides, texte flottant, confettis
--- d'achat, habillage du premier palier) lorsque le hub est construit.
+-- d'achat, habillage du premier palier, pad d'amélioration de l'équipement) lorsque le hub est construit.
 local function buildBase(parent: Instance, slot: Slot)
 	local center = CourseLayout.basePosition(slot.index)
 	local size = CourseLayout.BASE_SIZE
@@ -1154,6 +1246,8 @@ local function buildBase(parent: Instance, slot: Slot)
 		pad = buildPad(parent, slot),
 	}
 	CourseBuilder.styleBase(slot, 1)
+	slot.gearPad = buildGearPad(parent, slot)
+	CourseBuilder.styleGearPad(slot, 1, nil)
 end
 
 -- Cette méthode permet de poser l'invite d'un stand du hub (E, sans maintien, 10 studs, marquée `tag` : chaque client

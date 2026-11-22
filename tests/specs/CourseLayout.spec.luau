@@ -173,7 +173,7 @@ return function(T, Loader)
 			"ne fait se chevaucher ni bases, ni appareils, ni pads, ni stands, ni tableaux, ni zone d'événement",
 			function()
 				local list = CourseLayout.hubFootprints()
-				T.expectEqual(#list, 3 * count + 2 + 3 + 1, "tout est listé")
+				T.expectEqual(#list, 4 * count + 2 + 3 + 1, "tout est listé")
 				for i = 1, #list do
 					for j = i + 1, #list do
 						-- 2 studs de passage au moins entre deux éléments
@@ -316,6 +316,21 @@ return function(T, Loader)
 				T.expect(CourseLayout.isNearBase(index, pad), "près de la base")
 				T.expect(math.abs(pad.X - base.X) > 5, "pas devant l'entrée")
 				T.expect((pad - station).Magnitude > 15, "loin de l'appareil")
+				T.expectEqual(facing, CourseLayout.ENTRANCE)
+			end
+		end)
+	end)
+
+	T.describe("CourseLayout.gearPadPosition", function()
+		T.it("pad d'amélioration à côté de l'appareil, côté extérieur, hors de l'avant des marches", function()
+			for index = 1, count do
+				local pad, facing = CourseLayout.gearPadPosition(index)
+				local station = CourseLayout.stationPosition(index)
+				local base = CourseLayout.basePosition(index)
+				T.expect(pad.X - base.X > station.X - base.X, "au-delà de l'appareil, côté extérieur")
+				T.expect(pad.X - station.X > CourseLayout.STATION_SIZE / 2, "pas devant les marches")
+				T.expect((pad - station).Magnitude < 14, "près de l'appareil")
+				T.expect(pad.Z - base.Z > CourseLayout.BASE_SIZE.Z / 2, "hors de la base, côté entrée")
 				T.expectEqual(facing, CourseLayout.ENTRANCE)
 			end
 		end)
