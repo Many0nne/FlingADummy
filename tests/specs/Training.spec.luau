@@ -69,12 +69,13 @@ return function(T, Loader)
 			T.expectEqual(total, needed)
 		end)
 		T.it("un meilleur équipement remplit les niveaux plus vite et reporte l'EXP en trop", function()
-			-- Fer (+10) au niveau 1 (3 EXP), 2 (4), 3 (5) : 10 = 3 + 4, il reste 3 sur 5
+			-- Fer : une répétition franchit plusieurs niveaux d'un coup, l'EXP en trop est reportée sur le suivant
 			local progress, power = Training.completeRep({ level = 1, exp = 0 }, 3)
-			T.expectEqual(Training.GEARS[3].gain, 10)
-			T.expectEqual(progress.level, 3, "deux niveaux d'un coup")
-			T.expectEqual(progress.exp, 10 - Training.expForLevel(1) - Training.expForLevel(2), "EXP reportée")
-			T.expectEqual(power, Training.expForLevel(1) + Training.expForLevel(2))
+			-- +45 : niveaux de 3, 4, 5, 6, 7, 8 et 9 EXP (3 × 1,2^n arrondi) : 42 versés, niveau 8, il reste 3 sur 11
+			T.expectEqual(Training.GEARS[3].gain, 45)
+			T.expectEqual(progress.level, 8, "niveaux franchis")
+			T.expectEqual(progress.exp, 3, "EXP reportée")
+			T.expectEqual(power, 42)
 			local _, woodPower = train({ level = 1, exp = 0 }, 1, 20)
 			local _, ironPower = train({ level = 1, exp = 0 }, 3, 20)
 			T.expect(ironPower > 5 * woodPower, "le fer rapporte bien plus que le bois")
@@ -95,6 +96,11 @@ return function(T, Loader)
 				T.expect(Training.GEARS[tier].gain > Training.GEARS[tier - 1].gain, "gain du palier " .. tier)
 			end
 		end)
+		T.it("gains calés sur Throw a Seed (#129) : 1K de puissance vers 3-4 min, 100K vers 12 min", function()
+			for tier, gain in { 1, 6, 45, 400, 2200, 9000, 35000 } do
+				T.expectEqual(Training.GEARS[tier].gain, gain, "palier " .. tier)
+			end
+		end)
 		T.it("nextGearCost donne le prix du palier suivant, nil au dernier", function()
 			T.expectEqual(Training.nextGearCost(1), Training.GEARS[2].cost)
 			T.expectEqual(Training.nextGearCost(#Training.GEARS), nil)
@@ -108,7 +114,7 @@ return function(T, Loader)
 			function()
 				T.expectEqual(#Training.GEARS, 7 + #Training.EXTENDED)
 				T.expectEqual(Training.GEARS[7].name, "Cosmic Dummy")
-				T.expectEqual(Training.GEARS[7].gain, 3000)
+				T.expectEqual(Training.GEARS[7].gain, 35000)
 				for tier = 8, #Training.GEARS do
 					local gear, before = Training.GEARS[tier], Training.GEARS[tier - 1]
 					T.expect(math.abs(gear.gain / before.gain / Training.GAIN_STEP - 1) < 0.05, gear.name .. " gain")
