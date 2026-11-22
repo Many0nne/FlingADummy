@@ -127,6 +127,9 @@ local function playPrize(result: any)
 	end
 end
 
+-- Lancer refusé par le serveur : le décoratif parti au lâcher s'efface (#144)
+remotes.LaunchRefused.OnClientEvent:Connect(LaunchGhost.refuse)
+
 remotes.LaunchResult.OnClientEvent:Connect(function(result)
 	Effects.setFlying(nil)
 	prizeToken += 1

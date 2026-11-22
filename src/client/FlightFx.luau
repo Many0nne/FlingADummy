@@ -530,6 +530,12 @@ function FlightFx.init()
 	})
 	LaunchGhost.onAnticipate = preview
 	LaunchGhost.onSwap = adopt
+	LaunchGhost.onCancel = function(visual: Model)
+		local flight = flights[visual]
+		if flight then
+			finish(flight)
+		end
+	end
 	RunService:BindToRenderStep(BIND_NAME, Enum.RenderPriority.Camera.Value + 2, function(dt)
 		for _, flight in flights do
 			step(flight, dt)

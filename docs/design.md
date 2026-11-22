@@ -984,9 +984,11 @@ Interface : section suivante.
   main rendue à 0,95 s et 1,55-1,64 s ; premier contact inchangé (`DebugLaunch`, 22 M : 3 499-3 502 m pour un plan à
   3 494 m). Au-delà de `RELEASE_LEAD_MAX`
   (0,4 s) de latence, le reste est un maintien à la main. Caméra de vol, coup de champ de vision, souffle et effets
-  du vol (#138) partent avec le décoratif. Lancer refusé (pas de départ du serveur après la latence + 0,4 s, couloir pas
-  en vol) : le décoratif s'efface en 0,15 s (mesuré à 150 ms : effacé vers 0,7 s, caméra rendue). Relais impossible
-  (torse du serveur pas arrivé 2 s après le lâcher) : la copie répliquée est montrée telle quelle, effets repris. Studio : `DebugNoAnticipate` (attribut de Workspace, true) garde l'ancien
+  du vol (#138) partent avec le décoratif. Lancer refusé (remote `LaunchRefused`, envoyé par le serveur à
+  chaque Launch qui ne lance rien ; filet : aucun départ 2 s après le lâcher) : le décoratif s'efface en 0,15 s, un
+  aller-retour après le lâcher, et la caméra revient sur l'avatar ; le souffle et le coup de champ de vision du lâcher
+  ont déjà été joués (le geste a bien eu lieu). Relais impossible (torse du serveur pas arrivé 2 s après le lâcher) : la
+  copie répliquée est montrée telle quelle, effets repris. Studio : `DebugNoAnticipate` (attribut de Workspace, true) garde l'ancien
   départ (décoratif figé jusqu'à la réponse du serveur), pour comparer.
 - Les chocs sont annoncés à tous les clients (`Impact`), qui jouent sons, particules et popups.
 - Effets des comportements en vol (#138) : déduits du plan par chaque client d'après les attributs du mannequin lancé

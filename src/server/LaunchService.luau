@@ -263,7 +263,15 @@ end
 -- Cette méthode permet de tirer le mannequin d'un joueur lorsqu'il est figé sur la bande de lancer (ou que `force`
 -- vient de DebugLaunch) ; `gauge` vient du client, bornée puis vérifiée ici (sauf DebugLaunch).
 function LaunchService.launch(player: Player, gauge: any, force: boolean?)
+	-- Cette méthode permet de prévenir le lanceur d'un refus (son décoratif est parti au lâcher, #144) lorsque le
+	-- Launch du client ne lance rien.
+	local function refuse()
+		if not force then
+			remotes.LaunchRefused:FireClient(player)
+		end
+	end
 	if typeof(gauge) ~= "number" or gauge ~= gauge then
+		refuse()
 		return
 	end
 	gauge = math.clamp(gauge, 0, 1)
@@ -271,15 +279,18 @@ function LaunchService.launch(player: Player, gauge: any, force: boolean?)
 	local stopArrival = gaugeStops[player]
 	gaugeStops[player] = nil
 	if player:GetAttribute("LaneState") ~= "Ready" or not player:GetAttribute("DataReady") then
+		refuse()
 		return
 	end
 	local slot = SlotService.getSlot(player)
 	if not slot then
+		refuse()
 		return
 	end
 	if not force then
 		local openedAt = SlotService.gaugeOpenedAt(player)
 		if player:GetAttribute("Action") ~= "Holding" or not openedAt then
+			refuse()
 			return
 		end
 		gauge = verifiedGauge(player, gauge, openedAt, stopArrival)

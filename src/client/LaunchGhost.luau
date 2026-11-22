@@ -10,9 +10,9 @@
 -- marqueur Release sur le plan calculé par le client (Shared.ThrowStart : main, puissance, jauge, mannequin équipé),
 -- en passant en TRANSITION de sa pose et de son échelle en main (0,6) à celles du vol. Le mannequin du serveur, reconnu
 -- dès son arrivée (attribut `Owner`), est masqué ; son départ recale le plan affiché (Shared.FlightGhost.rebase), puis la
--- copie locale de ses pièces prend le relais du décoratif. Sans départ du serveur dans la latence plus REFUSE_MARGIN
--- (couloir pas en vol : lancer refusé), le décoratif s'efface en VANISH ; un relais impossible (torse jamais arrivé,
--- arrêt avant le relais) montre la copie répliquée telle quelle, ses effets repris (onSwap).
+-- copie locale de ses pièces prend le relais du décoratif. Lancer refusé par le serveur (remote LaunchRefused, ou
+-- aucun départ HANDOFF_TIME s après le lâcher) : le décoratif s'efface en VANISH ; un relais impossible (torse jamais
+-- arrivé, arrêt avant le relais) montre la copie répliquée telle quelle, ses effets repris (onSwap).
 local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -26,7 +26,6 @@ local ThrowStart = require(Shared:WaitForChild("ThrowStart"))
 
 local BIND_NAME = "LaunchGhost"
 local FADE_OUT = 2 -- copie locale gardée, masquée, après le retour (s) : ses particules et sa traînée s'éteignent
-local REFUSE_MARGIN = 0.4 -- sans départ du serveur passé la latence + cette marge (s), couloir pas en vol : refusé
 local HANDOFF_TIME = 2 -- sans relais passé ce temps (s) après le lâcher, le décoratif s'efface quoi qu'il arrive
 local VANISH = 0.15 -- effacement du décoratif d'un lancer refusé (s)
 -- Effets de la copie répliquée coupés pendant l'affichage anticipé (la copie locale porte les siens) ; les surfaces
@@ -58,7 +57,8 @@ type Active = {
 	scaled: number, -- échelle courante du décoratif
 	flight: CFrame, -- orientation du mannequin du serveur au départ (tête la première, sans position)
 	releasedAt: number, -- os.clock() du lâcher
-	deadline: number?, -- os.clock() au-delà duquel, sans départ du serveur, le lancer est tenu pour refusé
+	launch: Launch?, -- départ prévu par le client au lâcher
+	previewed: boolean, -- effets du vol commencés sur le décoratif (après le maintien à la main)
 	refused: boolean,
 	copy: Model?,
 	pairs: { Pair },
@@ -80,6 +80,7 @@ local LaunchGhost = {}
 -- mannequin du serveur au relais (sans les rallumer)
 LaunchGhost.onAnticipate = nil :: ((visual: Model, origin: Vector3, velocity: Vector3, thrown: number) -> ())?
 LaunchGhost.onSwap = nil :: ((visual: Model, model: Model) -> ())?
+LaunchGhost.onCancel = nil :: ((visual: Model) -> ())? -- décoratif retiré sans mannequin du serveur : effets arrêtés
 
 local player = Players.LocalPlayer
 local active: Active? = nil
@@ -148,10 +149,12 @@ function LaunchGhost.stop()
 			retire(visual)
 		end
 	end
-	-- Arrêt avant le relais, mannequin du serveur déjà là : ses effets du vol reprennent sur lui
+	-- Arrêt avant le relais : effets du vol repris par le mannequin du serveur s'il est là, sinon arrêtés
 	local model = current.model
 	if visual and model and LaunchGhost.onSwap then
 		LaunchGhost.onSwap(visual, model)
+	elseif visual and not model and LaunchGhost.onCancel then
+		LaunchGhost.onCancel(visual)
 	end
 	-- Seules les valeurs encore à celles posées ici sont rendues (un autre système a pu en changer entre-temps)
 	for instance, value in current.hidden do
@@ -330,6 +333,14 @@ local function anticipate(current: Active, visual: Model, dt: number)
 	local state, path = current.state, current.path
 	local position = FlightGhost.ahead(path, state, dt)
 	local flying = FlightGhost.flying(state)
+	-- Effets du vol (flamme, traînées) dès que le décoratif quitte la main, pas pendant le maintien
+	local launch = current.launch
+	if flying > 0 and launch and not current.previewed then
+		current.previewed = true
+		if LaunchGhost.onAnticipate then
+			LaunchGhost.onAnticipate(visual, launch.origin, launch.velocity, launch.thrown)
+		end
+	end
 	local k = math.clamp(flying / FlightGhost.TRANSITION, 0, 1)
 	local eased = k * k * (3 - 2 * k)
 	local scale = 1 + (current.grow - 1) * eased
@@ -347,11 +358,8 @@ local function anticipate(current: Active, visual: Model, dt: number)
 		swap(current, model, torso)
 		return
 	end
-	-- Pas de départ du serveur : lancer refusé (couloir pas en vol), réponse perdue, ou relais impossible
-	local now = os.clock()
-	local deadline = current.deadline
-	local refused = not model and deadline ~= nil and now > deadline and player:GetAttribute("LaneState") ~= "Flying"
-	if refused or now - current.releasedAt > HANDOFF_TIME then
+	-- Filet : réponse du serveur perdue, ou relais impossible (torse jamais arrivé)
+	if os.clock() - current.releasedAt > HANDOFF_TIME then
 		if RunService:IsStudio() then
 			print(string.format("[LaunchGhost] lâcher anticipé sans relais à %.2f s : effacé", flying))
 		end
@@ -423,7 +431,8 @@ function LaunchGhost.anticipate(visual: Model, scale: number, gauge: number): bo
 		scaled = visual:GetScale(),
 		flight = CFrame.fromMatrix(Vector3.zero, Vector3.xAxis, launch.velocity.Unit),
 		releasedAt = os.clock(),
-		deadline = os.clock() + latency + REFUSE_MARGIN,
+		launch = launch,
+		previewed = false,
 		refused = false,
 		copy = nil,
 		pairs = {},
@@ -440,9 +449,6 @@ function LaunchGhost.anticipate(visual: Model, scale: number, gauge: number): bo
 	}
 	active = current
 	bind(current)
-	if LaunchGhost.onAnticipate then
-		LaunchGhost.onAnticipate(visual, launch.origin, launch.velocity, thrown)
-	end
 	if RunService:IsStudio() then
 		print(
 			string.format(
@@ -465,14 +471,13 @@ function LaunchGhost.start(model: Model, launch: any)
 	end
 	local read = readLaunch(launch)
 	if current and current.visual and not current.model then
-		if not read then
-			return
+		-- Départ du serveur : le plan affiché passe sur le sien sans saut (gardé s'il est illisible), son mannequin est
+		-- masqué
+		if read then
+			local path = pathOf(read)
+			FlightGhost.rebase(current.state, current.path, path)
+			current.path = path
 		end
-		-- Départ du serveur : le plan affiché passe sur le sien sans saut, son mannequin est masqué
-		local path = pathOf(read)
-		FlightGhost.rebase(current.state, current.path, path)
-		current.path = path
-		current.deadline = nil
 		attach(current, model)
 		if RunService:IsStudio() then
 			print(
@@ -503,7 +508,8 @@ function LaunchGhost.start(model: Model, launch: any)
 		scaled = 1,
 		flight = CFrame.identity,
 		releasedAt = os.clock(),
-		deadline = nil,
+		launch = nil,
+		previewed = true,
 		refused = false,
 		copy = nil,
 		pairs = {},
@@ -530,6 +536,24 @@ function LaunchGhost.start(model: Model, launch: any)
 				FlightGhost.duration(fresh.path)
 			)
 		)
+	end
+end
+
+-- Cette méthode permet d'effacer le décoratif lâché lorsque le serveur refuse le lancer (remote LaunchRefused) ; sans
+-- effet une fois son départ arrivé.
+function LaunchGhost.refuse()
+	local current = active
+	if current and current.visual and not current.model then
+		if RunService:IsStudio() then
+			print(
+				string.format(
+					"[LaunchGhost] lancer refusé %.3f s après le lâcher : effacé",
+					os.clock() - current.releasedAt
+				)
+			)
+		end
+		current.refused = true
+		LaunchGhost.stop()
 	end
 end
 
