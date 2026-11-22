@@ -1,206 +1,27 @@
--- Joueur simulé de la progression longue (#94) : estime le temps de jeu pour atteindre chaque palier (équipement
--- d'entraînement, mannequin à lancer, présentoir, première sortie de chaque rareté) avec les vrais modules du jeu
--- (tirage Shared.Collection, entraînement Shared.Training, CHANCE Shared.Economy, prix Shared.ThrowDummies). Modèle
--- simple, à recaler sur les mesures de Studio (#15) : distance d'un vol plafonné (Shared.FlightArc : premier contact
--- au point de l'arc naturel, puis glissade freinée, part mesurée en Studio par #113), une boucle = un lancer
--- (THROW_TIME s) puis TRAIN_TIME s d'entraînement, achats dès que possible (le moins cher d'abord),
--- mannequins hors présentoirs vendus aussitôt. Renaissance (#108, Shared.Rebirth) dès que possible, après les achats
--- moins chers : progression remise à zéro, base et présentoirs gardés, CHANCE × 2 par renaissance.
--- Usage : lune run tools/progression [joueurs] [heures] [facteur de prix des renaissances]
--- (défaut : 40 joueurs, 12 h, × 4 ; renaissances : 100 h et plus)
+-- Joueur simulé de la progression longue (#94, #15) : estime le temps de jeu pour atteindre chaque palier (équipement
+-- d'entraînement, mannequin à lancer, présentoir, première sortie de chaque rareté, renaissance) et mesure le « mur »
+-- (ratio « prix du prochain achat / revenu », achat par achat et minute par minute). Simulation : tools/ProgressionSim.
+-- Usage : lune run tools/progression [joueurs] [heures] [facteur de prix des renaissances] [fichier CSV minute par minute]
+-- (défaut : 40 joueurs, 14 h, Rebirth.PRICE_GROWTH ; renaissances : 100 h et plus)
+local fs = require("@lune/fs")
 local process = require("@lune/process")
 
 local Loader = require("../tests/lib/Loader")
+local ProgressionSim = require("./ProgressionSim")
 
-local loader = Loader.new()
-local Collection = loader:require("src/shared/Collection")
-local Economy = loader:require("src/shared/Economy")
-local FlightArc = loader:require("src/shared/FlightArc")
-local Format = loader:require("src/shared/Format")
-local GameConfig = loader:require("src/shared/GameConfig")
-local Inventory = loader:require("src/shared/Inventory")
-local Rarity = loader:require("src/shared/Rarity")
-local Rebirth = loader:require("src/shared/Rebirth")
-local ThrowDummies = loader:require("src/shared/ThrowDummies")
-local Training = loader:require("src/shared/Training")
+local m = ProgressionSim.modules(Loader.new())
+local Collection, Format, GameConfig = m.Collection, m.Format, m.GameConfig
+local Rarity, Rebirth, ThrowDummies, Training = m.Rarity, m.Rebirth, m.ThrowDummies, m.Training
 
 local PLAYERS = tonumber(process.args[1]) or 40
-local HOURS = tonumber(process.args[2]) or 12
+local HOURS = tonumber(process.args[2]) or 14
 -- 3e argument (essai) : facteur de prix entre deux renaissances à la place de Rebirth.PRICE_GROWTH
 Rebirth.PRICE_GROWTH = tonumber(process.args[3]) or Rebirth.PRICE_GROWTH
+local CSV = process.args[4]
 
-local THROW_TIME = 15 -- lancer, vol, tirage et retour (s ; 15 s mesurés sur Throw a Seed)
-local TRAIN_TIME = 15 -- entraînement entre deux lancers (s)
--- Distance (m) : premier contact au sol prévu par Shared.FlightArc (main à ORIGIN_HEIGHT au-dessus de la piste), plus
--- SLIDE_SHARE de la glissade freinée théorique (le choc de l'atterrissage en mange une part ; mesuré en Studio, #113)
-local ORIGIN_HEIGHT = 5.3
-local SLIDE_SHARE = 0.4 -- 0,3 à 0,75 mesuré (#113) : obstacles et rebonds au point de chute
--- Bonus des os et objets (part ajoutée à la CHANCE) : ≈ +30 % au départ, ≈ +55 % à 10,5 K de puissance (mesures #14)
-local BONUS_BASE, BONUS_PER_LOG = 0.3, 0.035
-
--- Cette méthode permet d'estimer la distance d'un lancer jauge pleine lorsque le joueur a `power` de Throw Power.
-local function distanceFor(power: number): number
-	local speed = Economy.launchSpeed(power)
-	local pitch = math.rad(GameConfig.LAUNCH_PITCH_DEG)
-	local forward = speed * math.cos(pitch)
-	local plan = FlightArc.plan(forward, speed * math.sin(pitch), ORIGIN_HEIGHT, GameConfig.GRAVITY)
-	return math.min(plan.range + SLIDE_SHARE * FlightArc.slide(forward), GameConfig.COURSE_LENGTH)
-end
-
--- Cette méthode permet d'estimer la CHANCE d'un lancer lorsque le joueur a `power` et lance un mannequin de chance `luck`.
-local function chanceFor(power: number, luck: number): number
-	local bonus = BONUS_BASE + BONUS_PER_LOG * math.log(math.max(power, 10) / 10)
-	return Economy.zoneChance(distanceFor(power)) * (1 + bonus) * luck
-end
-
--- Cette méthode permet de simuler un joueur pendant `seconds` s lorsque l'on estime la courbe ; renvoie les instants
--- (s) de chaque palier, par clé (« gear:3 », « throw:7 », « display:8 », « rarity:5 », « power:1M »…).
-local function simulate(seed: number, seconds: number): { [string]: number }
-	math.randomseed(seed)
-	-- Cette méthode permet de tirer un nombre dans [0, 1) lorsque le tirage du mannequin en demande un.
-	local roll = function()
-		return math.random()
-	end
-	local t = 0
-	local money = 0
-	local power = GameConfig.START_POWER
-	local progress = { level = 1, exp = 0 }
-	local gear, thrown = 1, 1
-	local displays = GameConfig.DISPLAY_START
-	local base: { number } = {} -- revenus des mannequins posés
-	local draws = 0
-	local rebirths = 0
-	local marks: { [string]: number } = {}
-
-	-- Cette méthode permet de noter l'instant où un palier est atteint pour la première fois lorsque la simulation avance.
-	local function mark(key: string)
-		if marks[key] == nil then
-			marks[key] = t
-		end
-	end
-	-- Cette méthode permet de donner le revenu de la base ($/s) lorsque le temps de jeu avance.
-	local function income(): number
-		local total = 0
-		for _, value in base do
-			total += value
-		end
-		return total
-	end
-	-- Cette méthode permet de poser un mannequin gagné s'il est parmi les plus rentables, et de vendre le moins rentable
-	-- (2 min de revenu) lorsque la base déborde après un tirage.
-	local function receive(entry)
-		local value = Collection.income(entry)
-		table.insert(base, value)
-		table.sort(base, function(a, b)
-			return a > b
-		end)
-		while #base > displays do
-			money += (table.remove(base) :: number) * GameConfig.SELL_MINUTES * 60
-		end
-	end
-	-- Cette méthode permet d'acheter tout ce qui est abordable, le moins cher d'abord (équipement, mannequin à lancer,
-	-- présentoir), lorsque l'argent change.
-	local function shop()
-		while true do
-			local options = {}
-			local nextGear = Training.nextGearCost(gear)
-			if nextGear then
-				table.insert(options, { kind = "gear", cost = nextGear })
-			end
-			local nextThrow = ThrowDummies.nextCost(thrown)
-			if nextThrow then
-				table.insert(options, { kind = "throw", cost = nextThrow })
-			end
-			local nextDisplay = Inventory.displayPrice(displays)
-			if nextDisplay then
-				table.insert(options, { kind = "display", cost = nextDisplay })
-			end
-			table.sort(options, function(a, b)
-				return a.cost < b.cost
-			end)
-			local pick = options[1]
-			if not pick or pick.cost > money then
-				return
-			end
-			money -= pick.cost
-			if pick.kind == "gear" then
-				gear += 1
-				mark("gear:" .. gear)
-			elseif pick.kind == "throw" then
-				thrown += 1
-				mark("throw:" .. thrown)
-			else
-				displays += 1
-				mark("display:" .. displays)
-			end
-		end
-	end
-
-	-- Cette méthode permet de renaître dès que la condition est remplie (Shared.Rebirth), après les achats moins chers,
-	-- lorsque l'argent change : argent, puissance, entraînement, équipement et mannequins à lancer à zéro.
-	local function rebirth()
-		if Rebirth.missing({ gearTier = gear, money = money, rebirths = rebirths }) then
-			return
-		end
-		rebirths += 1
-		mark("rebirth:" .. rebirths)
-		money, power = 0, GameConfig.START_POWER
-		progress = { level = 1, exp = 0 }
-		gear, thrown = 1, 1
-	end
-
-	while t < seconds do
-		-- Lancer
-		local entry
-		if draws == 0 then
-			entry = { id = Collection.STARTER, size = 1 }
-		else
-			entry = Collection.draw(chanceFor(power, ThrowDummies.get(thrown).luck) * Rebirth.luck(rebirths), roll)
-		end
-		draws += 1
-		t += THROW_TIME
-		money += income() * THROW_TIME
-		receive(entry)
-		local dummy = Collection.get(entry.id)
-		mark("rarity:" .. dummy.rarity)
-		mark("first")
-		shop()
-		-- Entraînement
-		local reps = math.floor(TRAIN_TIME / GameConfig.REP_TIME)
-		for _ = 1, reps do
-			local gained
-			progress, gained = Training.completeRep(progress, gear)
-			power += gained
-		end
-		t += TRAIN_TIME
-		money += income() * TRAIN_TIME
-		for _, threshold in { 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10 } do
-			if power >= threshold then
-				mark("power:" .. Format.short(threshold))
-			end
-		end
-		-- Repères de la piste prolongée (#97) : fin de la Moon Base, Neon City, Haunted Castle, bout de piste
-		for _, meters in { 2400, 3600, 4800 } do
-			if distanceFor(power) >= meters then
-				mark(string.format("track:%.1fkm", meters / 1000))
-			end
-		end
-		if distanceFor(power) >= GameConfig.COURSE_LENGTH then
-			mark("trackEnd")
-		end
-		for _, threshold in { 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 } do
-			if income() >= threshold then
-				mark("income:" .. Format.short(threshold))
-			end
-		end
-		shop()
-		rebirth()
-	end
-	marks.finalChance = chanceFor(power, ThrowDummies.get(thrown).luck) * Rebirth.luck(rebirths)
-	marks.rebirths = rebirths
-	marks.finalIncome = income()
-	marks.finalPower = power
-	return marks
+local runs = {}
+for seed = 1, PLAYERS do
+	table.insert(runs, ProgressionSim.simulate(m, seed, HOURS * 3600))
 end
 
 -- Cette méthode permet d'écrire une durée lisible (« 45 s », « 12 min », « 3.4 h ») lorsque l'on imprime le tableau.
@@ -215,25 +36,121 @@ local function duration(s: number?): string
 	return string.format("%.1f h", s / 3600)
 end
 
-local runs = {}
-for seed = 1, PLAYERS do
-	table.insert(runs, simulate(seed, HOURS * 3600))
-end
-
 -- Cette méthode permet de donner la médiane d'un palier sur tous les joueurs (nil si la moitié ne l'atteint pas)
 -- lorsque l'on imprime le tableau.
 local function median(key: string): number?
 	local values = {}
-	for _, marks in runs do
-		table.insert(values, marks[key] or math.huge)
+	for _, run in runs do
+		table.insert(values, run.marks[key] or math.huge)
 	end
-	table.sort(values)
-	local value = values[math.floor((#values + 1) / 2)]
-	return if value == math.huge then nil else value
+	return ProgressionSim.median(values)
+end
+
+-- Cette méthode permet de donner la médiane d'un champ du résultat final sur tous les joueurs lorsque l'on imprime le
+-- bilan.
+local function finalMedian(field: string): number
+	local values = {}
+	for _, run in runs do
+		table.insert(values, (run.final :: any)[field])
+	end
+	return ProgressionSim.median(values) or 0
+end
+
+-- Cette méthode permet de nommer un achat (« Iron Dummy », « Display 8 », « Rebirth 1 ») lorsque l'on imprime la
+-- courbe du ratio.
+local function purchaseName(kind: string, index: number): string
+	if kind == "gear" then
+		return "Gear: " .. Training.GEARS[index].name
+	elseif kind == "throw" then
+		return "Throw: " .. ThrowDummies.LIST[index].name
+	elseif kind == "display" then
+		return "Display " .. index
+	end
+	return "Rebirth " .. index
 end
 
 print(string.format("Joueur simulé : %d joueurs, %d h, médianes\n", PLAYERS, HOURS))
-print("| Équipement | Gain (EXP/rép.) | Prix | Atteint |")
+
+print("| Relevé | Achats | Revenu | Puissance | Rareté max | Renaissances |")
+print("|---|---|---|---|---|---|")
+for index, at in ProgressionSim.SNAPSHOTS do
+	if at <= HOURS * 3600 then
+		local columns = { purchases = {}, income = {}, power = {}, rarity = {}, rebirths = {} }
+		for _, run in runs do
+			local snapshot = run.snapshots[index]
+			for field, list in columns do
+				table.insert(list, if snapshot then (snapshot :: any)[field] else math.huge)
+			end
+		end
+		local rarity = ProgressionSim.median(columns.rarity)
+		print(
+			string.format(
+				"| %s | %d | %s | %s | %s | %d |",
+				duration(at),
+				ProgressionSim.median(columns.purchases) or 0,
+				Format.perSecond(ProgressionSim.median(columns.income) or 0),
+				Format.short(ProgressionSim.median(columns.power) or 0),
+				if rarity then Rarity.get(rarity).name else "-",
+				ProgressionSim.median(columns.rebirths) or 0
+			)
+		)
+	end
+end
+
+print("\n| # | Achat | Prix | Atteint | Prix suivant / revenu | Saut |")
+print("|---|---|---|---|---|---|")
+local steps = ProgressionSim.steps(runs)
+local worst = 0
+for k, step in steps do
+	worst = math.max(worst, step.jump)
+	print(
+		string.format(
+			"| %d | %s | %s | %s | %s | ×%.1f%s |",
+			k,
+			purchaseName(step.kind, step.index),
+			Format.money(step.cost),
+			duration(step.t),
+			duration(step.ratio),
+			step.jump,
+			if step.jump > 2 then " ⚠" else ""
+		)
+	)
+end
+print(
+	string.format(
+		"Saut le plus fort du ratio d'un achat au suivant : ×%.2f (plancher %d s)",
+		worst,
+		ProgressionSim.RATIO_FLOOR
+	)
+)
+
+-- Ratio minute par minute (médiane des joueurs), en minutes d'attente au revenu du moment
+local minuteCount = HOURS * 60
+local perMinute: { number } = {}
+for minute = 1, minuteCount do
+	local values = {}
+	for _, run in runs do
+		table.insert(values, run.minutes[minute] or math.huge)
+	end
+	perMinute[minute] = ProgressionSim.median(values) or math.huge
+end
+local marks = {}
+for _, minute in { 1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50, 60, 90, 120, 180, 240, 360, 480, 600, 720, 840 } do
+	if minute <= minuteCount then
+		table.insert(marks, string.format("%d min : %s", minute, duration(perMinute[minute])))
+	end
+end
+print("\nPrix suivant / revenu, minute par minute (médiane) : " .. table.concat(marks, " · "))
+if CSV then
+	local lines = { "minute,ratio_s" }
+	for minute, value in perMinute do
+		table.insert(lines, string.format("%d,%s", minute, if value == math.huge then "" else tostring(value)))
+	end
+	fs.writeFile(CSV, table.concat(lines, "\n") .. "\n")
+	print("Courbe écrite dans " .. CSV)
+end
+
+print("\n| Équipement | Gain (EXP/rép.) | Prix | Atteint |")
 print("|---|---|---|---|")
 for tier, g in Training.GEARS do
 	print(
@@ -345,9 +262,9 @@ print(
 	string.format(
 		"\nFin (%d h, médiane) : %d renaissance(s), CHANCE %s, revenu %s, puissance %s",
 		HOURS,
-		median("rebirths") or 0,
-		Format.multiplier(median("finalChance") or 0),
-		Format.perSecond(median("finalIncome") or 0),
-		Format.short(median("finalPower") or 0)
+		finalMedian("rebirths"),
+		Format.multiplier(finalMedian("chance")),
+		Format.perSecond(finalMedian("income")),
+		Format.short(finalMedian("power"))
 	)
 )

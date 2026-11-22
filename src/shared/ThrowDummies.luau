@@ -51,8 +51,9 @@ local GLIDE_MIN_FALL = 4 -- vitesse de chute (studs/s) au-delà de laquelle le p
 local BOUNCE_MIN_FALL = 20 -- chute (studs/s) arrêtée net en une frame qui compte comme un rebond au sol
 local BOUNCE_STOP = -2 -- vitesse verticale (studs/s) au-dessus de laquelle la chute est arrêtée
 
--- Six mannequins, prix ×12 à ×25 entre niveaux et chance 1x → 3x (comme les graines de 09 : 1.0x, 1.25x, 1.5x, 2.0x,
--- $1.2K, $15K, $300K) ; prix provisoires, recalés par #15 (économie)
+-- Six mannequins, chance 1x → 3x (comme les graines de 09 : 1.0x, 1.25x, 1.5x, 2.0x) ; prix calés par le joueur simulé
+-- (#15, tools/progression.luau) entre ceux des équipements d'entraînement (Shared.Training) : un achat toutes les 1 à
+-- 5 min la première heure, sans mur
 ThrowDummies.LIST = {
 	{
 		id = "crash",
@@ -71,7 +72,7 @@ ThrowDummies.LIST = {
 	{
 		id = "rubber",
 		name = "Rubber Dummy",
-		cost = 1200,
+		cost = 1500,
 		luck = 1.25,
 		behavior = "Bouncy",
 		color = rgb(255, 95, 175),
@@ -103,7 +104,7 @@ ThrowDummies.LIST = {
 	{
 		id = "glass",
 		name = "Glass Dummy",
-		cost = 15000,
+		cost = 40000,
 		luck = 1.5,
 		behavior = "Fragile",
 		color = rgb(150, 235, 255),
@@ -128,7 +129,7 @@ ThrowDummies.LIST = {
 	{
 		id = "steel",
 		name = "Steel Dummy",
-		cost = 300000,
+		cost = 250000,
 		luck = 2,
 		behavior = "Heavy",
 		color = rgb(130, 138, 150),
@@ -168,7 +169,7 @@ ThrowDummies.LIST = {
 	{
 		id = "glider",
 		name = "Glider Dummy",
-		cost = 4000000,
+		cost = 1200000,
 		luck = 2.5,
 		behavior = "Glides",
 		color = rgb(110, 220, 90),
@@ -198,7 +199,7 @@ ThrowDummies.LIST = {
 	{
 		id = "rocket",
 		name = "Rocket Dummy",
-		cost = 50000000,
+		cost = 3000000,
 		luck = 3,
 		behavior = "Jetpack",
 		color = rgb(235, 60, 55),
@@ -243,32 +244,30 @@ ThrowDummies.SHOWCASE = #ThrowDummies.LIST
 
 -- Suite du catalogue (#94), jusqu'à 135x comme les graines de Throw a Seed : chacun reprend le comportement et la
 -- physique d'un mannequin dessiné (rebond, verre, lest, ailes, réacteur, sans les cumuler) sous une palette de
--- Shared.DummyFamilies (« Ruby Rubber Dummy »). Prix : celui de Rocket × (chance / 3) ^ PRICE_EXPONENT, arrondi à
--- 2 chiffres : le revenu ne monte plus que comme le nombre de tirages × la CHANCE (pas de renaissance encore), des prix
--- × 6 à chaque niveau seraient hors d'atteinte (provisoire, recalé par #15 ; courbe et temps estimés par le joueur
--- simulé tools/progression.luau, dans docs/design.md, section « Progression longue »).
+-- Shared.DummyFamilies (« Ruby Rubber Dummy »). Prix calés par le joueur simulé (#15, tools/progression.luau), en
+-- alternance avec les équipements d'entraînement : courbe et temps estimés dans docs/design.md, section « Progression
+-- longue ».
 -- stylua: ignore
 ThrowDummies.EXTENDED = {
-	{ luck = 4,   base = "rubber", palette = "ruby" },
-	{ luck = 5,   base = "glass",  palette = "emerald" },
-	{ luck = 6.5, base = "steel",  palette = "sapphire" },
-	{ luck = 8,   base = "glider", palette = "amber" },
-	{ luck = 10,  base = "rocket", palette = "golden" },
-	{ luck = 13,  base = "rubber", palette = "frost" },
-	{ luck = 17,  base = "glass",  palette = "magma" },
-	{ luck = 22,  base = "steel",  palette = "shadow" },
-	{ luck = 30,  base = "glider", palette = "radiant" },
-	{ luck = 40,  base = "rocket", palette = "starlight" },
-	{ luck = 55,  base = "rubber", palette = "nebula" },
-	{ luck = 75,  base = "glass",  palette = "plasma" },
-	{ luck = 100, base = "glider", palette = "quantum" },
-	{ luck = 135, base = "rocket", palette = "infinite" },
+	{ luck = 4,   base = "rubber", palette = "ruby",        cost = 12e6 },
+	{ luck = 5,   base = "glass",  palette = "emerald",     cost = 25e6 },
+	{ luck = 6.5, base = "steel",  palette = "sapphire",    cost = 35e6 },
+	{ luck = 8,   base = "glider", palette = "amber",       cost = 120e6 },
+	{ luck = 10,  base = "rocket", palette = "golden",      cost = 180e6 },
+	{ luck = 13,  base = "rubber", palette = "frost",       cost = 600e6 },
+	{ luck = 17,  base = "glass",  palette = "magma",       cost = 1e9 },
+	{ luck = 22,  base = "steel",  palette = "shadow",      cost = 5e9 },
+	{ luck = 30,  base = "glider", palette = "radiant",     cost = 9e9 },
+	{ luck = 40,  base = "rocket", palette = "starlight",   cost = 15e9 },
+	{ luck = 55,  base = "rubber", palette = "nebula",      cost = 30e9 },
+	{ luck = 75,  base = "glass",  palette = "plasma",      cost = 80e9 },
+	{ luck = 100, base = "glider", palette = "quantum",     cost = 120e9 },
+	{ luck = 135, base = "rocket", palette = "infinite",    cost = 200e9 },
 }
-ThrowDummies.PRICE_EXPONENT = 1.8
 
 -- Cette méthode permet de construire un mannequin de la suite du catalogue (comportement de `base`, couleurs et
 -- matériau de la palette, blocs teintés) lorsque le catalogue se construit.
-local function extend(base: Dummy, spec: { luck: number, base: string, palette: string }, cost: number): Dummy
+local function extend(base: Dummy, spec: { luck: number, base: string, palette: string, cost: number }): Dummy
 	local palette = DummyFamilies.PALETTES[spec.palette]
 	assert(palette, "ThrowDummies : palette inconnue " .. spec.palette)
 	local blocks: { Block }? = nil
@@ -293,7 +292,7 @@ local function extend(base: Dummy, spec: { luck: number, base: string, palette: 
 	local dummy = table.clone(base)
 	dummy.id = spec.palette .. "_" .. base.id
 	dummy.name = palette.name .. " " .. base.name
-	dummy.cost = cost
+	dummy.cost = spec.cost
 	dummy.luck = spec.luck
 	dummy.color = palette.body
 	-- Le verre et le lest gardent leur matière (comportement lisible), les autres prennent celle de la palette
@@ -309,12 +308,10 @@ do
 	for _, dummy in ThrowDummies.LIST do
 		byId[dummy.id] = dummy
 	end
-	local last = ThrowDummies.LIST[#ThrowDummies.LIST]
 	for _, spec in ThrowDummies.EXTENDED do
 		local base = byId[spec.base]
 		assert(base, "ThrowDummies : mannequin de base inconnu " .. spec.base)
-		local cost = DummyFamilies.nice(last.cost * (spec.luck / last.luck) ^ ThrowDummies.PRICE_EXPONENT)
-		table.insert(ThrowDummies.LIST, extend(base, spec, cost))
+		table.insert(ThrowDummies.LIST, extend(base, spec))
 	end
 end
 

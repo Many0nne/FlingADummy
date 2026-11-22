@@ -27,7 +27,7 @@ Music.TRACKS = {
 -- Pistes de rechange proposées au test (même source) : hub « Happy Time » 1839401036, « Fun Kidz » 1839153331 ;
 -- vol « Stronger Than You A » 9040412177 ; fanfare « Glamour Fanfare 7 » 1844584907, « Winner » 1844584698.
 
-Music.GROUP_VOLUME = 0.3 -- SoundGroup musique : sous les chocs, le clic de jauge et les sons d'interface
+Music.GROUP_VOLUME = 0.21 -- SoundGroup musique : sous les chocs, le clic de jauge et les sons d'interface (-3 dB, review 2)
 Music.FADE = 1.5 -- s d'un fondu entre deux pistes du hub, et du muet
 Music.SWITCH_FADE = 0.5 -- s d'une bascule de moment (le vol ne dure que quelques secondes)
 Music.DUCK = 0.25 -- part du volume gardée pendant la silhouette du tirage et la fanfare

@@ -692,7 +692,7 @@ end
 local function refreshTraining()
 	local level = stat("TrainLevel", 1)
 	local exp = stat("TrainExp", 0)
-	local needed = Training.expForLevel(level)
+	local needed = Training.expForLevel(level, stat("GearTier", 1))
 	trainLevel.Text = "Level " .. level
 	trainCount.Text = Format.short(exp) .. "/" .. Format.short(needed)
 	TweenService:Create(trainFill, TweenInfo.new(0.2), { Size = UDim2.fromScale(math.min(exp / needed, 1), 1) }):Play()
@@ -1157,6 +1157,8 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 		refreshTraining()
 	end)
 	player:GetAttributeChangedSignal("GearTier"):Connect(function()
+		-- L'EXP d'un niveau dépend de l'équipement (plafond de répétitions, Training.expForLevel)
+		refreshTraining()
 		local tier = stat("GearTier", 1)
 		if tier <= knownTier then
 			-- Équipement remis à zéro (renaissance) : les achats suivants s'annoncent de nouveau

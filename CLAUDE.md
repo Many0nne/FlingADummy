@@ -76,6 +76,11 @@ rejetée pour un style inventé.
 - `GameConfig.luau` est exclu de StyLua (`-- stylua: ignore`) : garder l'alignement en colonnes à la main.
 - Animations : le jeu joue les clips publiés, pas ceux du dépôt ; modifier un clip impose de republier et de mettre à
   jour `assets/anim/published.json` (procédure : `assets/anim/README.md`, un test de `check.sh` le contrôle).
+- **Planches de référence** (`docs/planches/`) : toute création ou modification d'un mannequin (collection ou à lancer),
+  d'un palier de base ou de l'appareil d'entraînement régénère la planche concernée et la joint à la PR (avant / après).
+  Procédure (une réservation Studio) : `docs/planches/README.md` ; un test de `check.sh` compare le manifeste au
+  catalogue et aux données d'apparence (looks, paliers), pas au code qui construit les modèles (`CourseBuilder`,
+  `DummyShape`) : une modification de ce code régénère aussi la planche, sans rappel du test.
 - **Mesurer avant de promettre** : un effet de gameplay annoncé (distance, gains, temps) se mesure, et la valeur figure
   dans le compte rendu. Sans mesure, écrire « non mesuré ».
 

@@ -124,7 +124,7 @@ local function styleDisplay(slot: Slot, display: number, unlocked: boolean)
 	top:SetAttribute("Locked", if unlocked then nil else true)
 end
 
--- Cette méthode permet d'afficher sur le pad d'achat le présentoir suivant et son prix (« 6 > 7 », « $1K »), ou MAX,
+-- Cette méthode permet d'afficher sur le pad d'achat le présentoir suivant et son prix (« 6 > 7 », « $450K »), ou MAX,
 -- lorsque la base change ; le client n'active l'invite que pour le propriétaire tant que le maximum n'est pas atteint.
 local function stylePad(slot: Slot, displays: number?)
 	local pad = slot.base.pad
@@ -538,6 +538,20 @@ local function watchTemplates()
 			end
 		end)
 	end
+end
+
+-- Cette méthode permet d'habiller une base sans propriétaire comme s'il avait acheté `displays` présentoirs (palier
+-- visuel, présentoirs achetés, pad) lorsque Studio la photographie (Server.PhotoStudio) ; nil la rend à son état vide.
+function BaseService.showcase(slot: Slot, displays: number?)
+	if displays == nil then
+		render(slot, nil, true)
+		return
+	end
+	CourseBuilder.styleBase(slot, BaseLook.baseTier(displays))
+	for display in slot.base.displays do
+		styleDisplay(slot, display, display <= displays)
+	end
+	stylePad(slot, displays)
 end
 
 -- Cette méthode permet de brancher en Studio les attributs de test (MCP) lorsque le joueur arrive : DebugPlace = n

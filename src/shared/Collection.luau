@@ -31,7 +31,9 @@ export type Size = {
 export type Entry = { id: string, size: number }
 
 
--- Mannequins dessinés (modèles de #66) ; le catalogue complet y ajoute les mannequins générés (Shared.DummyFamilies)
+-- Mannequins dessinés (modèles de #66) ; le catalogue complet y ajoute les mannequins générés (Shared.DummyFamilies).
+-- Revenus sur la règle des générés (#15, DummyFamilies.bandIncome) : plage de revenu de la rareté (Shared.Rarity),
+-- × 2 dans une rareté et × 3 à son passage, en progression géométrique par cote croissante.
 -- stylua: ignore
 Collection.DRAWN = {
 	-- Common
@@ -39,29 +41,29 @@ Collection.DRAWN = {
 	{ id = "rookie",   name = "Rookie Dummy",   rarity = 1, income = 5,       n = 3 },
 	{ id = "traffic",  name = "Traffic Dummy",  rarity = 1, income = 6,       n = 5 },
 	-- Uncommon
-	{ id = "mint",     name = "Mint Dummy",     rarity = 2, income = 15,      n = 10 },
-	{ id = "biker",    name = "Biker Dummy",    rarity = 2, income = 22,      n = 15 },
-	{ id = "nerd",     name = "Nerd Dummy",     rarity = 2, income = 30,      n = 25 },
+	{ id = "mint",     name = "Mint Dummy",     rarity = 2, income = 25,      n = 10 },
+	{ id = "biker",    name = "Biker Dummy",    rarity = 2, income = 29,      n = 15 },
+	{ id = "nerd",     name = "Nerd Dummy",     rarity = 2, income = 33,      n = 25 },
 	-- Rare
-	{ id = "ocean",    name = "Ocean Dummy",    rarity = 3, income = 70,      n = 60 },
-	{ id = "hero",     name = "Hero Dummy",     rarity = 3, income = 100,     n = 100 },
-	{ id = "pilot",    name = "Pilot Dummy",    rarity = 3, income = 150,     n = 150 },
+	{ id = "ocean",    name = "Ocean Dummy",    rarity = 3, income = 150,     n = 60 },
+	{ id = "hero",     name = "Hero Dummy",     rarity = 3, income = 170,     n = 100 },
+	{ id = "pilot",    name = "Pilot Dummy",    rarity = 3, income = 200,     n = 150 },
 	-- Epic
-	{ id = "ice",      name = "Ice Dummy",      rarity = 4, income = 400,     n = 500 },
-	{ id = "toxic",    name = "Toxic Dummy",    rarity = 4, income = 550,     n = 800 },
-	{ id = "royal",    name = "Royal Dummy",    rarity = 4, income = 700,     n = 1200 },
+	{ id = "ice",      name = "Ice Dummy",      rarity = 4, income = 900,     n = 500 },
+	{ id = "toxic",    name = "Toxic Dummy",    rarity = 4, income = 1000,    n = 800 },
+	{ id = "royal",    name = "Royal Dummy",    rarity = 4, income = 1200,    n = 1200 },
 	-- Legendary
-	{ id = "gold",     name = "Gold Dummy",     rarity = 5, income = 2500,    n = 4000 },
-	{ id = "lava",     name = "Lava Dummy",     rarity = 5, income = 3500,    n = 7000 },
-	{ id = "diamond",  name = "Diamond Dummy",  rarity = 5, income = 5000,    n = 10000 },
+	{ id = "gold",     name = "Gold Dummy",     rarity = 5, income = 5500,    n = 4000 },
+	{ id = "lava",     name = "Lava Dummy",     rarity = 5, income = 6300,    n = 7000 },
+	{ id = "diamond",  name = "Diamond Dummy",  rarity = 5, income = 7300,    n = 10000 },
 	-- Mythic
-	{ id = "galaxy",   name = "Galaxy Dummy",   rarity = 6, income = 20000,   n = 40000 },
-	{ id = "ghost",    name = "Ghost Dummy",    rarity = 6, income = 30000,   n = 70000 },
-	{ id = "neon",     name = "Neon Dummy",     rarity = 6, income = 40000,   n = 100000 },
+	{ id = "galaxy",   name = "Galaxy Dummy",   rarity = 6, income = 33000,   n = 40000 },
+	{ id = "ghost",    name = "Ghost Dummy",    rarity = 6, income = 38000,   n = 70000 },
+	{ id = "neon",     name = "Neon Dummy",     rarity = 6, income = 44000,   n = 100000 },
 	-- Secret
-	{ id = "king",     name = "Crash King",     rarity = 7, income = 150000,  n = 500000 },
-	{ id = "void",     name = "Void Dummy",     rarity = 7, income = 200000,  n = 1000000 },
-	{ id = "cosmic",   name = "Cosmic Dummy",   rarity = 7, income = 300000,  n = 2000000 },
+	{ id = "king",     name = "Crash King",     rarity = 7, income = 200000,  n = 500000 },
+	{ id = "void",     name = "Void Dummy",     rarity = 7, income = 230000,  n = 1000000 },
+	{ id = "cosmic",   name = "Cosmic Dummy",   rarity = 7, income = 260000,  n = 2000000 },
 } :: { Dummy }
 
 -- Catalogue complet (#94) : dessinés puis générés (famille × palette), par rareté puis cote croissante. Les dessinés
@@ -77,12 +79,13 @@ table.sort(Collection.DUMMIES, function(a, b)
 	return a.n < b.n
 end)
 
+-- Revenu × 2, × 5, × 12 selon la taille (#15 : une taille rare se sent sur le compteur, × 1,5 / × 3 / × 8 avant)
 -- stylua: ignore
 Collection.SIZES = {
 	{ name = "",      income = 1,   scale = 1,    n = 1 },
-	{ name = "Big",   income = 1.5, scale = 1.3,  n = 8 },
-	{ name = "Huge",  income = 3,   scale = 1.7,  n = 60 },
-	{ name = "Giant", income = 8,   scale = 2.3,  n = 500 },
+	{ name = "Big",   income = 2,   scale = 1.3,  n = 8 },
+	{ name = "Huge",  income = 5,   scale = 1.7,  n = 60 },
+	{ name = "Giant", income = 12,  scale = 2.3,  n = 500 },
 } :: { Size }
 
 -- Échelle du modèle par rareté (indice de Shared.Rarity), multipliée par celle de la taille : plus rare, plus grand
