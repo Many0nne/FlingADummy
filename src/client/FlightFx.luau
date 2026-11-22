@@ -454,9 +454,8 @@ local function preview(visual: Model, origin: Vector3, velocity: Vector3, index:
 	begin(visual, torso, cues, origin, velocity, 0, 0)
 end
 
--- Cette méthode permet de faire passer les effets du décoratif lâché (`visual`) au mannequin du serveur (`model`)
--- lorsque sa copie locale prend le relais : flamme et temps du vol gardés, repères du plan recalculés sur le départ du
--- serveur, traînées reposées sur ses bras ; suivi ordinaire si le décoratif n'en portait pas.
+-- Cette méthode permet de faire passer les effets du décoratif lâché (`visual`) au mannequin du serveur (`model`), sans
+-- les rallumer, lorsque sa copie locale prend le relais ; suivi ordinaire si le décoratif n'en portait pas.
 local function adopt(visual: Model, model: Model)
 	local flight = flights[visual]
 	local torso = model:FindFirstChild("Torso")
@@ -480,7 +479,8 @@ local function adopt(visual: Model, model: Model)
 		tracker.origin = origin
 		tracker.flat = if horizontal.Magnitude > 1e-3 then horizontal.Unit else Vector3.zAxis
 	end
-	-- Traînées posées sur les bras du décoratif (échelle de la main) : reposées sur ceux du mannequin du serveur
+	-- Repères du plan recalculés sur le départ du serveur ; traînées posées sur les bras du décoratif (échelle de la
+	-- main) reposées sur ceux du mannequin du serveur
 	for _, arm in flight.arms do
 		arm.rig:Destroy()
 	end

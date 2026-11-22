@@ -86,10 +86,8 @@ function FlightCamera.closeUp(root: BasePart, duration: number)
 	end)
 end
 
--- Cette méthode permet de suivre un mannequin lancé (Shared.FlightFraming, lissage de l'écart seul) lorsque le serveur
--- annonce le lancer, ou dès le lâcher (décoratif qui part, #144) ; `shown` : torse à l'écran s'il n'est pas la copie
--- répliquée (Client.LaunchGhost : position, vitesse affichée, vitesse réelle). Un suivi qui en remplace un autre garde
--- son point visé : pas de saut au passage du décoratif au mannequin du serveur.
+-- Cette méthode permet de suivre un mannequin lancé (Shared.FlightFraming, `shown` : torse affiché par Client.LaunchGhost)
+-- lorsque le lancer part ; un suivi qui en remplace un autre garde son point visé (passage du décoratif au serveur, #144).
 function FlightCamera.follow(model: Model, shown: (() -> (Vector3?, Vector3?, number?))?)
 	local torso = model:WaitForChild("Torso", 2) :: BasePart?
 	if not torso then

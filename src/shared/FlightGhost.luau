@@ -253,9 +253,8 @@ function FlightGhost.ahead(path: Path, state: State, dt: number): Vector3
 	return (FlightGhost.sample(path, state.shown)) + FlightGhost.correction(state)
 end
 
--- Cette méthode permet de passer l'affichage anticipé du plan prévu par le client (`from`) à celui du serveur (`to`)
--- sans saut : même distance le long de la piste (temps retrouvé), l'écart restant se résorbe en RECALE_TIME, lorsque
--- le départ du serveur arrive.
+-- Cette méthode permet de passer l'affichage du plan prévu par le client (`from`) à celui du serveur (`to`) sans saut
+-- (même distance le long de la piste, écart restant résorbé en RECALE_TIME) lorsque le départ du serveur arrive.
 function FlightGhost.rebase(state: State, from: Path, to: Path)
 	local position = FlightGhost.sample(from, state.shown) + FlightGhost.correction(state)
 	local time = FlightGhost.timeAt(to, position)

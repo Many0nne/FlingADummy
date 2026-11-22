@@ -80,7 +80,6 @@ ThrowController.onReleased = function(gauge: number)
 		Effects.thrown(visual:GetPivot().Position)
 	end
 end
-ThrowController.onRefused = LaunchGhost.cancel
 FlightFx.init()
 Effects.init(player, remotes.Impact)
 TrapMotion.init()

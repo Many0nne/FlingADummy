@@ -11,7 +11,8 @@
 -- en passant en TRANSITION de sa pose et de son échelle en main (0,6) à celles du vol. Le mannequin du serveur, reconnu
 -- dès son arrivée (attribut `Owner`), est masqué ; son départ recale le plan affiché (Shared.FlightGhost.rebase), puis la
 -- copie locale de ses pièces prend le relais du décoratif. Sans départ du serveur dans la latence plus REFUSE_MARGIN
--- (couloir pas en vol : lancer refusé), le décoratif s'efface en VANISH.
+-- (couloir pas en vol : lancer refusé), le décoratif s'efface en VANISH ; un relais impossible (torse jamais arrivé,
+-- arrêt avant le relais) montre la copie répliquée telle quelle, ses effets repris (onSwap).
 local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -25,8 +26,8 @@ local ThrowStart = require(Shared:WaitForChild("ThrowStart"))
 
 local BIND_NAME = "LaunchGhost"
 local FADE_OUT = 2 -- copie locale gardée, masquée, après le retour (s) : ses particules et sa traînée s'éteignent
-local REFUSE_MARGIN = 0.3 -- sans départ du serveur passé la latence + cette marge (s), couloir pas en vol : refusé
-local HANDOFF_TIME = 2 -- sans départ du serveur passé ce temps (s), le décoratif s'efface quoi qu'il arrive
+local REFUSE_MARGIN = 0.4 -- sans départ du serveur passé la latence + cette marge (s), couloir pas en vol : refusé
+local HANDOFF_TIME = 2 -- sans relais passé ce temps (s) après le lâcher, le décoratif s'efface quoi qu'il arrive
 local VANISH = 0.15 -- effacement du décoratif d'un lancer refusé (s)
 -- Effets de la copie répliquée coupés pendant l'affichage anticipé (la copie locale porte les siens) ; les surfaces
 -- et panneaux (cibles du torse en blocs, DummyShape.addTarget) restent visibles sur une pièce masquée
@@ -147,6 +148,11 @@ function LaunchGhost.stop()
 			retire(visual)
 		end
 	end
+	-- Arrêt avant le relais, mannequin du serveur déjà là : ses effets du vol reprennent sur lui
+	local model = current.model
+	if visual and model and LaunchGhost.onSwap then
+		LaunchGhost.onSwap(visual, model)
+	end
 	-- Seules les valeurs encore à celles posées ici sont rendues (un autre système a pu en changer entre-temps)
 	for instance, value in current.hidden do
 		if instance.Parent and (instance :: any).LocalTransparencyModifier == 1 then
@@ -157,16 +163,6 @@ function LaunchGhost.stop()
 		if instance.Parent and (instance :: any).Enabled == false then
 			(instance :: any).Enabled = enabled
 		end
-	end
-end
-
--- Cette méthode permet d'effacer le décoratif d'un lancer anticipé lorsque le serveur ne l'a pas lancé (geste fini, le
--- couloir n'est pas en vol) ; sans effet une fois le départ du serveur arrivé.
-function LaunchGhost.cancel()
-	local current = active
-	if current and current.visual and not current.model then
-		current.refused = true
-		LaunchGhost.stop()
 	end
 end
 
@@ -351,19 +347,16 @@ local function anticipate(current: Active, visual: Model, dt: number)
 		swap(current, model, torso)
 		return
 	end
-	-- Pas de départ du serveur : lancer refusé (couloir pas en vol), ou réponse perdue
+	-- Pas de départ du serveur : lancer refusé (couloir pas en vol), réponse perdue, ou relais impossible
 	local now = os.clock()
 	local deadline = current.deadline
-	if not model and deadline and now > deadline then
-		if player:GetAttribute("LaneState") ~= "Flying" or now - current.releasedAt > HANDOFF_TIME then
-			if RunService:IsStudio() then
-				print(
-					string.format("[LaunchGhost] lâcher anticipé sans départ du serveur à %.2f s : effacé", flying)
-				)
-			end
-			current.refused = true
-			LaunchGhost.stop()
+	local refused = not model and deadline ~= nil and now > deadline and player:GetAttribute("LaneState") ~= "Flying"
+	if refused or now - current.releasedAt > HANDOFF_TIME then
+		if RunService:IsStudio() then
+			print(string.format("[LaunchGhost] lâcher anticipé sans relais à %.2f s : effacé", flying))
 		end
+		current.refused = not model
+		LaunchGhost.stop()
 	end
 end
 
@@ -401,9 +394,8 @@ local function ping(): number
 	return if ok and typeof(value) == "number" then math.max(value, 0) else 0
 end
 
--- Cette méthode permet de faire partir le décoratif lâché (`visual`, construit à l'échelle `scale`) sur le plan prévu
--- par le client lorsque le geste atteint le marqueur Release (jauge arrêtée à `gauge`) ; faux si le départ ne peut pas
--- être calculé (le décoratif reste alors figé à la main jusqu'au départ du serveur).
+-- Cette méthode permet de faire partir le décoratif lâché (`visual`, échelle `scale`) sur le plan prévu par le client
+-- lorsque le geste atteint le marqueur Release (jauge à `gauge`) ; faux si le départ ne peut pas être calculé.
 function LaunchGhost.anticipate(visual: Model, scale: number, gauge: number): boolean
 	LaunchGhost.stop()
 	local character = player.Character
@@ -464,9 +456,8 @@ function LaunchGhost.anticipate(visual: Model, scale: number, gauge: number): bo
 	return true
 end
 
--- Cette méthode permet de suivre le vol du joueur local lorsque le serveur annonce son lancer (`launch` : point de
--- départ, vitesse, mannequin lancé) : recalage du décoratif parti au lâcher, ou départ anticipé sur le plan du serveur
--- (lancer de test, DebugLaunch) ; sans effet si le départ est illisible.
+-- Cette méthode permet de suivre le vol du joueur local lorsque le serveur annonce son lancer (`launch` : départ,
+-- vitesse, mannequin) : recalage du décoratif parti au lâcher, sinon départ anticipé sur le plan du serveur.
 function LaunchGhost.start(model: Model, launch: any)
 	local current = active
 	if current and current.model == model then

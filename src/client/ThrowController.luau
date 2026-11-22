@@ -29,10 +29,8 @@ local SHINE_PAUSE = 1.4 -- pause entre deux passages (s)
 
 local ThrowController = {}
 
--- Branchés par l'amorçage du client : départ affiché dès le lâcher (jauge arrêtée à `gauge`), puis lancer refusé par
--- le serveur (geste fini sans vol) ; #144
+-- Branché par l'amorçage du client : départ affiché dès le lâcher, jauge arrêtée à `gauge` (#144)
 ThrowController.onReleased = nil :: ((gauge: number) -> ())?
-ThrowController.onRefused = nil :: (() -> ())?
 
 local player: Player
 local remotes: Remotes.Remotes
@@ -191,9 +189,6 @@ local function trigger(): boolean
 		if player:GetAttribute("LaneState") ~= "Flying" then
 			ThrowCinematic.abort()
 			CharacterPoser.handOff()
-			if ThrowController.onRefused then
-				ThrowController.onRefused()
-			end
 		end
 		locked = nil
 		refresh()
