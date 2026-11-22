@@ -726,21 +726,28 @@ local function step(flight: Flight, dt: number)
 	end
 end
 
--- Cette méthode permet de lancer `count` mannequins de test depuis les places libres (puissance du joueur, jauge
--- au maximum) lorsque l'on mesure plusieurs vols simultanés dans Studio sans autres joueurs.
+-- Cette méthode permet de lancer `count` mannequins de test depuis les places libres (jauge au maximum ; puissance
+-- DebugBotsPower, sinon celle du joueur ; mannequin à lancer DebugBotsDummy, sinon le Crash Dummy) lorsque l'on mesure
+-- plusieurs vols simultanés dans Studio sans autres joueurs, sans toucher à la sauvegarde du joueur.
 local function launchBots(player: Player, count: number)
-	local power = (player:GetAttribute("ThrowPower") :: number?) or GameConfig.START_POWER
+	local botPower = player:GetAttribute("DebugBotsPower")
+	local power = if typeof(botPower) == "number"
+		then botPower
+		else (player:GetAttribute("ThrowPower") :: number?) or GameConfig.START_POWER
+	local botDummy = player:GetAttribute("DebugBotsDummy")
+	local thrownIndex = if ThrowDummies.isIndex(botDummy) then botDummy :: number else 1
 	for i, slot in SlotService.freeSlots() do
 		if i > count then
 			break
 		end
 		botCount += 1
-		startFlight(nil, "Bot" .. botCount, slot, power, 1, 1, 1)
+		startFlight(nil, "Bot" .. botCount, slot, power, 1, thrownIndex, 1)
 	end
 end
 
 -- Cette méthode permet de lancer par attribut lorsque l'on teste dans Studio sans input : DebugLaunch (0-1) lance le
--- mannequin du joueur depuis sa place, DebugLaunchBots (n) lance n mannequins de test depuis les places libres.
+-- mannequin du joueur depuis sa place, DebugLaunchBots (n) lance n mannequins de test depuis les places libres
+-- (DebugBotsPower, DebugBotsDummy : puissance et mannequin à lancer des tests).
 local function watchDebugLaunch(player: Player)
 	player:GetAttributeChangedSignal("DebugLaunch"):Connect(function()
 		local value = player:GetAttribute("DebugLaunch")
