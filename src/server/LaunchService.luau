@@ -56,10 +56,13 @@ type Flight = {
 	forward: Vector3, -- direction du lancer (poussée du réacteur)
 	flat: Vector3, -- direction de la piste à plat (trajectoire, frein au sol)
 	origin: Vector3, -- point de départ du mannequin
-	arc: FlightArc.Plan, -- plafond, fin de la croisière, distance au premier contact (#113)
+	arc: FlightArc.Plan, -- plafond, fin de la croisière, distance au premier contact (#113), comportement (#130)
 	phase: FlightArc.Phase, -- montée, croisière, vol libre ou au sol
 	apex: number, -- plus haut point du torse (trace Studio)
 	landedAt: number?, -- distance au premier contact au sol (trace Studio : glissade)
+	fall: number, -- chute la plus forte du torse depuis le dernier rebond (studs/s : rebond du caoutchouc)
+	bounces: number, -- rebonds du caoutchouc (trace Studio)
+	bounceUntil: number, -- temps de vol (s) jusqu'auquel le rebond en cours n'est pas freiné
 	trapped: boolean, -- un piège l'a projeté : plus de plafond
 	announce: any?, -- annonce du tirage (Legendary et plus), envoyée à tous quand le gagnant a vu sa révélation
 	dummy: Model,
@@ -130,8 +133,8 @@ local function startFlight(
 	local origin = throwOrigin(owner, slot)
 	local flatDir = Vector3.new(dir.X, 0, dir.Z)
 	local flat = if flatDir.Magnitude > 1e-3 then flatDir.Unit else Vector3.zAxis
-	local arc = FlightArc.plan(speed * flatDir.Magnitude, speed * dir.Y, origin.Y, Workspace.Gravity)
 	local thrown = ThrowDummies.get(thrownIndex)
+	local arc = FlightArc.plan(speed * flatDir.Magnitude, speed * dir.Y, origin.Y, Workspace.Gravity, thrown)
 	local dummy = DummyFactory.build(ThrowDummies.variant(thrownIndex) :: any, thrown.physics)
 	-- Tête la première : l'axe vertical du mannequin suit la direction du lancer
 	dummy:PivotTo(CFrame.fromMatrix(origin, Vector3.xAxis, dir))
@@ -176,6 +179,9 @@ local function startFlight(
 		phase = FlightArc.startPhase(arc),
 		apex = origin.Y,
 		landedAt = nil,
+		fall = 0,
+		bounces = 0,
+		bounceUntil = 0,
 		trapped = false,
 		dummy = dummy,
 		torso = torso,
@@ -588,7 +594,7 @@ local function finish(flight: Flight, elapsed: number)
 		print(
 			string.format(
 				"[Launch] %s dummy=%s rebirth=x%g distance=%d zone=%d bones=%d smashed=%d chance=%.2f prize=%s gauge=%.2f time=%.1f | %s"
-					.. " | apex=%d landed=%s slide=%s planned=%d",
+					.. " | apex=%d landed=%s slide=%s planned=%d reach=%d bounces=%d",
 				if player then player.Name else tostring(flight.key),
 				flight.thrown.id,
 				flight.rebirth,
@@ -604,7 +610,9 @@ local function finish(flight: Flight, elapsed: number)
 				math.floor(flight.apex),
 				if flight.landedAt then tostring(math.floor(flight.landedAt)) else "-",
 				if flight.landedAt then tostring(math.floor(flight.distance - flight.landedAt)) else "-",
-				math.floor(flight.origin.Z + flight.arc.range)
+				math.floor(flight.origin.Z + flight.arc.range),
+				math.floor(flight.origin.Z + flight.arc.reach),
+				flight.bounces
 			)
 		)
 	end
@@ -638,19 +646,36 @@ local function publish(flight: Flight)
 end
 
 -- Cette méthode permet d'appliquer le comportement en vol du mannequin lancé (portance du planeur, poussée du
--- réacteur, rebond du caoutchouc d'après la vitesse du torse `before` de la frame précédente) puis la trajectoire
+-- réacteur, rebond du caoutchouc d'après la vitesse du torse `before` de la frame précédente, réglés par le plan du
+-- vol : Shared.FlightArc) puis la trajectoire
 -- (plafond, croisière, frein au sol : Shared.FlightArc ; `impact` : choc du torse cette frame) à toutes ses pièces
 -- lorsque le vol avance d'une frame ; les vitesses de référence suivent (pas de choc).
 local function applyBehavior(flight: Flight, elapsed: number, dt: number, before: Vector3?, impact: boolean)
 	local velocity = flight.torso.AssemblyLinearVelocity
-	local change = ThrowDummies.flightAccel(flight.thrown, velocity, flight.forward, elapsed, Workspace.Gravity) * dt
+	-- Un piège vient d'agir : ni portance ni rebond ne remplacent sa poussée, et le frein attend (TRAP_COAST)
+	local coasting = flight.lastTrap ~= nil and os.clock() - flight.lastTrap.at < FlightArc.TRAP_COAST
+	local change = FlightArc.accel(flight.arc, velocity, flight.forward, elapsed, Workspace.Gravity, coasting, dt) * dt
 	local armed = elapsed > GameConfig.IMPACT_GRACE_TIME
-	if before and armed then
-		local bounced = ThrowDummies.bounce(flight.thrown, before, velocity, flight.forward)
+	-- Projeté par un piège : le caoutchouc rebondit librement (physique), sa poussée n'est pas reprise par le plan
+	if before and armed and not coasting and not flight.trapped then
+		local bounced = FlightArc.bounce(
+			flight.arc,
+			before,
+			velocity,
+			flight.forward,
+			flight.fall,
+			flight.bounces,
+			flight.torso.Position.Y
+		)
 		if bounced then
 			change += bounced - velocity
+			flight.bounces += 1
+			flight.bounceUntil = elapsed + FlightArc.bounceTime(bounced, Workspace.Gravity)
 		end
 	end
+	-- Chute la plus forte depuis le dernier rebond : remise à zéro dès que le torse remonte
+	local vy = (velocity + change).Y
+	flight.fall = if vy < 0 then math.max(flight.fall, -vy) else 0
 	local position = flight.torso.Position
 	local phase, control = FlightArc.step(flight.arc, {
 		phase = flight.phase,
@@ -661,7 +686,8 @@ local function applyBehavior(flight: Flight, elapsed: number, dt: number, before
 		armed = armed,
 		impact = armed and impact,
 		trapped = flight.trapped,
-		coasting = flight.lastTrap ~= nil and os.clock() - flight.lastTrap.at < FlightArc.TRAP_COAST,
+		coasting = coasting,
+		bouncing = elapsed < flight.bounceUntil,
 		dt = dt,
 		gravity = Workspace.Gravity,
 	})
@@ -726,21 +752,29 @@ local function step(flight: Flight, dt: number)
 	end
 end
 
--- Cette méthode permet de lancer `count` mannequins de test depuis les places libres (puissance du joueur, jauge
--- au maximum) lorsque l'on mesure plusieurs vols simultanés dans Studio sans autres joueurs.
+-- Cette méthode permet de lancer `count` mannequins de test depuis les places libres (jauge pleine, DebugBotsPower et
+-- DebugBotsDummy du joueur s'ils sont posés) lorsque l'on mesure des vols dans Studio sans toucher à sa sauvegarde.
 local function launchBots(player: Player, count: number)
-	local power = (player:GetAttribute("ThrowPower") :: number?) or GameConfig.START_POWER
+	local botPower = player:GetAttribute("DebugBotsPower")
+	local power = if typeof(botPower) == "number"
+			and botPower > 0
+			and botPower < math.huge
+		then botPower
+		else (player:GetAttribute("ThrowPower") :: number?) or GameConfig.START_POWER
+	local botDummy = player:GetAttribute("DebugBotsDummy")
+	local thrownIndex = if ThrowDummies.isIndex(botDummy) then botDummy :: number else 1
 	for i, slot in SlotService.freeSlots() do
 		if i > count then
 			break
 		end
 		botCount += 1
-		startFlight(nil, "Bot" .. botCount, slot, power, 1, 1, 1)
+		startFlight(nil, "Bot" .. botCount, slot, power, 1, thrownIndex, 1)
 	end
 end
 
 -- Cette méthode permet de lancer par attribut lorsque l'on teste dans Studio sans input : DebugLaunch (0-1) lance le
--- mannequin du joueur depuis sa place, DebugLaunchBots (n) lance n mannequins de test depuis les places libres.
+-- mannequin du joueur depuis sa place, DebugLaunchBots (n) lance n mannequins de test depuis les places libres
+-- (DebugBotsPower, DebugBotsDummy : puissance et mannequin à lancer des tests).
 local function watchDebugLaunch(player: Player)
 	player:GetAttributeChangedSignal("DebugLaunch"):Connect(function()
 		local value = player:GetAttribute("DebugLaunch")

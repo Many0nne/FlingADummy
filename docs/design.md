@@ -154,13 +154,14 @@ L'équivalent des aliments de 01 et des graines de 09 : le mannequin qu'on lance
   | Mannequin | Prix | Chance | Comportement | Réglage |
   |---|---|---|---|---|
   | Crash Dummy | offert | 1.0x | Classic | densité 1,5, frottement 0,3, rebond 0,3 (le mannequin d'origine) |
-  | Rubber Dummy (rose, pompon) | $1.5K | 1.25x | Bouncy | frottement 0,05 ; chaque rebond au sol rend 85 % de la chute vers le haut et garde 85 % de l'élan vers l'avant |
+  | Rubber Dummy (rose, pompon) | $1.5K | 1.25x | Bouncy | frottement 0,05 ; 4 rebonds au sol (60 % de la chute rendue vers le haut à chacun, le premier à ≈ 35 studs), à élan constant et sans frein, pour + 15 % de la portée naturelle à l'arrêt (#130) |
   | Glass Dummy (verre, étiquette FRAGILE) | $40K | 1.5x | Fragile | chocs × 2 pour les os : plus d'os cassés (+2 % chacun) |
   | Steel Dummy (acier, plaques de lest) | $250K | 2.0x | Heavy | densité 8 : il défonce les obstacles au lieu d'y rebondir |
-  | Glider Dummy (vert, aile orange) | $1.2M | 2.5x | Glides | 70 % de la gravité compensée quand il descend (plus de 4 studs/s) |
-  | Rocket Dummy (rouge, réacteur) | $3M | 3.0x | Jetpack | poussée de 60 studs/s² vers l'avant pendant la 1re seconde |
+  | Glider Dummy (vert, aile orange) | $1.2M | 2.5x | Glides | redescend du sommet à vitesse tenue (≈ 40 studs/s depuis le plafond, au lieu d'une chute libre à 150), pour + 20 % de la portée naturelle (#130) |
+  | Rocket Dummy (rouge, réacteur) | $3M | 3.0x | Jetpack | poussée à plat vers l'avant pendant les 2 premières secondes (≈ + 25 % de vitesse), croisière allongée, pour + 20 % de la portée naturelle (#130) |
   Les pièges (`Shared.Traps`) remplacent la vitesse comme pour tous : le comportement reprend ensuite (portance,
-  rebond) ou est fini (poussée).
+  rebond) ou est fini (poussée). Réglages calculés par `FlightArc.plan` pour chaque vol (section « Comportements sous
+  le vol plafonné »).
 - **Suite du catalogue** (#94, `ThrowDummies.EXTENDED`) : 14 mannequins de 4x à 135x (« Ruby Rubber Dummy »,
   « Infinite Rocket Dummy »), chacun avec le comportement et la physique d'un des cinq ci-dessus sous une palette de
   `Shared.DummyFamilies`, prix calés par #15 ($12M à $200B, colonne `cost` de `ThrowDummies.EXTENDED`) ; seuls les six premiers sont exposés sur le
@@ -180,7 +181,8 @@ L'équivalent des aliments de 01 et des graines de 09 : le mannequin qu'on lance
   (multiplicateur déjà compté dans le chiffre).
 - **Sauvegarde** avec les données du joueur : `ThrowTier` (mannequins possédés : les N premiers) et `ThrowEquipped`,
   bornés au catalogue au chargement.
-- **Mesures** (Studio, `DebugLaunch` = 1, attribut `DebugThrowDummy`, 2 vols chacun ; détail dans la PR #14) :
+- **Mesures** (avant le vol plafonné : historique, voir #130 pour les valeurs actuelles ; Studio, `DebugLaunch` = 1,
+  attribut `DebugThrowDummy`, 2 vols chacun ; détail dans la PR #14) :
   | Mannequin | Puissance 10 : distance, CHANCE | Puissance 10,5 K : distance, CHANCE |
   |---|---|---|
   | Crash | 143-168 m, 1.76-1.81X | 1 139-1 167 m, 9.42-10.06X |
@@ -308,17 +310,17 @@ fait jamais de saut de plus de × 2 d'un achat au suivant. Prix trouvés en cala
 (section « CHANCE et tirage ») ; présentoirs vers 10 min, 30 min, 1 h et 2,5 h ; renaissance à $350B × 2^k.
 
 Relevés (60 joueurs, 14 h, médianes ; achats : équipements, mannequins à lancer, présentoirs, renaissances, rachats
-après une renaissance compris) :
+après une renaissance compris ; depuis #130, distance du mannequin équipé avec son comportement) :
 | Relevé | Achats | Revenu | Puissance | Rareté max | Avant #15 : achats, revenu, puissance, rareté |
 |---|---|---|---|---|---|
-| 2 min | 2 | $107/s | 336 | Uncommon | 3, $91/s, 161, Uncommon |
-| 5 min | 4 | $888/s | 4.05K | Rare | 6, $432/s, 1.19K, Rare |
-| 10 min | 7 | $5.3K/s | 68.6K | Epic | 10, $2.18K/s, 15.3K, Epic |
-| 30 min | 14 | $82.3K/s | 15.9M | Legendary | 13, $18.7K/s, 339K, Legendary |
-| 60 min | 21 | $576K/s | 449M | Mythic | 15, $63.9K/s, 2.52M, Legendary |
-| 3 h | 28 | $5.08M/s | 27B | Secret | 23, $707K/s, 80.6M, Mythic |
-| 8 h | 33 | $33.6M/s | 265B | Divine | 33, $10.8M/s, 11B, Divine |
-| 14 h | 65 (1 renaissance) | $84.9M/s | 137B | Divine | 94 (2 renaissances), $34.8M/s, 9.23B, Divine |
+| 2 min | 2 | $110/s | 336 | Uncommon | 3, $91/s, 161, Uncommon |
+| 5 min | 4 | $1K/s | 4.05K | Rare | 6, $432/s, 1.19K, Rare |
+| 10 min | 7 | $7.06K/s | 74.3K | Epic | 10, $2.18K/s, 15.3K, Epic |
+| 30 min | 15 | $117K/s | 25.1M | Legendary | 13, $18.7K/s, 339K, Legendary |
+| 60 min | 21 | $758K/s | 557M | Mythic | 15, $63.9K/s, 2.52M, Legendary |
+| 3 h | 28 | $6.73M/s | 30.4B | Secret | 23, $707K/s, 80.6M, Mythic |
+| 8 h | 33 | $35.6M/s | 291B | Divine | 33, $10.8M/s, 11B, Divine |
+| 14 h | 65 (1 renaissance) | $90.6M/s | 137B | Divine | 94 (2 renaissances), $34.8M/s, 9.23B, Divine |
 
 Prix suivant / revenu, minute par minute (médiane, `lune run tools/progression 60 14 "" courbe.csv` pour la courbe
 complète) :
@@ -326,46 +328,47 @@ complète) :
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Après #15 | 51 s | 2 min | 3 min | 3 min | 4 min | 5 min | 8 min | 23 min | 50 min | 66 min | 89 min | 110 min |
 | Après #129 | 51 s | 2 min | 2 min | 3 min | 3 min | 5 min | 9 min | 22 min | 51 min | 73 min | 96 min | 104 min |
+| Après #130 | 51 s | 2 min | 2 min | 2 min | 3 min | 4 min | 9 min | 23 min | 53 min | 77 min | 94 min | 92 min |
 | Avant #15 | 52 s | 68 s | 3 min | 8 min | 9 min | 22 min | 18 min | 18 min | 25 min | 38 min | 50 min | 29 min |
 
-Achat par achat (le moins cher d'abord : même ordre pour tous les joueurs ; ratio juste après l'achat) :
+Achat par achat (le moins cher d'abord : même ordre pour tous les joueurs ; ratio juste après l'achat ; rejoué après #130) :
 | # | Achat | Prix | Atteint | Prix suivant / revenu | Saut |
 |---|---|---|---|---|---|
 | 1 | Stone Dummy (équipement) | $100 | 45 s | 51 s | × 1,0 |
 | 2 | Rubber Dummy (à lancer) | $1.5K | 90 s | 100 s | × 1,7 |
 | 3 | Iron Dummy | $8K | 3 min | 2 min | × 1,3 |
-| 4 | Glass Dummy | $40K | 4 min | 3 min | × 1,3 |
-| 5 | Gold Dummy | $120K | 6 min | 3 min | × 0,9 |
-| 6 | Steel Dummy | $250K | 7 min | 2 min | × 0,9 |
-| 7 | Présentoir 7 | $450K | 9 min | 3 min | × 1,1 |
-| 8 | Diamond Dummy | $800K | 11 min | 3 min | × 1,0 |
-| 9 | Glider Dummy | $1.2M | 13 min | 3 min | × 1,0 |
-| 10 | Neon Dummy | $1.8M | 15 min | 3 min | × 1,2 |
-| 11 | Rocket Dummy | $3M | 17 min | 3 min | × 1,1 |
-| 12 | Cosmic Dummy | $4.5M | 21 min | 3 min | × 1,0 |
-| 13 | Présentoir 8 | $7M | 23 min | 4 min | × 1,2 |
-| 14 | Ruby Rubber Dummy | $12M | 26 min | 5 min | × 1,2 |
-| 15 | Ruby Dummy | $20M | 30 min | 4 min | × 0,9 |
-| 16 | Emerald Glass Dummy | $25M | 34 min | 5 min | × 1,2 |
-| 17 | Sapphire Steel Dummy | $35M | 37 min | 5 min | × 1,1 |
-| 18 | Emerald Dummy | $50M | 42 min | 5 min | × 1,0 |
-| 19 | Présentoir 9 | $70M | 46 min | 7 min | × 1,4 |
-| 20 | Amber Glider Dummy | $120M | 51 min | 8 min | × 1,1 |
-| 21 | Golden Rocket Dummy | $180M | 59 min | 10 min | × 1,3 |
-| 22 | Plasma Dummy | $300M | 66 min | 14 min | × 1,4 |
-| 23 | Frost Rubber Dummy | $600M | 76 min | 16 min | × 1,2 |
-| 24 | Magma Glass Dummy | $1B | 91 min | 22 min | × 1,3 |
-| 25 | Omega Dummy | $1.8B | 106 min | 23 min | × 1,1 |
-| 26 | Présentoir 10 (Golden) | $3B | 2,1 h | 28 min | × 1,2 |
-| 27 | Shadow Steel Dummy | $5B | 2,4 h | 39 min | × 1,4 |
-| 28 | Radiant Glider Dummy | $9B | 2,9 h | 49 min | × 1,2 |
-| 29 | Starlight Rocket Dummy | $15B | 3,6 h | 64 min | × 1,3 |
-| 30 | Nebula Rubber Dummy | $30B | 4,4 h | 73 min | × 1,2 |
-| 31 | Infinite Dummy | $50B | 5,4 h | 73 min | × 1,0 |
-| 32 | Plasma Glass Dummy | $80B | 6,3 h | 90 min | × 1,2 |
-| 33 | Quantum Glider Dummy | $120B | 7,5 h | 108 min | × 1,2 |
-| 34 | Infinite Rocket Dummy | $200B | 9,2 h | 2,3 h | × 1,3 |
-| | Renaissance 1 | $350B | 11,1 h | | |
+| 4 | Glass Dummy | $40K | 4 min | 3 min | × 1,2 |
+| 5 | Gold Dummy | $120K | 6 min | 3 min | × 1,0 |
+| 6 | Steel Dummy | $250K | 7 min | 2 min | × 0,8 |
+| 7 | Présentoir 7 | $450K | 9 min | 3 min | × 1,2 |
+| 8 | Diamond Dummy | $800K | 10 min | 2 min | × 0,9 |
+| 9 | Glider Dummy | $1.2M | 12 min | 2 min | × 1,0 |
+| 10 | Neon Dummy | $1.8M | 15 min | 2 min | × 1,0 |
+| 11 | Rocket Dummy | $3M | 16 min | 3 min | × 1,1 |
+| 12 | Cosmic Dummy | $4.5M | 18 min | 3 min | × 1,3 |
+| 13 | Présentoir 8 | $7M | 21 min | 4 min | × 1,3 |
+| 14 | Ruby Rubber Dummy | $12M | 24 min | 5 min | × 1,1 |
+| 15 | Ruby Dummy | $20M | 27 min | 4 min | × 0,9 |
+| 16 | Emerald Glass Dummy | $25M | 31 min | 4 min | × 1,1 |
+| 17 | Sapphire Steel Dummy | $35M | 35 min | 5 min | × 1,2 |
+| 18 | Emerald Dummy | $50M | 39 min | 5 min | × 1,0 |
+| 19 | Présentoir 9 | $70M | 43 min | 7 min | × 1,3 |
+| 20 | Amber Glider Dummy | $120M | 48 min | 7 min | × 1,0 |
+| 21 | Golden Rocket Dummy | $180M | 54 min | 9 min | × 1,2 |
+| 22 | Plasma Dummy | $300M | 60 min | 11 min | × 1,3 |
+| 23 | Frost Rubber Dummy | $600M | 69 min | 14 min | × 1,3 |
+| 24 | Magma Glass Dummy | $1B | 80 min | 19 min | × 1,3 |
+| 25 | Omega Dummy | $1.8B | 94 min | 20 min | × 1,1 |
+| 26 | Présentoir 10 (Golden) | $3B | 113 min | 29 min | × 1,4 |
+| 27 | Shadow Steel Dummy | $5B | 2,2 h | 37 min | × 1,3 |
+| 28 | Radiant Glider Dummy | $9B | 2,7 h | 48 min | × 1,3 |
+| 29 | Starlight Rocket Dummy | $15B | 3,2 h | 62 min | × 1,3 |
+| 30 | Nebula Rubber Dummy | $30B | 4,0 h | 70 min | × 1,1 |
+| 31 | Infinite Dummy | $50B | 4,9 h | 72 min | × 1,0 |
+| 32 | Plasma Glass Dummy | $80B | 6,1 h | 89 min | × 1,2 |
+| 33 | Quantum Glider Dummy | $120B | 7,4 h | 103 min | × 1,2 |
+| 34 | Infinite Rocket Dummy | $200B | 8,8 h | 2,2 h | × 1,3 |
+| | Renaissance 1 | $350B | 10,6 h (11,1 h avant #130) | | |
 
 Saut le plus fort : **× 1,67** depuis #129 (× 1,69 avant, × 4,29 avant #15 : Steel Dummy à 11 min, 11 min d'attente pour le Glider ; puis
 × 3,3 au Glider, 32 min d'attente pour le Cosmic, le mur du point 10). 21 achats la première heure (19 avant #129, 15 avant #15, dont 10
@@ -376,7 +379,8 @@ le revenu suit 01 jusqu'à ≈ 10 min ($3.3K/s), puis plus lentement (01 : 391K/
 neuf, 5 min pilotées par attributs : lancer jauge pleine, pose, 15 s d'entraînement, achats dès que possible) : Stone
 Dummy à 44 s, Rubber Dummy à 2:07, Iron Dummy à 2:54, Glass Dummy à 4:29 (simulé : 45 s, 90 s, 3 min, 4 min) ; revenu
 $548/s à 4:48 (simulé : $790/s à 5 min). Le Rubber Dummy rebondit bien plus loin que le modèle (1,2 à 1,9 km à
-161 de puissance, Rare dès 2:24) mais allonge la boucle (vols de 15 à 21 s).
+161 de puissance, Rare dès 2:24) mais allonge la boucle (vols de 15 à 21 s) : mesure d'avant #113 ; depuis #130, + 15 %
+de la portée naturelle et vols de 10 à 16 s.
 
 ### Gains des équipements calés sur 09 (#129)
 Le joueur simulé montait ≈ 2 fois moins vite que *Throw a Seed* (09) : #15 avait recalé les prix, pas les gains de
@@ -420,12 +424,14 @@ Planche `entrainement.jpg` : les gains affichés sur l'appareil changent, à ré
 1. **Piste prolongée à 6 km** (#97) : six thèmes de plus après Moon Base, un tous les 600 m (section « Zones de la
    piste »), CHANCE des zones de × 18 à × 60. Joueur simulé rejoué (60 joueurs, 14 h, après #15 et #113) et vols mesurés en Studio
    (Crash Dummy, jauge pleine, `DebugLaunch`) :
-   | Fin de piste | Vitesse | Puissance | Atteinte (simulé, gains de #129) | CHANCE des zones | Vols mesurés (#113, 6 par puissance) |
+   | Fin de piste | Vitesse | Puissance (Crash Dummy) | Atteinte (simulé, mannequin équipé : #130 ; #129 avant) | CHANCE des zones | Vols mesurés (#113, 6 par puissance) |
    |---|---|---|---|---|---|
-   | 2,4 km (fin de Moon Base) | 557 | 760 K | 17 min | × 18 | (#14, #33) |
-   | 3,6 km (Neon City) | 685 | 22 M | 32 min | × 27 | 3 590 à 3 630 m |
-   | 4,8 km (Haunted Castle) | 791 | 360 M | 54 min | × 40 | 4 867 à 4 991 m, 5 021 à 5 510 m après un piège |
-   | 6 km (bout) | 886 | 4,4 B | 105 min (#129 ; 4,2 h avant) | × 60 | bout de piste 6 fois sur 6 (6 043-6 048 m) |
+   | 2,4 km (fin de Moon Base) | 557 | 760 K | 13 min (17) | × 18 | (#14, #33) |
+   | 3,6 km (Neon City) | 685 | 22 M | 20 min (32) | × 27 | 3 590 à 3 630 m |
+   | 4,8 km (Haunted Castle) | 791 | 360 M | 48 min (54) | × 40 | 4 867 à 4 991 m, 5 021 à 5 510 m après un piège |
+   | 6 km (bout) | 886 | 4,4 B | 58 min (105 ; 4,2 h avant #129) | × 60 | bout de piste 6 fois sur 6 (6 043-6 048 m) |
+   Depuis #130, le joueur simulé compte la distance du mannequin équipé : la fin de piste arrive avec moins de
+   puissance (Golden Rocket à 54 min, + 20 %).
    Avant #113, les vols montaient à ≈ 590 studs à 4,4 B puis glissaient au hasard (4,1 à 6,0 km à 4,4 B, mesures de
    #97) ; le vol plafonné (#113, section « Vol plafonné ») tient ces paliers à ± 2 % hors pièges. Effet simulé de la
    piste de 6 km : CHANCE finale × 3,3 (17 K au lieu de 5,1 K à 24 h), Divine à 7,1 h au lieu de 12,3 h.
@@ -462,6 +468,46 @@ le faisait monter toujours plus haut (≈ 590 studs à 4,4 B, carte vue de très
 - **Joueur simulé recalé** : distance = premier contact de `FlightArc.plan` + 0,4 × la glissade théorique
   (`tools/ProgressionSim.luau`). Temps rejoués avec l'économie de #15 (60 joueurs, 14 h) : achats décalés de 0 à
   0,2 h (Infinite Rocket 9,4 h au lieu de 9,6 h), bout de piste 4,2 h au lieu de 4,6 h.
+
+### Comportements sous le vol plafonné (#130, `Shared.FlightArc`)
+Mesurés après #113, le Rocket ne gagnait plus que + 1,6 % (sa poussée finissait avant la croisière, dont la fin était
+calculée sans elle), le Rubber partait au hasard (3,6 à 5,5 km à 22 M : ± 21 %, rebonds physiques) et le Glider
+variait de 4,2 à 5 km. Décision : **chaque comportement gagne une part fixe de la portée naturelle** (l'arc du Crash
+Dummy à même puissance et jauge), quelle que soit la puissance, sans passer le plafond :
+- `ThrowDummies` donne la part (`glide`, `thrust`, `bounce`) ; `FlightArc.plan` en tire les réglages du vol : poussée
+  (studs/s²) qui ajoute la part au point de chute de l'arc naturel, fin de croisière reculée d'autant ; vitesse de
+  descente tenue du planeur qui allonge sa descente de la part × durée de l'arc ; élan des rebonds du caoutchouc qui
+  ajoute la part à l'arrêt (glissade plus courte comprise).
+- **Rocket** (+ 20 %) : pousse à plat pendant 2 s (montée et début de croisière), vitesse ≈ + 25 %, croisière plus
+  longue au plafond. **Glider** (+ 20 %) : quitte le plafond au même point que le Crash Dummy et redescend à
+  ≈ 40 studs/s (≈ 2,5 s de descente au lieu de 1,3). **Rubber** (+ 15 %) : 4 rebonds de hauteur fixe (≈ 35, 13, 4,5
+  et 1,7 studs), élan rétabli à chaque rebond, pas de frein au sol entre deux rebonds ; rebond reconnu sur la chute la
+  plus forte depuis le précédent (les membres touchent souvent avant le torse), au plus les 4 du plan (les petits
+  rebonds physiques ne comptent pas), au sol seulement (torse sous 6 studs), jamais plus haut que la
+  chute. Pièges : pendant leur poussée (0,5 s), ni rebond réglé ni portance ; après un piège, le Rubber rebondit
+  librement (physique).
+- Sol plat (test Lune, de 200 à 4,4 B de puissance) : Rubber + 14,5 %, Glider + 18,5 %, Rocket + 22,5 % à l'arrêt
+  (part de la portée naturelle, plus la glissade du Rocket plus rapide).
+- **Mesures** (Studio, `DebugLaunchBots` avec `DebugBotsPower` et `DebugBotsDummy`, jauge pleine, 3 couloirs ; 6 à 9 vols
+  par mannequin à 22 M et 4,4 B, 3 à 6 à 360 M et 1 M ; distance finale, durée du vol ; Rubber, Glider et Rocket
+  revérifiés sur le code final) :
+  | Puissance | Crash | Rubber avant → après | Glider avant → après | Rocket avant → après |
+  |---|---|---|---|---|
+  | 22 M | 3 584-3 624 m, 7,5-8,5 s | 3 611-5 537 m (± 21 %) → **4 186-4 304 m (+ 17 %)**, un vol à 3 872 m (dispersion ± 5 % avec lui), 2 à 4 rebonds, 10,5-11,9 s | 4 212-4 989 m (± 8 %) → **4 310-4 577 m (+ 24 %, ± 3 %)**, 8,9-9,7 s | 3 650-3 669 m (+ 1,6 %) → **4 320-4 694 m (+ 23 %, ± 4 %)**, 7,6-9 s ; 5 501 m après un piège |
+  | 360 M | 4 834-4 907 m | → 5 201-5 819 m (+ 7 à + 20 %) | → bout de piste (6 037 m) | → 5 751-5 770 m (+ 19 %) |
+  | 1 M | 2 451-2 500 m | → 3 300 m (piège vers 2,9 km, 3 sur 3) | → 3 007 m (+ 21 %), 2 vols sur 3 projetés par un piège | → 3 018 m (+ 22 %), idem |
+  | 4,4 B | 6 044-6 049 m, 9,8-15,4 s | bout de piste avant comme après, 13,1-16 s | bout de piste, 9,1-11,5 s | bout de piste, 7,8-7,9 s |
+  Premier contact au point du plan (Glider 4 192 m, Rocket 4 197 m, prévus 4 211 m ; Crash et Rubber 3 506-3 523 m,
+  prévus 3 508 m, à 22 M). Glissade après le premier contact à 22 M : Crash 61-104 m (un vol à 249 m), Rubber 664-798 m
+  (rebonds compris), Glider 118-385 m, Rocket 124-497 m (vitesse plus haute). Moyennes à 22 M dans la cible
+  (+ 17 à + 24 %), vols isolés jusqu'à + 28 %. Sommet 100 studs pour tous (101 au plus : l'asservissement de
+  croisière dépasse d'un stud, comme pour le Crash Dummy de #113) ; vol le plus long 16 s (Rubber à 4,4 B) : `MAX_FLIGHT_TIME` (20 s) suffit. À 4,4 B le Crash
+  Dummy finit déjà contre la paroi : l'avantage s'y lit en CHANCE de zone avant le bout de piste, pas à l'arrivée.
+- **Joueur simulé** : distance et CHANCE du mannequin équipé (`ProgressionSim.distanceFor` avec son comportement,
+  glissade à la vitesse d'arrivée du plan). Rejoué sur l'économie de #129 (60 joueurs, 14 h) : achats avancés de 0 à
+  5 min la première heure (Golden Rocket 54 min au lieu de 59), de 10 à 25 min ensuite (Magma Glass 80 min au lieu de
+  91, Infinite Rocket 8,8 h au lieu de 9,2 h), renaissance 10,6 h au lieu de 11,1 h, saut le plus fort inchangé
+  (× 1,67), bout de piste 58 min au lieu de 105.
 
 ### Renaissance (#108, `Shared.Rebirth`)
 Le levier après tout le catalogue d'achats (≈ 11,1 h simulées depuis #129 ; 9,6 h avant), comme la

@@ -9,8 +9,9 @@ local ProgressionSim = {}
 
 ProgressionSim.THROW_TIME = 15 -- lancer, vol, tirage et retour (s ; 15 s mesurés sur Throw a Seed)
 ProgressionSim.TRAIN_TIME = 15 -- entraînement entre deux lancers (s)
--- Distance (m) : premier contact au sol prévu par Shared.FlightArc (main à ORIGIN_HEIGHT au-dessus de la piste), plus
--- SLIDE_SHARE de la glissade freinée théorique (0,3 à 0,75 mesuré par #113 : obstacles et rebonds au point de chute)
+-- Distance (m) : premier contact au sol prévu par Shared.FlightArc (main à ORIGIN_HEIGHT au-dessus de la piste) avec
+-- le comportement du mannequin lancé (poussée, descente lente, rebonds : #130), plus SLIDE_SHARE de la glissade freinée
+-- théorique (0,3 à 0,75 mesuré par #113 : obstacles et rebonds au point de chute)
 ProgressionSim.ORIGIN_HEIGHT = 5.3
 ProgressionSim.SLIDE_SHARE = 0.4
 -- Bonus des os et objets (part ajoutée à la CHANCE) : ≈ +30 % au départ, ≈ +55 % à 10,5 K de puissance (mesures #14)
@@ -64,21 +65,28 @@ function ProgressionSim.modules(loader: any): { [string]: any }
 	return modules
 end
 
--- Cette méthode permet d'estimer la distance d'un lancer jauge pleine lorsque le joueur a `power` de Throw Power.
-function ProgressionSim.distanceFor(m: { [string]: any }, power: number): number
+-- Cette méthode permet d'estimer la distance d'un lancer jauge pleine lorsque le joueur a `power` de Throw Power et
+-- lance le mannequin `thrown` (Shared.ThrowDummies ; le Crash Dummy, sans comportement, par défaut).
+function ProgressionSim.distanceFor(m: { [string]: any }, power: number, thrown: any?): number
 	local speed = m.Economy.launchSpeed(power)
 	local pitch = math.rad(m.GameConfig.LAUNCH_PITCH_DEG)
 	local forward = speed * math.cos(pitch)
-	local plan = m.FlightArc.plan(forward, speed * math.sin(pitch), ProgressionSim.ORIGIN_HEIGHT, m.GameConfig.GRAVITY)
-	local slide = ProgressionSim.SLIDE_SHARE * m.FlightArc.slide(forward)
-	return math.min(plan.range + slide, m.GameConfig.COURSE_LENGTH)
+	local plan = m.FlightArc.plan(
+		forward,
+		speed * math.sin(pitch),
+		ProgressionSim.ORIGIN_HEIGHT,
+		m.GameConfig.GRAVITY,
+		thrown or m.ThrowDummies.get(1)
+	)
+	local slide = ProgressionSim.SLIDE_SHARE * m.FlightArc.slide(plan.landingSpeed)
+	return math.min(plan.reach + slide, m.GameConfig.COURSE_LENGTH)
 end
 
--- Cette méthode permet d'estimer la CHANCE d'un lancer lorsque le joueur a `power` et lance un mannequin de chance
--- `luck` (renaissances non comprises).
-function ProgressionSim.chanceFor(m: { [string]: any }, power: number, luck: number): number
+-- Cette méthode permet d'estimer la CHANCE d'un lancer lorsque le joueur a `power` et lance le mannequin `thrown`
+-- (chance et comportement ; renaissances non comprises).
+function ProgressionSim.chanceFor(m: { [string]: any }, power: number, thrown: any): number
 	local bonus = ProgressionSim.BONUS_BASE + ProgressionSim.BONUS_PER_LOG * math.log(math.max(power, 10) / 10)
-	return m.Economy.zoneChance(ProgressionSim.distanceFor(m, power)) * (1 + bonus) * luck
+	return m.Economy.zoneChance(ProgressionSim.distanceFor(m, power, thrown)) * (1 + bonus) * thrown.luck
 end
 
 -- Cette méthode permet de simuler un joueur (graine `seed`) pendant `seconds` s lorsque l'on estime la courbe de
@@ -243,7 +251,7 @@ function ProgressionSim.simulate(m: { [string]: any }, seed: number, seconds: nu
 		if draws == 0 then
 			entry = { id = Collection.STARTER, size = 1 }
 		else
-			local chance = ProgressionSim.chanceFor(m, power, ThrowDummies.get(thrown).luck)
+			local chance = ProgressionSim.chanceFor(m, power, ThrowDummies.get(thrown))
 			entry = Collection.draw(chance * Rebirth.luck(rebirths), roll)
 		end
 		draws += 1
@@ -268,7 +276,7 @@ function ProgressionSim.simulate(m: { [string]: any }, seed: number, seconds: nu
 			end
 		end
 		-- Repères de la piste prolongée (#97) : fin de la Moon Base, Neon City, Haunted Castle, bout de piste
-		local distance = ProgressionSim.distanceFor(m, power)
+		local distance = ProgressionSim.distanceFor(m, power, ThrowDummies.get(thrown))
 		for _, meters in { 2400, 3600, 4800 } do
 			if distance >= meters then
 				mark(string.format("track:%.1fkm", meters / 1000))
@@ -291,7 +299,7 @@ function ProgressionSim.simulate(m: { [string]: any }, seed: number, seconds: nu
 		snapshots = snapshots,
 		minutes = minutes,
 		final = {
-			chance = ProgressionSim.chanceFor(m, power, ThrowDummies.get(thrown).luck) * Rebirth.luck(rebirths),
+			chance = ProgressionSim.chanceFor(m, power, ThrowDummies.get(thrown)) * Rebirth.luck(rebirths),
 			rebirths = rebirths,
 			income = income(),
 			power = power,
