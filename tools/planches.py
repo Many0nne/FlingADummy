@@ -107,6 +107,12 @@ def cmd_grab(args, folder, work):
     if not files:
         sys.exit(f"aucune capture dans {folder}")
     os.makedirs(work, exist_ok=True)
+    sheet = next(s for s in sheets.values() if any(x["name"] == shot for x in s["shots"]))
+    others = [os.path.join(work, x["name"] + ".png") for x in sheet["shots"] if x["name"] != shot]
+    sizes = {Image.open(p).size for p in others if os.path.isfile(p)}
+    if sizes and Image.open(files[-1]).size not in sizes:
+        sys.exit(f"capture de taille {Image.open(files[-1]).size}, les autres prises de la planche : {sizes} "
+                 "(fenetre de Studio redimensionnee ?)")
     shutil.copy2(files[-1], os.path.join(work, shot + ".png"))
     print(f"{shot} <- {os.path.basename(files[-1])}")
 
@@ -163,6 +169,8 @@ def centered(draw, x, width, y, text, fnt, fill):
 
 def captured_on(sheet, work):
     """Cette methode permet de donner la date de la capture la plus recente d'une planche lorsque l'on l'assemble."""
+    for shot in sheet["shots"]:
+        shot_image(work, shot["name"])  # capture manquante : message clair avant la lecture des dates
     newest = max(os.path.getmtime(os.path.join(work, shot["name"] + ".png")) for shot in sheet["shots"])
     return datetime.date.fromtimestamp(newest).isoformat()
 

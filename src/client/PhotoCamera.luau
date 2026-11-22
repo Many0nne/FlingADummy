@@ -91,6 +91,9 @@ end
 
 -- Cette méthode permet de rendre la caméra au jeu, l'interface et l'avatar lorsque la séance se termine.
 local function release()
+	if savedFov == nil and coreSaved == nil then
+		return -- pas de séance en cours : la caméra du jeu (vol, cinématique) n'est pas touchée
+	end
 	local camera = Workspace.CurrentCamera
 	camera.CameraType = Enum.CameraType.Custom
 	if savedFov then
