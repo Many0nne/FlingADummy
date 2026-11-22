@@ -966,8 +966,9 @@ local function baseFence(folder: Instance, slot: Slot, fence: BaseLook.Fence): (
 end
 
 -- Cette méthode permet de garder l'ancien habillage d'une base quelques secondes hors du monde (ReplicatedStorage), où
--- chaque client le reprend pour l'animation de construction (Client.BaseFx), lorsque la base monte de palier.
-local function keepPrevious(base: Base, old: Folder)
+-- chaque client le reprend pour l'animation de construction (Client.BaseFx), lorsque la base monte de palier ; renvoie
+-- false si celui d'une montée de la même image est gardé à sa place.
+local function keepPrevious(base: Base, old: Folder): boolean
 	local store = ReplicatedStorage:FindFirstChild(BaseUpgrade.STORE)
 	if not store then
 		store = Instance.new("Folder")
@@ -978,7 +979,7 @@ local function keepPrevious(base: Base, old: Folder)
 	if earlier and earlier:GetAttribute("KeptAt") == time() then
 		-- Deux montées dans la même image : les clients n'ont vu que le premier habillage, gardé
 		old:Destroy()
-		return
+		return false
 	end
 	if earlier then
 		earlier:Destroy()
@@ -991,6 +992,7 @@ local function keepPrevious(base: Base, old: Folder)
 			old:Destroy()
 		end
 	end)
+	return true
 end
 
 -- Cette méthode permet d'habiller une base au palier `tier` (`upgrade` : animée par les clients, Shared.BaseUpgrade)
@@ -1066,9 +1068,11 @@ function CourseBuilder.styleBase(slot: Slot, tier: number, upgrade: boolean?): b
 	end
 	folder.Parent = base.model
 	if upgrade then
-		keepPrevious(base, old)
-		-- Posés après l'habillage : un client qui les reçoit a déjà le nouveau et l'ancien
-		base.model:SetAttribute(BaseUpgrade.FROM_PLOT_ATTRIBUTE, oldPlot)
+		-- Posés après l'habillage : un client qui les reçoit a déjà le nouveau et l'ancien (sol de départ : celui que les
+		-- clients ont vu, gardé si une autre montée a eu lieu dans la même image)
+		if keepPrevious(base, old) then
+			base.model:SetAttribute(BaseUpgrade.FROM_PLOT_ATTRIBUTE, oldPlot)
+		end
 		base.model:SetAttribute(BaseUpgrade.AT_ATTRIBUTE, Workspace:GetServerTimeNow())
 	else
 		old:Destroy()

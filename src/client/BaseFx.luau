@@ -26,8 +26,16 @@ local SOUND_LEVEL = 0.45 -- volume des chocs (part du volume de Shared.Sounds.Br
 local DUST_COLOR = Color3.fromRGB(225, 205, 170)
 
 -- Pièce d'un habillage, retenue telle que le serveur l'a posée (repère, collision) pour la rendre intacte à la fin
-type PartState = { part: BasePart, cframe: CFrame, collide: boolean }
-type Piece = { parts: { PartState }, emitters: { ParticleEmitter }, bottom: Vector3, alpha: number, done: boolean }
+type PartState = { part: BasePart, cframe: CFrame, collide: boolean, query: boolean }
+-- `visible` : au moins un bloc qui se voit (la zone invisible des paillettes ne fait ni poussière ni bruit)
+type Piece = {
+	parts: { PartState },
+	emitters: { ParticleEmitter },
+	bottom: Vector3,
+	visible: boolean,
+	alpha: number,
+	done: boolean,
+}
 
 -- Animation en cours sur une base
 type Run = {
@@ -67,9 +75,14 @@ local function collect(look: Instance): ({ Piece }, { BaseUpgrade.Piece })
 		local candidates = child:GetDescendants()
 		table.insert(candidates, child)
 		local sum, low = Vector3.zero, math.huge
+		local visible = false
 		for _, item in candidates do
 			if item:IsA("BasePart") then
-				table.insert(parts, { part = item, cframe = item.CFrame, collide = item.CanCollide })
+				visible = visible or item.Transparency < 1
+				table.insert(
+					parts,
+					{ part = item, cframe = item.CFrame, collide = item.CanCollide, query = item.CanQuery }
+				)
 				sum += item.Position
 				low = math.min(low, item.Position.Y - item.Size.Y / 2)
 			elseif item:IsA("ParticleEmitter") and item.Enabled then
@@ -82,6 +95,7 @@ local function collect(look: Instance): ({ Piece }, { BaseUpgrade.Piece })
 				parts = parts,
 				emitters = emitters,
 				bottom = Vector3.new(center.X, low, center.Z),
+				visible = visible,
 				alpha = -1,
 				done = false,
 			})
@@ -102,6 +116,7 @@ local function settle(piece: Piece)
 	for _, state in piece.parts do
 		state.part.CFrame = state.cframe
 		state.part.CanCollide = state.collide
+		state.part.CanQuery = state.query
 		state.part.LocalTransparencyModifier = 0
 	end
 	for _, emitter in piece.emitters do
@@ -210,7 +225,7 @@ local function cloneOld(base: Model): (Folder?, { PartState })
 			item.CanCollide = false
 			item.CanQuery = false
 			item.CanTouch = false
-			table.insert(parts, { part = item, cframe = item.CFrame, collide = false })
+			table.insert(parts, { part = item, cframe = item.CFrame, collide = false, query = false })
 		elseif item:IsA("ParticleEmitter") then
 			item.Enabled = false
 		end
@@ -219,12 +234,22 @@ local function cloneOld(base: Model): (Folder?, { PartState })
 	return old, parts
 end
 
+-- Cette méthode permet de faire jaillir les confettis d'une base lorsque son animation de construction finit ou n'est
+-- pas jouée (changement reçu en retard, habillage absent).
+local function celebrateNow(base: Model)
+	local burst = base:FindFirstChild("UpgradeBurst")
+	if burst and burst:IsA("BasePart") then
+		HubShops.celebrate(burst)
+	end
+end
+
 -- Cette méthode permet de démarrer l'animation de construction d'une base lorsque le serveur signale un changement de
--- palier récent (attribut UpgradeAt) ; trop ancien, il n'y a rien à faire (l'état final est déjà là).
+-- palier récent (attribut UpgradeAt) ; reçu trop tard : confettis seuls, l'état final est déjà là.
 local function start(base: Model)
 	local at = base:GetAttribute(BaseUpgrade.AT_ATTRIBUTE)
 	local now = Workspace:GetServerTimeNow()
 	if not BaseUpgrade.isFresh(at, now) then
+		celebrateNow(base)
 		return
 	end
 	local previous = runs[base]
@@ -233,6 +258,7 @@ local function start(base: Model)
 	end
 	local look = base:FindFirstChild("Look")
 	if not look then
+		celebrateNow(base)
 		return
 	end
 	local plot = base:FindFirstChild("Plot") :: BasePart?
@@ -263,11 +289,12 @@ local function start(base: Model)
 		emitter = emitter,
 		lastSound = -math.huge,
 	}
-	-- Nouvelles pièces cachées et sans collision jusqu'à leur arrivée, sol remis à l'ancienne couleur
+	-- Nouvelles pièces cachées, sans collision ni rayons (caméra) jusqu'à leur arrivée, sol remis à l'ancienne couleur
 	for _, piece in pieces do
 		for _, state in piece.parts do
 			state.part.LocalTransparencyModifier = 1
 			state.part.CanCollide = false
+			state.part.CanQuery = false
 		end
 		for _, sparkle in piece.emitters do
 			sparkle.Enabled = false
@@ -314,7 +341,7 @@ local function step(run: Run, now: number)
 				pose(piece, 0, 1 - alpha)
 			else
 				pose(piece, BaseUpgrade.dropOffset(alpha), 0)
-				if BaseUpgrade.landed(piece.alpha, alpha) then
+				if piece.visible and BaseUpgrade.landed(piece.alpha, alpha) then
 					impact(run, piece, now)
 				end
 			end
@@ -327,10 +354,7 @@ local function step(run: Run, now: number)
 	end
 	if t >= plan.finish then
 		stop(run)
-		local burst = run.base:FindFirstChild("UpgradeBurst")
-		if burst and burst:IsA("BasePart") then
-			HubShops.celebrate(burst)
-		end
+		celebrateNow(run.base)
 		if RunService:IsStudio() then
 			print(
 				string.format(
