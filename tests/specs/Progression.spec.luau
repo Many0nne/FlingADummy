@@ -62,7 +62,7 @@ return function(T, Loader, Lib)
 			end
 		end)
 		T.it(
-			"premier achat en moins d'une minute, puis un achat toutes les 7 min au plus la première heure",
+			"premier achat en moins d'une minute, puis un achat toutes les 6 min au plus la première heure",
 			function()
 				T.expect(steps[1].t < 60, "premier achat à " .. steps[1].t .. " s")
 				local count = 0
@@ -70,7 +70,7 @@ return function(T, Loader, Lib)
 					if steps[k].t <= 3600 then
 						count += 1
 						local gap = steps[k].t - steps[k - 1].t
-						T.expect(gap <= 420, string.format("achat %d : %d s après le précédent", k, gap))
+						T.expect(gap <= 360, string.format("achat %d : %d s après le précédent", k, gap))
 					end
 				end
 				T.expect(count >= 12, count .. " achats la première heure")

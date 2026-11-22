@@ -793,7 +793,7 @@
             {
               "key": "amber_glider",
               "lines": [
-                "$120M",
+                "$110M",
                 "LUCK x8"
               ],
               "look": "a55901bef5",
@@ -802,7 +802,7 @@
             {
               "key": "golden_rocket",
               "lines": [
-                "$180M",
+                "$150M",
                 "LUCK x10"
               ],
               "look": "c261727128",
