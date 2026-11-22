@@ -61,6 +61,7 @@ function Planches.build(loader: any): ({ [string]: any }, { [string]: number })
 	local Rarity = loader:require("src/shared/Rarity")
 	local ThrowDummies = loader:require("src/shared/ThrowDummies")
 	local Training = loader:require("src/shared/Training")
+	local TrainingLook = loader:require("src/shared/TrainingLook")
 
 	-- Cette méthode permet de décrire une case (texte de la planche et empreinte de l'apparence) lorsque l'on parcourt
 	-- une prise de vue.
@@ -103,10 +104,15 @@ function Planches.build(loader: any): ({ [string]: any }, { [string]: number })
 			}
 		end
 		local gear = Training.GEARS[item.key]
+		-- Mannequins du râtelier : look du palier (Shared.TrainingLook, #118) et définitions de leurs pièces ajoutées
 		local rack = {}
 		for _, tier in BaseLook.rackTiers(item.key) do
-			local hung = Training.GEARS[tier]
-			table.insert(rack, { color = hung.color, material = hung.material, scale = hung.scale })
+			local variant = TrainingLook.variant(tier, "rack")
+			local addons = {}
+			for _, name in variant.accessories or {} do
+				addons[name] = DummyModels.ADDONS[name]
+			end
+			table.insert(rack, { variant = variant, addons = addons })
 		end
 		return {
 			key = item.key,

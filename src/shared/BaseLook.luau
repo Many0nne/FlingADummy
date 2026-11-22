@@ -107,17 +107,56 @@ BaseLook.BASE_TIERS = {
 	{ name = "Golden", fence = "gold", plot = nil, lanterns = 6, flowers = true, flags = true, arch = true },
 } :: { BaseTier }
 
--- Habillage de l'appareil d'entraînement : planches du podium (deux tons), montants et marches du râtelier, liseré
--- lumineux (néon, nil : sans), étincelles autour du râtelier
+-- Habillage de l'appareil d'entraînement : planches du podium (deux tons), montants et marches du râtelier, socle (nil :
+-- pierre claire), couleur des pièces ajoutées (`accent`), liseré lumineux (néon, nil : sans), étincelles autour du
+-- râtelier, pièces ajoutées du palier et de tous les précédents (`pieces`, noms de STATION_PIECES)
 export type StationLook = {
 	gear: string,
 	plank: Color3,
 	plankAlt: Color3,
 	post: Color3,
 	postDark: Color3,
+	base: Color3?,
+	accent: Color3,
 	glow: Color3?,
 	sparkle: boolean,
+	pieces: { [string]: boolean },
 }
+
+-- Pièces ajoutées à l'appareil (#118, retour de la sprint review 2 : « pas juste changer de couleur ») : chaque palier
+-- ajoute la sienne à celles des précédents, la plus riche au dernier (palier = rang dans la liste + 1, le bois n'a rien).
+-- Pièces en métal, en or ou en pierre à leur couleur ; cristaux, néons, gemmes, éclairs et halo à la couleur du palier.
+BaseLook.STATION_PIECES = {
+	"plinths", -- Stone : socles de pierre au pied des montants
+	"rivets", -- Iron : frettes et rivets de fer sur les montants
+	"finials", -- Gold : pommeaux dorés sur les montants, bandeau doré sur la traverse
+	"crystals", -- Diamond : grappes de cristaux sur le podium
+	"tubes", -- Neon : tubes néon sur les montants, liseré néon (bordure du podium, sous la traverse)
+	"orbit", -- Cosmic : planète annelée et étoiles au-dessus de la traverse
+	"gems", -- Ruby : gemmes serties dans la traverse et les socles
+	"crest", -- Emerald : blason à gemme au centre de la traverse
+	"arcs", -- Plasma : éclairs entre pommeaux et étoiles, lumière
+	"halo", -- Omega : halo derrière la planète, pointes de couronne sur les montants
+	"aura", -- Infinite : anneau lumineux au sol, colonnes de lumière aux coins
+}
+
+-- Tons de l'appareil par palier : couleur des pièces ajoutées, et tons qui remplacent ceux dérivés de la couleur du
+-- mannequin quand ils se confondraient (Diamond et Infinite clairs comme la pierre de loin, #118)
+-- stylua: ignore
+BaseLook.STATION_TONES = {
+	{ accent = rgb(120, 75, 40) },                                                -- Wooden
+	{ accent = rgb(120, 122, 132) },                                              -- Stone
+	{ accent = rgb(190, 195, 205) },                                              -- Iron
+	{ accent = rgb(255, 215, 60),  plankAlt = rgb(255, 165, 25) },                -- Gold
+	{ accent = rgb(140, 245, 255), plank = rgb(60, 190, 255), plankAlt = rgb(150, 235, 255), base = rgb(25, 90, 190) }, -- Diamond
+	{ accent = rgb(255, 95, 225) },                                               -- Neon
+	{ accent = rgb(200, 150, 255) },                                              -- Cosmic
+	{ accent = rgb(255, 60, 95) },                                                -- Ruby
+	{ accent = rgb(70, 255, 160) },                                               -- Emerald
+	{ accent = rgb(90, 225, 255) },                                               -- Plasma
+	{ accent = rgb(255, 45, 35),   base = rgb(70, 12, 18) },                      -- Omega
+	{ accent = rgb(255, 130, 20),  plank = rgb(255, 245, 230), plankAlt = rgb(255, 190, 55), post = rgb(255, 195, 60), postDark = rgb(235, 125, 30), base = rgb(255, 175, 40) }, -- Infinite
+} :: { { [string]: Color3 } }
 
 -- Cette méthode permet de donner une teinte plus sombre (facteur < 1) ou plus claire (> 1) d'une couleur lorsque l'on
 -- dérive les tons de l'appareil d'entraînement de la couleur de l'équipement.
@@ -139,18 +178,27 @@ function BaseLook.base(tier: number): (BaseTier, Fence)
 end
 
 -- Cette méthode permet de donner l'habillage de l'appareil d'entraînement lorsque son propriétaire possède le Training
--- Gear du palier `tier` (couleur du mannequin acheté ; liseré néon dès le Neon, étincelles dès le Diamond).
+-- Gear du palier `tier` (couleur du mannequin acheté, pièces ajoutées des paliers atteints ; liseré néon dès le Neon,
+-- étincelles dès le Diamond).
 function BaseLook.station(tier: number): StationLook
 	local clamped = math.clamp(tier, 1, #Training.GEARS)
 	local gear = Training.GEARS[clamped]
+	local tones = BaseLook.STATION_TONES[clamped]
+	local pieces = {}
+	for index, name in BaseLook.STATION_PIECES do
+		pieces[name] = index < clamped
+	end
 	return {
 		gear = gear.name,
-		plank = gear.color,
-		plankAlt = shade(gear.color, 1.18),
-		post = shade(gear.color, 0.92),
-		postDark = shade(gear.color, 0.7),
-		glow = if clamped >= 6 then shade(gear.color, 1.3) else nil,
+		plank = tones.plank or gear.color,
+		plankAlt = tones.plankAlt or shade(gear.color, 1.18),
+		post = tones.post or shade(gear.color, 0.92),
+		postDark = tones.postDark or shade(gear.color, 0.7),
+		base = tones.base,
+		accent = tones.accent,
+		glow = if pieces.tubes then tones.accent else nil,
 		sparkle = clamped >= 5,
+		pieces = pieces,
 	}
 end
 

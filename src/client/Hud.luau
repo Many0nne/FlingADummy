@@ -18,6 +18,7 @@ local Rarity = require(Shared:WaitForChild("Rarity"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local ThrowDummies = require(Shared:WaitForChild("ThrowDummies"))
 local Training = require(Shared:WaitForChild("Training"))
+local TrainingLook = require(Shared:WaitForChild("TrainingLook"))
 local Tutorial = require(Shared:WaitForChild("Tutorial"))
 local UIMotion = require(Shared:WaitForChild("UIMotion"))
 local Overlay = require(Shared:WaitForChild("Overlay"))
@@ -63,7 +64,8 @@ local musicOff: Frame -- barre rouge en travers du bouton musique quand la musiq
 local windows: { [string]: Frame } = {}
 local gearCards: { UIKit.Card } = {}
 local gearRow: ScrollingFrame? -- rangée des cartes d'équipement (défile jusqu'au prochain achat à l'ouverture)
-local modelsMeshed: boolean? = nil -- forme (maillée ou blocs) des rendus 3D des cartes déjà construits
+-- Étape des gabarits (DummyShape.meshStage, + 10 en mouvement réduit) des rendus 3D des cartes déjà construits
+local modelsStage: number? = nil
 local trainBar: Frame
 local leftColumn: Frame -- colonne Index / Shop / Rebirth, centrée verticalement
 local BUTTON_GAP = 22 -- écart vertical entre deux boutons de la colonne de gauche
@@ -102,6 +104,7 @@ type Offer = {
 local offer: Offer
 local offerKind: string? = nil -- "Gear" | "Dummy"
 local offerTier: number? = nil
+local offerStage = 0 -- étape des gabarits (DummyShape.meshStage) du rendu 3D de l'offre affichée
 local soundedOffer: string? = nil
 local dismissedOffers: { [string]: { [number]: boolean } } = { Gear = {}, Dummy = {} }
 local OFFER_SCALE = 0.8 -- échelle du popup d'offre (440 × 136 dessiné, 352 × 109 affiché à 720 px de haut)
@@ -473,24 +476,28 @@ local function buildWindows()
 	end
 end
 
--- Cette méthode permet de construire le rendu 3D d'un équipement (néon à la place du verre et du champ de force, qui
--- ne se rendent pas en ViewportFrame) lorsqu'une carte ou le popup « NEW GEAR! » l'affichent.
+-- Cette méthode permet de construire le rendu 3D d'un équipement (look du palier, Shared.TrainingLook ; néon à la place
+-- du verre et du champ de force, qui ne se rendent pas en ViewportFrame) lorsqu'une carte ou le popup « NEW GEAR! »
+-- l'affichent ; pièces ajoutées figées (anneaux, lunes) en mouvement réduit.
 local function gearModel(tier: number): Model
-	local gear = Training.GEARS[tier]
-	local material = if gear.material == Enum.Material.Glass or gear.material == Enum.Material.ForceField
-		then Enum.Material.Neon
-		else gear.material
-	return DummyShape.buildVisual(1, { color = gear.color, material = material })
+	local model = DummyShape.buildVisual(1, TrainingLook.variant(tier, "viewport") :: DummyShape.Variant)
+	DummyShape.viewportSafe(model)
+	if UIKit.reducedMotion() then
+		for _, part in model:GetChildren() do
+			part:RemoveTag(DummyShape.FX_TAG)
+		end
+	end
+	return model
 end
 
 -- Cette méthode permet de (re)construire les rendus 3D des cartes (mannequins soulevés) lorsque une
 -- fenêtre s'ouvre pour la première fois ou que les maillages publiés viennent d'arriver.
 local function buildModels()
-	local meshed = DummyShape.isMeshed()
-	if modelsMeshed == meshed then
+	local stage = DummyShape.meshStage() + (if UIKit.reducedMotion() then 10 else 0)
+	if modelsStage == stage then
 		return
 	end
-	modelsMeshed = meshed
+	modelsStage = stage
 	for tier, card in gearCards do
 		UIKit.showModel(card.viewport, gearModel(tier))
 	end
@@ -609,10 +616,16 @@ local function refreshOffer(money: number, cost: number?)
 			kind = if tier then "Dummy" else nil
 		end
 	end
+	local stage = DummyShape.meshStage()
 	if kind == offerKind and tier == offerTier then
+		if kind and tier and stage ~= offerStage then
+			-- Maillages arrivés pendant l'offre : rendu 3D refait avec les pièces ajoutées du look (#118), sans son
+			offerStage = stage
+			dressOffer(kind, tier)
+		end
 		return
 	end
-	offerKind, offerTier = kind, tier
+	offerKind, offerTier, offerStage = kind, tier, stage
 	if not kind or not tier then
 		UIKit.closeWindow(offer.frame, player:GetAttribute("LaneState") ~= "Ready")
 		return

@@ -74,7 +74,8 @@ Training.GEARS = {
 		gain = 35000,
 		cost = 4500000,
 		color = Color3.fromRGB(110, 60, 255),
-		material = Enum.Material.ForceField,
+		-- Foil, plus le champ de force : invisible au râtelier et en fenêtre (#118)
+		material = Enum.Material.Foil,
 		scale = 0.9,
 	},
 } :: { Gear }
@@ -82,15 +83,17 @@ Training.GEARS = {
 -- Suite des équipements (#94) : gain × GAIN_STEP par palier depuis Cosmic, couleur et matériau d'une palette de
 -- Shared.DummyFamilies, à la taille de Cosmic (0,9 : plus grand, le mannequin soulevé traverserait la tête,
 -- AnimationData.TRAIN) ; prix calés par #15, Plasma recalé par #133 (le dernier, condition de la renaissance, vient
--- après la plupart des mannequins à lancer : courbe dans docs/design.md, section « Progression longue »).
+-- après la plupart des mannequins à lancer : courbe dans docs/design.md, section « Progression longue »). `color`
+-- remplace la couleur de la palette : le Plasma passe au bleu électrique, le magenta de sa palette le confondait avec
+-- le Neon (#118).
 -- stylua: ignore
 Training.EXTENDED = {
 	{ palette = "ruby",     cost = 20e6 },
 	{ palette = "emerald",  cost = 50e6 },
-	{ palette = "plasma",   cost = 200e6 },
+	{ palette = "plasma",   cost = 200e6, color = Color3.fromRGB(40, 110, 255) },
 	{ palette = "omega",    cost = 1.8e9 },
 	{ palette = "infinite", cost = 50e9 },
-}
+} :: { { palette: string, cost: number, color: Color3? } }
 Training.GAIN_STEP = 4
 
 do
@@ -104,7 +107,7 @@ do
 			name = palette.name .. " Dummy",
 			gain = gain,
 			cost = spec.cost,
-			color = palette.body,
+			color = spec.color or palette.body,
 			material = palette.material or Enum.Material.SmoothPlastic,
 			scale = scale,
 		})

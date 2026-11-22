@@ -15,12 +15,13 @@ local DummyShape = require(ReplicatedStorage.Shared.DummyShape)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local Objectives = require(ReplicatedStorage.Shared.Objectives)
 local ThrowDummies = require(ReplicatedStorage.Shared.ThrowDummies)
-local Training = require(ReplicatedStorage.Shared.Training)
+local TrainingLook = require(ReplicatedStorage.Shared.TrainingLook)
 local Zones = require(ReplicatedStorage.Shared.Zones)
 local Build = require(script.Parent.Build)
 local CollisionGroups = require(script.Parent.CollisionGroups)
 local Obstacles = require(script.Parent.Obstacles)
 local Props = require(script.Parent.Props)
+local StationPieces = require(script.Parent.StationPieces)
 
 type Zone = Zones.Zone
 
@@ -34,6 +35,7 @@ local STATION_HEIGHT = 1.4 -- hauteur du podium de l'appareil d'entraînement
 local STATION_SPOT = 0.6 -- avance de la place de l'avatar devant le centre du podium (le râtelier est derrière)
 local RACK_SCALE = 0.5 -- taille des mannequins suspendus au râtelier (sans se toucher)
 local RACK_HEIGHT = 7.2 -- hauteur des montants du râtelier au-dessus du podium
+local RACK_POST_X = 3.9 -- écart des montants du râtelier à l'axe du podium
 local RACK_ROPE = 0.7 -- longueur de la corde qui suspend chaque mannequin du râtelier
 local BAND_TILE = 4 -- côté des carreaux de la bande de lancer (studs)
 local BARRIER_HEIGHT = 120 -- barrière des avatars : plus haute que les gradins et qu'un saut depuis leur sommet
@@ -53,6 +55,7 @@ local COLORS = {
 	woodLight = rgb(225, 170, 105),
 	rope = rgb(235, 215, 165),
 	metal = rgb(70, 72, 80),
+	ink = rgb(40, 38, 48),
 }
 
 local PLOT_TOP = 0.3 -- épaisseur du terrain d'une base (dessus au-dessus de la pelouse)
@@ -113,6 +116,37 @@ local CourseBuilder = {}
 local rng = Random.new(SEED)
 -- Par place : repose les mannequins de son râtelier quand les gabarits maillés arrivent
 local rackPlacers: { [number]: () -> () } = {}
+
+-- Cette méthode permet de reposer les mannequins des râteliers à chaque étape de chargement des gabarits (corps maillé,
+-- puis pièces ajoutées des looks d'entraînement, #118) lorsque le hub est construit avant eux.
+local function watchRackTemplates()
+	-- Cette méthode permet de resuspendre les mannequins de tous les râteliers lorsque une étape de chargement arrive.
+	local function replace()
+		for _, place in rackPlacers do
+			place()
+		end
+	end
+	-- Cette méthode permet de suivre les étapes du dossier des gabarits lorsqu'il est (ou vient d'être) répliqué.
+	local function watch(folder: Instance)
+		folder:GetAttributeChangedSignal("Ready"):Connect(replace)
+		folder:GetAttributeChangedSignal(DummyShape.COMPLETE):Connect(replace)
+		if folder:GetAttribute("Ready") then
+			replace()
+		end
+	end
+	local folder = ReplicatedStorage:FindFirstChild(DummyShape.TEMPLATES)
+	if folder then
+		watch(folder)
+		return
+	end
+	local connection
+	connection = ReplicatedStorage.ChildAdded:Connect(function(child)
+		if child.Name == DummyShape.TEMPLATES then
+			connection:Disconnect()
+			watch(child)
+		end
+	end)
+end
 
 -- Cette méthode permet de désigner une pièce comme cible d'objectif du HUD (réservée au joueur de la place `slot`)
 -- lorsque l'on construit son appareil d'entraînement.
@@ -442,14 +476,21 @@ local function metal(parent: Instance, props: { [string]: any }): Part
 end
 
 -- Cette méthode permet de suspendre un mannequin d'entraînement décoratif (pièces ancrées, sans collision) au râtelier
--- lorsque l'appareil est construit ; `hook` = repère au sommet de sa tête (face vers -Z).
-local function rackDummy(parent: Instance, gear: Training.Gear, hook: CFrame)
+-- lorsque l'appareil est construit ; `hook` = repère au sommet de sa tête (face vers -Z). Look du palier `tier`
+-- (Shared.TrainingLook, #118) : pièces ajoutées fixes (soudures retirées, pas d'animation), lumières sans particules.
+local function rackDummy(parent: Instance, tier: number, hook: CFrame)
 	local model = Instance.new("Model")
 	model.Name = "RackDummy"
-	local parts = DummyShape.buildPieces(model, RACK_SCALE, { color = gear.color, material = gear.material })
+	local variant = TrainingLook.variant(tier, "rack") :: DummyShape.Variant
+	local parts = DummyShape.buildPieces(model, RACK_SCALE, variant)
+	DummyShape.addAccessories(model, parts, RACK_SCALE, variant)
+	-- Sommet du mannequin, pièces ajoutées comprises (couronne, cornes) : la corde s'y accroche sans qu'elles touchent
+	-- la traverse
 	local highest = -math.huge
-	for _, part in parts do
-		highest = math.max(highest, part.Position.Y + part.Size.Y / 2)
+	for _, part in model:GetChildren() do
+		if part:IsA("BasePart") and part.Transparency < 1 then
+			highest = math.max(highest, part.Position.Y + part.Size.Y / 2)
+		end
 	end
 	-- Pas de cibles de crash-test peintes sur les blocs de repli : ce mannequin-là ne se lance pas. Maillé, il garde
 	-- visage et cibles de l'atlas (ou de sa coque sous un matériau, #126), comme tous les mannequins
@@ -458,9 +499,16 @@ local function rackDummy(parent: Instance, gear: Training.Gear, hook: CFrame)
 			gui:Destroy()
 		end
 	end
-	-- Toutes les pièces du modèle, coques des marques comprises (#126 : visage sur un matériau d'équipement)
+	-- Toutes les pièces du modèle, coques des marques et pièces ajoutées comprises (#126 : visage sur un matériau
+	-- d'équipement) : soudures retirées avant de déplacer chaque pièce, sinon elle entraînerait les autres
 	for _, part in model:GetChildren() do
 		if part:IsA("BasePart") then
+			for _, child in part:GetChildren() do
+				if child:IsA("WeldConstraint") or child:IsA("Weld") then
+					child:Destroy()
+				end
+			end
+			part:RemoveTag(DummyShape.FX_TAG)
 			part.Anchored = true
 			part.CanCollide = false
 			part.CanQuery = false
@@ -565,7 +613,8 @@ local function buildPodium(model: Model, floor: CFrame, color: Color3, look: Bas
 	local size = CourseLayout.STATION_SIZE
 	local h = STATION_HEIGHT
 	fine(model, Vector3.new(size + 0.8, 0.5, size + 0.8), floor * CFrame.new(0, 0.25, 0), color)
-	fine(model, Vector3.new(size, h - 0.9, size), floor * CFrame.new(0, 0.5 + (h - 0.9) / 2, 0), COLORS.stone)
+	local socle = look.base or COLORS.stone
+	fine(model, Vector3.new(size, h - 0.9, size), floor * CFrame.new(0, 0.5 + (h - 0.9) / 2, 0), socle)
 	if look.glow then
 		-- Liseré néon sur la bordure, autour du socle (à 0,05 stud de ses faces : pas de faces coplanaires)
 		local ring = size / 2 + 0.2
@@ -602,6 +651,15 @@ local function buildPodium(model: Model, floor: CFrame, color: Color3, look: Bas
 		Color = COLORS.pad,
 		Parent = model,
 	})
+	-- Cerne sombre sous le rond jaune : il se détache aussi des planches dorées (#118)
+	Build.decor({
+		Name = "TrainPadRim",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.12, 5.2, 5.2),
+		CFrame = top * CFrame.new(0, 0.06, -STATION_SPOT) * CFrame.Angles(0, 0, math.rad(90)),
+		Color = COLORS.ink,
+		Parent = model,
+	})
 	-- Pile de disques de fonte dans un coin, côté hub
 	for i, diameter in { 2.4, 2.1, 1.8 } do
 		metal(model, {
@@ -628,7 +686,7 @@ local function buildRack(
 	index: number
 )
 	local z = CourseLayout.STATION_SIZE / 2 - 1.2
-	local postX = 3.9
+	local postX = RACK_POST_X
 	for _, side in { -1, 1 } do
 		local x = side * postX
 		fine(model, Vector3.new(1.6, RACK_HEIGHT, 1.6), top * CFrame.new(x, RACK_HEIGHT / 2, z), look.post)
@@ -677,7 +735,7 @@ local function buildRack(
 		end
 		for i, x in { -2.1, 0, 2.1 } do
 			local hookY = barY - 0.45 - RACK_ROPE
-			rackDummy(model, Training.GEARS[rack[i]], top * CFrame.new(x, hookY, z))
+			rackDummy(model, rack[i], top * CFrame.new(x, hookY, z))
 		end
 	end
 	for _, x in { -2.1, 0, 2.1 } do
@@ -705,7 +763,19 @@ function CourseBuilder.styleStation(slot: Slot, tier: number)
 	local fresh = Instance.new("Model")
 	fresh.Name = "Look"
 	buildPodium(fresh, trainer.floor, slot.color, look)
-	buildRack(fresh, trainer.floor * CFrame.new(0, STATION_HEIGHT, 0), slot.color, look, tier, slot.index)
+	local top = trainer.floor * CFrame.new(0, STATION_HEIGHT, 0)
+	buildRack(fresh, top, slot.color, look, tier, slot.index)
+	-- Pièces de palier (#118), sur le repère du podium et du râtelier (buildRack)
+	StationPieces.build(fresh, {
+		floor = trainer.floor,
+		top = top,
+		size = CourseLayout.STATION_SIZE,
+		height = STATION_HEIGHT,
+		rackZ = CourseLayout.STATION_SIZE / 2 - 1.2,
+		postX = RACK_POST_X,
+		rackHeight = RACK_HEIGHT,
+		barY = RACK_HEIGHT - 0.9,
+	}, look)
 	fresh.Parent = trainer.model
 	trainer.look:Destroy()
 	trainer.look = fresh
@@ -1321,16 +1391,8 @@ function CourseBuilder.build(): Course
 			table.concat(zoneTimes, ", ")
 		)
 	)
-	if not DummyShape.isMeshed() then
-		local connection
-		connection = ReplicatedStorage.ChildAdded:Connect(function(child)
-			if child.Name == DummyShape.TEMPLATES and DummyShape.isMeshed() then
-				connection:Disconnect()
-				for _, place in rackPlacers do
-					place()
-				end
-			end
-		end)
+	if DummyShape.meshStage() < 2 then
+		watchRackTemplates()
 	end
 	return { slots = slots, dummies = dummies }
 end
