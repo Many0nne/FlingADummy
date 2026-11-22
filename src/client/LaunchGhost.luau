@@ -34,6 +34,7 @@ local EFFECTS = {
 
 type Pair = { source: BasePart, copy: BasePart }
 type Active = {
+	model: Model, -- copie répliquée affichée à travers la copie locale
 	torso: BasePart,
 	copy: Model,
 	pairs: { Pair },
@@ -42,6 +43,7 @@ type Active = {
 	path: FlightGhost.Path,
 	state: FlightGhost.State,
 	shown: Vector3?, -- position affichée du torse (copie locale) à l'image en cours
+	offset: Vector3, -- décalage de la copie locale sur la copie répliquée à l'image en cours
 	velocity: Vector3?, -- vitesse affichée du torse à l'image en cours
 	previous: Vector3?, -- position de la copie répliquée à l'image précédente
 	added: RBXScriptConnection?, -- pièces et effets arrivés après le départ
@@ -149,6 +151,7 @@ function LaunchGhost.start(model: Model, launch: any)
 	local copy = Instance.new("Model")
 	copy.Name = "LaunchGhost"
 	local current: Active = {
+		model = model,
 		torso = torso,
 		copy = copy,
 		pairs = {},
@@ -157,6 +160,7 @@ function LaunchGhost.start(model: Model, launch: any)
 		path = path,
 		state = FlightGhost.new(),
 		shown = nil,
+		offset = Vector3.zero,
 		velocity = nil,
 		previous = nil,
 		added = nil,
@@ -218,6 +222,7 @@ function LaunchGhost.start(model: Model, launch: any)
 			then (position - current.previous) / dt
 			else torso.AssemblyLinearVelocity
 		current.previous = position
+		current.offset = offset
 		current.shown = position + offset
 		current.velocity = FlightGhost.velocity(path, state, replicated)
 	end)
@@ -240,6 +245,16 @@ function LaunchGhost.torso(): (Vector3?, Vector3?)
 		return nil, nil
 	end
 	return current.shown, current.velocity
+end
+
+-- Cette méthode permet de donner le décalage de la copie locale sur le mannequin répliqué `model` à l'image en cours
+-- lorsque les effets du vol (Client.FlightFx) se placent sur ce qui est affiché ; zéro si `model` est montré tel quel.
+function LaunchGhost.offset(model: Model): Vector3
+	local current = active
+	if not current or current.model ~= model then
+		return Vector3.zero
+	end
+	return current.offset
 end
 
 -- Cette méthode permet de retirer la copie locale sans attendre lorsque le joueur quitte le vol (retour au hub).
