@@ -21,6 +21,7 @@ local ThrowDummies = require(Shared:WaitForChild("ThrowDummies"))
 local Training = require(Shared:WaitForChild("Training"))
 local TrainingLook = require(Shared:WaitForChild("TrainingLook"))
 
+local LaunchGhost = require(script.Parent.LaunchGhost)
 local UIKit = require(script.Parent.UIKit)
 
 local HELD_SCALE = 0.6
@@ -291,7 +292,8 @@ local function update(player: Player, state: State)
 		return
 	end
 	local action = player:GetAttribute("Action")
-	local releasedHere = player == localPlayer and throw ~= nil and throw.released
+	-- Pas de nouveau mannequin en main tant que le décoratif lâché vole sans réponse du serveur (#144)
+	local releasedHere = player == localPlayer and (throw ~= nil and throw.released or LaunchGhost.anticipating())
 	-- Le suffixe reconstruit le décoratif en maillé quand les gabarits arrivent après lui (blocs en attendant)
 	local shape = ":mesh" .. DummyShape.meshStage()
 	local carried = if action == nil then carriedKey(character) else nil

@@ -17,6 +17,7 @@ local Gauge = require(Shared:WaitForChild("Gauge"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local CharacterPoser = require(script.Parent.CharacterPoser)
+local LaunchGhost = require(script.Parent.LaunchGhost)
 local ThrowCinematic = require(script.Parent.ThrowCinematic)
 local UIKit = require(script.Parent.UIKit)
 
@@ -185,13 +186,22 @@ local function trigger(): boolean
 			ThrowController.onReleased(value)
 		end
 	end, function()
-		-- Geste fini : lancer parti (la jauge se cache au vol) ou refusé (caméra rendue, jauge réarmée)
-		if player:GetAttribute("LaneState") ~= "Flying" then
-			ThrowCinematic.abort()
-			CharacterPoser.handOff()
+		-- Geste fini : lancer parti (la jauge se cache au vol) ou refusé (caméra rendue, jauge réarmée) ; tant que le
+		-- décoratif lâché vole sans réponse du serveur (#144), la jauge attend
+		-- Cette méthode permet de clore le geste lorsque la réponse du serveur est connue.
+		local function settle()
+			if player:GetAttribute("LaneState") ~= "Flying" then
+				if LaunchGhost.anticipating() then
+					task.delay(0.1, settle) -- borné : Client.LaunchGhost s'arrête au plus HANDOFF_TIME après le lâcher
+					return
+				end
+				ThrowCinematic.abort()
+				CharacterPoser.handOff()
+			end
+			locked = nil
+			refresh()
 		end
-		locked = nil
-		refresh()
+		settle()
 	end)
 	return true
 end

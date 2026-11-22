@@ -171,8 +171,18 @@ end
 
 -- Cette méthode permet de faire une copie locale d'une pièce du mannequin répliqué (ancrée, sans soudure ni
 -- contrainte, sans collision ni étiquette) lorsque l'affichage anticipé démarre.
-local function copyPart(source: BasePart): BasePart
+local function copyPart(source: BasePart, effects: { [Instance]: boolean }): BasePart
 	local copy = source:Clone()
+	-- Effets de l'original déjà coupés (masqué avant la copie) : la copie reprend leur état d'origine
+	local originals, clones = source:GetDescendants(), copy:GetDescendants()
+	if #originals == #clones then
+		for index, clone in clones do
+			local enabled = effects[originals[index]]
+			if enabled ~= nil and EFFECTS[clone.ClassName] then
+				(clone :: any).Enabled = enabled
+			end
+		end
+	end
 	for _, descendant in copy:GetDescendants() do
 		if descendant:IsA("JointInstance") or descendant:IsA("Constraint") or descendant:IsA("WeldConstraint") then
 			descendant:Destroy()
@@ -209,7 +219,7 @@ end
 local function mirror(current: Active, source: Instance)
 	local copy = current.copy
 	if copy and source:IsA("BasePart") then
-		local part = copyPart(source)
+		local part = copyPart(source, current.effects)
 		part.Parent = copy
 		table.insert(current.pairs, { source = source, copy = part })
 	end
@@ -311,7 +321,7 @@ local function follow(current: Active, torso: BasePart, dt: number)
 	current.offset = offset
 	current.shown = position + offset
 	current.velocity = FlightGhost.velocity(path, state, replicated)
-	current.speed = nil
+	current.speed = torso.AssemblyLinearVelocity.Magnitude -- cadrage tant que la caméra suit encore le décoratif
 end
 
 -- Cette méthode permet de passer l'affichage du décoratif lâché à la copie locale du mannequin du serveur lorsque son
