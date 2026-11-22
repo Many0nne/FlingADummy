@@ -7,6 +7,7 @@ local process = require("@lune/process")
 local roblox = require("@lune/roblox")
 
 local Loader = require("./lib/Loader")
+local BoosterRingSim = require("../tools/BoosterRingSim")
 local GeneratedLooks = require("../tools/GeneratedLooks")
 local Planches = require("../tools/Planches")
 local ProgressionSim = require("../tools/ProgressionSim")
@@ -14,7 +15,13 @@ local R15Rig = require("./lib/R15Rig")
 local Test = require("./lib/Test")
 
 -- Aides de test passées en 3e argument aux specs (chargées par luau.load, sans require relatif)
-local Lib = { R15Rig = R15Rig, GeneratedLooks = GeneratedLooks, Planches = Planches, ProgressionSim = ProgressionSim }
+local Lib = {
+	R15Rig = R15Rig,
+	BoosterRingSim = BoosterRingSim,
+	GeneratedLooks = GeneratedLooks,
+	Planches = Planches,
+	ProgressionSim = ProgressionSim,
+}
 
 local SPECS_DIR = "tests/specs"
 
