@@ -1008,7 +1008,7 @@
               "key": 2,
               "lines": [
                 "$100",
-                "+3 EXP / rep"
+                "+6 EXP / rep"
               ],
               "look": "ce7c3b1c25",
               "title": "2. Stone Dummy"
@@ -1023,7 +1023,7 @@
               "key": 3,
               "lines": [
                 "$8K",
-                "+10 EXP / rep"
+                "+45 EXP / rep"
               ],
               "look": "b1531e1088",
               "title": "3. Iron Dummy"
@@ -1038,7 +1038,7 @@
               "key": 4,
               "lines": [
                 "$120K",
-                "+40 EXP / rep"
+                "+400 EXP / rep"
               ],
               "look": "5b6f3412f8",
               "title": "4. Gold Dummy"
@@ -1053,7 +1053,7 @@
               "key": 5,
               "lines": [
                 "$800K",
-                "+160 EXP / rep"
+                "+2.2K EXP / rep"
               ],
               "look": "1f03bbeef7",
               "title": "5. Diamond Dummy"
@@ -1068,7 +1068,7 @@
               "key": 6,
               "lines": [
                 "$1.8M",
-                "+700 EXP / rep"
+                "+9K EXP / rep"
               ],
               "look": "e4d0095e34",
               "title": "6. Neon Dummy"
@@ -1083,7 +1083,7 @@
               "key": 7,
               "lines": [
                 "$4.5M",
-                "+3K EXP / rep"
+                "+35K EXP / rep"
               ],
               "look": "c487cbeeb4",
               "title": "7. Cosmic Dummy"
@@ -1098,7 +1098,7 @@
               "key": 8,
               "lines": [
                 "$20M",
-                "+12K EXP / rep"
+                "+140K EXP / rep"
               ],
               "look": "78e8cde226",
               "title": "8. Ruby Dummy"
@@ -1113,7 +1113,7 @@
               "key": 9,
               "lines": [
                 "$50M",
-                "+48K EXP / rep"
+                "+560K EXP / rep"
               ],
               "look": "80e6a79543",
               "title": "9. Emerald Dummy"
@@ -1128,7 +1128,7 @@
               "key": 10,
               "lines": [
                 "$300M",
-                "+190K EXP / rep"
+                "+2.2M EXP / rep"
               ],
               "look": "d0a5028312",
               "title": "10. Plasma Dummy"
@@ -1143,7 +1143,7 @@
               "key": 11,
               "lines": [
                 "$1.8B",
-                "+760K EXP / rep"
+                "+8.8M EXP / rep"
               ],
               "look": "a34f9899ec",
               "title": "11. Omega Dummy"
@@ -1158,7 +1158,7 @@
               "key": 12,
               "lines": [
                 "$50B",
-                "+3M EXP / rep"
+                "+35M EXP / rep"
               ],
               "look": "21e18d3472",
               "title": "12. Infinite Dummy"

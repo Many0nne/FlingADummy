@@ -16,7 +16,7 @@ export type Gear = {
 	scale: number, -- taille du mannequin soulevé
 }
 
--- Paliers d'équipement : gain ×3 à ×4,5 par palier ; prix calés par le joueur simulé (#15, tools/progression.luau) pour
+-- Paliers d'équipement : gain ×4 à ×9 par palier (calés sur Throw a Seed, #129 : 1K de puissance à 3 min, 100K à 12 min) ; prix calés par le joueur simulé (#15, tools/progression.luau) pour
 -- un achat (équipement, mannequin à lancer ou présentoir) toutes les 1 à 5 min la première heure, puis de plus en plus
 -- espacés, sans mur : le ratio « prix du suivant / revenu » ne double jamais d'un achat au suivant
 Training.GEARS = {
@@ -30,7 +30,7 @@ Training.GEARS = {
 	},
 	{
 		name = "Stone Dummy",
-		gain = 3,
+		gain = 6,
 		cost = 100,
 		color = Color3.fromRGB(150, 150, 155),
 		material = Enum.Material.Slate,
@@ -38,7 +38,7 @@ Training.GEARS = {
 	},
 	{
 		name = "Iron Dummy",
-		gain = 10,
+		gain = 45,
 		cost = 8000,
 		color = Color3.fromRGB(110, 115, 125),
 		material = Enum.Material.DiamondPlate,
@@ -46,7 +46,7 @@ Training.GEARS = {
 	},
 	{
 		name = "Gold Dummy",
-		gain = 40,
+		gain = 400,
 		cost = 120000,
 		color = Color3.fromRGB(255, 200, 40),
 		material = Enum.Material.Foil,
@@ -54,7 +54,7 @@ Training.GEARS = {
 	},
 	{
 		name = "Diamond Dummy",
-		gain = 160,
+		gain = 2200,
 		cost = 800000,
 		color = Color3.fromRGB(120, 230, 255),
 		material = Enum.Material.Glass,
@@ -62,7 +62,7 @@ Training.GEARS = {
 	},
 	{
 		name = "Neon Dummy",
-		gain = 700,
+		gain = 9000,
 		cost = 1800000,
 		color = Color3.fromRGB(255, 70, 200),
 		material = Enum.Material.Neon,
@@ -70,7 +70,7 @@ Training.GEARS = {
 	},
 	{
 		name = "Cosmic Dummy",
-		gain = 3000,
+		gain = 35000,
 		cost = 4500000,
 		color = Color3.fromRGB(110, 60, 255),
 		material = Enum.Material.ForceField,

@@ -69,12 +69,17 @@ return function(T, Loader)
 			T.expectEqual(total, needed)
 		end)
 		T.it("un meilleur équipement remplit les niveaux plus vite et reporte l'EXP en trop", function()
-			-- Fer (+10) au niveau 1 (3 EXP), 2 (4), 3 (5) : 10 = 3 + 4, il reste 3 sur 5
+			-- Fer : une répétition franchit plusieurs niveaux d'un coup, l'EXP en trop est reportée sur le suivant
 			local progress, power = Training.completeRep({ level = 1, exp = 0 }, 3)
-			T.expectEqual(Training.GEARS[3].gain, 10)
-			T.expectEqual(progress.level, 3, "deux niveaux d'un coup")
-			T.expectEqual(progress.exp, 10 - Training.expForLevel(1) - Training.expForLevel(2), "EXP reportée")
-			T.expectEqual(power, Training.expForLevel(1) + Training.expForLevel(2))
+			local gain, level, spent = Training.GEARS[3].gain, 1, 0
+			while spent + Training.expForLevel(level, 3) <= gain do
+				spent += Training.expForLevel(level, 3)
+				level += 1
+			end
+			T.expect(level >= 3, "plusieurs niveaux d'un coup")
+			T.expectEqual(progress.level, level, "niveaux franchis")
+			T.expectEqual(progress.exp, gain - spent, "EXP reportée")
+			T.expectEqual(power, spent)
 			local _, woodPower = train({ level = 1, exp = 0 }, 1, 20)
 			local _, ironPower = train({ level = 1, exp = 0 }, 3, 20)
 			T.expect(ironPower > 5 * woodPower, "le fer rapporte bien plus que le bois")
@@ -108,7 +113,7 @@ return function(T, Loader)
 			function()
 				T.expectEqual(#Training.GEARS, 7 + #Training.EXTENDED)
 				T.expectEqual(Training.GEARS[7].name, "Cosmic Dummy")
-				T.expectEqual(Training.GEARS[7].gain, 3000)
+				T.expectEqual(Training.GEARS[7].gain, 35000)
 				for tier = 8, #Training.GEARS do
 					local gear, before = Training.GEARS[tier], Training.GEARS[tier - 1]
 					T.expect(math.abs(gear.gain / before.gain / Training.GAIN_STEP - 1) < 0.05, gear.name .. " gain")

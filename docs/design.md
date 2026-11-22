@@ -279,20 +279,20 @@ Prix calés par #15 (section « Rythme et économie ») : la règle Rocket × (c
 ### Training Gear : 12 paliers
 | Équipement | EXP / rép. | Prix | Atteint (simulé) | Avant #15 |
 |---|---|---|---|---|
-| Stone | +3 | $100 | 45 s | $100, 45 s |
-| Iron | +10 | $8K | 3 min | $1.5K, 2 min |
-| Gold | +40 | $120K | 6 min | $25K, 5 min |
-| Diamond | +160 | $800K | 12 min | $150K, 9 min |
-| Neon | +700 | $1.8M | 18 min | $2M, 18 min |
-| Cosmic | +3K | $4.5M | 24 min | $25M, 41 min |
-| Ruby | +12K | $20M | 35 min | $88M, 88 min |
-| Emerald | +48K | $50M | 49 min | $310M, 2,5 h |
-| Plasma | +190K | $300M | 79 min | $1.1B, 3,3 h |
-| Omega | +760K | $1.8B | 2,2 h | $3.9B, 4,9 h |
-| Infinite | +3M | $50B | 5,8 h | $14B, 6,6 h |
+| Stone | +6 (+3 avant #129) | $100 | 45 s | $100, 45 s |
+| Iron | +45 (+10) | $8K | 3 min | $1.5K, 2 min |
+| Gold | +400 (+40) | $120K | 6 min | $25K, 5 min |
+| Diamond | +2.2K (+160) | $800K | 11 min | $150K, 9 min |
+| Neon | +9K (+700) | $1.8M | 15 min | $2M, 18 min |
+| Cosmic | +35K (+3K) | $4.5M | 21 min | $25M, 41 min |
+| Ruby | +140K (+12K) | $20M | 30 min | $88M, 88 min |
+| Emerald | +560K (+48K) | $50M | 42 min | $310M, 2,5 h |
+| Plasma | +2.2M (+190K) | $300M | 66 min | $1.1B, 3,3 h |
+| Omega | +8.8M (+760K) | $1.8B | 106 min | $3.9B, 4,9 h |
+| Infinite | +35M (+3M) | $50B | 5,4 h | $14B, 6,6 h |
 
-Puissance : 1 K à 5 min, 100 K à 20 min, 1 M à 32 min, 100 M à 85 min, 10 B à 6,4 h (avant #15 : 5 min, 20 min,
-45 min, 3,2 h, 7,8 h). Avec la piste de 2,4 km, le bout était atteint dès ≈ 760 K de puissance et la puissance
+Puissance (gains de #129) : 1 K à 3 min, 100 K à 12 min, 1 M à 17 min, 100 M à 43 min, 10 B à 2,1 h (avant #129 :
+5 min, 21 min, 32 min, 85 min, 6,4 h ; avant #15 : 5 min, 20 min, 45 min, 3,2 h, 7,8 h). Avec la piste de 2,4 km, le bout était atteint dès ≈ 760 K de puissance et la puissance
 n'ajoutait ensuite que des os et des objets ; la piste de 6 km (#97) donne un but aux paliers prolongés (tableau
 « Fin de piste » ci-dessous). Bout de piste simulé à 4,2 h (4,6 h avec le modèle de distance d'avant #113, 6,8 h
 avant #15), avec la distance recalée sur les vols mesurés par #113.
@@ -377,19 +377,42 @@ Dummy à 44 s, Rubber Dummy à 2:07, Iron Dummy à 2:54, Glass Dummy à 4:29 (si
 $548/s à 4:48 (simulé : $790/s à 5 min). Le Rubber Dummy rebondit bien plus loin que le modèle (1,2 à 1,9 km à
 161 de puissance, Rare dès 2:24) mais allonge la boucle (vols de 15 à 21 s).
 
+### Gains des équipements calés sur 09 (#129)
+Le joueur simulé montait ≈ 2 fois moins vite que *Throw a Seed* (09) : #15 avait recalé les prix, pas les gains de
+`Training.GEARS`. Gains relevés (Stone +6, Iron +45, Gold +400, Diamond +2.2K, Neon +9K, Cosmic +35K, soit × 4 à
+× 9 par palier au lieu de × 3 à × 4,5 ; la suite garde × `GAIN_STEP` = 4), prix, répétitions par séance et niveaux
+inchangés. Cible : ≈ 1 K vers 4 min, ≈ 100 K vers 11-12 min, tolérance ± 30 %. Joueur simulé rejoué (60 joueurs, 14 h,
+médianes) :
+| Repère | Avant #129 | Après #129 | 09 *Throw a Seed* |
+|---|---|---|---|
+| Puissance 1 K | 5 min | 3 min | 1.34K à 4 min |
+| Puissance 100 K | 21 min | 12 min | 114K à 11 min |
+| Puissance 1 M | 32 min | 17 min | — |
+| × 10 (1 M → 10 M → 100 M) | 19 min, 34 min | 10 min, 16 min | ≈ 3,5 min |
+| Fin de Moon Base (2,4 km) | 30 min | 17 min | — |
+| Fin de piste (6 km) | 4,2 h | 105 min | — |
+| Première renaissance | 11,5 h | 11,1 h | — |
+| Saut le plus fort du ratio d'achat | × 1,73 | × 1,67 | — |
+Puissance à 14 h : 137 B (11,8 B avant). Le rythme de 09 est tenu sur les 20 premières minutes ; ensuite les prix de #15
+(inchangés) bornent la montée des équipements : × 10 toutes les 10 à 16 min jusqu'à 100 M. La fin de piste arrive à 105 min
+(> 45 min) : pas de recalage de la renaissance, qui reste à 11,1 h (le prix en $ pilote le calendrier). Garde-fou
+`Progression.spec` : écart maximal entre deux achats de la première heure porté de 6 à 7 min (le 20e achat tombe à 375 s
+d'écart : les prix de #15 ne bougent pas, cause non investiguée).
+Planche `entrainement.jpg` : les gains affichés sur l'appareil changent, à régénérer en Studio (manifeste déjà à jour).
+
 ### Repères comparés aux références
 | Repère | Fling a Dummy (simulé) | 09 *Throw a Seed* | 01 *Throw Food For Animals* |
 |---|---|---|---|
 | Première récompense | 15 s | 21 s | 24 s |
 | Premier équipement | 45 s ($100) | 1:45 ($500) | 0:42 ($1) |
 | Deuxième projectile | 90 s (1.25x, $1.5K) | 1:42 (1.25x, $1.2K) | 1:27 (pomme) |
-| Puissance | 1K à 5 min, 100K à 20 min | 1.34K à 4 min, 114K à 11 min | 503 à 17 min |
+| Puissance | 1K à 3 min, 100K à 12 min | 1.34K à 4 min, 114K à 11 min | 503 à 17 min |
 | Revenu | 1K/s à 6 min, 100K/s à 40 min | 2.19K/s à 3:36 | 1.08K/s vers 9 min, 391K/s à 17 min |
-| Projectile le plus fort | 135x à 9,6 h | 135x (durée inconnue) | non observé |
+| Projectile le plus fort | 135x à 9,2 h | 135x (durée inconnue) | non observé |
 | Cote la plus haute | 1 IN 100T (50Qa en Giant) | 1 IN 300Qa | non observé |
 | Collection | 64 mannequins, 11 raretés | 110 plantes, 10 raretés + Royal | non observé |
 
-Écarts : la puissance monte ≈ 2 fois moins vite que 09 après 5 min, le revenu ≈ 2 fois plus vite qu'avant #15 (100K/s à
+Écarts : la puissance suit 09 sur les 20 premières minutes depuis #129 (≈ 2 fois moins vite avant), le revenu ≈ 2 fois plus vite qu'avant #15 (100K/s à
 40 min au lieu de 83) ; la collection reste plus petite que celle de 09 (familles et palettes à ajouter sans dessin).
 
 ### Piste prolongée (#97) et renaissance (#108) : les deux leviers
