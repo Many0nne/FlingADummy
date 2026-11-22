@@ -2,7 +2,7 @@
 -- stylua: ignore
 local GameConfig = {
 	-- Carte : lobby de SLOT_COUNT joueurs, une piste partagée (canyon en gradins), axe +Z, départ à z = 0
-	SLOT_COUNT          = 4,      -- places par serveur (MaxPlayers du projet Rojo) : base, appareil, colonne d'obstacles
+	SLOT_COUNT          = 4,      -- places par serveur (pas le plafond du serveur : au-delà, les joueurs attendent, #142) : base, appareil, colonne d'obstacles
 	SLOT_SPACING        = 14,     -- largeur d'une colonne d'obstacles (points de lancer de test), axe X (studs)
 	TRACK_WIDTH         = 80,     -- largeur du fond du canyon (studs)
 	COURSE_LENGTH       = 6000,   -- longueur de la piste, axe +Z (studs = mètres affichés ; 2 400 avant #97)

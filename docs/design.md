@@ -959,6 +959,12 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
   stock, la liste des découverts devient l'Index.
 
 ## Carte (v0.3) : lobby de 4 joueurs, piste unique
+- **Places et `MaxPlayers`** (#142) : le lobby a 4 places (`SLOT_COUNT`). Relevé par Open Cloud le 2026-11-22 : la place
+  publiée (88580736516669) a `serverSize` = **50** (le `MaxPlayers` de `default.project.json` ne sert qu'à Studio/Rojo),
+  donc un 5e joueur peut arriver. Il reste dans le hub sans base, avec le message « Server full, waiting for a free
+  base… » (attribut `SlotWait`, `Client.SlotWait`) ; au départ d'un joueur, sa place passe au plus ancien joueur en
+  attente (`Shared.SlotQueue`, appliquée par `Server.SlotService`). Ramener la taille du serveur à 4 : réglage de
+  l'expérience, traité avec la page du jeu (#178).
 - **Hub** (#120, pelouse à damier de 256 × 112 studs depuis #156 (96 avant : bases allongées vers le fond) entourée de parois en gradins ; plan dans `Shared.CourseLayout`,
   vérifié par les tests : rien ne se chevauche, tout reste dans le hub), calé sur les jardins de 09 :
   - les **4 bases sur une rangée, côte à côte** (40 × 48 studs depuis #156, 40 × 34 avant, 8 studs de passage entre deux clôtures, dans l'ordre
