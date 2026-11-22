@@ -960,7 +960,11 @@ Interface : section suivante.
   masqué ; son départ recale le temps affiché sur son plan à même distance le long de la piste (jauge recalée : pas de
   saut, l'écart restant se résorbe en 0,35 s), puis la copie locale de ses pièces prend le relais du décoratif. L'avance
   à résorber grandit d'un aller-retour : l'affichage ne descend pas sous 50 % de la vitesse (`FlightGhost.MIN_RATE`) et
-  rend la main vers 1 s sans latence, 1,6 à 1,7 s à 150 ms (simulé, tests Lune). Au-delà de `RELEASE_LEAD_MAX`
+  rend la main vers 1 s sans latence, 1,6 à 1,7 s à 150 ms (simulé, tests Lune). Mesuré en Studio (vrai lancer,
+  60 i/s) : le mannequin quitte la main 20 ms après le lâcher (avant : 65 ms à 0 ms, 360 ms à 150 ms), aucun recul ni
+  image figée, plus grand saut du torse à l'écran 9 px à 0 ms et 11 px à 150 ms (avant : 516 et 332 px à la bascule),
+  main rendue à 0,95 s et 1,55-1,64 s ; premier contact inchangé (`DebugLaunch`, 22 M : 3 499-3 502 m pour un plan à
+  3 494 m). Au-delà de `RELEASE_LEAD_MAX`
   (0,4 s) de latence, le reste est un maintien à la main. Caméra de vol, coup de champ de vision, souffle et effets
   du vol (#138) partent avec le décoratif. Lancer refusé (pas de départ du serveur après la latence + 0,3 s, couloir pas
   en vol) : le décoratif s'efface en 0,15 s. Studio : `DebugNoAnticipate` (attribut de Workspace, true) garde l'ancien
