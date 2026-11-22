@@ -100,6 +100,11 @@ return function(T, Loader)
 				T.expect(Training.GEARS[tier].gain > Training.GEARS[tier - 1].gain, "gain du palier " .. tier)
 			end
 		end)
+		T.it("gains calés sur Throw a Seed (#129) : 1K de puissance vers 3-4 min, 100K vers 12 min", function()
+			for tier, gain in { 1, 6, 45, 400, 2200, 9000, 35000 } do
+				T.expectEqual(Training.GEARS[tier].gain, gain, "palier " .. tier)
+			end
+		end)
 		T.it("nextGearCost donne le prix du palier suivant, nil au dernier", function()
 			T.expectEqual(Training.nextGearCost(1), Training.GEARS[2].cost)
 			T.expectEqual(Training.nextGearCost(#Training.GEARS), nil)
