@@ -782,6 +782,17 @@ Interface : section suivante.
 ## Architecture
 - Tout est **simulé par le serveur** (propriétaire réseau `nil`) : le joueur ne pilote pas le mannequin en vol, la latence
   ne se voit donc pas, le score est fiable et les autres joueurs voient les lancers des voisins.
+- **Départ du vol vu par le lanceur** (#117, `Shared.FlightGhost`, `Client.LaunchGhost`) : chez le client, un mannequin
+  du serveur qui vient d'apparaître reste figé ≈ 200 à 290 ms (tampon d'interpolation du moteur, mesuré à 0 et 150 ms
+  de latence simulée) puis s'affiche en retard (≈ 250 ms à 0 ms, ≈ 400 ms à 150 ms), alors que sa vitesse répliquée est
+  à jour : la caméra de vol, qui prolonge cette vitesse, le dépassait de 15 à 26 studs (recul à l'écran). Le lanceur voit
+  maintenant une copie locale du mannequin répliqué, décalée sur la trajectoire du plan (`FlightArc`, rejoué au pas
+  du serveur) : elle quitte la main sans s'arrêter, ralentit au plus à ≈ 50 % pendant le gel, puis rejoint la copie
+  du serveur, qui reprend la main en ≈ 1 à 1,2 s (vol faible : avant le premier contact). Un choc ou un écart de plus
+  de 8 studs avec le plan rend la main en 0,15 s ; le moteur faisant défiler la copie répliquée ≈ 4 % plus vite pour
+  réduire son retard, l'affichage rend aussi la main dès qu'il n'a plus d'avance. La caméra prolonge la vitesse de ce
+  qui est affiché. Le serveur décide toujours de tout (distance, chocs, CHANCE) ; les autres joueurs ne voient pas la
+  copie locale.
 - Les chocs sont annoncés à tous les clients (`Impact`), qui jouent sons, particules et popups.
 - Les poses de l'avatar (mannequin tenu, entraînement, élan) sont calculées par chaque client d'après les attributs du
   joueur (`Action`), en écrasant `Transform` des articulations (Motor6D ou AnimationConstraint).
