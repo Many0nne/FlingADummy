@@ -50,6 +50,7 @@ export type Plan = {
 	boostTime: number,
 	sink: number?, -- planeur : vitesse de descente tenue (studs/s)
 	bounceSpeed: number?, -- caoutchouc : élan vers l'avant pendant les rebonds (studs/s)
+	bounceUps: { number }, -- vitesses de départ vers le haut des rebonds prévus, dans l'ordre (studs/s)
 	bounceTime: number, -- durée des rebonds prévus (s)
 	reach: number, -- distance où la glissade commence (premier contact, plus les rebonds)
 	landingSpeed: number, -- élan vers l'avant quand la glissade commence (studs/s)
@@ -78,16 +79,16 @@ local function sinkFor(height: number, duration: number, gravity: number): numbe
 	return gravity * (duration - math.sqrt(math.max(duration * duration - 2 * height / gravity, 0)))
 end
 
--- Cette méthode permet de donner la durée des rebonds d'un mannequin qui touche le sol en tombant à `fall` studs/s
--- (chaque rebond rend BOUNCE_RESTITUTION de la chute, tant qu'elle dépasse BOUNCE_MIN_FALL) lorsque le plan d'un
--- mannequin rebondissant se calcule.
-local function bounceDuration(fall: number, gravity: number): number
-	local total = 0
+-- Cette méthode permet de donner les vitesses de départ des rebonds d'un mannequin qui touche le sol en tombant à
+-- `fall` studs/s (chaque rebond rend BOUNCE_RESTITUTION de la chute, tant qu'elle dépasse BOUNCE_MIN_FALL) lorsque le
+-- plan d'un mannequin rebondissant se calcule.
+local function bounceSpeeds(fall: number): { number }
+	local ups = {}
 	while fall > FlightArc.BOUNCE_MIN_FALL do
 		fall *= FlightArc.BOUNCE_RESTITUTION
-		total += 2 * fall / gravity
+		table.insert(ups, fall)
 	end
-	return total
+	return ups
 end
 
 -- Cette méthode permet de donner le plan d'un vol (sommet, distance au premier contact, fin de la croisière, réglages
@@ -149,10 +150,13 @@ function FlightArc.plan(
 
 	-- Caoutchouc : rebonds à élan constant, réglé pour ajouter `bounce` × la portée naturelle à l'arrêt (rebonds puis
 	-- glissade plus courte, sur sol plat) : v × durée + v² / (2 × GROUND_BRAKE) = part + glissade sans rebond
-	local bounceSpeed: number?, bounceTime = nil, 0
+	local bounceSpeed: number?, bounceUps, bounceTime = nil, {}, 0
 	if b.bounce > 0 then
 		local fall = math.sqrt(2 * gravity * math.max(peak - FlightArc.TORSO_REST, 0))
-		bounceTime = bounceDuration(if sink then math.min(fall, sink) else fall, gravity)
+		bounceUps = bounceSpeeds(if sink then math.min(fall, sink) else fall)
+		for _, up in bounceUps do
+			bounceTime += 2 * up / gravity
+		end
 		if bounceTime > 0 then
 			local brake = GameConfig.GROUND_BRAKE
 			local wanted = b.bounce * natural + FlightArc.slide(speedAfter)
@@ -173,6 +177,7 @@ function FlightArc.plan(
 		boostTime = boostTime,
 		sink = sink,
 		bounceSpeed = bounceSpeed,
+		bounceUps = bounceUps,
 		bounceTime = bounceTime,
 		reach = range + (bounceSpeed or 0) * bounceTime,
 		landingSpeed = bounceSpeed or speedAfter,
@@ -203,16 +208,25 @@ function FlightArc.accel(plan: Plan, velocity: Vector3, forward: Vector3, elapse
 	return accel
 end
 
--- Cette méthode permet de donner la vitesse du torse après un rebond au sol d'un mannequin rebondissant (chute arrêtée
--- cette frame : `before` → `after`, de plus de BOUNCE_MIN_FALL au plus fort) lorsque le serveur avance le vol ; `fall` :
--- chute la plus forte depuis le dernier rebond (studs/s : les membres touchent souvent avant le torse, qui ralentit sur
--- plusieurs frames) ; nil sans rebond.
-function FlightArc.bounce(plan: Plan, before: Vector3, after: Vector3, forward: Vector3, fall: number?): Vector3?
+-- Cette méthode permet de donner la vitesse du torse après le rebond `done + 1` du plan d'un mannequin rebondissant
+-- (chute arrêtée cette frame : `before` → `after`, de plus de BOUNCE_MIN_FALL au plus fort) lorsque le serveur avance
+-- le vol ; `fall` : chute la plus forte depuis le dernier rebond (studs/s : les membres touchent souvent avant le
+-- torse, qui ralentit sur plusieurs frames) ; nil sans rebond (pas de chute arrêtée, ou rebonds prévus tous faits).
+function FlightArc.bounce(
+	plan: Plan,
+	before: Vector3,
+	after: Vector3,
+	forward: Vector3,
+	fall: number?,
+	done: number?
+): Vector3?
 	local speed = plan.bounceSpeed
+	local up = plan.bounceUps[(done or 0) + 1]
 	local flat = Vector3.new(forward.X, 0, forward.Z)
 	local falling = math.max(fall or 0, -before.Y)
 	if
 		not speed
+		or not up
 		or falling <= FlightArc.BOUNCE_MIN_FALL
 		or before.Y >= FlightArc.BOUNCE_STOP
 		or after.Y < FlightArc.BOUNCE_STOP
@@ -223,9 +237,9 @@ function FlightArc.bounce(plan: Plan, before: Vector3, after: Vector3, forward: 
 	flat = flat.Unit
 	local horizontal = Vector3.new(after.X, 0, after.Z)
 	local lateral = horizontal - flat * horizontal:Dot(flat)
-	-- Élan réglé par le plan à chaque rebond, même après un obstacle qui l'a ralenti : la distance ne dépend pas des
-	-- caisses touchées entre deux rebonds
-	return flat * speed + lateral + Vector3.new(0, falling * FlightArc.BOUNCE_RESTITUTION, 0)
+	-- Élan et hauteur réglés par le plan à chaque rebond, même après un obstacle qui l'a ralenti ou un contact amorti
+	-- par les membres : la distance ne dépend pas des caisses touchées entre deux rebonds
+	return flat * speed + lateral + Vector3.new(0, up, 0)
 end
 
 -- Cette méthode permet de donner la durée en l'air d'un rebond qui repart à `velocity` (plus une marge de 3 frames

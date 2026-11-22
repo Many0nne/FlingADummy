@@ -64,7 +64,7 @@ return function(T, Loader)
 			local armed = t > GameConfig.IMPACT_GRACE_TIME
 			local change = FlightArc.accel(plan, velocity, FORWARD, t, G) * DT
 			if armed then
-				local bounced = FlightArc.bounce(plan, before, velocity, FORWARD, fall)
+				local bounced = FlightArc.bounce(plan, before, velocity, FORWARD, fall, bounces)
 				if bounced then
 					change += bounced - velocity
 					bounces += 1
@@ -401,22 +401,30 @@ return function(T, Loader)
 			T.expect(FlightArc.accel(plan, Vector3.new(0, -sink - 20, 80), FORWARD, 2, G).Y > G, "rattrape")
 		end)
 
-		T.it("le caoutchouc rebondit à élan réglé, seulement sur une chute arrêtée", function()
+		T.it("le caoutchouc rebondit à élan et hauteur du plan, seulement sur une chute arrêtée", function()
 			local plan = planOf("Bouncy")
 			local speed = plan.bounceSpeed :: number
+			local ups = plan.bounceUps
+			T.expect(#ups >= 3, #ups .. " rebonds prévus")
+			local fall = math.sqrt(2 * G * (GameConfig.APEX_HEIGHT - FlightArc.TORSO_REST))
+			T.expectNear(ups[1], fall * FlightArc.BOUNCE_RESTITUTION, 1e-6, "premier rebond depuis le plafond")
 			local before = Vector3.new(0, -60, speed + 300)
 			local stopped = Vector3.new(3, 0, 20)
 			local out = FlightArc.bounce(plan, before, stopped, FORWARD) :: Vector3
 			T.expect(out ~= nil, "rebond au sol")
-			T.expectNear(out.Y, 60 * FlightArc.BOUNCE_RESTITUTION, 1e-3)
+			T.expectNear(out.Y, ups[1], 1e-3, "hauteur du plan, pas celle du choc")
 			T.expectNear(out.Z, speed, 1e-3, "élan réglé par le plan")
 			T.expectNear(out.X, 3, 1e-3)
-			local staggered = FlightArc.bounce(plan, before, stopped, FORWARD, 150) :: Vector3
-			T.expectNear(staggered.Y, 150 * FlightArc.BOUNCE_RESTITUTION, 1e-3, "chute la plus forte retenue")
+			local second = FlightArc.bounce(plan, before, stopped, FORWARD, nil, 1) :: Vector3
+			T.expectNear(second.Y, ups[2], 1e-3, "rebonds dans l'ordre")
+			T.expectEqual(
+				FlightArc.bounce(plan, before, stopped, FORWARD, nil, #ups),
+				nil,
+				"rebonds prévus tous faits"
+			)
 			T.expectEqual(FlightArc.bounce(plan, Vector3.new(0, -10, 80), stopped, FORWARD), nil, "chute faible")
 			local slowed = FlightArc.bounce(plan, Vector3.new(0, -10, 80), stopped, FORWARD, 33) :: Vector3
 			T.expect(slowed ~= nil, "chute freinée sur plusieurs frames (membres d'abord)")
-			T.expectNear(slowed.Y, 33 * FlightArc.BOUNCE_RESTITUTION, 1e-3)
 			T.expectEqual(FlightArc.bounce(plan, Vector3.new(0, -1, 80), stopped, FORWARD, 33), nil, "déjà posé")
 			T.expectEqual(FlightArc.bounce(plan, before, Vector3.new(0, -50, 80), FORWARD), nil, "en l'air")
 			T.expectEqual(FlightArc.bounce(planOf("Classic"), before, stopped, FORWARD), nil, "pas rebondissant")
