@@ -89,10 +89,63 @@ return function(T, Loader)
 			for tier, gear in Training.GEARS do
 				local look = BaseLook.station(tier)
 				T.expectEqual(look.gear, gear.name)
-				T.expectEqual(look.plank, gear.color)
+				local tones = BaseLook.STATION_TONES[tier]
+				T.expectEqual(look.plank, tones.plank or gear.color)
 				local key = tostring(look.plank) .. tostring(look.plankAlt)
 				T.expect(not seen[key], "habillage du palier " .. tier .. " déjà vu")
 				seen[key] = true
+			end
+		end)
+		T.it("a un ton et une pièce de palier par équipement après le bois", function()
+			T.expectEqual(#BaseLook.STATION_TONES, #Training.GEARS)
+			T.expectEqual(#BaseLook.STATION_PIECES, #Training.GEARS - 1)
+		end)
+		T.it("ajoute à chaque palier au moins une pièce à celles du précédent (#118)", function()
+			-- Cette méthode permet de compter les pièces de palier d'un habillage lorsque l'on compare deux paliers.
+			local function count(look)
+				local n = 0
+				for _, on in look.pieces do
+					n += if on then 1 else 0
+				end
+				return n
+			end
+			T.expectEqual(count(BaseLook.station(1)), 0, "le bois n'a pas de pièce ajoutée")
+			for tier = 2, #Training.GEARS do
+				local before, after = BaseLook.station(tier - 1), BaseLook.station(tier)
+				for name, on in before.pieces do
+					T.expect(not on or after.pieces[name], name .. " perdue au palier " .. tier)
+				end
+				T.expect(count(after) > count(before), "rien d'ajouté au palier " .. tier)
+			end
+			local last = BaseLook.station(#Training.GEARS)
+			for _, name in BaseLook.STATION_PIECES do
+				T.expect(last.pieces[name], name .. " absente du dernier palier")
+			end
+		end)
+		-- Cette méthode permet de donner la teinte (0 à 360°) d'une couleur lorsque l'on compare deux paliers.
+		local function hue(color: Color3): number
+			local h = color:ToHSV()
+			return h * 360
+		end
+		-- Cette méthode permet de donner l'écart de teinte entre deux couleurs (0 à 180°) lorsque l'on compare deux paliers.
+		local function hueGap(a: Color3, b: Color3): number
+			local d = math.abs(hue(a) - hue(b)) % 360
+			return math.min(d, 360 - d)
+		end
+		T.it("distingue Neon et Plasma au premier coup d'œil (#118)", function()
+			local neon, plasma = BaseLook.station(6), BaseLook.station(10)
+			T.expect(hueGap(neon.plank, plasma.plank) >= 60, "planches de teintes trop proches")
+			T.expect(hueGap(neon.accent, plasma.accent) >= 60, "néons de teintes trop proches")
+			T.expect(hueGap(Training.GEARS[6].color, Training.GEARS[10].color) >= 60, "mannequins trop proches")
+		end)
+		T.it("distingue Diamond et Infinite de la pierre : planches saturées, socle coloré (#118)", function()
+			local stone = BaseLook.station(2)
+			for _, tier in { 5, #Training.GEARS } do
+				local look = BaseLook.station(tier)
+				T.expect(look.base ~= nil, "socle coloré au palier " .. tier)
+				local _, saturation = look.plankAlt:ToHSV()
+				T.expect(saturation >= 0.35, "planches trop pâles au palier " .. tier)
+				T.expect(look.plankAlt ~= stone.plankAlt, "mêmes planches que la pierre au palier " .. tier)
 			end
 		end)
 		T.it("ajoute étincelles (Diamond) puis liseré néon (Neon) aux derniers paliers", function()

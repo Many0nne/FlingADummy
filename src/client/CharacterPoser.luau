@@ -19,6 +19,9 @@ local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Inventory = require(Shared:WaitForChild("Inventory"))
 local ThrowDummies = require(Shared:WaitForChild("ThrowDummies"))
 local Training = require(Shared:WaitForChild("Training"))
+local TrainingLook = require(Shared:WaitForChild("TrainingLook"))
+
+local UIKit = require(script.Parent.UIKit)
 
 local HELD_SCALE = 0.6
 local PALM_GAP = AnimationData.PALM_GAP
@@ -304,8 +307,10 @@ local function update(player: Player, state: State)
 	elseif action == "Training" then
 		local tier = (player:GetAttribute("GearTier") :: number?) or 1
 		local gear = Training.gear(tier)
-		setVisual(state, "Training" .. tier .. shape, function()
-			return DummyShape.buildVisual(gear.scale, { color = gear.color, material = gear.material })
+		-- Look du palier (#118) ; sans particules en mouvement réduit (la clé reconstruit au changement de réglage)
+		local still = UIKit.reducedMotion()
+		setVisual(state, "Training" .. tier .. (if still then ":still" else "") .. shape, function()
+			return DummyShape.buildVisual(gear.scale, TrainingLook.variant(tier, "lifted", still) :: DummyShape.Variant)
 		end)
 		if state.visual then
 			state.visual:PivotTo(liftFrame(character, root, gear.scale))

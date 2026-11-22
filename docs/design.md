@@ -84,9 +84,23 @@ base, il rapporte des $/s, seule source d'argent.
   d'équipement, en boucle. Pendant la séance, l'invite est masquée et aucun objectif ne s'affiche : seul le bouton STOP.
 - **L'appareil s'habille au Training Gear acheté** (#92, `Shared.BaseLook.station`, comme les barres bois → pierre →
   fer → cyan de 01 / 09) : planches du podium, montants, traverse et marches à la couleur du mannequin du palier (bois,
-  pierre, fer, or, diamant, néon, cosmique) ; le râtelier montre les mannequins des trois derniers paliers jusqu'au sien (bois, pierre, fer tant qu'il en possède moins de trois) ; étincelles
-  dès le Diamond, liseré néon (bordure du podium, sous la traverse) dès le Neon. Achat : confettis au-dessus du
+  pierre, fer, or, diamant, néon, cosmique…) ; le râtelier montre les mannequins des trois derniers paliers jusqu'au sien
+  (bois, pierre, fer tant qu'il en possède moins de trois) ; étincelles dès le Diamond. Achat : confettis au-dessus du
   râtelier, vus de tous (en plus du popup du propriétaire). La bordure du podium reste à la couleur de la place.
+- **Chaque palier ajoute des pièces** (#118, retour de la sprint review 2 : « pas juste une couleur »,
+  `BaseLook.STATION_PIECES`, construites par `Server.StationPieces`), cumulées : socles de pierre (Stone), frettes et
+  rivets (Iron), pommeaux et bandeau dorés (Gold), cristaux (Diamond), tubes et liseré néon (Neon), planète annelée et
+  étoiles (Cosmic), gemmes serties (Ruby), blason (Emerald), éclairs et lumière (Plasma), halo et pointes de couronne
+  (Omega), anneau lumineux au sol et colonnes de lumière (Infinite). Pièces fixes (rien à couper en mouvement réduit).
+  Tons propres quand la couleur du mannequin se confondrait (`BaseLook.STATION_TONES`) : Diamond et Infinite ont des
+  planches saturées et un socle coloré (plus de podium clair comme la pierre), le Plasma est bleu électrique (plus le
+  magenta du Neon), le Cosmic en Foil (son champ de force était invisible au râtelier). Rond jaune cerné de sombre.
+- **Mannequins d'entraînement** (#118, `Shared.TrainingLook`) : chacun porte les pièces d'une famille de la
+  collection, teintées à sa couleur, et une aura de rareté dès l'or (plus fournie à chaque palier) : casque de débutant
+  (Wooden), golem (Stone), chevalier (Iron), haut-de-forme (Gold), cristaux (Diamond), cyber-armure (Neon), scaphandre
+  (Cosmic), cristal rouge (Ruby), héros (Emerald), galaxie (Plasma), roi noir (Omega), trou noir doré (Infinite).
+  Soulevé : effets sauf ceux du sol, sans particules en mouvement réduit ; au râtelier : lumières seulement, pièces fixes
+  et sans les plus larges (ailes, disques) ; carte du HUD : sans effets.
 - Chaque répétition (0,8 s) donne l'**EXP de l'équipement** (« +N EXP », comme « +4 EXP / répétition » de 09) qui
   remplit la barre de niveau : 3 EXP au premier niveau puis × 1,2 par niveau, plafonnée à 12 répétitions de
   l'équipement du joueur (`LEVEL_MAX_REPS`, #15 : un niveau dure 10 s au plus, au moins un « LEVEL UP! » par séance ;

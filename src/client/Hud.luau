@@ -18,6 +18,7 @@ local Rarity = require(Shared:WaitForChild("Rarity"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local ThrowDummies = require(Shared:WaitForChild("ThrowDummies"))
 local Training = require(Shared:WaitForChild("Training"))
+local TrainingLook = require(Shared:WaitForChild("TrainingLook"))
 local Tutorial = require(Shared:WaitForChild("Tutorial"))
 local UIMotion = require(Shared:WaitForChild("UIMotion"))
 local Overlay = require(Shared:WaitForChild("Overlay"))
@@ -473,14 +474,13 @@ local function buildWindows()
 	end
 end
 
--- Cette méthode permet de construire le rendu 3D d'un équipement (néon à la place du verre et du champ de force, qui
--- ne se rendent pas en ViewportFrame) lorsqu'une carte ou le popup « NEW GEAR! » l'affichent.
+-- Cette méthode permet de construire le rendu 3D d'un équipement (look du palier, Shared.TrainingLook ; néon à la place
+-- du verre et du champ de force, qui ne se rendent pas en ViewportFrame) lorsqu'une carte ou le popup « NEW GEAR! »
+-- l'affichent.
 local function gearModel(tier: number): Model
-	local gear = Training.GEARS[tier]
-	local material = if gear.material == Enum.Material.Glass or gear.material == Enum.Material.ForceField
-		then Enum.Material.Neon
-		else gear.material
-	return DummyShape.buildVisual(1, { color = gear.color, material = material })
+	local model = DummyShape.buildVisual(1, TrainingLook.variant(tier, "viewport") :: DummyShape.Variant)
+	DummyShape.viewportSafe(model)
+	return model
 end
 
 -- Cette méthode permet de (re)construire les rendus 3D des cartes (mannequins soulevés) lorsque une
