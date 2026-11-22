@@ -20,6 +20,12 @@ local NAMES = {
 	"Rebirth",
 	"TrainingBoost",
 	"Store",
+	"FlightClock",
+}
+
+-- Remotes non fiables (UnreliableRemoteEvent) : un message perdu est remplacé par le suivant
+local UNRELIABLE = {
+	FlightClock = true,
 }
 
 export type Remotes = {
@@ -53,6 +59,9 @@ export type Remotes = {
 	-- l'expérience (achat simulé en Studio seulement) ; serveur → client "Granted" + identifiant + argent reçu (popup de
 	-- l'acheteur), serveur → tous "ServerLuck" + identifiant + nom de l'acheteur
 	Store: RemoteEvent,
+	-- serveur → tous les clients, non fiable : torse d'un mannequin en vol, heure serveur et position de ce torse,
+	-- DisplayLag.SAMPLE_RATE fois par seconde (#84 : retard d'affichage mesuré par Client.TrapMotion)
+	FlightClock: UnreliableRemoteEvent,
 }
 
 local Remotes = {}
@@ -63,7 +72,7 @@ function Remotes.create(): Remotes
 	folder.Name = "Remotes"
 	local remotes = {}
 	for _, name in NAMES do
-		local remote = Instance.new("RemoteEvent")
+		local remote = Instance.new(if UNRELIABLE[name] then "UnreliableRemoteEvent" else "RemoteEvent")
 		remote.Name = name
 		remote.Parent = folder
 		remotes[name] = remote
