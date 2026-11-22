@@ -47,6 +47,13 @@ local GameConfig = {
 	LEVEL_BASE_EXP      = 3,      -- EXP du premier niveau d'entraînement (3 répétitions avec l'équipement de départ)
 	LEVEL_EXP_GROWTH    = 1.2,    -- EXP demandée × 1,2 par niveau…
 	LEVEL_MAX_REPS      = 12,     -- … plafonnée à 12 répétitions de l'équipement du joueur (#15 : niveaux de 10 s au plus)
+	-- Bouton « 2x TRAINING! » (#119, Shared.TrainingBoost) : temps d'entraînement cumulé sur les séances du joueur
+	BOOST_INTERVAL_MIN  = 25,     -- s d'entraînement entre deux apparitions, au moins…
+	BOOST_INTERVAL_MAX  = 40,     -- … au plus (tiré au hasard ; compté après le bouton raté ou la fin du bonus)
+	BOOST_OFFER_TIME    = 3,      -- durée d'affichage du bouton (s, anneau de compte à rebours)
+	BOOST_CLICK_SLACK   = 0.5,    -- clic encore accepté par le serveur après la fin de l'affichage (latence, s)
+	BOOST_TIME          = 30,     -- durée du bonus (s ; s'arrête avec la séance)
+	BOOST_MULTIPLIER    = 2,      -- EXP par répétition (donc Throw Power) × 2 pendant le bonus, sans cumul
 
 	-- CHANCE du lancer (le lancer ne rapporte pas d'argent : il fait gagner un mannequin de collection)
 	CHANCE_PER_BONE     = 0.02,   -- + 2 % de chance par os cassé

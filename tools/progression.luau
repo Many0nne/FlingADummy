@@ -2,6 +2,7 @@
 -- d'entraînement, mannequin à lancer, présentoir, première sortie de chaque rareté, renaissance) et mesure le « mur »
 -- (ratio « prix du prochain achat / revenu », achat par achat et minute par minute). Simulation : tools/ProgressionSim.
 -- Usage : lune run tools/progression [joueurs] [heures] [facteur de prix des renaissances] [fichier CSV minute par minute]
+-- [part des boutons « 2x TRAINING! » cliqués, #119]
 -- (défaut : 40 joueurs, 14 h, Rebirth.PRICE_GROWTH ; renaissances : 100 h et plus)
 local fs = require("@lune/fs")
 local process = require("@lune/process")
@@ -17,7 +18,9 @@ local PLAYERS = tonumber(process.args[1]) or 40
 local HOURS = tonumber(process.args[2]) or 14
 -- 3e argument (essai) : facteur de prix entre deux renaissances à la place de Rebirth.PRICE_GROWTH
 Rebirth.PRICE_GROWTH = tonumber(process.args[3]) or Rebirth.PRICE_GROWTH
-local CSV = process.args[4]
+local CSV = if process.args[4] ~= "" then process.args[4] else nil -- "" : pas de CSV (pour passer le 5e argument)
+-- 5e argument : part des boutons « 2x TRAINING! » cliqués à temps (#119 ; 0 = sans le bonus, pour comparer)
+ProgressionSim.BOOST_SUCCESS = tonumber(process.args[5]) or ProgressionSim.BOOST_SUCCESS
 
 local runs = {}
 for seed = 1, PLAYERS do

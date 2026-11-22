@@ -126,8 +126,9 @@ end
 
 -- Cette méthode permet de compter une répétition faite avec l'équipement du palier `tier` lorsque REP_TIME s'est écoulé ;
 -- renvoie la progression (EXP en trop reportée, plusieurs niveaux possibles) et la Throw Power des niveaux franchis.
-function Training.completeRep(progress: Progress, tier: number): (Progress, number)
-	local level, exp, power = progress.level, progress.exp + Training.gear(tier).gain, 0
+-- `multiplier` : EXP de la répétition × multiplier (bonus « 2x TRAINING! », Shared.TrainingBoost ; 1 par défaut).
+function Training.completeRep(progress: Progress, tier: number, multiplier: number?): (Progress, number)
+	local level, exp, power = progress.level, progress.exp + Training.gear(tier).gain * (multiplier or 1), 0
 	while exp >= Training.expForLevel(level, tier) do
 		local needed = Training.expForLevel(level, tier)
 		exp -= needed
