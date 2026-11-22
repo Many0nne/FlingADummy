@@ -6,18 +6,31 @@ return function(T, Loader, Lib)
 	local Sim = Lib.ProgressionSim
 	local m = Sim.modules(Loader.new())
 	local PLAYERS = 15
+	-- Rythme de la première heure (#133) : écarts de quelques secondes à quelques minutes, que la médiane de 15 joueurs
+	-- déplace de ± 60 s selon les graines ; 200 joueurs simulés sur 75 min (+ 1,3 s) la stabilisent. Écarts entre
+	-- instants médians, pour chaque achat dont l'instant médian tombe dans la première heure ; l'attente qui chevauche la
+	-- fin de l'heure ne compte que pour sa part avant 60 min (ensuite les écarts s'allongent : docs/design.md, « Rythme
+	-- et économie »)
+	local HOUR_PLAYERS = 200
+	local HOUR_SECONDS = 75 * 60
 
 	local runs = {}
 	local steps = {}
+	local hourSteps = {}
 
 	T.describe("Joueur simulé (#15) : partie", function()
-		T.it("15 joueurs simulés jusqu'à leur première renaissance", function()
+		T.it("15 joueurs simulés jusqu'à leur première renaissance, 200 sur la première heure", function()
 			for seed = 1, PLAYERS do
 				table.insert(runs, Sim.simulate(m, seed, 16 * 3600, true))
+			end
+			local hourRuns = {}
+			for seed = 1, HOUR_PLAYERS do
+				table.insert(hourRuns, Sim.simulate(m, seed, HOUR_SECONDS, true))
 			end
 			-- Le joueur simulé fixe la graine de math.random : les specs suivantes retrouvent un hasard non répété
 			math.randomseed(os.time())
 			steps = Sim.steps(runs)
+			hourSteps = Sim.steps(hourRuns)
 			T.expectEqual(#runs, PLAYERS)
 		end)
 	end)
@@ -62,15 +75,22 @@ return function(T, Loader, Lib)
 			end
 		end)
 		T.it(
-			"premier achat en moins d'une minute, puis un achat toutes les 7 min au plus la première heure",
+			"premier achat en moins d'une minute, puis un achat toutes les 6 min au plus la première heure",
 			function()
-				T.expect(steps[1].t < 60, "premier achat à " .. steps[1].t .. " s")
+				T.expect(hourSteps[1].t < 60, "premier achat à " .. hourSteps[1].t .. " s")
 				local count = 0
-				for k = 2, #steps do
-					if steps[k].t <= 3600 then
+				for k = 2, #hourSteps do
+					if hourSteps[k].t <= 3600 then
 						count += 1
-						local gap = steps[k].t - steps[k - 1].t
-						T.expect(gap <= 420, string.format("achat %d : %d s après le précédent", k, gap))
+						local gap = hourSteps[k].t - hourSteps[k - 1].t
+						T.expect(gap <= 360, string.format("achat %d : %d s après le précédent", k, gap))
+					elseif hourSteps[k - 1].t <= 3600 then
+						-- Attente qui chevauche la fin de l'heure : sa part dans la première heure compte aussi
+						local wait = 3600 - hourSteps[k - 1].t
+						T.expect(
+							wait <= 360,
+							string.format("achat %d : %d s d'attente avant la fin de l'heure", k, wait)
+						)
 					end
 				end
 				T.expect(count >= 12, count .. " achats la première heure")
