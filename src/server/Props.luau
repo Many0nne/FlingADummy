@@ -5,6 +5,7 @@ local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BaseLook = require(ReplicatedStorage.Shared.BaseLook)
+local BaseUpgrade = require(ReplicatedStorage.Shared.BaseUpgrade)
 local CourseLayout = require(ReplicatedStorage.Shared.CourseLayout)
 local Leaderboard = require(ReplicatedStorage.Shared.Leaderboard)
 local Build = require(script.Parent.Build)
@@ -39,6 +40,16 @@ local function put(
 		cframe *= CFrame.Angles(math.rad(rotation.X), math.rad(rotation.Y), math.rad(rotation.Z))
 	end
 	return Build.block(parent, size, cframe, color, solid)
+end
+
+-- Cette méthode permet de ranger une pièce de l'habillage d'une base (poteau, lisse, lanterne…) dans son propre modèle,
+-- à l'étage `stage` (ordre de l'animation de construction, Shared.BaseUpgrade), lorsque l'on habille une base.
+local function lookPiece(parent: Instance, name: string, stage: number): Model
+	local model = Instance.new("Model")
+	model.Name = name
+	model:SetAttribute(BaseUpgrade.STAGE_ATTRIBUTE, stage)
+	model.Parent = parent
+	return model
 end
 
 -- Cette méthode permet de donner un multiple aléatoire de `step` entre `low` et `high` lorsque l'on varie la taille
@@ -714,18 +725,19 @@ function Props.fence(parent: Instance, from: Vector3, to: Vector3, style: BaseLo
 	local h, w = look.height, look.width
 	for i = if skipStart then 1 else 0, count do
 		local at = frame * CFrame.new(0, 0, -length * i / count)
-		Build.block(parent, Vector3.new(w, h, w), at * CFrame.new(0, h / 2, 0), look.post)
+		local post = lookPiece(parent, "Post", 0)
+		Build.block(post, Vector3.new(w, h, w), at * CFrame.new(0, h / 2, 0), look.post)
 		if look.cap then
 			-- Chapeau plus large que le poteau (faces décalées : pas de faces coplanaires)
 			local cap = BaseLook.CAP_HEIGHT
 			local side = w + 2 * BaseLook.CAP_OVERHANG
-			Build.block(parent, Vector3.new(side, cap, side), at * CFrame.new(0, h + cap / 2, 0), look.cap)
+			Build.block(post, Vector3.new(side, cap, side), at * CFrame.new(0, h + cap / 2, 0), look.cap)
 		end
 	end
 	-- Lisses en retrait des poteaux, à 36 % et 73 % de leur hauteur
 	for _, y in { h * 0.36, h * 0.73 } do
 		local size = Vector3.new(w * BaseLook.RAIL_RATIO, 0.9, length)
-		Build.block(parent, size, frame * CFrame.new(0, y, -length / 2), look.rail)
+		Build.block(lookPiece(parent, "Rail", 1), size, frame * CFrame.new(0, y, -length / 2), look.rail)
 	end
 end
 
@@ -740,6 +752,7 @@ local GOLD = rgb(255, 200, 40)
 -- Cette méthode permet de poser une lanterne (socle et toit sombres, lumière néon chaude) dont le pied est en `top`
 -- lorsque l'on habille le haut d'un poteau de clôture ou d'une arche.
 function Props.lantern(parent: Instance, top: Vector3)
+	parent = lookPiece(parent, "Lantern", 2)
 	Build.block(parent, Vector3.new(1.1, 0.3, 1.1), CFrame.new(top + Vector3.new(0, 0.15, 0)), LANTERN_FRAME, false)
 	local light = Build.decor({
 		Name = "Lantern",
@@ -759,13 +772,21 @@ end
 function Props.flowerBed(parent: Instance, from: Vector3, to: Vector3)
 	local length = (to - from).Magnitude
 	local frame = CFrame.lookAt(from, to)
-	put(parent, frame, Vector3.new(2.4, 0.5, length), Vector3.new(0, 0.25, -length / 2), SOIL, false)
+	put(
+		lookPiece(parent, "Bed", 0),
+		frame,
+		Vector3.new(2.4, 0.5, length),
+		Vector3.new(0, 0.25, -length / 2),
+		SOIL,
+		false
+	)
 	local count = math.max(1, math.floor(length / 3))
 	for i = 1, count do
 		local z = -length * (i - 0.5) / count
-		put(parent, frame, Vector3.new(1.4, 0.6, 1.4), Vector3.new(0, 0.8, z), LEAF_DARK, false)
+		local tuft = lookPiece(parent, "Tuft", 1)
+		put(tuft, frame, Vector3.new(1.4, 0.6, 1.4), Vector3.new(0, 0.8, z), LEAF_DARK, false)
 		put(
-			parent,
+			tuft,
 			frame,
 			Vector3.new(0.9, 0.9, 0.9),
 			Vector3.new(0, 1.55, z),
@@ -778,6 +799,7 @@ end
 -- Cette méthode permet de planter un drapeau (mât, fanion à la couleur `color` tourné vers `side`, boule dorée) au sol
 -- en `at` lorsque l'on habille les coins d'une base.
 function Props.flag(parent: Instance, at: Vector3, side: Vector3, color: Color3)
+	parent = lookPiece(parent, "Flag", 0)
 	local height = 11
 	Build.block(parent, Vector3.new(0.5, height, 0.5), CFrame.new(at + Vector3.new(0, height / 2, 0)), WHITE, false)
 	Build.block(parent, Vector3.new(0.9, 0.9, 0.9), CFrame.new(at + Vector3.new(0, height + 0.45, 0)), GOLD, false)
@@ -793,11 +815,19 @@ function Props.arch(parent: Instance, a: Vector3, b: Vector3, color: Color3): (V
 	local frame = CFrame.lookAt(a, b)
 	local span = (b - a).Magnitude
 	for _, z in { 0, -span } do
-		put(parent, frame, Vector3.new(2.6, height, 2.6), Vector3.new(0, height / 2, z), color, true)
+		put(
+			lookPiece(parent, "Pillar", 0),
+			frame,
+			Vector3.new(2.6, height, 2.6),
+			Vector3.new(0, height / 2, z),
+			color,
+			true
+		)
 	end
-	put(parent, frame, Vector3.new(2.2, 1.6, span + 3), Vector3.new(0, height + 0.8, -span / 2), GOLD, true)
+	local lintel = lookPiece(parent, "Lintel", 1)
+	put(lintel, frame, Vector3.new(2.2, 1.6, span + 3), Vector3.new(0, height + 0.8, -span / 2), GOLD, true)
 	put(
-		parent,
+		lintel,
 		frame,
 		Vector3.new(1.6, 1.6, 1.6),
 		Vector3.new(0, height + 2.6, -span / 2),

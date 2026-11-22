@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local BaseLook = require(ReplicatedStorage.Shared.BaseLook)
+local BaseUpgrade = require(ReplicatedStorage.Shared.BaseUpgrade)
 local Collection = require(ReplicatedStorage.Shared.Collection)
 local CourseLayout = require(ReplicatedStorage.Shared.CourseLayout)
 local Drips = require(ReplicatedStorage.Shared.Drips)
@@ -65,7 +66,6 @@ local BED_INSET = 2.2 -- du bord de la base à l'axe d'un massif de fleurs
 local BED_END = 5 -- massifs arrêtés à cette distance des clôtures de côté
 local FLAG_INSET = 2.5 -- drapeaux plantés à l'intérieur des coins
 local LABEL_HEIGHT = 24 -- texte flottant de la base, au-dessus de son centre (au-dessus des plus grands mannequins posés)
-local LABEL_SIZE = Vector2.new(14, 9.4) -- taille du texte flottant en studs (plus une marge en pixels : lisible de loin)
 local LABEL_DISTANCE = 600 -- distance d'affichage du texte flottant (tout le hub et la zone de lancer)
 local LABEL_GREEN = Color3.fromRGB(80, 215, 70) -- revenu (vert du HUD)
 local LABEL_CYAN = Color3.fromRGB(90, 205, 255) -- Throw Power (cyan du HUD)
@@ -536,7 +536,7 @@ end
 
 -- Cette méthode permet de poser un émetteur d'étincelles dorées ou colorées dans le volume d'une pièce invisible
 -- lorsque l'on habille un palier brillant (base dorée, appareil Diamond et plus).
-local function sparkles(parent: Instance, size: Vector3, cframe: CFrame, color: Color3, rate: number)
+local function sparkles(parent: Instance, size: Vector3, cframe: CFrame, color: Color3, rate: number): Part
 	local zone = Build.decor({ Name = "Sparkles", Size = size, CFrame = cframe, Transparency = 1, Parent = parent })
 	local emitter = Instance.new("ParticleEmitter")
 	emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
@@ -553,6 +553,7 @@ local function sparkles(parent: Instance, size: Vector3, cframe: CFrame, color: 
 	emitter.Speed = NumberRange.new(0.5, 1.5)
 	emitter.Rate = rate
 	emitter.Parent = zone
+	return zone
 end
 
 -- Cette méthode permet de poser l'émetteur de confettis joué par chaque client (Client.HubShops) quand le serveur
@@ -875,9 +876,13 @@ local function baseLabel(parent: Instance, position: Vector3): BaseLabel
 	})
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "BaseLabel"
-	gui.Size = UDim2.new(LABEL_SIZE.X, 110, LABEL_SIZE.Y, 82)
+	-- Taille de départ ; chaque client la borne ensuite à chaque image (Client.BaseFx, BaseLook.labelPixels, #150)
+	local studs, pixels = BaseLook.LABEL_STUDS, BaseLook.LABEL_PIXELS
+	gui.Size = UDim2.new(studs.X, pixels.X, studs.Y, pixels.Y)
 	gui.LightInfluence = 0
 	gui.MaxDistance = LABEL_DISTANCE
+	-- Par-dessus les étiquettes des mannequins posés, qui passaient devant de près (#150)
+	gui.AlwaysOnTop = true
 	gui.Parent = anchor
 	local avatar = Instance.new("ImageLabel")
 	avatar.Name = "Avatar"
@@ -959,9 +964,32 @@ local function baseFence(folder: Instance, slot: Slot, fence: BaseLook.Fence): (
 	return gate, corners
 end
 
+-- Cette méthode permet de garder l'ancien habillage d'une base quelques secondes hors du monde (ReplicatedStorage), où
+-- chaque client le reprend pour l'animation de construction (Client.BaseFx), lorsque la base monte de palier.
+local function keepPrevious(base: Base, old: Folder)
+	local store = ReplicatedStorage:FindFirstChild(BaseUpgrade.STORE)
+	if not store then
+		store = Instance.new("Folder")
+		store.Name = BaseUpgrade.STORE
+		store.Parent = ReplicatedStorage
+	end
+	local earlier = store:FindFirstChild(base.model.Name)
+	if earlier then
+		earlier:Destroy()
+	end
+	old.Name = base.model.Name
+	old.Parent = store
+	task.delay(BaseUpgrade.KEEP, function()
+		if old.Parent == store then
+			old:Destroy()
+		end
+	end)
+end
+
 -- Cette méthode permet d'habiller une base au palier visuel `tier` (Shared.BaseLook : sol, clôture, décor) lorsque son
--- propriétaire change ou achète un présentoir ; sans effet si la base a déjà ce palier.
-function CourseBuilder.styleBase(slot: Slot, tier: number)
+-- propriétaire change ou achète un présentoir ; sans effet si la base a déjà ce palier. `upgrade` (achat qui monte de
+-- palier) : l'état final est posé tout de suite et chaque client joue l'animation de construction (Shared.BaseUpgrade).
+function CourseBuilder.styleBase(slot: Slot, tier: number, upgrade: boolean?)
 	local base = slot.base
 	if base.tier == tier then
 		return
@@ -971,6 +999,7 @@ function CourseBuilder.styleBase(slot: Slot, tier: number)
 	local folder = Instance.new("Folder")
 	folder.Name = "Look"
 	local old = base.look
+	local oldPlot = base.plot.Color
 	base.plot.Color = look.plot or Build.shade(slot.color, 0.6)
 	local center = CourseLayout.basePosition(slot.index)
 	local hx, hz = CourseLayout.BASE_SIZE.X / 2, CourseLayout.BASE_SIZE.Z / 2
@@ -1020,16 +1049,24 @@ function CourseBuilder.styleBase(slot: Slot, tier: number)
 		end
 	end
 	if fence.shine then
-		sparkles(
+		local zone = sparkles(
 			folder,
 			Vector3.new(hx * 2, 8, hz * 2),
 			CFrame.new(center + Vector3.new(0, 6, 0)),
 			rgb(255, 215, 80),
 			14
 		)
+		zone:SetAttribute(BaseUpgrade.STAGE_ATTRIBUTE, 2)
 	end
 	folder.Parent = base.model
-	old:Destroy()
+	if upgrade then
+		keepPrevious(base, old)
+		-- Posés après l'habillage : un client qui les reçoit a déjà le nouveau et l'ancien
+		base.model:SetAttribute(BaseUpgrade.FROM_PLOT_ATTRIBUTE, oldPlot)
+		base.model:SetAttribute(BaseUpgrade.AT_ATTRIBUTE, Workspace:GetServerTimeNow())
+	else
+		old:Destroy()
+	end
 	base.look = folder
 	base.tier = tier
 end
@@ -1041,6 +1078,7 @@ local function buildBase(parent: Instance, slot: Slot)
 	local size = CourseLayout.BASE_SIZE
 	local model = Instance.new("Model")
 	model.Name = "Base" .. slot.index
+	CollectionService:AddTag(model, BaseUpgrade.BASE_TAG) -- animation de construction, taille du texte (Client.BaseFx)
 	local plot = Build.decor({
 		Name = "Plot",
 		Size = Vector3.new(size.X, PLOT_TOP, size.Z),

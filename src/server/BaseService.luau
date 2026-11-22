@@ -44,6 +44,9 @@ export type Prize = {
 local FEET = 3.82 -- du centre du torse au bas des pieds, échelle 1 (Shared.DummyShape)
 local LOCKED_COLOR = Color3.fromRGB(120, 122, 132) -- présentoir pas encore acheté
 local LOCKED_TRANSPARENCY = 0.55
+-- Étiquette d'un mannequin posé (nom, $/s) : lue dans la base et devant elle, pas depuis la bande où elle encombrait
+-- le texte de la base (#150 ; 120 studs avant)
+local DISPLAY_LABEL_DISTANCE = 60
 local SELL_BURST_REACH = 15 -- vente faite au stand SELL (invite à 10 studs, 4,5 devant l'émetteur) : éclat de pièces
 local HEADSHOT = "rbxthumb://type=AvatarHeadShot&id=%d&w=150&h=150" -- portrait du propriétaire, au-dessus de sa base
 
@@ -57,8 +60,9 @@ local slotOf: { [Player]: Slot } = {}
 -- Joueurs arrivés avant que SlotService leur donne une place : connexion à l'attribut Slot, coupée au départ
 local waitingSlot: { [Player]: RBXScriptConnection } = {}
 local shown: { [number]: { [number]: Shown } } = {} -- mannequins posés, par place puis présentoir
--- Palier visuel de chaque base, pour le propriétaire chargé qui l'a (confettis seulement s'il monte pour lui)
-local styled: { [number]: { player: Player, tier: number } } = {}
+-- Palier visuel et présentoirs achetés de chaque base, pour le propriétaire chargé qui l'a (animation de construction
+-- ou confettis seulement s'ils montent pour lui)
+local styled: { [number]: { player: Player, tier: number, displays: number } } = {}
 local rng = Random.new()
 
 -- Cette méthode permet de construire le mannequin posé sur un présentoir (pièces ancrées sans collision, regard vers
@@ -91,7 +95,7 @@ local function buildDisplayed(entry: Collection.Entry, top: BasePart, facing: Ve
 	gui.Size = UDim2.fromScale(8, 2.6)
 	gui.StudsOffsetWorldSpace = Vector3.new(0, 3.4 * scale + 1.2, 0)
 	gui.LightInfluence = 0
-	gui.MaxDistance = 120
+	gui.MaxDistance = DISPLAY_LABEL_DISTANCE
 	gui.Adornee = parts.Torso
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.fromScale(1, 1)
@@ -166,20 +170,23 @@ local function updateLabel(slot: Slot, player: Player?)
 	label.avatar.Image = if player and portrait then string.format(HEADSHOT, player.UserId) else ""
 end
 
--- Cette méthode permet d'habiller la base au palier visuel de ses présentoirs achetés (Shared.BaseLook) et d'y faire
--- jaillir les confettis quand son propriétaire vient d'en acheter un (pas à son arrivée) lorsque la base est rendue.
+-- Cette méthode permet d'habiller la base au palier visuel de ses présentoirs achetés (Shared.BaseLook) lorsque la base
+-- est rendue ; quand son propriétaire vient d'en acheter un (pas à son arrivée) : animation de construction s'il monte
+-- de palier (confettis à la fin, Client.BaseFx), sinon confettis tout de suite.
 local function styleTier(slot: Slot, player: Player?, ready: boolean, displays: number)
 	local tier = BaseLook.baseTier(displays)
 	local previous = styled[slot.index]
-	if ready and player and previous and previous.player == player and tier > previous.tier then
+	local bought = ready and player ~= nil and previous ~= nil and previous.player == player
+	local upgrade = bought and previous ~= nil and tier > previous.tier
+	if bought and not upgrade and previous and displays > previous.displays then
 		CourseBuilder.celebrate(slot.base.burst)
 	end
 	if ready and player then
-		styled[slot.index] = { player = player, tier = tier }
+		styled[slot.index] = { player = player, tier = tier, displays = displays }
 	else
 		styled[slot.index] = nil
 	end
-	CourseBuilder.styleBase(slot, tier)
+	CourseBuilder.styleBase(slot, tier, upgrade)
 end
 
 -- Cette méthode permet de reconstruire les mannequins posés d'une place (vide si personne ne l'occupe), d'habiller ses

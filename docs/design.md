@@ -655,6 +655,10 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
   Throw Power « 💪 1.2K » en cyan (renaissances « 🌟 3 » en violet à côté, #108), mis à jour en direct (achat, pose,
   entraînement, record) ; « EMPTY BASE · $0/s » sans joueur. Taille en studs plus une marge en pixels : lisible de
   près et à travers tout le hub (affiché jusqu'à 600 studs). Comparaison entre joueurs d'un coup d'œil ; plus de panneau à l'entrée.
+  Sans chevauchement (#150) : chaque client borne la largeur du texte à 44 studs à sa distance
+  (`BaseLook.labelPixels`, `Client.BaseFx` : 4 studs d'écart avec le texte voisin, 48 studs d'un centre à l'autre),
+  taille d'avant inchangée de près et depuis la bande ; texte dessiné par-dessus les étiquettes des mannequins posés
+  (`AlwaysOnTop`), affichées à 60 studs au plus (120 avant : elles encombraient le texte vu de la bande).
 - **Paliers visuels de la base** (#61, `Shared.BaseLook`) : la base change d'aspect à chaque présentoir acheté, un
   joueur voit de loin les bases les plus avancées du serveur.
   | Présentoirs | Palier | Clôture | Sol | Décor |
@@ -665,6 +669,15 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
   | 9 | Noble | pierre à chapeaux dorés | grès | + drapeaux à la couleur de la place aux coins |
   | 10 | Golden | métal doré | tapis à la couleur de la place | + arche d'entrée (piliers à la couleur de la place, linteau doré), paillettes dorées sur toute la base |
   Achat : confettis au-dessus de la base, vus de tous (en plus du popup « NEW DISPLAY! » du propriétaire).
+  **Animation de construction** (#122, `Shared.BaseUpgrade`, `Client.BaseFx`) quand l'achat change le palier : les
+  anciennes pièces (clôture, décor) s'enfoncent en s'effaçant (0,35 s), puis les nouvelles tombent de 12 studs une à
+  une, en vague depuis l'entrée (poteaux, massifs, piliers, drapeaux ; puis lisses, touffes de fleurs, linteau ;
+  puis lanternes et paillettes), petit rebond, poussière et choc de briques à l'impact ; le sol prend sa nouvelle
+  couleur en fondu à mi-parcours ; confettis à la fin. Durée bornée entre 1,5 et 2,3 s quel que soit le nombre de
+  pièces. Vue de tous : le serveur pose l'état final tout de suite (aucune attente, rien de bloqué), garde l'ancien
+  habillage 5 s dans `ReplicatedStorage` et publie l'heure du changement (`UpgradeAt`) ; chaque client anime un double
+  (pièces sans collision jusqu'à leur arrivée). Un joueur arrivé après (changement de plus d'1 s) voit l'état final.
+  Mouvement réduit : fondu de 0,3 s, sans chute ni poussière.
 - Revenu versé chaque seconde (attribut `Income`, compteur « +$N/s ») : **seule source d'argent**.
 - **Stock** (inventaire) : les mannequins possédés non posés, doublons compris, dans l'ordre d'arrivée ; tout mannequin
   gagné y entre. Plafond technique 200 (`INVENTORY_MAX`) : au-delà, le moins rentable du stock est vendu d'office.

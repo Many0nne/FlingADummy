@@ -215,4 +215,43 @@ return function(T, Loader)
 			T.expectEqual(BaseLook.label(nil, 0, 10, 0, 3650).best, "", "base vide")
 		end)
 	end)
+
+	T.describe("BaseLook.labelPixels (textes des bases voisines sans chevauchement, #150)", function()
+		local CourseLayout = loader:require("src/shared/CourseLayout")
+		-- Pixels par stud à 1 stud : 1080p et téléphone en paysage (390 px de haut), champ de 70°
+		local units = { 1080 / (2 * math.tan(math.rad(35))), 390 / (2 * math.tan(math.rad(35))) }
+
+		T.it("reste plus étroit que l'écart entre deux bases, à toute distance", function()
+			T.expect(BaseLook.LABEL_SPAN < CourseLayout.BASE_PITCH, "borne sous l'écart entre deux centres")
+			for _, unit in units do
+				for _, depth in { 1, 10, 50, 100, 250, 400, 600, 1000 } do
+					local size = BaseLook.labelPixels(depth, unit)
+					local pitch = CourseLayout.BASE_PITCH * unit / depth -- écart entre deux textes à l'écran
+					T.expect(
+						size.X < pitch,
+						string.format("profondeur %d : %.0f px pour %.0f px d'écart", depth, size.X, pitch)
+					)
+				end
+			end
+		end)
+		T.it("garde la taille d'avant (studs + marge en pixels) de près et depuis la bande", function()
+			local unit = units[1]
+			for _, depth in { 20, 71, 102 } do
+				local perStud = unit / depth
+				local expected = BaseLook.LABEL_STUDS * perStud + BaseLook.LABEL_PIXELS
+				local size = BaseLook.labelPixels(depth, unit)
+				T.expectNear(size.X, expected.X, 1e-6, "largeur à " .. depth)
+				T.expectNear(size.Y, expected.Y, 1e-6, "hauteur à " .. depth)
+			end
+		end)
+		T.it("garde les proportions du texte quand il est borné", function()
+			local unit = units[2]
+			local depth = 400
+			local perStud = unit / depth
+			local free = BaseLook.LABEL_STUDS * perStud + BaseLook.LABEL_PIXELS
+			local size = BaseLook.labelPixels(depth, unit)
+			T.expect(size.X < free.X, "borné")
+			T.expectNear(size.X / size.Y, free.X / free.Y, 1e-6)
+		end)
+	end)
 end

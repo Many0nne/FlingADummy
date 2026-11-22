@@ -101,18 +101,24 @@ local function bindBurst(part: Instance)
 end
 
 -- Cette méthode permet de faire jaillir les confettis d'une base ou d'un appareil (quart du nombre en mouvement réduit)
--- lorsque le serveur compte un présentoir ou un Training Gear acheté (attribut Upgrades).
+-- lorsqu'un présentoir ou un Training Gear vient d'être acheté (ou à la fin de l'animation de construction, Client.BaseFx).
+function HubShops.celebrate(part: BasePart)
+	local share = if UIKit.reducedMotion() then 0.25 else 1
+	for _, emitter in part:GetChildren() do
+		if emitter:IsA("ParticleEmitter") then
+			emitter:Emit(math.ceil(((emitter:GetAttribute("Count") :: number?) or 30) * share))
+		end
+	end
+end
+
+-- Cette méthode permet de brancher les confettis d'une base ou d'un appareil lorsque le serveur compte un présentoir ou
+-- un Training Gear acheté (attribut Upgrades).
 local function bindUpgrade(part: Instance)
 	if not part:IsA("BasePart") then
 		return
 	end
 	part:GetAttributeChangedSignal("Upgrades"):Connect(function()
-		local share = if UIKit.reducedMotion() then 0.25 else 1
-		for _, emitter in part:GetChildren() do
-			if emitter:IsA("ParticleEmitter") then
-				emitter:Emit(math.ceil(((emitter:GetAttribute("Count") :: number?) or 30) * share))
-			end
-		end
+		HubShops.celebrate(part)
 	end)
 end
 
