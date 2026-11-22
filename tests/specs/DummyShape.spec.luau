@@ -148,6 +148,10 @@ return function(T, Loader)
 			for _, piece in DummyShape.PIECES do
 				local part = model[piece.name]
 				local shell = model:FindFirstChild(piece.name .. "Marks")
+				if not DummyShape.MARKED[piece.name] then
+					T.expectEqual(shell, nil, piece.name .. " : pas de coque sur un membre")
+					continue
+				end
 				T.expect(shell ~= nil, piece.name .. " : coque")
 				T.expect(shell:FindFirstChild(DummyShape.MARKS) ~= nil, piece.name .. " : atlas des marques")
 				T.expectEqual(shell:FindFirstChild(DummyShape.SURFACE), nil, piece.name .. " : sans l'atlas Overlay")
@@ -171,8 +175,13 @@ return function(T, Loader)
 				hidden = { "LeftUpperLeg" },
 				accessories = { "ghost_GhostTail" },
 			})
-			T.expectEqual(ghost:FindFirstChild("LeftUpperLegMarks"), nil, "jambe masquée")
 			T.expect(ghost:FindFirstChild("HeadMarks") ~= nil, "visage du fantôme")
+			local headless = DummyShape.buildVisual(1, {
+				material = roblox.Enum.Material.Neon,
+				hidden = { "Head" },
+				accessories = { "ghost_GhostTail" },
+			})
+			T.expectEqual(headless:FindFirstChild("HeadMarks"), nil, "pièce masquée")
 		end)
 		T.it(
 			"pose les pièces ajoutées sur leur pièce, sans masse ni collision, couleur et matériau du modèle",

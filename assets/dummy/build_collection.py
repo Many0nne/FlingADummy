@@ -1700,6 +1700,9 @@ def render_dummy(cam, dummy_id, look, body, addons, materials):
                 slot.material = roblox_material(tint, look["material"])
             elif orig == "Body":
                 slot.material = body_tint(tint, body_mat_default)
+            elif look.get("material") and name not in ("Head", "Torso"):
+                # Sous un materiau, seuls tete et torse gardent leurs marques en jeu (DummyShape.MARKED)
+                slot.material = roblox_material(tint, look["material"])
             else:
                 # Visage, cibles et bandes noires gardes sous un materiau (#126 : coque des marques en jeu)
                 slot.material = {"Dark": dark, "Target": target}[orig]

@@ -22,6 +22,9 @@ DummyShape.SURFACE = "DummySurface"
 -- posé sur une coque à peine plus grande que la pièce, il ne montre que visage, cibles et bandes noires (#126)
 DummyShape.MARKS = "DummyMarks"
 DummyShape.MARKS_GAP = 0.02 -- écart de la coque à la pièce (studs par face, échelle 1)
+-- Pièces qui reçoivent une coque : visage et cibles seulement (une coque par membre doublerait les pièces translucides
+-- de chaque mannequin posé sur une base)
+DummyShape.MARKED = { Head = true, Torso = true }
 -- Pièces ajoutées animées (rotation, flottement) : animées côté client par Client.DummyFx
 DummyShape.FX_TAG = "DummyFx"
 DummyShape.FX_WELD = "FxWeld"
@@ -445,7 +448,7 @@ function DummyShape.buildPieces(model: Model, scale: number, variant: Variant?):
 			p.Transparency = 1
 		end
 		p.Parent = model
-		if textured and not hidden and not p:FindFirstChild(DummyShape.SURFACE) then
+		if textured and not hidden and DummyShape.MARKED[piece.name] and not p:FindFirstChild(DummyShape.SURFACE) then
 			-- Atlas retiré par le matériau : visage et cibles reposés par-dessus (#126)
 			DummyShape.addMarks(model, p, scale)
 		end
