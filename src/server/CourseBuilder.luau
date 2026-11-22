@@ -832,7 +832,7 @@ local function buildStation(parent: Instance, slot: Slot)
 end
 
 -- Cette méthode permet de construire le pad d'achat de présentoir d'une place (dalle en briques vertes au sol,
--- panneau en bois « 6 > 7 » avec le prix sur une plaque verte, comme le pad « 8 > 9 » de la référence 09) devant la
+-- panneau en bois « 8 > 9 » avec le prix sur une plaque verte, comme le pad « 8 > 9 » de la référence 09) devant la
 -- base, lorsque le hub est construit ; l'invite « Buy display » est activée par le client du propriétaire, qui envoie
 -- l'achat au serveur (remote Inventory).
 local function buildPad(parent: Instance, slot: Slot): Pad
@@ -848,7 +848,7 @@ local function buildPad(parent: Instance, slot: Slot): Pad
 	end
 	Build.block(model, Vector3.new(11, 5.6, 0.8), frame * CFrame.new(0, 5, 2), COLORS.wood)
 	local titlePlate = Build.block(model, Vector3.new(9, 2.6, 0.2), frame * CFrame.new(0, 6.2, 1.5), COLORS.woodDark)
-	local title = Build.surfaceText(titlePlate, Enum.NormalId.Front, "6 > 7")
+	local title = Build.surfaceText(titlePlate, Enum.NormalId.Front, "8 > 9")
 	local pricePlate = Build.block(model, Vector3.new(6, 1.6, 0.3), frame * CFrame.new(0, 3.6, 1.45), COLORS.padGreen)
 	local price = Build.surfaceText(pricePlate, Enum.NormalId.Front, "")
 	local prompt = Instance.new("ProximityPrompt")
@@ -1104,11 +1104,20 @@ local function buildBase(parent: Instance, slot: Slot)
 	local displays: { BasePart } = {}
 	local pedestals: { BasePart } = {}
 	for index, position in CourseLayout.displayPositions(slot.index) do
-		local pedestal =
-			Build.block(model, Vector3.new(5, 1.6, 5), CFrame.new(position + Vector3.new(0, 0.8, 0)), COLORS.stone)
+		local side = CourseLayout.PEDESTAL_SIZE
+		local pedestal = Build.block(
+			model,
+			Vector3.new(side, 1.6, side),
+			CFrame.new(position + Vector3.new(0, 0.8, 0)),
+			COLORS.stone
+		)
 		table.insert(pedestals, pedestal)
-		local top =
-			Build.block(model, Vector3.new(4, 0.4, 4), CFrame.new(position + Vector3.new(0, 1.8, 0)), slot.color)
+		local top = Build.block(
+			model,
+			Vector3.new(side - 0.6, 0.4, side - 0.6),
+			CFrame.new(position + Vector3.new(0, 1.8, 0)),
+			slot.color
+		)
 		top.Name = "Display" .. index
 		-- Cible d'objectif de cette place ; l'attribut Objective (« Place » si libre) est posé par Server.BaseService
 		top:SetAttribute("Slot", slot.index)

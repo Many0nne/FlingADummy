@@ -10,10 +10,10 @@ local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
+local BaseLook = require(Shared.BaseLook)
 local Collection = require(Shared.Collection)
 local CourseLayout = require(Shared.CourseLayout)
 local DummyShape = require(Shared.DummyShape)
-local GameConfig = require(Shared.GameConfig)
 local PlanchePlan = require(Shared.PlanchePlan)
 local ThrowDummies = require(Shared.ThrowDummies)
 
@@ -160,7 +160,7 @@ local function stageSlot(parent: Instance, shot: PlanchePlan.Shot): boolean
 	end
 	local center, view
 	if shot.framing == "base" then
-		BaseService.showcase(slot, GameConfig.DISPLAY_START + tier - 1)
+		BaseService.showcase(slot, BaseLook.BASE_TIERS[tier].displays)
 		center, view = CourseLayout.basePosition(slot.index), BASE_VIEW
 	else
 		CourseBuilder.styleStation(slot, tier)

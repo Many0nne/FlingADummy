@@ -56,7 +56,6 @@ function Planches.build(loader: any): ({ [string]: any }, { [string]: number })
 	local Collection = loader:require("src/shared/Collection")
 	local DummyModels = loader:require("src/shared/DummyModels")
 	local Format = loader:require("src/shared/Format")
-	local GameConfig = loader:require("src/shared/GameConfig")
 	local PlanchePlan = loader:require("src/shared/PlanchePlan")
 	local Rarity = loader:require("src/shared/Rarity")
 	local ThrowDummies = loader:require("src/shared/ThrowDummies")
@@ -99,7 +98,7 @@ function Planches.build(loader: any): ({ [string]: any }, { [string]: number })
 			return {
 				key = item.key,
 				title = string.format("%d. %s", item.key, tier.name),
-				lines = { string.format("%d présentoirs", GameConfig.DISPLAY_START + item.key - 1) },
+				lines = { string.format("%d présentoirs", tier.displays) },
 				look = fingerprint({ tier = tier, fence = fence }),
 			}
 		end

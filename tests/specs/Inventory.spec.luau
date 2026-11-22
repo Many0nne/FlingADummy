@@ -36,6 +36,24 @@ return function(T, Loader)
 		return table.concat(keys, " ")
 	end
 
+	local START = GameConfig.DISPLAY_START
+
+	-- Cette méthode permet de compléter une liste de clés de base par « - » jusqu'à `count` présentoirs lorsqu'un test
+	-- décrit une base sans dépendre du nombre de présentoirs de départ.
+	local function upTo(keys: string, used: number, count: number?): string
+		return keys .. string.rep(" -", (count or START) - used)
+	end
+
+	-- Cette méthode permet de donner une base pleine (START présentoirs) : `first` puis `rest` jusqu'au bout lorsqu'un
+	-- test part d'une base pleine.
+	local function full(first: { any }, rest: any): { any }
+		local list = table.clone(first)
+		while #list < START do
+			table.insert(list, rest)
+		end
+		return list
+	end
+
 	-- Cette méthode permet de lister les clés du stock triées lorsqu'un test compare un stock sans tenir à l'ordre.
 	local function stockKeys(data: any): string
 		local keys = {}
@@ -101,7 +119,7 @@ return function(T, Loader)
 			T.expectEqual(Inventory.place(data, 1, 1), nil)
 			T.expectEqual(Inventory.place(data, 1, GameConfig.DISPLAY_START + 1), nil)
 			T.expectEqual(Inventory.place(data, 1, 3), 3)
-			T.expectEqual(baseKeys(data), "mint:1 - crash:1 - - -")
+			T.expectEqual(baseKeys(data), upTo("mint:1 - crash:1", 3))
 			T.expectEqual(stockKeys(data), "crash:1")
 		end)
 		T.it("AUTO : premier présentoir libre", function()
@@ -109,21 +127,21 @@ return function(T, Loader)
 			T.expectEqual(Inventory.place(data, 1), 2)
 		end)
 		T.it("base pleine : AUTO remplace le moins rentable s'il rapporte plus, l'ancien retourne au stock", function()
-			local data = make({ mint, mint, crash, mint, mint, mint }, { gold })
+			local data = make(full({ mint, mint, crash }, mint), { gold })
 			T.expectEqual(Inventory.place(data, 1), 3)
-			T.expectEqual(baseKeys(data), "mint:1 mint:1 gold:1 mint:1 mint:1 mint:1")
+			T.expectEqual(baseKeys(data), "mint:1 mint:1 gold:1" .. string.rep(" mint:1", START - 3))
 			T.expectEqual(stockKeys(data), "crash:1")
 		end)
 		T.it("base pleine et pas plus rentable : le nouveau reste au stock, rien n'est vendu", function()
-			local data = make({ mint, mint, mint, mint, mint, mint }, { crash })
+			local data = make(full({}, mint), { crash })
 			T.expectEqual(Inventory.place(data, 1), nil)
 			T.expectEqual(stockKeys(data), "crash:1")
 			T.expectEqual(Inventory.autoTarget(data, mint), nil, "égalité : pas d'échange")
 		end)
 		T.it("les présentoirs achetés comptent", function()
-			local data = make({ mint, mint, mint, mint, mint, mint }, { crash })
+			local data = make(full({}, mint), { crash })
 			data.displays += 1
-			T.expectEqual(Inventory.place(data, 1), 7)
+			T.expectEqual(Inventory.place(data, 1), START + 1)
 		end)
 	end)
 
@@ -131,7 +149,7 @@ return function(T, Loader)
 		T.it("rend le posé au stock", function()
 			local data = make({ mint, crash })
 			T.expect(Inventory.remove(data, 2), "retiré")
-			T.expectEqual(baseKeys(data), "mint:1 - - - - -")
+			T.expectEqual(baseKeys(data), upTo("mint:1", 1))
 			T.expectEqual(stockKeys(data), "crash:1")
 		end)
 		T.it("refuse un présentoir vide, invalide, ou un stock plein", function()
@@ -148,9 +166,9 @@ return function(T, Loader)
 
 	T.describe("Inventory.placeBest", function()
 		T.it("base pleine → les plus rentables (posés et stock) sur les présentoirs", function()
-			local data = make({ crash, mint, rookie, mint, crash, mint }, { gold, biker, crash })
+			local data = make(full({ crash, mint, rookie, mint, crash, mint }, mint), { gold, biker, crash })
 			T.expect(Inventory.placeBest(data), "changé")
-			T.expectEqual(Collection.baseIncome(data.base, data.displays), 5500 + 29 + 25 * 3 + 5)
+			T.expectEqual(Collection.baseIncome(data.base, data.displays), 5500 + 29 + 25 * (START - 3) + 5)
 			T.expectEqual(stockKeys(data), "crash:1 crash:1 crash:1")
 			-- Les posés gardés n'ont pas bougé
 			T.expectEqual(Inventory.key(data.base[2]), "mint:1")
@@ -160,11 +178,11 @@ return function(T, Loader)
 		T.it("remplit les présentoirs libres, ne change rien si c'est déjà le mieux", function()
 			local data = make({ mint }, { crash })
 			T.expect(Inventory.placeBest(data), "posé")
-			T.expectEqual(baseKeys(data), "mint:1 crash:1 - - - -")
+			T.expectEqual(baseKeys(data), upTo("mint:1 crash:1", 2))
 			T.expect(not Inventory.placeBest(data), "rien à faire")
 		end)
 		T.it("à égalité, le posé reste", function()
-			local data = make({ mint, mint, mint, mint, mint, mint }, { mint })
+			local data = make(full({}, mint), { mint })
 			T.expect(not Inventory.placeBest(data), "rien ne bouge")
 		end)
 	end)
@@ -246,7 +264,7 @@ return function(T, Loader)
 			}
 			local data = Inventory.read(saved)
 			T.expectEqual(data.displays, GameConfig.DISPLAY_START)
-			T.expectEqual(baseKeys(data), "mint:1 - gold:2 - - -")
+			T.expectEqual(baseKeys(data), upTo("mint:1 - gold:2", 3))
 			T.expectEqual(stockKeys(data), "crash:1")
 			T.expectEqual(Inventory.key(data.last), "crash:1", "toujours proposé à la pose")
 			T.expectEqual(data.index.rookie, 1)
@@ -275,8 +293,31 @@ return function(T, Loader)
 			T.expectEqual(sold, 2 * Inventory.sellValue(mint), "le surplus est vendu, rien ne se perd")
 			T.expect(Inventory.findStock(data, "gold:1") ~= nil, "Gold gardé")
 		end)
+		T.it(
+			"sauvegardes d'avant #156 : 10 présentoirs gardés avec leurs posés, 6 portés au départ (8)",
+			function()
+				local placed = { gold, mint, biker, crash, rookie, mint, crash, mint, biker, gold }
+				local data = Inventory.read({ displays = 10, base = placed })
+				T.expectEqual(data.displays, 10)
+				T.expectEqual(
+					baseKeys(data),
+					"gold:1 mint:1 biker:1 crash:1 rookie:1 mint:1 crash:1 mint:1 biker:1 gold:1"
+				)
+				T.expectEqual(#data.stock, 0, "rien ne quitte la base")
+				T.expectEqual(
+					Inventory.displayPrice(data.displays),
+					GameConfig.DISPLAY_PRICES[10 - START + 1],
+					"pad 10 > 11"
+				)
+				local old = Inventory.read({ displays = 6, base = { gold, mint, false, crash } })
+				T.expectEqual(old.displays, START)
+				T.expectEqual(baseKeys(old), upTo("gold:1 mint:1 - crash:1", 4))
+			end
+		)
 		T.it("un posé sur un présentoir non acheté retourne au stock", function()
-			local data = Inventory.read({ base = { false, false, false, false, false, false, false, mint } })
+			local base = table.create(START, false)
+			base[START + 1] = mint
+			local data = Inventory.read({ base = base })
 			T.expectEqual(stockKeys(data), "mint:1")
 		end)
 	end)

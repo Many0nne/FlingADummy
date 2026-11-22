@@ -253,9 +253,10 @@ ThrowDummies.SHOWCASE = #ThrowDummies.LIST
 -- Suite du catalogue (#94), jusqu'à 135x comme les graines de Throw a Seed : chacun reprend le comportement et la
 -- physique d'un mannequin dessiné (rebond, verre, lest, ailes, réacteur, sans les cumuler) sous une palette de
 -- Shared.DummyFamilies (« Ruby Rubber Dummy »). Prix calés par le joueur simulé (#15, tools/progression.luau ; Amber
--- Glider, Golden Rocket et Frost Rubber recalés par #133 : pas plus de 6 min entre deux achats la première heure), en
--- alternance avec les équipements d'entraînement : courbe et temps estimés dans docs/design.md, section « Progression
--- longue ».
+-- Glider, Golden Rocket et Frost Rubber recalés par #133 : pas plus de 6 min entre deux achats la première heure ; à
+-- partir du Frost Rubber, recalés par #156 sur un calendrier étalé jusqu'à 11 h, présentoirs entre deux), en alternance
+-- avec les équipements d'entraînement : courbe et temps dans docs/design.md, section « Piste et économie de la
+-- review 3 ».
 -- stylua: ignore
 ThrowDummies.EXTENDED = {
 	{ luck = 4,   base = "rubber", palette = "ruby",        cost = 12e6 },
@@ -263,15 +264,15 @@ ThrowDummies.EXTENDED = {
 	{ luck = 6.5, base = "steel",  palette = "sapphire",    cost = 35e6 },
 	{ luck = 8,   base = "glider", palette = "amber",       cost = 100e6 },
 	{ luck = 10,  base = "rocket", palette = "golden",      cost = 140e6 },
-	{ luck = 13,  base = "rubber", palette = "frost",       cost = 450e6 },
-	{ luck = 17,  base = "glass",  palette = "magma",       cost = 1e9 },
-	{ luck = 22,  base = "steel",  palette = "shadow",      cost = 5e9 },
-	{ luck = 30,  base = "glider", palette = "radiant",     cost = 9e9 },
-	{ luck = 40,  base = "rocket", palette = "starlight",   cost = 15e9 },
-	{ luck = 55,  base = "rubber", palette = "nebula",      cost = 30e9 },
-	{ luck = 75,  base = "glass",  palette = "plasma",      cost = 80e9 },
-	{ luck = 100, base = "glider", palette = "quantum",     cost = 120e9 },
-	{ luck = 135, base = "rocket", palette = "infinite",    cost = 200e9 },
+	{ luck = 13,  base = "rubber", palette = "frost",       cost = 400e6 },
+	{ luck = 17,  base = "glass",  palette = "magma",       cost = 2.7e9 },
+	{ luck = 22,  base = "steel",  palette = "shadow",      cost = 3.8e9 },
+	{ luck = 30,  base = "glider", palette = "radiant",     cost = 6.4e9 },
+	{ luck = 40,  base = "rocket", palette = "starlight",   cost = 18e9 },
+	{ luck = 55,  base = "rubber", palette = "nebula",      cost = 23e9 },
+	{ luck = 75,  base = "glass",  palette = "plasma",      cost = 36e9 },
+	{ luck = 100, base = "glider", palette = "quantum",     cost = 62e9 },
+	{ luck = 135, base = "rocket", palette = "infinite",    cost = 97e9 },
 }
 
 -- Signes de rang de la suite du catalogue (#127), comme les graines de plus en plus riches de Throw a Seed (09) : sans

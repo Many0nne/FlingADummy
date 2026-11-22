@@ -1,4 +1,4 @@
--- Renaissance (#108) : avec le dernier équipement d'entraînement (Infinite) et $350B × 2^k (k = renaissances déjà
+-- Renaissance (#108) : avec le dernier équipement d'entraînement (Infinite) et $200B × 2^k (k = renaissances déjà
 -- faites), le joueur remet sa progression à zéro (argent, Throw Power, entraînement, équipement, mannequins à lancer)
 -- contre une CHANCE × 2 définitive par renaissance (× 2^k au total, comptée dans la CHANCE du lancer comme le
 -- multiplicateur du mannequin lancé). Gardés : collection (base, présentoirs achetés, stock, Index), tutoriel, records.
@@ -10,7 +10,7 @@ local Training = require(Shared:WaitForChild("Training"))
 
 local Rebirth = {}
 
-Rebirth.BASE_PRICE = 350e9 -- prix de la première renaissance (≈ 12 h de jeu simulées, #15)
+Rebirth.BASE_PRICE = 200e9 -- prix de la première renaissance (≈ 12 h de jeu simulées ; $350B avant #156)
 Rebirth.PRICE_GROWTH = 2 -- prix × 2 à chaque renaissance (#109 ; × 4 doublait l'écart entre deux renaissances)
 Rebirth.LUCK_STEP = 2 -- CHANCE × 2 par renaissance, pour toujours
 Rebirth.REQUIRED_GEAR = #Training.GEARS -- dernier équipement d'entraînement (Infinite)
