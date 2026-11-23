@@ -29,7 +29,14 @@ local WINDOW = Vector2.new(780, 470)
 local TAB_WIDTH = 86
 local GAP = 10
 local CARD_HEIGHT = 196
-local PACK_HEIGHT = 150
+local PACK_HEIGHT = 176
+local CARD_DARK = Color3.fromRGB(28, 24, 40) -- bas des cartes, teintées en haut de la couleur de l'article
+local GOLD_RIM = Color3.fromRGB(255, 232, 120) -- liseré doré de l'offre mise en avant (cadre de l'œuf de 02)
+local BREATH = TweenInfo.new(1.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+local SPIN = TweenInfo.new(14, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1)
+
+-- Dessin d'une vignette : icône (nom de UIKit.icon), emoji de repli, dégradé du fond
+type Art = { art: string, icon: string, colors: { Color3 } }
 
 export type Hooks = {
 	popup: (options: UIKit.PopupOptions) -> (),
@@ -119,9 +126,43 @@ local function priceButton(parent: Instance, item: Store.Item, props: { [string]
 	end)
 end
 
--- Cette méthode permet de poser la vignette colorée d'un article (dégradé, icône au centre) lorsque une carte se
--- construit ; renvoie la vignette.
-local function tile(parent: Instance, item: Store.Item, props: { [string]: any }): Frame
+-- Cette méthode permet de poser l'icône d'une vignette avec son ombre portée, dans un cadre qui respire tant que la
+-- boutique est ouverte, lorsque une vignette se construit ; `scale` : taille de l'icône rapportée à la hauteur.
+local function artwork(parent: GuiObject, art: Art, scale: number, position: UDim2?): Frame
+	local holder = UIKit.create("Frame", {
+		Name = "Art",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = position or UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		ZIndex = 14,
+		Parent = parent,
+	})
+	local icon = UIKit.icon(art.art, {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(scale, scale),
+		SizeConstraint = Enum.SizeConstraint.RelativeYY,
+		ZIndex = 15,
+		Parent = holder,
+	}, art.icon)
+	if icon:IsA("ImageLabel") then
+		-- Ombre portée : même image en noir, décalée vers le bas à droite
+		local shadow = icon:Clone()
+		shadow.ImageColor3 = Color3.new(0, 0, 0)
+		shadow.ImageTransparency = 0.6
+		shadow.Position = UDim2.new(0.5, 4, 0.5, 5)
+		shadow.ZIndex = 14
+		shadow.Parent = holder
+	end
+	local breath = UIKit.create("UIScale", { Parent = holder })
+	UIKit.loopWhileShown(frame, breath, { Scale = 1.07 }, BREATH, (#cards % 6) * 0.2)
+	return holder
+end
+
+-- Cette méthode permet de poser la vignette colorée d'un article (dégradé, éclat de lumière, reflets en biais et
+-- brillant, grosse icône à ombre portée) lorsque une carte se construit ; renvoie la vignette.
+local function tile(parent: Instance, art: Art, props: { [string]: any }, scale: number?): Frame
 	local options: { [string]: any } = { BackgroundColor3 = Color3.new(1, 1, 1), ZIndex = 13, Parent = parent }
 	for key, value in props do
 		options[key] = value
@@ -129,17 +170,20 @@ local function tile(parent: Instance, item: Store.Item, props: { [string]: any }
 	local box = UIKit.create("Frame", options)
 	UIKit.corner(box, 8)
 	UIKit.outline(box, 2)
-	UIKit.create(
-		"UIGradient",
-		{ Color = ColorSequence.new(item.colors[1], item.colors[2]), Rotation = 90, Parent = box }
-	)
-	UIKit.icon(item.art, {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromScale(0.8, 0.8),
-		ZIndex = 14,
+	UIKit.create("UIGradient", { Color = ColorSequence.new(art.colors[1], art.colors[2]), Rotation = 90, Parent = box })
+	-- Lumière rognée à la vignette : rayons et halo derrière l'icône, deux reflets en biais (01, 02)
+	local light = UIKit.create("Frame", {
+		Name = "Light",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		ClipsDescendants = true,
+		ZIndex = 13,
 		Parent = box,
-	}, item.icon)
+	})
+	UIKit.burst(light, { size = 1.1, alpha = 0.45, zIndex = 13 })
+	UIKit.stripes(light, { count = 2, alpha = 0.86, rotation = 35, zIndex = 13 })
+	UIKit.gloss(box, 8, 0.3)
+	artwork(box, art, scale or 1.05)
 	return box
 end
 
@@ -205,12 +249,17 @@ local function grid(items: { Store.Item }, order: number, columns: number)
 		local card = UIKit.create("Frame", {
 			Name = item.id,
 			LayoutOrder = index,
-			BackgroundColor3 = Color3.fromRGB(46, 40, 64),
+			BackgroundColor3 = Color3.new(1, 1, 1),
 			ZIndex = 12,
 			Parent = holder,
 		})
 		UIKit.corner(card, 10)
 		UIKit.outline(card, 3)
+		UIKit.create("UIGradient", {
+			Color = ColorSequence.new(item.colors[2]:Lerp(CARD_DARK, 0.6), CARD_DARK),
+			Rotation = 90,
+			Parent = card,
+		})
 		local picture = tile(card, item, {
 			Position = UDim2.fromOffset(6, 6),
 			Size = UDim2.new(1, -12, 0, 84),
@@ -279,74 +328,144 @@ local function grid(items: { Store.Item }, order: number, columns: number)
 	end
 end
 
--- Cette méthode permet de poser la carte large du pack de démarrage (vignette, contenu, compte à rebours, prix barré,
--- remise) et le message qui la remplace une fois l'offre passée lorsque la liste se construit.
+-- Cette méthode permet de poser une mini-carte du contenu du pack de démarrage (étiquette, vignette, légende, comme
+-- le « Pack de démarrage » de 09) lorsque la carte du pack se construit.
+local function packItem(parent: Instance, index: number, art: Art, tag: string, caption: string)
+	local box = UIKit.create("Frame", {
+		Name = "Content" .. index,
+		Position = UDim2.fromOffset(172 + (index - 1) * 78, 50),
+		Size = UDim2.fromOffset(72, 116),
+		BackgroundColor3 = Color3.fromRGB(70, 26, 30),
+		BackgroundTransparency = 0.25,
+		ZIndex = 13,
+		Parent = parent,
+	})
+	UIKit.corner(box, 8)
+	UIKit.outline(box, 2)
+	UIKit.text({
+		Position = UDim2.fromOffset(0, 1),
+		Size = UDim2.new(1, 0, 0, 18),
+		Text = tag,
+		TextSize = 17,
+		TextColor3 = Color3.fromRGB(255, 230, 90),
+		ZIndex = 14,
+		Parent = box,
+	})
+	tile(box, art, { Position = UDim2.fromOffset(5, 20), Size = UDim2.fromOffset(62, 62), ZIndex = 14 }, 0.95)
+	UIKit.text({
+		Position = UDim2.fromOffset(2, 84),
+		Size = UDim2.new(1, -4, 0, 30),
+		Text = caption,
+		TextSize = 14,
+		TextWrapped = true,
+		ZIndex = 14,
+		Parent = box,
+	})
+end
+
+-- Cette méthode permet de poser la carte large du pack de démarrage (cadeau sur rayons tournants, mini-cartes du
+-- contenu, compte à rebours, prix barré, ruban de remise, cadre doré : « Pack de démarrage » de 09, « Œuf fantastique »
+-- de 02) et le message qui la remplace une fois l'offre passée lorsque la liste se construit.
 local function starterPack(order: number)
 	local item = Store.get("StarterPack") :: Store.Item
 	starterCard = UIKit.create("Frame", {
 		Name = "StarterPack",
 		LayoutOrder = order,
 		Size = UDim2.new(1, 0, 0, PACK_HEIGHT),
-		BackgroundColor3 = Color3.fromRGB(120, 30, 70),
+		BackgroundColor3 = Color3.new(1, 1, 1),
 		ZIndex = 12,
 		Parent = list,
 	})
-	UIKit.corner(starterCard, 10)
+	UIKit.corner(starterCard, 12)
 	UIKit.outline(starterCard, 3)
-	UIKit.shade(starterCard, Color3.fromRGB(255, 120, 170), Color3.fromRGB(160, 30, 90))
-	tile(starterCard, item, { Position = UDim2.fromOffset(8, 8), Size = UDim2.fromOffset(134, 134) })
-	UIKit.text({
-		Position = UDim2.fromOffset(154, 8),
-		Size = UDim2.new(1, -340, 0, 34),
+	UIKit.create("UIGradient", {
+		Color = ColorSequence.new(Color3.fromRGB(255, 196, 64), Color3.fromRGB(236, 92, 28)),
+		Rotation = 90,
+		Parent = starterCard,
+	})
+	local light = UIKit.create("Frame", {
+		Name = "Light",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		ClipsDescendants = true,
+		ZIndex = 12,
+		Parent = starterCard,
+	})
+	local center = UDim2.fromOffset(88, PACK_HEIGHT / 2)
+	local burst = UIKit.burst(light, { position = center, size = 0.5, rays = 10, alpha = 0.35, zIndex = 12 })
+	UIKit.loopWhileShown(frame, burst, { Rotation = 360 }, SPIN)
+	UIKit.stripes(light, { count = 3, alpha = 0.9, rotation = 30, zIndex = 12, from = 0.3, to = 0.98 })
+	-- Liseré doré intérieur
+	local rim = UIKit.create("Frame", {
+		Position = UDim2.fromOffset(4, 4),
+		Size = UDim2.new(1, -8, 1, -8),
+		BackgroundTransparency = 1,
+		ZIndex = 12,
+		Parent = starterCard,
+	})
+	UIKit.corner(rim, 9)
+	UIKit.outline(rim, 2.5, GOLD_RIM)
+	local hero = UIKit.create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = center,
+		Size = UDim2.fromOffset(150, 150),
+		BackgroundTransparency = 1,
+		ZIndex = 13,
+		Parent = starterCard,
+	})
+	artwork(hero, item, 1)
+	local title = UIKit.text({
+		Position = UDim2.fromOffset(172, 8),
+		Size = UDim2.new(1, -340, 0, 38),
 		Text = "STARTER PACK",
-		TextSize = 30,
+		TextSize = 34,
 		StrokeThickness = 3,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		ZIndex = 13,
+		ZIndex = 14,
 		Parent = starterCard,
 	})
-	local lines = {
-		"🎲 " .. Store.STARTER.throws .. " Lucky Throws",
-		"🍀 15 min 2x Luck",
-		"💰 15 min 2x Money",
-		"💵 " .. (Store.STARTER.minutes // 60) .. " h of cash",
+	UIKit.gradientText(title, Color3.new(1, 1, 1), Color3.fromRGB(255, 236, 120))
+	local starter = Store.STARTER
+	local contents: { { art: Art, tag: string, caption: string } } = {
+		{ art = Store.get("LuckyThrow1") :: Store.Item, tag = "x" .. starter.throws, caption = "Lucky Throws" },
+		{ art = Store.get("Luck2x") :: Store.Item, tag = (starter.boosts.Luck2 // 60) .. "m", caption = "2x Luck" },
+		{ art = Store.get("Money2x") :: Store.Item, tag = (starter.boosts.Money // 60) .. "m", caption = "2x Money" },
+		{ art = Store.get("CashSmall") :: Store.Item, tag = (starter.minutes // 60) .. "h", caption = "Cash" },
 	}
-	for index, line in lines do
-		UIKit.text({
-			Position = UDim2.fromOffset(156 + ((index - 1) % 2) * 170, 46 + ((index - 1) // 2) * 28),
-			Size = UDim2.fromOffset(166, 26),
-			Text = line,
-			TextSize = 18,
-			StrokeThickness = 2,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			ZIndex = 13,
-			Parent = starterCard,
-		})
+	for index, content in contents do
+		packItem(starterCard, index, content.art, content.tag, content.caption)
 	end
-	starterTimer = UIKit.text({
-		Position = UDim2.fromOffset(154, 106),
-		Size = UDim2.new(1, -340, 0, 30),
-		TextSize = 20,
-		TextColor3 = Color3.fromRGB(255, 230, 90),
-		TextXAlignment = Enum.TextXAlignment.Left,
+	-- Colonne de droite : compte à rebours, prix barré, ruban de remise, bouton violet
+	local pill = UIKit.create("Frame", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -12, 0, 10),
+		Size = UDim2.fromOffset(148, 28),
+		BackgroundColor3 = Color3.fromRGB(40, 20, 26),
 		ZIndex = 13,
 		Parent = starterCard,
 	})
-	-- Prix barré (valeur du contenu) et remise, au-dessus du bouton violet
+	UIKit.corner(pill, 14)
+	starterTimer = UIKit.text({
+		Size = UDim2.fromScale(1, 1),
+		TextSize = 17,
+		TextColor3 = Color3.fromRGB(255, 230, 90),
+		ZIndex = 14,
+		Parent = pill,
+	})
 	local was = UIKit.text({
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -16, 0, 14),
-		Size = UDim2.fromOffset(150, 28),
+		Position = UDim2.new(1, -12, 0, 40),
+		Size = UDim2.fromOffset(148, 28),
 		Text = ROBUX .. " " .. Store.STARTER_WAS,
 		TextSize = 24,
-		TextColor3 = Color3.fromRGB(230, 200, 210),
+		TextColor3 = Color3.fromRGB(255, 225, 205),
 		ZIndex = 13,
 		Parent = starterCard,
 	})
 	UIKit.create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.new(0.8, 0, 0, 3),
+		Size = UDim2.new(0.6, 0, 0, 3),
 		BackgroundColor3 = C.red,
 		BorderSizePixel = 0,
 		Rotation = -8,
@@ -354,22 +473,24 @@ local function starterPack(order: number)
 		Parent = was,
 	})
 	local off = UIKit.create("Frame", {
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -16, 0, 46),
-		Size = UDim2.fromOffset(150, 26),
-		BackgroundColor3 = Color3.fromRGB(255, 200, 40),
-		ZIndex = 13,
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -4, 0, 92),
+		Size = UDim2.fromOffset(124, 28),
+		Rotation = 8,
+		BackgroundColor3 = C.red,
+		ZIndex = 15,
 		Parent = starterCard,
 	})
 	UIKit.corner(off, 6)
-	UIKit.outline(off, 2)
+	UIKit.outline(off, 2.5)
+	UIKit.gloss(off, 6, 0.3)
 	local percent = math.floor((1 - item.price / Store.STARTER_WAS) * 100 + 0.5)
-	UIKit.text({ Size = UDim2.fromScale(1, 1), Text = percent .. "% OFF!", TextSize = 18, ZIndex = 14, Parent = off })
+	UIKit.text({ Size = UDim2.fromScale(1, 1), Text = percent .. "% OFF!", TextSize = 20, ZIndex = 16, Parent = off })
 	local button = priceButton(starterCard, item, {
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, -12, 1, -10),
-		Size = UDim2.fromOffset(160, 46),
-		TextSize = 28,
+		Size = UDim2.fromOffset(148, 48),
+		TextSize = 30,
 	})
 	UIKit.addShine(button)
 	table.insert(cards, { item = item, frame = starterCard, button = button, title = was })
@@ -521,7 +642,7 @@ function StoreWindow.refresh()
 	starterCard.Visible = starter ~= nil
 	starterEmpty.Visible = starter == nil
 	if starter then
-		starterTimer.Text = "⏰ Ends in " .. Store.clock(starter)
+		starterTimer.Text = "Ends in " .. Store.clock(starter)
 	end
 	highlightTab()
 end
