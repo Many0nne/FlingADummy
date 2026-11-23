@@ -329,7 +329,8 @@ function LaunchService.launch(player: Player, gauge: any, force: boolean?)
 	local luck = ThrowDummies.luckOf(equipped, owned)
 	local dummy, origin, speed = startFlight(player, player, slot, power, gauge, equipped, rebirth, boost, luck)
 	flights[player].lucky = lucky
-	flights[player].tutorialBefore = tutorialBefore
+	-- Pas de reprise avant le chargement : la sauvegarde lue pose elle-même le masque du tutoriel
+	flights[player].tutorialBefore = if player:GetAttribute("DataReady") == true then tutorialBefore else nil
 	-- Départ du vol pour le lanceur : il rejoue le plan en avance sur la copie répliquée (Client.LaunchGhost, #117)
 	remotes.LaunchStarted:FireClient(player, dummy, {
 		origin = origin,
@@ -849,6 +850,9 @@ local function step(flight: Flight, dt: number)
 		flight.dummy:Destroy()
 		-- Mannequin perdu en vol : le joueur encore là reprend la main (et quitte la bande)
 		if flight.owner and flight.owner.Parent then
+			if flight.tutorialBefore then
+				PlayerData.tutorialRevokeThrow(flight.owner, flight.tutorialBefore) -- aucun mannequin gagné (#221)
+			end
 			flight.owner:SetAttribute("LaneState", "Ready")
 		end
 		return
