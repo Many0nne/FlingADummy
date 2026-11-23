@@ -7,18 +7,17 @@
 -- au centre (comme 09) ; boutons THROW AGAIN (remise en prise sur la bande, #76) et GO BACK. La mise en scène monte avec la rareté (#67, paliers : Shared.RevealPlan,
 -- effets : Client.RevealFx) : révélation vive en Common ; silhouette qui hésite entre 2 ou 3 formes et confettis dès
 -- Rare ; ciel qui s'assombrit, rayons, cote qui grimpe longtemps, explosion et forte secousse dès Legendary ; séquence
--- complète du secret (écran noir et phrase, décor dédié, portail, pièces, « SECRET!! »). Passable au clic après la
--- première seconde. De retour au hub, panneau « Place your … » en bas au centre : la première
+-- complète du secret (écran noir et phrase, décor dédié, portail, pièces, « SECRET!! »). Pendant le suspense, contour,
+-- ciel et rayons suivent le palier affiché, jamais la rareté gagnée (#201). Le tirage ne se passe pas (#197) : seuls
+-- THROW AGAIN et GO BACK, à la fin, rendent la main. De retour au hub, panneau « Place your … » en bas au centre : la première
 -- pose se fait à la main (tutoriel : flèche vers un présentoir libre, invite « Place »). Ensuite la pose s'appuie sur
 -- la barre d'outils (#54) : mannequin équipé près d'un présentoir libre → invite « Place » ; le bouton AUTO, dans sa
 -- base ou tout près, pose le mannequin tenu, sinon le dernier gagné. La barre d'outils n'apparaît qu'au hub, libre.
 local CollectionService = game:GetService("CollectionService")
-local ContextActionService = game:GetService("ContextActionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local StarterGui = game:GetService("StarterGui")
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -46,7 +45,6 @@ local TICK_GAP = 0.045 -- écart minimal entre deux tics du compteur de cote (s)
 local PROMPT_REFRESH = 0.25 -- s entre deux mises à jour des invites « Place »
 local AUTO_BOTTOM = 96 -- marge du bouton AUTO au bas de l'écran (px) : au-dessus de la barre d'outils Roblox
 local BLACK = Color3.fromRGB(12, 12, 16)
-local SKIP_ACTION = "PrizeSkip" -- Espace / A de la manette pendant le tirage : passe, sans faire sauter l'avatar
 local STORM = Color3.fromRGB(120, 90, 200) -- teinte du ciel assombri pendant le suspense (neutre : ne trahit pas la rareté)
 local END_BUTTON = Vector2.new(250, 64) -- THROW AGAIN et GO BACK, même taille (≈ 3,9 : 1 comme 09)
 local END_GAP = 12 -- écart entre les deux boutons de fin (px)
@@ -74,10 +72,7 @@ type Active = {
 	sequence: { Collection.TeaseStep },
 	ground: Vector3,
 	plan: RevealPlan.Tier,
-	startedAt: number,
-	revealed: boolean, -- mannequin en couleurs sorti (sur la piste ou dans le décor du secret)
-	onStage: boolean, -- décor du secret construit (caméra et ciel de nuit dessus)
-	textsShown: boolean, -- rareté, nom et GO BACK affichés : plus rien à passer
+	darkened: boolean, -- ciel assombri : la cote affichée a atteint un palier qui l'assombrit (#201)
 }
 
 local player: Player
@@ -89,12 +84,12 @@ local active: Active? = nil
 local worldModel: Model? = nil
 local glow: Highlight? = nil -- contour de la silhouette, à la couleur du palier
 local forms: { [number]: Model } = {} -- silhouettes construites, par indice dans la suite du suspense
+local lit: { [Model]: boolean } = setmetatable({}, { __mode = "k" }) :: any -- silhouettes qui portent déjà leurs rayons
 local bases: { [Model]: CFrame } = setmetatable({}, { __mode = "k" }) :: any -- position de repos (le roulement secoue autour)
 -- Suspense (haut de l'écran) : exclamation et cote du palier
 local tease: Frame
 local exclaimLabel: TextLabel
 local teaseOdds: TextLabel
-local skipHint: TextLabel
 local flash: Frame -- éclair blanc plein écran de la révélation
 -- Révélation (haut de l'écran)
 local reveal: Frame
@@ -306,8 +301,8 @@ local function clearForms()
 	end
 end
 
--- Cette méthode permet de construire une fois la silhouette du palier `index` (contour, rayons dès Legendary :
--- RevealPlan.teaseEffects), hors du monde, lorsque le suspense ou l'hésitation en a besoin.
+-- Cette méthode permet de construire une fois la silhouette du palier `index` (contour du palier affiché avant tout
+-- palier : Common), hors du monde, lorsque le suspense ou l'hésitation en a besoin ; ses rayons viennent avec la cote.
 local function formOf(index: number): Model
 	local existing = forms[index]
 	if existing then
@@ -315,27 +310,37 @@ local function formOf(index: number): Model
 	end
 	local a = active :: Active
 	local step = a.sequence[index]
-	local entry = { id = step.id, size = step.size }
-	local model = buildStanding(entry, a.ground, true, nil)
-	local color = Rarity.get(step.rarity).color
+	local model = buildStanding({ id = step.id, size = step.size }, a.ground, true, nil)
 	UIKit.create("Highlight", {
 		DepthMode = Enum.HighlightDepthMode.Occluded,
 		FillColor = Color3.new(1, 1, 1),
 		FillTransparency = 1,
-		OutlineColor = color,
+		OutlineColor = RevealPlan.teaseCues(RevealPlan.shownRarity(a.sequence, 0)).outline,
 		OutlineTransparency = 0,
 		Parent = model,
 	})
-	local effects = RevealPlan.teaseEffects(a.prize.rarity, color)
-	if #effects > 0 then
+	forms[index] = model
+	return model
+end
+
+-- Cette méthode permet d'appliquer à la silhouette `index` les effets du palier affiché `cues` (rayons et colonne de
+-- lumière, ciel assombri dès Legendary) lorsque la cote atteint ce palier (#201) ; le contour change dans burst.
+local function lightUp(a: Active, index: number, cues: RevealPlan.Cues)
+	local model = formOf(index)
+	local effects = RevealPlan.teaseEffects(cues.rarity, cues.outline)
+	if #effects > 0 and not lit[model] then
+		lit[model] = true
+		local step = a.sequence[index]
 		DummyShape.addEffects(
 			{ Torso = model.PrimaryPart :: BasePart },
-			Collection.scale(entry),
+			Collection.scale({ id = step.id, size = step.size }),
 			{ effects = effects } :: any
 		)
 	end
-	forms[index] = model
-	return model
+	if cues.darkSky and not a.darkened then
+		a.darkened = true
+		RevealFx.darkenSky(STORM, false, 0.8)
+	end
 end
 
 -- Cette méthode permet de montrer la silhouette du palier `index` à la place de la précédente (remise à sa place de
@@ -441,7 +446,6 @@ local function cleanup()
 	token += 1
 	showing = false
 	active = nil
-	ContextActionService:UnbindAction(SKIP_ACTION)
 	player:SetAttribute("PrizePhase", nil) -- phase du tirage, locale (Client.Music)
 	clearForms()
 	if worldModel then
@@ -458,7 +462,6 @@ local function cleanup()
 	UIKit.closeWindow(reveal, true)
 	goBack.Visible = false
 	throwAgain.Visible = false
-	skipHint.Visible = false
 end
 
 -- Cette méthode permet de clore le tirage et de rendre la main (le serveur ramène l'avatar au hub) lorsque le
@@ -484,12 +487,11 @@ local function again()
 end
 
 -- Cette méthode permet de faire apparaître le mannequin en couleurs sur `ground` (anneaux, éclair, sons ; confettis dès
--- Rare, explosion dès Legendary) lorsque le suspense finit, que le secret sort du portail ou que l'on passe.
+-- Rare, explosion dès Legendary) lorsque le suspense finit ou que le secret sort du portail.
 local function revealModel(a: Active, ground: Vector3)
 	local scale = Collection.scale(a.entry)
 	local plan = a.plan
 	local color = Rarity.get(a.prize.rarity).color
-	a.revealed = true
 	clearForms()
 	if worldModel then
 		worldModel:Destroy()
@@ -524,8 +526,6 @@ end
 -- Cette méthode permet d'afficher en haut au centre la rareté, le nom, « NEW! », le revenu et la cote du mannequin
 -- gagné, les rayons et le bouton GO BACK (automatique après le délai du palier) lorsque le mannequin vient de se révéler.
 local function revealTexts(a: Active, current: number)
-	a.textsShown = true
-	skipHint.Visible = false
 	local prize = a.prize
 	local size = Collection.SIZES[a.entry.size]
 	UIKit.closeWindow(tease, true)
@@ -573,7 +573,7 @@ local function revealTexts(a: Active, current: number)
 end
 
 -- Cette méthode permet de donner le cadrage de départ de FlightCamera.showcase sur `focus` (mannequin de `height`
--- studs) lorsque la caméra doit y arriver sans glisser (fin du tapis, passage depuis le décor du secret).
+-- studs) lorsque la caméra doit y arriver sans glisser (fin du tapis du secret).
 local function showcaseFrame(focus: Vector3, height: number): CFrame
 	local push = math.max(height, 5) * 2.2 + 4
 	return CFrame.lookAt(focus + Vector3.new(push * 0.25, height * 0.35 + 1.5, -push), focus)
@@ -605,7 +605,6 @@ local function playSecret(a: Active, current: number)
 		RevealFx.buildStage(origin)
 		RevealFx.darkenSky(color, true, 0.2)
 		FlightCamera.dolly(far, far, 0.01)
-		a.onStage = true
 	end)
 	task.wait(durations.Blackout)
 	if current ~= token then
@@ -638,38 +637,6 @@ local function playSecret(a: Active, current: number)
 	end
 end
 
--- Cette méthode permet de passer le suspense et la séquence (au clic, après RevealPlan.SKIP_AFTER s) jusqu'à la
--- révélation sur la piste lorsque le joueur clique pendant le tirage ; sans effet une fois les textes affichés.
-local function skip()
-	local a = active
-	if not a or not showing or a.textsShown or os.clock() - a.startedAt < RevealPlan.SKIP_AFTER then
-		return
-	end
-	token += 1
-	local current = token
-	if a.revealed then
-		-- Secret déjà sorti du portail : on garde le décor, seuls les textes manquent
-		RevealFx.clearOverlays()
-		revealTexts(a, current)
-		return
-	end
-	-- Décor du secret retiré, ciel gardé (assombri dès Legendary) ; retour au point d'atterrissage
-	RevealFx.clear(true)
-	local height = HEIGHT * Collection.scale(a.entry)
-	local focus = a.ground + Vector3.new(0, height / 2, 0)
-	if a.onStage then
-		-- Depuis le décor du secret : la nuit redevient l'orage du suspense, la caméra saute à la piste (sous l'éclair)
-		a.onStage = false
-		RevealFx.restoreSky()
-		RevealFx.darkenSky(STORM, false, 0.4)
-		local frame = showcaseFrame(focus, height)
-		FlightCamera.dolly(frame, frame, 0.01)
-	end
-	FlightCamera.showcase(focus, height)
-	revealModel(a, a.ground)
-	revealTexts(a, current)
-end
-
 -- Cette méthode permet de jouer le suspense (silhouette, cotes qui grimpent, roulement et hésitation) puis la
 -- révélation du palier de mise en scène lorsque le tirage commence ; cède jusqu'à la fin.
 local function playTease(a: Active, current: number)
@@ -693,8 +660,11 @@ local function playTease(a: Active, current: number)
 		if index > 1 then
 			showForm(index)
 		end
-		local tier = Rarity.get(step.rarity)
-		burst(a.ground + Vector3.new(0, HEIGHT * scale / 2, 0), scale, tier.color)
+		-- Contour, rayons et ciel du palier que la cote vient d'atteindre, jamais de la rareté gagnée (#201)
+		local cues = RevealPlan.teaseCues(RevealPlan.shownRarity(a.sequence, index))
+		local tier = Rarity.get(cues.rarity)
+		lightUp(a, index, cues)
+		burst(a.ground + Vector3.new(0, HEIGHT * scale / 2, 0), scale, cues.outline)
 		ring(a.ground, scale)
 		FlightCamera.shake(0.25 + 0.2 * index)
 		exclaimLabel.Text = EXCLAIM[math.clamp(step.rarity, 1, #EXCLAIM)]
@@ -749,35 +719,18 @@ function Prize.play(result: any)
 		sequence = Collection.teaseSequence(valid),
 		ground = groundAt(result.landing),
 		plan = plan,
-		startedAt = os.clock(),
-		revealed = false,
-		onStage = false,
-		textsShown = false,
+		darkened = false,
 	}
 	active = a
-	ContextActionService:BindActionAtPriority(SKIP_ACTION, function(_, inputState)
-		if inputState == Enum.UserInputState.Begin then
-			skip()
-		end
-		return Enum.ContextActionResult.Sink
-	end, false, Enum.ContextActionPriority.High.Value, Enum.KeyCode.Space, Enum.KeyCode.ButtonA)
 	local finalScale = Collection.scale(valid)
 	FlightCamera.showcase(a.ground + Vector3.new(0, HEIGHT * finalScale / 2, 0), HEIGHT * finalScale)
-	if plan.darkSky then
-		RevealFx.darkenSky(STORM, false, 1.5)
-	end
-	-- Silhouette du premier candidat, seule un instant, avant le premier palier
+	-- Silhouette du premier candidat, seule un instant, avant le premier palier (ciel et rayons attendent la cote)
 	showForm(1)
-	task.delay(RevealPlan.SKIP_AFTER, function()
-		if current == token and not a.textsShown then
-			skipHint.Visible = true
-		end
-	end)
 	task.spawn(playTease, a, current)
 end
 
 -- Cette méthode permet de construire l'écran de révélation (suspense puis révélation, haut au centre), l'éclair
--- plein écran, l'invite « Click to skip » et le bouton GO BACK lorsque le client démarre.
+-- plein écran et les boutons THROW AGAIN et GO BACK lorsque le client démarre.
 local function buildReveal()
 	tease = UIKit.create("Frame", {
 		Name = "PrizeTease",
@@ -804,21 +757,6 @@ local function buildReveal()
 		StrokeThickness = 4,
 		ZIndex = 21,
 		Parent = tease,
-	})
-	skipHint = UIKit.text({
-		Name = "SkipHint",
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -24),
-		Size = UDim2.fromOffset(300, 24),
-		Text = if UserInputService.TouchEnabled and not UserInputService.MouseEnabled
-			then "Tap to skip"
-			else "Click to skip",
-		TextSize = 20,
-		TextTransparency = 0.25,
-		TextColor3 = Color3.fromRGB(220, 224, 235),
-		Visible = false,
-		ZIndex = 21,
-		Parent = gui,
 	})
 	flash = UIKit.create("Frame", {
 		Name = "RevealFlash",
@@ -1085,12 +1023,12 @@ local function refreshPanel()
 	local entry = pendingEntry()
 	local ready = entry ~= nil and free
 	local visible = ready and firstPlace
-	-- Hors tutoriel : seul le bouton AUTO compact, tant qu'il y a un mannequin tenu ou gagné à poser. Grisé (« FULL »
-	-- base pleine de plus rentables, ou AUTO loin de la base), un clic dit pourquoi rien n'est posé (#70)
+	-- Hors tutoriel : seul le bouton AUTO compact, près de sa base seulement (#196), tant qu'il y a un mannequin tenu ou
+	-- gagné à poser. Grisé « FULL » (base pleine de plus rentables) : un clic dit pourquoi rien n'est posé (#70)
 	local status = placeStatus()
-	placeAuto.Visible = free and not firstPlace and status ~= "none"
-	local blocked = status == "far" or status == "full"
-	placeAuto.Text = if status == "full" then "FULL" else "AUTO"
+	placeAuto.Visible = free and not firstPlace and status ~= "none" and status ~= "far"
+	local blocked = status == "full"
+	placeAuto.Text = if blocked then "FULL" else "AUTO"
 	placeAuto.BackgroundTransparency = if blocked then 0.55 else 0
 	placeAuto.TextTransparency = if blocked then 0.35 else 0
 	if visible and entry then
@@ -1204,13 +1142,6 @@ function Prize.init(localPlayer: Player, createdRemotes: Remotes.Remotes, screen
 		end)
 	end)
 	RunService.Heartbeat:Connect(refreshPrompts)
-	-- Clic ou toucher : passe le tirage (après la première seconde) ; Espace et A : action SKIP_ACTION
-	UserInputService.InputBegan:Connect(function(input, processed)
-		local kind = input.UserInputType
-		if not processed and (kind == Enum.UserInputType.MouseButton1 or kind == Enum.UserInputType.Touch) then
-			skip()
-		end
-	end)
 end
 
 return Prize

@@ -83,11 +83,12 @@ return function(T, Loader)
 		end)
 
 		T.it("borne la latence prise en compte à GAUGE_MAX_LAG", function()
-			-- Latence mesurée de 5 s : le serveur estime le clic avec GAUGE_MAX_LAG, pas avec 5 s
-			local elapsed = release + 2.0
+			-- Latence mesurée de 5 s : le serveur estime le clic avec GAUGE_MAX_LAG, pas avec 5 s (clic estimé au creux
+			-- de l'aiguille, loin du sommet quelle que soit la période)
+			local elapsed = release + P + GameConfig.GAUGE_MAX_LAG
 			local value, accepted = Gauge.verify(1, elapsed, 5)
 			T.expect(not accepted, "max refusé hors fenêtre")
-			T.expectNear(value, Gauge.value(2.0 - GameConfig.GAUGE_MAX_LAG), 1e-6)
+			T.expectNear(value, Gauge.value(P), 1e-6)
 		end)
 
 		T.it("borne la valeur reçue entre 0 et 1", function()
