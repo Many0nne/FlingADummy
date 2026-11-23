@@ -37,7 +37,11 @@ return function(T, Loader)
 			for index = 2, #RevealPlan.TIERS do
 				local low, high = RevealPlan.TIERS[index - 1], RevealPlan.TIERS[index]
 				T.expect(high.climbFactor >= low.climbFactor, high.name .. " : montée au moins aussi longue")
-				T.expect(high.drumroll >= low.drumroll, high.name .. " : roulement au moins aussi long")
+				-- Arrêt croissant : maxDuration borne les arrêts des candidats par celui du gagné
+				T.expect(high.pause >= low.pause, high.name .. " : arrêt au moins aussi long")
+				-- Secret : roulement plus court, la séquence complète prend le relais (#204)
+				local after = high.drumroll + (if high.cinematic then RevealPlan.cinematicTime() else 0)
+				T.expect(after >= low.drumroll, high.name .. " : fin du suspense au moins aussi longue")
 				T.expect(high.confetti >= low.confetti, high.name .. " : au moins autant de confettis")
 				T.expect(high.shake > low.shake, high.name .. " : secousse plus forte")
 			end
@@ -53,9 +57,74 @@ return function(T, Loader)
 	end)
 
 	T.describe("RevealPlan.climbTime et teaseTime", function()
-		T.it("la cote grimpe plus longtemps pour un mannequin plus rare", function()
+		T.it("la cote grimpe plus longtemps vers un candidat plus rare, 1,5 s au plus", function()
 			T.expectNear(RevealPlan.climbTime(1, 1, 100), Collection.climbTime(1, 100))
 			T.expect(RevealPlan.climbTime(5, 1, 100) > RevealPlan.climbTime(3, 1, 100), "Legendary > Rare")
+			T.expect(RevealPlan.climbTime(11, 1, 1e12) <= 1.5, "plafond")
+		end)
+		T.it("rythme de chaque montée indépendant de la rareté gagnée (#204)", function()
+			local checked = 0
+			for _, dummy in Collection.DUMMIES do
+				for size = 1, #Collection.SIZES do
+					local sequence = Collection.teaseSequence({ id = dummy.id, size = size })
+					local pace = RevealPlan.pace(sequence)
+					T.expectEqual(#pace, #sequence)
+					-- Chaque palier au rythme de son candidat : montée et arrêt de la rareté du palier visé
+					local shown = 1
+					for index, step in sequence do
+						local label = string.format("%s taille %d, palier %d", dummy.id, size, index)
+						T.expectNear(
+							pace[index].climb,
+							RevealPlan.climbTime(step.rarity, shown, step.odds),
+							1e-9,
+							label
+						)
+						T.expectNear(pace[index].pause, RevealPlan.pauseOf(step.rarity), 1e-9, label)
+						shown = step.odds
+					end
+					-- Même suite de cotes, gagné remplacé par un Common puis par un Infinity
+					for _, rarity in { 1, #Rarity.LIST } do
+						local rigged = table.clone(sequence)
+						rigged[#rigged] = table.clone(sequence[#sequence])
+						rigged[#rigged].rarity = rarity
+						local other = RevealPlan.pace(rigged)
+						local label = string.format("%s taille %d, gagné %s", dummy.id, size, Rarity.LIST[rarity].name)
+						for index = 1, #sequence - 1 do
+							checked += 1
+							T.expectNear(other[index].climb, pace[index].climb, 1e-9, label .. " : montée " .. index)
+							T.expectNear(other[index].pause, pace[index].pause, 1e-9, label .. " : arrêt " .. index)
+							T.expectNear(
+								other[index].reached,
+								pace[index].reached,
+								1e-9,
+								label .. " : palier " .. index
+							)
+						end
+						-- La dernière montée part au même instant : seule elle et la suite connaissent le gagné
+						if #sequence >= 2 then
+							local start = pace[#sequence - 1].reached + pace[#sequence - 1].pause
+							local otherStart = other[#sequence - 1].reached + other[#sequence - 1].pause
+							T.expectNear(otherStart, start, 1e-9, label .. " : départ de la dernière montée")
+						end
+					end
+				end
+			end
+			T.expect(checked > 0, "au moins une montée vérifiée")
+		end)
+		T.it("Client.Prize joue le rythme de RevealPlan.pace, pas celui du gagné", function()
+			local fs = require("@lune/fs")
+			local source = fs.readFile("src/client/Prize.luau")
+			-- Montées et arrêts de playTease, jusqu'au roulement : rien n'y lit le gagné
+			local start = string.find(source, "local function playTease", 1, true)
+			local stop = start and string.find(source, "-- Roulement", start, true)
+			T.expect(start ~= nil and stop ~= nil, "playTease et son roulement trouvés")
+			local climbs = string.sub(source, start or 1, stop or 0)
+			T.expect(string.find(climbs, "RevealPlan.pace(a.sequence)", 1, true) ~= nil, "rythme lu dans pace")
+			T.expect(string.find(climbs, "pace[index].climb", 1, true) ~= nil, "montée de pace")
+			T.expect(string.find(climbs, "pace[index].pause", 1, true) ~= nil, "arrêt de pace")
+			for _, pattern in { "a.prize", "a.plan", "a.entry" } do
+				T.expect(not string.find(climbs, pattern, 1, true), pattern .. " : gagné lu pendant les montées")
+			end
 		end)
 		T.it("le suspense s'allonge avec la rareté", function()
 			local common = RevealPlan.teaseTime(1, Collection.teaseSequence(entryOf("traffic")))
@@ -209,7 +278,13 @@ return function(T, Loader)
 			end
 			T.expectEqual((RevealPlan :: any).SKIP_AFTER, nil)
 		end)
-		T.it("durée du tirage par rareté, jusqu'à GO BACK", function()
+		T.it("durée du tirage par rareté, jusqu'à GO BACK (#204)", function()
+			-- Bornes (s) : Common inchangé (≤ 5,9 avant #204), Legendary comme la référence 09 (6 à 9 s, à peu près),
+			-- secret et au-delà ≤ ~18 s (séquence complète comprise, non passable)
+			local bounds = { [1] = 6, [5] = 9.5, [6] = 10 }
+			for rarity = Rarity.SECRET, #Rarity.LIST do
+				bounds[rarity] = 19
+			end
 			for rarity = 1, #Rarity.LIST do
 				local low, high = math.huge, 0
 				for _, dummy in Collection.DUMMIES do
@@ -231,8 +306,20 @@ return function(T, Loader)
 							RevealPlan.get(rarity).autoClose
 						)
 					)
+					local bound = bounds[rarity]
+					if bound then
+						T.expect(
+							high <= bound,
+							string.format("%s : %.1f s ≤ %.1f s", Rarity.LIST[rarity].name, high, bound)
+						)
+					end
 				end
 			end
+			-- Legendary dans la fourchette de la référence 09 (tirage normal, taille normale)
+			local gold = RevealPlan.revealTime(5, Collection.teaseSequence(entryOf("gold")))
+			T.expect(gold >= 6 and gold <= 9, string.format("Legendary (gold) : %.1f s entre 6 et 9 s", gold))
+			local king = RevealPlan.revealTime(7, Collection.teaseSequence(entryOf("king")))
+			T.expect(king <= 18, string.format("Secret (king) : %.1f s ≤ 18 s", king))
 		end)
 	end)
 
@@ -251,7 +338,7 @@ return function(T, Loader)
 
 	T.describe("RevealPlan.secretLine et typed", function()
 		T.it("une phrase propre à chaque secret, à sa rareté au-delà de Secret ou à sa famille (#94)", function()
-			T.expectEqual(RevealPlan.secretLine("king"), "THE CRASH KINGDOM HAS FOUND ITS KING...")
+			T.expectEqual(RevealPlan.secretLine("king"), "THE CRASH KINGDOM HAS ITS KING...")
 			for _, dummy in Collection.DUMMIES do
 				if dummy.rarity == 7 and table.find(Collection.DRAWN, dummy) then
 					T.expect(RevealPlan.SECRET_LINES[dummy.id] ~= nil, dummy.id .. " a sa phrase")
@@ -266,12 +353,6 @@ return function(T, Loader)
 			T.expectEqual(RevealPlan.secretLine("golden_void"), RevealPlan.SECRET_LINES.void)
 			T.expectEqual(RevealPlan.secretLine("radiant_king"), RevealPlan.RARITY_LINES[8])
 			T.expectEqual(RevealPlan.secretLine("inconnu"), RevealPlan.SECRET_LINE_DEFAULT)
-			for _, line in RevealPlan.RARITY_LINES do
-				T.expect(
-					#line / RevealPlan.TYPE_RATE < RevealPlan.CINEMATIC[1].duration - 0.8,
-					line .. " : lue au moins 0,8 s"
-				)
-			end
 		end)
 		T.it("écrit la phrase lettre à lettre, en entier à la fin", function()
 			local text = "THE KING"
@@ -282,11 +363,24 @@ return function(T, Loader)
 		T.it("ne coupe pas un caractère UTF-8", function()
 			T.expectEqual(RevealPlan.typed("é…a", 2 / RevealPlan.TYPE_RATE), "é…")
 		end)
-		T.it("la phrase tient dans l'écran noir", function()
+		T.it("chaque phrase reste entière à l'écran au moins READ_TIME avant le fondu (#204)", function()
 			local blackout = RevealPlan.CINEMATIC[1]
 			T.expectEqual(blackout.name, "Blackout")
+			-- Client.RevealFx.blackout : frappe pendant `duration - BLACKOUT_FRAME`, puis fondu de sortie
+			local window = blackout.duration - RevealPlan.BLACKOUT_FRAME
+			local lines = { RevealPlan.SECRET_LINE_DEFAULT }
 			for _, line in RevealPlan.SECRET_LINES do
-				T.expect(#line / RevealPlan.TYPE_RATE < blackout.duration - 0.8, line .. " : lue au moins 0,8 s")
+				table.insert(lines, line)
+			end
+			for _, line in RevealPlan.RARITY_LINES do
+				table.insert(lines, line)
+			end
+			for _, line in lines do
+				local typing = (utf8.len(line) or #line) / RevealPlan.TYPE_RATE
+				T.expect(
+					window - typing >= RevealPlan.READ_TIME - 1e-9,
+					string.format("%s : entière %.2f s", line, window - typing)
+				)
 			end
 		end)
 	end)

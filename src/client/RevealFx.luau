@@ -485,7 +485,7 @@ function RevealFx.blackout(text: string, duration: number, onDark: () -> ())
 		onDark()
 		local start = os.clock()
 		local shown = ""
-		local typing = duration - 1
+		local typing = duration - RevealPlan.BLACKOUT_FRAME
 		while os.clock() - start < typing do
 			if not alive(mine) then
 				return
