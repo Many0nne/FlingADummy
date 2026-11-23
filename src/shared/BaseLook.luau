@@ -71,7 +71,7 @@ BaseLook.GATES = {
 		pillar = rgb(185, 130, 75),
 		lintel = rgb(230, 185, 120),
 		star = rgb(255, 215, 40),
-		height = 8,
+		height = 10,
 		width = 2,
 		banners = false,
 	},
@@ -79,7 +79,7 @@ BaseLook.GATES = {
 		pillar = rgb(150, 152, 165),
 		lintel = rgb(200, 202, 212),
 		star = rgb(255, 215, 40),
-		height = 9,
+		height = 11,
 		width = 2.4,
 		banners = false,
 	},
@@ -88,7 +88,7 @@ BaseLook.GATES = {
 		lintel = rgb(255, 200, 40),
 		star = rgb(255, 255, 255),
 		cap = rgb(255, 200, 40),
-		height = 9.5,
+		height = 11.5,
 		width = 2.6,
 		banners = true,
 	},
@@ -97,13 +97,15 @@ BaseLook.GATES = {
 		lintel = rgb(255, 225, 90),
 		star = rgb(255, 255, 255),
 		cap = rgb(255, 245, 170),
-		height = 10.5,
+		height = 12.5,
 		width = 2.8,
 		banners = true,
 	},
 } :: { [string]: Gate }
 
-BaseLook.LINTEL_HEIGHT = 1.4 -- épaisseur du linteau de l'entrée
+-- Épaisseur du linteau de l'entrée : fine, et entrée haute (#208), pour que le linteau ne masque pas le mannequin du
+-- présentoir 1 (échelle 1 dégagée à hauteur de joueur et en plongée ; mesures dans la PR)
+BaseLook.LINTEL_HEIGHT = 1.0
 BaseLook.STAR_SPACING = 1.75 -- d'une étoile du linteau à la suivante (studs) : 0,3 stud d'écart entre deux
 BaseLook.TOWER_RATIO = 2.5 -- hauteur d'une tour d'angle / hauteur des poteaux de la clôture
 
