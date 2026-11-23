@@ -43,7 +43,9 @@ export type Remotes = {
 	LaunchStarted: RemoteEvent, -- serveur → client : modèle du mannequin lancé, départ du vol (point, vitesse, mannequin)
 	LaunchRefused: RemoteEvent, -- serveur → client : sans charge, Launch refusé (le décoratif parti au lâcher s'efface)
 	LaunchResult: RemoteEvent, -- serveur → client : gains, blessures, cause
-	Impact: RemoteEvent, -- serveur → tous les clients : liste de chocs de la frame (effets, sons, popups)
+	-- serveur → tous les clients : liste de chocs de la frame (effets, sons, popups) ; `at` (heure serveur) sur les
+	-- chocs d'un vol, montrés quand le mannequin affiché y arrive (#84)
+	Impact: RemoteEvent,
 	SetMusic: RemoteEvent, -- client → serveur : true = musique coupée (bouton du HUD), sauvegardé avec les données
 	-- serveur → tous les clients : tirage Legendary ou plus (bandeau), à la fin du résultat du gagnant :
 	-- { userId, player, name, rarity, odds } ; renaissance d'un joueur : { kind = "Rebirth", userId, player, rebirths }

@@ -175,6 +175,12 @@ local function step(dt: number)
 	end
 end
 
+-- Cette méthode permet de donner l'attente (s) avant de montrer un choc survenu à l'heure serveur `at` lorsqu'il arrive
+-- du serveur (Client.Effects) : il se voit quand le mannequin affiché y arrive, en même temps que la pièce du piège.
+function TrapMotion.wait(at: number): number
+	return DisplayLag.wait(clock, at, Workspace:GetServerTimeNow())
+end
+
 -- Cette méthode permet de brancher l'animation des pièges et la mesure du retard d'affichage (échantillons de
 -- `flightClock`) lorsque le client démarre.
 function TrapMotion.init(flightClock: UnreliableRemoteEvent)

@@ -48,6 +48,7 @@ export type Impact = {
 	value: number?, -- os ajoutés, objets détruits, ou force du choc
 	material: string?, -- "Crate" | "Brick" pour Smash ; piège (Shared.Traps.KINDS) pour Trap
 	userId: number,
+	at: number?, -- heure serveur du choc (#84 : chaque client le montre quand son mannequin affiché y arrive)
 }
 
 type Flight = {
@@ -339,6 +340,7 @@ local function addImpact(flight: Flight, kind: string, position: Vector3, value:
 		value = value,
 		material = material,
 		userId = if flight.owner then flight.owner.UserId else 0,
+		at = Workspace:GetServerTimeNow(),
 	})
 end
 
