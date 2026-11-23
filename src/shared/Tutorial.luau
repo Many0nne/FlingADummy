@@ -26,6 +26,15 @@ function Tutorial.complete(flags: number, event: string): number
 	return bit32.bor(flags, flag)
 end
 
+-- Cette méthode permet de reprendre l'étape « Throw » lorsque le lancer qui l'a validée est rendu au joueur (#221) :
+-- `before` est le masque avant ce lancer ; sans effet si « Throw » était déjà faite ou si la pose a eu lieu depuis.
+function Tutorial.revokeThrow(flags: number, before: number): number
+	if bit32.band(before, FLAG.Throw) ~= 0 or bit32.band(flags, FLAG.Place) ~= 0 then
+		return flags
+	end
+	return bit32.band(flags, bit32.bnot(FLAG.Throw))
+end
+
 -- Cette méthode permet de donner l'étape à afficher (la première qui reste à faire) lorsque l'objectif est recalculé ;
 -- nil une fois le tutoriel fini.
 function Tutorial.current(flags: number): string?

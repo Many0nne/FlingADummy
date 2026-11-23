@@ -92,6 +92,7 @@ type Flight = {
 	stallChecked: boolean, -- sortie de la zone de lancer déjà vérifiée (FlightArc.STALL_TIME, #215)
 	reached: number, -- plus grande distance parcourue le long de la piste depuis le départ (studs, #215)
 	lucky: boolean?, -- lancer chanceux consommé au départ : rendu avec le lancer (#215)
+	tutorialBefore: number?, -- tutoriel du lanceur avant le départ : l'étape « Throw » est reprise si le vol est rendu (#221)
 }
 
 local LaunchService = {}
@@ -317,6 +318,7 @@ function LaunchService.launch(player: Player, gauge: any, force: boolean?)
 	end
 	player:SetAttribute("LaneState", "Flying")
 	player:SetAttribute("Action", nil)
+	local tutorialBefore = (player:GetAttribute("Tutorial") :: number?) or 0
 	PlayerData.tutorialStep(player, "Throw")
 
 	local power = (player:GetAttribute("ThrowPower") :: number?) or GameConfig.START_POWER
@@ -327,6 +329,8 @@ function LaunchService.launch(player: Player, gauge: any, force: boolean?)
 	local luck = ThrowDummies.luckOf(equipped, owned)
 	local dummy, origin, speed = startFlight(player, player, slot, power, gauge, equipped, rebirth, boost, luck)
 	flights[player].lucky = lucky
+	-- Pas de reprise avant le chargement : la sauvegarde lue pose elle-même le masque du tutoriel
+	flights[player].tutorialBefore = if player:GetAttribute("DataReady") == true then tutorialBefore else nil
 	-- Départ du vol pour le lanceur : il rejoue le plan en avance sur la copie répliquée (Client.LaunchGhost, #117)
 	remotes.LaunchStarted:FireClient(player, dummy, {
 		origin = origin,
@@ -825,6 +829,10 @@ local function handBack(flight: Flight, along: number)
 	if flight.lucky then
 		StoreService.refundLuck(player)
 	end
+	-- Un lancer rendu n'a rien donné : le tutoriel reste à « Throw » (#221), avant la remise en prise qui le consulte
+	if flight.tutorialBefore then
+		PlayerData.tutorialRevokeThrow(player, flight.tutorialBefore)
+	end
 	-- Remise en prise comme THROW AGAIN (refusée : tutoriel, réapparu, bande pleine → hub, comme un vol perdu)
 	local held = SlotService.holdAgain(player, "Flying")
 	if RunService:IsStudio() then
@@ -842,6 +850,9 @@ local function step(flight: Flight, dt: number)
 		flight.dummy:Destroy()
 		-- Mannequin perdu en vol : le joueur encore là reprend la main (et quitte la bande)
 		if flight.owner and flight.owner.Parent then
+			if flight.tutorialBefore then
+				PlayerData.tutorialRevokeThrow(flight.owner, flight.tutorialBefore) -- aucun mannequin gagné (#221)
+			end
 			flight.owner:SetAttribute("LaneState", "Ready")
 		end
 		return
