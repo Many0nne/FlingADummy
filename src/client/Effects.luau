@@ -1,6 +1,7 @@
 -- Effets des crashs, joués par chaque client à partir des chocs annoncés par le serveur : son positionné, gerbe de
 -- particules, popup dans la scène (« +1 BONE », « SMASH x6 », « BOING! » des pièges des thèmes), combos, foule sur les gros crashs ; secousses de
--- caméra et souffle du vent pour le vol du joueur local.
+-- caméra et souffle du vent pour le vol du joueur local. Les chocs d'un vol se montrent quand le mannequin affiché (en
+-- retard sur le serveur) y arrive, à l'heure des pièges animés (#84, Client.TrapMotion).
 local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -13,6 +14,7 @@ local Sounds = require(Shared:WaitForChild("Sounds"))
 local Traps = require(Shared:WaitForChild("Traps"))
 
 local FlightCamera = require(script.Parent.FlightCamera)
+local TrapMotion = require(script.Parent.TrapMotion)
 local UIKit = require(script.Parent.UIKit)
 
 local C = UIKit.COLORS
@@ -343,7 +345,13 @@ function Effects.init(localPlayer: Player, impactRemote: RemoteEvent)
 		end
 		for _, impact in list do
 			if type(impact) == "table" and typeof(impact.position) == "Vector3" then
-				onImpact(impact)
+				-- Choc d'un vol (#84) : montré quand le mannequin affiché, en retard sur le serveur, y arrive
+				local delay = if type(impact.at) == "number" then TrapMotion.wait(impact.at) else 0
+				if delay > 0.01 then
+					task.delay(delay, onImpact, impact)
+				else
+					onImpact(impact)
+				end
 			end
 		end
 	end)

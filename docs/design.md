@@ -1076,7 +1076,11 @@ animées par chaque client (`Client.TrapMotion`) sur l'horloge du serveur, avec 
 décider si le piège agit (`Traps.CYCLES`, `Traps.active`, #79) : la presse n'écrase que pendant sa descente, le diable
 n'éjecte que sorti, l'aimant n'arrache que plaque allumée (néon et étincelles), le rondin ne frappe que le torse qu'il
 touche, en passant en bas de son balancement, et pousse le mannequin dans l'axe de la piste, dans le sens où il va (vers l'avant ou en arrière).
-Hors de cette phase, le mannequin passe sans rien. L'anneau propulseur est un cerceau néon suspendu (centre au plafond du vol, 100 studs, #113 : un vol qui atteint la
+Hors de cette phase, le mannequin passe sans rien. Le mannequin, simulé par le serveur, s'affiche chez chaque client en
+retard (≈ 0,2 s, ≈ 0,4 s à 150 ms de latence simulée) : chaque client anime les pièges et montre les chocs d'un vol avec
+ce retard, mesuré en continu sur le mannequin le plus proche de sa caméra (`Shared.DisplayLag`, échantillons
+`FlightClock` du serveur, #84) ; la pièce frappe quand le mannequin affiché la touche (écart de phase mesuré ≤ 0,03 s,
+contre 0,17 à 0,33 s avant). L'anneau propulseur est un cerceau néon suspendu (centre au plafond du vol, 100 studs, #113 : un vol qui atteint la
 Moon Base y file à plat, #98 ; un cerceau à 85 studs, sur la chute, n'en prenait que 5 %, celui du plafond ≈ 65 %
 des vols en l'air au-dessus de ses deux sites, 1,8 et 2,2 km, mesuré par `tools/booster-ring`, figé par
 `tests/specs/BoosterRing.spec.luau`) ; seule son ouverture déclenche (boîte carrée de 8 studs, #85), ni colonne ni pad
