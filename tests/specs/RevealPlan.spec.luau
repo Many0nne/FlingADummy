@@ -131,6 +131,111 @@ return function(T, Loader)
 		end)
 	end)
 
+	T.describe("RevealPlan.shownRarity et teaseCues (#201)", function()
+		T.it("Common avant le premier palier, puis la rareté du dernier palier atteint", function()
+			local sequence = Collection.teaseSequence(entryOf("king"))
+			T.expect(#sequence >= 2, "king : plusieurs paliers")
+			T.expectEqual(RevealPlan.shownRarity(sequence, 0), 1, "« 1 IN 1 » : Common")
+			for index, step in sequence do
+				T.expectEqual(RevealPlan.shownRarity(sequence, index), step.rarity)
+			end
+		end)
+		T.it("aucun effet de suspense ne trahit la rareté gagnée avant que la cote l'atteigne", function()
+			for _, dummy in Collection.DUMMIES do
+				for size = 1, #Collection.SIZES do
+					local sequence = Collection.teaseSequence({ id = dummy.id, size = size })
+					for reached = 0, #sequence do
+						local shown = if reached == 0 then 1 else sequence[reached].rarity
+						local cues = RevealPlan.teaseCues(RevealPlan.shownRarity(sequence, reached))
+						local label = string.format("%s taille %d, palier %d", dummy.id, size, reached)
+						-- Les effets sont ceux de la rareté affichée, quelle que soit la rareté gagnée
+						T.expectEqual(cues.rarity, shown, label)
+						T.expect(cues.outline == Rarity.LIST[shown].color, label .. " : contour du palier affiché")
+						T.expectEqual(cues.darkSky, RevealPlan.get(shown).darkSky, label)
+						T.expectEqual(cues.rays, RevealPlan.get(shown).rays, label)
+						if reached < #sequence then
+							-- Même suite, gagné remplacé par un Infinity : rien ne change avant que la cote l'atteigne
+							local rigged = table.clone(sequence)
+							rigged[#rigged] = table.clone(sequence[#sequence])
+							rigged[#rigged].rarity = #Rarity.LIST
+							local other = RevealPlan.teaseCues(RevealPlan.shownRarity(rigged, reached))
+							T.expectEqual(other.rarity, cues.rarity, label .. " : indépendant du gagné")
+							T.expectEqual(other.rays, cues.rays, label .. " : rayons indépendants du gagné")
+							T.expectEqual(other.darkSky, cues.darkSky, label .. " : ciel indépendant du gagné")
+							if shown < 5 then
+								T.expect(
+									not cues.rays and not cues.darkSky,
+									label .. " : ni rayons ni ciel avant Legendary"
+								)
+								T.expectEqual(#RevealPlan.teaseEffects(cues.rarity, cues.outline), 0, label)
+							end
+						end
+					end
+				end
+			end
+		end)
+		T.it("un Legendary ou mieux tiré en plusieurs paliers ne s'annonce pas dès la silhouette", function()
+			local checked = 0
+			for _, dummy in Collection.DUMMIES do
+				local sequence = Collection.teaseSequence(entryOf(dummy.id))
+				if dummy.rarity >= 5 and #sequence >= 2 then
+					checked += 1
+					local first = RevealPlan.teaseCues(RevealPlan.shownRarity(sequence, 0))
+					T.expect(not first.rays and not first.darkSky, dummy.id .. " : silhouette nue au départ")
+				end
+			end
+			T.expect(checked > 0, "au moins un Legendary ou mieux vérifié")
+		end)
+		T.it("Client.Prize règle les effets du suspense sur le palier affiché, pas sur le gagné", function()
+			local fs = require("@lune/fs")
+			local source = fs.readFile("src/client/Prize.luau")
+			for line in string.gmatch(source, "[^\n]+") do
+				if string.find(line, "teaseCues(", 1, true) or string.find(line, "teaseEffects(", 1, true) then
+					T.expect(not string.find(line, "prize", 1, true), "effet de suspense lu sur le gagné : " .. line)
+				end
+			end
+			for _, pattern in { "plan.darkSky", "plan.rays", "teaseEffects(a.prize" } do
+				T.expect(not string.find(source, pattern, 1, true), pattern .. " : effet de suspense lu sur le gagné")
+			end
+		end)
+	end)
+
+	T.describe("Tirage impossible à passer (#197)", function()
+		T.it("aucun passage au clic, au toucher ni à Espace dans Client.Prize", function()
+			local fs = require("@lune/fs")
+			local source = fs.readFile("src/client/Prize.luau")
+			for _, pattern in { "InputBegan", "ContextActionService", "BindAction", "SKIP_", "to skip" } do
+				T.expect(not string.find(source, pattern, 1, true), pattern .. " : le tirage ne se passe pas")
+			end
+			T.expectEqual((RevealPlan :: any).SKIP_AFTER, nil)
+		end)
+		T.it("durée du tirage par rareté, jusqu'à GO BACK", function()
+			for rarity = 1, #Rarity.LIST do
+				local low, high = math.huge, 0
+				for _, dummy in Collection.DUMMIES do
+					if dummy.rarity == rarity then
+						for size = 1, #Collection.SIZES do
+							local time =
+								RevealPlan.revealTime(rarity, Collection.teaseSequence({ id = dummy.id, size = size }))
+							low, high = math.min(low, time), math.max(high, time)
+						end
+					end
+				end
+				if high > 0 then
+					print(
+						string.format(
+							"[mesure] %s : GO BACK après %.1f à %.1f s (fermeture auto %d s plus tard)",
+							Rarity.LIST[rarity].name,
+							low,
+							high,
+							RevealPlan.get(rarity).autoClose
+						)
+					)
+				end
+			end
+		end)
+	end)
+
 	T.describe("RevealPlan.teaseEffects", function()
 		T.it("rayons et colonne de lumière à partir de Legendary seulement", function()
 			local color = Color3.new(1, 0, 0)
