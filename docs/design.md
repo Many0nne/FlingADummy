@@ -1,6 +1,6 @@
 # Fling a Dummy — document de conception
 
-Titre provisoire (à tester avant publication). Origine du concept : vault Obsidian, `Jeu Roblox/05 - Concepts/Concepts candidats.md`
+Titre provisoire (proposition de sortie, titre recommandé « Throw a Dummy » : `docs/page-du-jeu.md`, #178). Origine du concept : vault Obsidian, `Jeu Roblox/05 - Concepts/Concepts candidats.md`
 (concept A) et `Jeu Roblox/La recette.md` (ce qui fait percer un jeu Roblox). Jeux de référence pour la boucle, l'interface
 et le rythme : fiches `04 - Jeux disséqués/` du vault (01 *Throw Food For Animals*, 09 *Throw a Seed*, 03 *Hyper Realistic
 Ragdoll*, 06 *BloxNG*, 12 *Net a Fish!*).
@@ -1227,4 +1227,4 @@ Interface : section suivante.
   #97). ← en cours
 - **v1** : variantes « 1 en N » révélées en cinématique, renaissance avec nouveau parcours et nouveau lanceur (lance-pierre
   géant, catapulte, canon), tutoriel en chaîne d'objectifs, récompense quotidienne, index (issue #7).
-- **v2** : produits Robux (passer, x2, lancer auto), événement avec compte à rebours, vignette et page du jeu.
+- **v2** : produits Robux (passer, x2, lancer auto), événement avec compte à rebours, vignette et page du jeu (préparées, #178 : icône, vignettes, description, réglages dans `docs/page-du-jeu.md` ; publication après accord).
