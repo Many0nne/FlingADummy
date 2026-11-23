@@ -16,12 +16,25 @@ local gui = player:WaitForChild("PlayerGui")
 local camera = Workspace.CurrentCamera
 local BINDING = "FadStore"
 
--- Cette méthode permet de cacher (ou de rendre) l'interface et l'avatar local lorsque la séance commence ou finit.
+-- Cette méthode permet de cacher l'interface et l'avatar local (ou de rendre les fenêtres qui étaient ouvertes avant la
+-- séance, mémorisées dans _G.FadStoreShown) lorsque la séance commence ou finit.
 local function hide(hidden: boolean)
-	for _, screen in gui:GetChildren() do
-		if screen:IsA("ScreenGui") then
-			screen.Enabled = not hidden
+	if hidden then
+		local shown = _G.FadStoreShown or {}
+		for _, screen in gui:GetChildren() do
+			if screen:IsA("ScreenGui") and screen.Enabled then
+				shown[screen] = true
+				screen.Enabled = false
+			end
 		end
+		_G.FadStoreShown = shown
+	else
+		for screen in _G.FadStoreShown or {} do
+			if screen.Parent then
+				screen.Enabled = true
+			end
+		end
+		_G.FadStoreShown = nil
 	end
 	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, not hidden)
 	pcall(StarterGui.SetCore, StarterGui, "TopbarEnabled", not hidden)

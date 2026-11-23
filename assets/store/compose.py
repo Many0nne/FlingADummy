@@ -299,6 +299,8 @@ def sheet(images, refs_dir):
     row_h = 216
 
     def row(icon_img, thumbs, label):
+        """Cette methode permet d'aligner une icone et ses vignettes sur une rangee etiquetee lorsque l'on monte une
+        planche."""
         cells = [icon_img.convert("RGB").resize((row_h, row_h), Image.LANCZOS)]
         cells += [t.convert("RGB").resize((384, row_h), Image.LANCZOS) for t in thumbs[:4]]
         w = 150 + sum(c.width for c in cells) + 10 * len(cells)
@@ -339,6 +341,9 @@ def main():
     parser.add_argument("--refs", help="dossier des icones et vignettes des references")
     parser.add_argument("only", nargs="*", help="images a composer (toutes par defaut)")
     args = parser.parse_args()
+    unknown = [name for name in args.only if name not in dict(OUTPUTS)]
+    if unknown:
+        parser.error("image inconnue : " + ", ".join(unknown) + " (connues : " + ", ".join(dict(OUTPUTS)) + ")")
     os.makedirs(EXPORT, exist_ok=True)
     images = {}
     for name, build in OUTPUTS:
@@ -353,6 +358,9 @@ def main():
         print(name, img.size, path)
     if len(images) == len(OUTPUTS):
         sheet(images, args.refs)
+    else:
+        missing = [name for name, _ in OUTPUTS if name not in images]
+        print("planche et comparaison non refaites : images manquantes (" + ", ".join(missing) + ")")
 
 
 if __name__ == "__main__":

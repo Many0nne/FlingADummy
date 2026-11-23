@@ -12,16 +12,16 @@ script : couleurs poussées, recadrage, silhouette « ? » et « !! », traîné
 | `captures/<prise>.jpg` | captures brutes de Studio (1614 × 759, fenêtre de Studio du poste) |
 | `compose.py` | composition des images finales et de la planche de comparaison |
 | `export/icon.png` | icône 512 × 512 |
-| `export/thumb-1.png` … `thumb-4.png` | vignettes 1920 × 1080 : lancer « 1 IN 100T », mystère, « SMASH! », collection « $540M/S » |
+| `export/thumb-1.png` … `thumb-4.png` | vignettes 1920 × 1080 : lancer « 1 IN 100T », mystère, « SMASH! », collection « $540M/s » |
 
 ## Refaire les captures (une réservation Studio)
-1. `.\scripts\fad-worktree.ps1 <branche> -AcquireStudio -WaitStudio 20`, `Workspace.FreshPlayer = true` (contexte
-   Edit), Play (`start_stop_play`).
+1. `.\scripts\fad-worktree.ps1 <branche> -AcquireStudio -WaitStudio 20`, `workspace:SetAttribute("FreshPlayer", true)`
+   (contexte Edit), Play (`start_stop_play`).
 2. Coller `studio/stage.luau` (Server), puis `studio/camera.luau` (Client).
 3. Pour chaque prise (`icon`, `mystery`, `arc`, `smash`, `collection`) : `_G.FadStore.shot("<prise>")` (Server), puis
-   `screen_capture`, et copier l'image dans `captures/<prise>.jpg`. `shot` retire les obstacles devant la caméra
-   juste avant la capture : ils réapparaissent seuls quelques secondes plus tard.
-4. Stop, `FreshPlayer` retiré (Edit), `-ReleaseStudio`.
+   `screen_capture`, et copier l'image dans `captures/<prise>.jpg`. `shot` retire les pièces de la piste devant la caméra
+   juste avant la capture : les obstacles réapparaissent seuls quelques secondes plus tard, le décor retiré au Stop.
+4. Stop, `workspace:SetAttribute("FreshPlayer", nil)` (Edit), `-ReleaseStudio`.
 
 Les positions du texte, de l'arc et de la silhouette (`compose.py`, en pixels de l'image finale) dépendent du cadrage :
 une capture d'une autre taille ou d'un autre cadrage impose de les reprendre.

@@ -1,8 +1,9 @@
 --# selene: allow(global_usage)
 -- Mise en scène des captures de la page du jeu (#178), Studio seulement : à coller tel quel dans le MCP Studio
--- (execute_luau, contexte Server, en Play avec Workspace.FreshPlayer = true), une fois par séance. Définit _G.FadStore :
---   _G.FadStore.shot("<nom>")  retire les obstacles devant la caméra (ils réapparaissent seuls : appeler juste avant la
---                              capture), pose la scène de la prise (dossier Workspace.StoreScene) et la pièce de
+-- (execute_luau, contexte Server, en Play avec l'attribut FreshPlayer de Workspace à true), une fois par séance.
+-- Définit _G.FadStore :
+--   _G.FadStore.shot("<nom>")  retire les pièces de la piste devant la caméra (les obstacles réapparaissent seuls :
+--                              appeler juste avant la capture ; le décor retiré ne revient qu'au Stop), pose la scène de la prise (dossier Workspace.StoreScene) et la pièce de
 --                              cadrage StoreCamera (attributs From, At, Fov) que suit camera.luau côté client ;
 --   _G.FadStore.clear()        retire la scène.
 -- Mannequins construits comme en jeu (Shared.DummyShape, déclinaisons de Shared.Collection et Shared.ThrowDummies),
@@ -227,14 +228,16 @@ function S.camera(from: Vector3, at: Vector3, fov: number)
 end
 
 -- Cette méthode permet de retirer les obstacles et décors de la piste dans une boîte au sol (x, z) lorsqu'ils
--- masqueraient la scène ; ils réapparaissent seuls après quelques secondes.
+-- masqueraient la scène ; les obstacles réapparaissent seuls, le décor retiré ne revient qu'au Stop du playtest.
 function S.clearCourse(x0: number, x1: number, z0: number, z1: number): number
 	local count = 0
 	for _, part in Workspace.Course:GetDescendants() do
+		if not part:IsA("BasePart") then
+			continue -- dossiers et modèles : pas de position
+		end
 		local p = part.Position
 		if
-			part:IsA("BasePart")
-			and part.Name ~= "Track"
+			part.Name ~= "Track"
 			and p.X > x0
 			and p.X < x1
 			and p.Z > z0
@@ -261,6 +264,7 @@ end
 local SHOTS = {}
 
 -- Icône : avatar bacon hair bras levé, Crash Dummy qui s'envole, Crash King sur son trône (assets/store/captures/icon.jpg)
+-- Cette méthode permet de poser la scène de l'icône lorsque la prise « icon » est demandée.
 function SHOTS.icon()
 	local from, at = Vector3.new(0.4, 4.5, 3), Vector3.new(-0.6, 8.3, 30)
 	local av = Vector3.new(2.3, 2.9, 11.5)
@@ -272,6 +276,7 @@ end
 
 -- Vignette mystère : avatar de trois-quarts qui lance, Crash Dummy en vol, moitié droite libre pour la silhouette
 -- ajoutée au montage (assets/store/captures/mystery.jpg)
+-- Cette méthode permet de poser la scène de la vignette mystère lorsque la prise « mystery » est demandée.
 function SHOTS.mystery()
 	local from, at = Vector3.new(0, 4.5, 3), Vector3.new(0, 7, 30)
 	local av = Vector3.new(6.2, 2.9, 15)
@@ -282,6 +287,7 @@ end
 
 -- Vignette du lancer : avatar de dos sur la bande, Crash Dummy au sommet de sa course, Infinite Crash King géant au
 -- bout du canyon (assets/store/captures/arc.jpg)
+-- Cette méthode permet de poser la scène de la vignette du lancer lorsque la prise « arc » est demandée.
 function SHOTS.arc()
 	local from, at = Vector3.new(9, 8.5, -24), Vector3.new(0, 9, 40)
 	local av = Vector3.new(5, 2.9, -8)
@@ -311,6 +317,7 @@ end
 
 -- Vignette de casse : le Crash Dummy traverse un mur de briques à tenons, débris projetés vers la caméra
 -- (assets/store/captures/smash.jpg)
+-- Cette méthode permet de poser la scène de la vignette de casse lorsque la prise « smash » est demandée.
 function SHOTS.smash()
 	local rng = Random.new(11)
 	local wallZ, hole = 30, Vector2.new(0, 7.5)
@@ -338,6 +345,8 @@ end
 
 -- Vignette de la collection : avatar bras levés devant trois mannequins rares géants
 -- (assets/store/captures/collection.jpg)
+-- Cette méthode permet de poser la scène de la vignette de la collection lorsque la prise « collection » est
+-- demandée.
 function SHOTS.collection()
 	local from, at = Vector3.new(0, 4.5, 3), Vector3.new(-1, 9, 34)
 	S.avatar("cheer", S.facing(Vector3.new(5.4, 2.9, 11.5), from))
