@@ -1,7 +1,17 @@
 # Page du jeu (#178) : proposition avant sortie
 
 Tout ce qui se publie sur l'expérience (universe 10777904551, place 88580736516669). **Rien n'est publié sans l'accord
-de l'utilisateur.** État relevé par Open Cloud le 2026-11-23 : nom « Fling a dummy », description vide, privée, chat
+de l'utilisateur.**
+
+## Publication (2026-11-23, proposition validée)
+- Open Cloud (relu après écriture) : nom « Throw a Dummy » (nom de la place racine, repris par l'expérience),
+  description ci-dessous, 4 joueurs par serveur, ordinateur / téléphone / tablette oui, console et VR non, chat vocal
+  désactivé.
+- Icônes dessinées (`assets/icons/export/`) posées par `PATCH` sur 5 passes (Strong Arms déjà bon) et 13 produits.
+- Creator Dashboard (par l'utilisateur, pas d'API Open Cloud) : icône, 4 vignettes, genre, questionnaire de maturité.
+- Reste privée : passage en public par l'utilisateur, après son dernier test.
+
+État avant publication, relevé par Open Cloud le 2026-11-23 : nom « Fling a dummy », description vide, privée, chat
 vocal activé, classement 13+, ordinateur / téléphone / tablette / VR activés, console désactivée, 50 joueurs par
 serveur (#142).
 
