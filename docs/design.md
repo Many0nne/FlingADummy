@@ -917,9 +917,9 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
 - **Studio** : `DebugWipe` (section « Architecture ») remet le compte à zéro, renaissances comprises.
 
 ## Base et collection (`Server.BaseService`, `Shared.Inventory`)
-- **Présentoirs** (#156) : 8 au départ (comme les 8 emplacements de jardin de 09), jusqu'à 30, en rangées de 5 depuis
+- **Présentoirs** (#156, #211) : 5 au départ (une rangée ; 8 avant #211), jusqu'à 30, en rangées de 5 depuis
   l'entrée (7,5 studs d'une colonne à l'autre, 7 d'une rangée à l'autre, socles de 4 studs, `CourseLayout.displayPositions`),
-  chaque rangée remplie du milieu vers les côtés : une base neuve a la rangée avant et le milieu de la suivante. Place
+  chaque rangée remplie du milieu vers les côtés : une base neuve a sa rangée avant complète. Place
   prévue pour 10 de plus (passe « Big Base » de #160 : deux rangées au fond, jusqu'à 62 studs de profondeur dans le
   hub, vérifié par les tests). Échelle des mannequins posés plafonnée à × 2 (× 2,5 avant, présentoirs à 9 studs). 6 à
   10 présentoirs avant #156 ; une sauvegarde à 10 garde ses 10 et ses posés (mesuré en Studio : 10 posés relus,
