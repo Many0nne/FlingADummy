@@ -63,11 +63,11 @@ base, il rapporte des $/s, seule source d'argent.
    l'écart) ; à chaque palier atteint, la silhouette se change en candidat plus rare (`Collection.teaseSequence` : 0 à 3
    mannequins plus courants, chacun à sa cote, puis le gagné), comme la pousse → buisson → arbre de 09 : éclair blanc,
    étincelles, anneau, secousse, contour à la couleur de la rareté, exclamation en haut (« Lucky! » → « Super lucky! »
-   → « Incredible luck! », comme « Super chanceux ! » de 01), arrêt de 0,45 s, puis la cote repart. Puis roulement (1,1 s, la silhouette tremble de plus en plus) et révélation : éclair plein
+   → « Incredible luck! », comme « Super chanceux ! » de 01), arrêt de 0,45 à 0,55 s, puis la cote repart. **Rythme du candidat visé** (#204, `RevealPlan.pace`) : chaque montée (× 1 à × 1,1, 1,5 s au plus) et chaque arrêt suivent la rareté du palier que la cote vise, jamais la rareté gagnée ; deux tirages qui passent par les mêmes cotes ont le même rythme jusqu'au dernier palier. Puis roulement (1,1 s, la silhouette tremble de plus en plus) et révélation : éclair plein
    écran, mannequin en couleurs qui grossit, rayons ; en haut au centre, **une seule fois** : taille et rareté
    (« BIG · RARE »), nom, « NEW! », $/s, cote ; en bas, comme 09, **THROW AGAIN** (vert) à gauche de **GO BACK** (bleu),
    même taille. GO BACK ramène au hub (automatique après 5 à 8 s selon le palier ; le serveur rend la main au plus tard
-   20 s après l'atterrissage, jusqu'à ≈ 41 s pour un secret : `RevealPlan.resultTime`). THROW AGAIN (#76) rend la main de
+   20 s après l'atterrissage, jusqu'à ≈ 32 s pour un secret : `RevealPlan.resultTime`). THROW AGAIN (#76) rend la main de
    la même façon, puis le serveur remet le joueur en prise sur la bande (`SlotService.holdAgain` : sa place s'il y est
    encore figé, sinon une place libre près de lui ; jauge rouverte, cadrage de la bande) ; refusé (bande pleine, avatar
    mort) : retour au hub, comme GO BACK. Masqué tant que la première pose du tutoriel n'est pas faite
@@ -76,11 +76,12 @@ base, il rapporte des $/s, seule source d'argent.
    révélation vive (double anneau, éclat, sons) ; Rare / Epic, la silhouette hésite entre 2 ou 3 formes pendant le
    roulement (1,8 s), confettis de la couleur de la rareté ; Legendary / Mythic, ciel qui s'assombrit, rayons et colonne
    de lumière quand la cote affichée atteint Legendary (#201 : le suspense suit le palier affiché, jamais le gagné),
-   cote qui grimpe longtemps (× 1,6), explosion et forte secousse ; Secret, en plus, la séquence de 09 : écran noir et phrase propre au mannequin écrite lettre à lettre, décor dédié (tapis rouge, colonnes
-   dorées, construit au-dessus de la piste), portail, pluie de pièces, « SECRET!! » et cote complète. Suspense mesuré :
-   Common 2,8 s, Epic 7,1 s, Legendary 11,1 s, Secret 20,6 s jusqu'au portail. **Non passable** (#197) : seuls THROW
-   AGAIN et GO BACK rendent la main ; GO BACK apparaît après 2,8 à 5,9 s (Common), 6,7 à 9,2 s (Rare, Epic), 11,0 à
-   13,0 s (Legendary, Mythic), 24,6 à 27,2 s (Secret et au-delà), test « durée du tirage par rareté ».
+   roulement de 2 s une fois la cote finale affichée, explosion et forte secousse ; Secret, en plus, la séquence de 09 : écran noir et phrase propre au mannequin écrite lettre à lettre, décor dédié (tapis rouge, colonnes
+   dorées, construit au-dessus de la piste), portail, pluie de pièces, « SECRET!! » et cote complète. Séquence du secret resserrée par #204 : roulement de 1,5 s puis 8,6 s (noir 2,8 s, décor 1,8 s, portail
+   1,3 s, pièces 0,9 s, bandeau 1,8 s). Paliers atteints (mesure, taille normale) : Epic « ice » et Legendary
+   « gold » à 8 (1,38 s), 62 (2,79 s), 502 (4,27 s), puis gold à 4002 (5,79 s) ; révélation de gold à 8,3 s. **Non passable** (#197) : seuls THROW
+   AGAIN et GO BACK rendent la main ; GO BACK apparaît après 2,8 à 5,9 s (Common), 6,2 à 8,7 s (Rare, Epic), 8,3 à
+   9,9 s (Legendary, Mythic), 17,2 à 18,8 s (Secret et au-delà), test « durée du tirage par rareté ».
    **Annonce** à partir de Legendary : bandeau en haut pour tous les joueurs et ligne dans le chat, envoyés à la fin du
    résultat du gagnant (personne ne lui gâche son tirage). Test : attribut `DebugPrize` (Studio, contexte Server) =
    rareté 1-11, son nom ou « id:taille », imposé au prochain tirage.

@@ -37,7 +37,11 @@ return function(T, Loader)
 			for index = 2, #RevealPlan.TIERS do
 				local low, high = RevealPlan.TIERS[index - 1], RevealPlan.TIERS[index]
 				T.expect(high.climbFactor >= low.climbFactor, high.name .. " : montée au moins aussi longue")
-				T.expect(high.drumroll >= low.drumroll, high.name .. " : roulement au moins aussi long")
+				-- Arrêt croissant : maxDuration borne les arrêts des candidats par celui du gagné
+				T.expect(high.pause >= low.pause, high.name .. " : arrêt au moins aussi long")
+				-- Secret : roulement plus court, la séquence complète prend le relais (#204)
+				local after = high.drumroll + (if high.cinematic then RevealPlan.cinematicTime() else 0)
+				T.expect(after >= low.drumroll, high.name .. " : fin du suspense au moins aussi longue")
 				T.expect(high.confetti >= low.confetti, high.name .. " : au moins autant de confettis")
 				T.expect(high.shake > low.shake, high.name .. " : secousse plus forte")
 			end
@@ -53,9 +57,57 @@ return function(T, Loader)
 	end)
 
 	T.describe("RevealPlan.climbTime et teaseTime", function()
-		T.it("la cote grimpe plus longtemps pour un mannequin plus rare", function()
+		T.it("la cote grimpe plus longtemps vers un candidat plus rare, 1,5 s au plus", function()
 			T.expectNear(RevealPlan.climbTime(1, 1, 100), Collection.climbTime(1, 100))
 			T.expect(RevealPlan.climbTime(5, 1, 100) > RevealPlan.climbTime(3, 1, 100), "Legendary > Rare")
+			T.expect(RevealPlan.climbTime(11, 1, 1e12) <= 1.5, "plafond")
+		end)
+		T.it("rythme de chaque montée indépendant de la rareté gagnée (#204)", function()
+			local checked = 0
+			for _, dummy in Collection.DUMMIES do
+				for size = 1, #Collection.SIZES do
+					local sequence = Collection.teaseSequence({ id = dummy.id, size = size })
+					local pace = RevealPlan.pace(sequence)
+					T.expectEqual(#pace, #sequence)
+					-- Même suite de cotes, gagné remplacé par un Common puis par un Infinity
+					for _, rarity in { 1, #Rarity.LIST } do
+						local rigged = table.clone(sequence)
+						rigged[#rigged] = table.clone(sequence[#sequence])
+						rigged[#rigged].rarity = rarity
+						local other = RevealPlan.pace(rigged)
+						local label = string.format("%s taille %d, gagné %s", dummy.id, size, Rarity.LIST[rarity].name)
+						for index = 1, #sequence - 1 do
+							checked += 1
+							T.expectNear(other[index].climb, pace[index].climb, 1e-9, label .. " : montée " .. index)
+							T.expectNear(other[index].pause, pace[index].pause, 1e-9, label .. " : arrêt " .. index)
+							T.expectNear(
+								other[index].reached,
+								pace[index].reached,
+								1e-9,
+								label .. " : palier " .. index
+							)
+						end
+						-- La dernière montée part au même instant : seule elle et la suite connaissent le gagné
+						if #sequence >= 2 then
+							local start = pace[#sequence - 1].reached + pace[#sequence - 1].pause
+							local otherStart = other[#sequence - 1].reached + other[#sequence - 1].pause
+							T.expectNear(otherStart, start, 1e-9, label .. " : départ de la dernière montée")
+						end
+					end
+				end
+			end
+			T.expect(checked > 0, "au moins une montée vérifiée")
+		end)
+		T.it("Client.Prize joue le rythme de RevealPlan.pace, pas celui du gagné", function()
+			local fs = require("@lune/fs")
+			local source = fs.readFile("src/client/Prize.luau")
+			T.expect(
+				string.find(source, "RevealPlan.pace(a.sequence)", 1, true) ~= nil,
+				"rythme lu dans RevealPlan.pace"
+			)
+			for _, pattern in { "plan.pause", "plan.climbFactor", "climbTime(" } do
+				T.expect(not string.find(source, pattern, 1, true), pattern .. " : rythme de montée lu hors de pace")
+			end
 		end)
 		T.it("le suspense s'allonge avec la rareté", function()
 			local common = RevealPlan.teaseTime(1, Collection.teaseSequence(entryOf("traffic")))
@@ -209,7 +261,13 @@ return function(T, Loader)
 			end
 			T.expectEqual((RevealPlan :: any).SKIP_AFTER, nil)
 		end)
-		T.it("durée du tirage par rareté, jusqu'à GO BACK", function()
+		T.it("durée du tirage par rareté, jusqu'à GO BACK (#204)", function()
+			-- Bornes (s) : Common inchangé (≤ 5,9 avant #204), Legendary comme la référence 09 (6 à 9 s, à peu près),
+			-- secret et au-delà ≤ ~18 s (séquence complète comprise, non passable)
+			local bounds = { [1] = 6, [5] = 9.5, [6] = 10 }
+			for rarity = Rarity.SECRET, #Rarity.LIST do
+				bounds[rarity] = 19
+			end
 			for rarity = 1, #Rarity.LIST do
 				local low, high = math.huge, 0
 				for _, dummy in Collection.DUMMIES do
@@ -231,8 +289,20 @@ return function(T, Loader)
 							RevealPlan.get(rarity).autoClose
 						)
 					)
+					local bound = bounds[rarity]
+					if bound then
+						T.expect(
+							high <= bound,
+							string.format("%s : %.1f s ≤ %.1f s", Rarity.LIST[rarity].name, high, bound)
+						)
+					end
 				end
 			end
+			-- Legendary dans la fourchette de la référence 09 (tirage normal, taille normale)
+			local gold = RevealPlan.revealTime(5, Collection.teaseSequence(entryOf("gold")))
+			T.expect(gold >= 6 and gold <= 9, string.format("Legendary (gold) : %.1f s entre 6 et 9 s", gold))
+			local king = RevealPlan.revealTime(7, Collection.teaseSequence(entryOf("king")))
+			T.expect(king <= 18, string.format("Secret (king) : %.1f s ≤ 18 s", king))
 		end)
 	end)
 
