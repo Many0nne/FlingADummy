@@ -16,6 +16,12 @@
       }
     },
 
+    "StarterGui": {
+      "$properties": {
+        "ScreenOrientation": "LandscapeSensor"
+      }
+    },
+
     "StarterPlayer": {
       "$properties": {
         "CameraMaxZoomDistance": 60

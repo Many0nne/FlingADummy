@@ -60,6 +60,7 @@ local SHINE_TIME = 0.6 -- s pour traverser un bouton
 local BLUR_SIZE = 10 -- flou de fond léger derrière une fenêtre ouverte
 local FLY_HOVER = 0.3 -- s pendant lesquelles un « +N » reste sur place avant de voler
 local FLY_TIME = 0.45 -- s de vol jusqu'au compteur
+local PAD_SETTLE = 0.3 -- s : zone tactile recalée une fois la taille du bouton stable (pop d'ouverture : 0,25 s)
 UIKit.FLY_DURATION = FLY_HOVER + FLY_TIME
 
 export type Card = {
@@ -104,6 +105,8 @@ local shineRunning = false
 local openWindows: { [GuiObject]: boolean } = {} -- fenêtre ouverte → floute le fond
 local blur: BlurEffect? = nil
 local fxLayer: ScreenGui? = nil
+local scopeButtons: { [Instance]: { GuiButton } } = setmetatable({}, { __mode = "k" }) :: any -- boutons par ensemble
+local scopeWatched: { [Instance]: boolean } = setmetatable({}, { __mode = "k" }) :: any
 
 -- Cette méthode permet de créer une instance avec ses propriétés (Parent en dernier) lorsque l'on construit une
 -- interface.
@@ -366,13 +369,63 @@ local function scaleChain(gui: Instance): number
 	return scale
 end
 
+-- Cette méthode permet de donner le rectangle affiché d'un élément (px d'écran) lorsque une zone tactile se cale.
+local function rectOf(gui: GuiObject): TouchLayout.Rect
+	local at, size = gui.AbsolutePosition, gui.AbsoluteSize
+	return { x0 = at.X, y0 = at.Y, x1 = at.X + size.X, y1 = at.Y + size.Y }
+end
+
+-- Cette méthode permet de donner les boutons d'un ensemble (fenêtre, HUD principal), tenus à jour quand l'ensemble
+-- change, lorsque une zone tactile cherche ses voisins.
+local function buttonsIn(scope: Instance): { GuiButton }
+	local cached = scopeButtons[scope]
+	if cached then
+		return cached
+	end
+	local list = {}
+	for _, item in scope:GetDescendants() do
+		if item:IsA("GuiButton") and item.Name ~= "TouchPad" then
+			table.insert(list, item)
+		end
+	end
+	scopeButtons[scope] = list
+	if not scopeWatched[scope] then
+		scopeWatched[scope] = true
+		-- Cette méthode permet d'oublier la liste lorsque un bouton entre dans l'ensemble ou en sort.
+		local function forget(item: Instance)
+			if item:IsA("GuiButton") then
+				scopeButtons[scope] = nil
+			end
+		end
+		scope.DescendantAdded:Connect(forget)
+		scope.DescendantRemoving:Connect(forget)
+	end
+	return list
+end
+
+-- Cette méthode permet de donner les boutons voisins d'un bouton (même fenêtre ou même HUD principal : PLACE et SELL
+-- d'une ligne, PLACE BEST au-dessus de la liste) lorsque sa zone tactile s'arrête avant eux.
+local function neighbours(button: GuiButton): { GuiButton }
+	-- Ensemble : l'ancêtre posé directement dans le ScreenGui
+	local scope: Instance = button
+	while scope.Parent and not scope.Parent:IsA("LayerCollector") do
+		scope = scope.Parent
+	end
+	local list = {}
+	for _, other in buttonsIn(scope) do
+		if other ~= button and not other:IsDescendantOf(button) and not button:IsDescendantOf(other) then
+			table.insert(list, other)
+		end
+	end
+	return list
+end
+
 -- Cette méthode permet d'élargir la zone tactile d'un bouton à TouchLayout.MIN_TARGET px d'écran (cadre transparent
--- posé dessus, qui relaie le toucher au bouton) lorsque l'écran est tactile ; recalée quand la taille affichée change.
+-- posé dessus, qui relaie le toucher au bouton, arrêté à mi-chemin des boutons voisins) lorsque l'écran est tactile ;
+-- recalée quand la taille affichée change.
 local function touchPad(button: GuiButton): GuiButton
 	local pad = UIKit.create("TextButton", {
 		Name = "TouchPad",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1,
 		AutoButtonColor = false,
@@ -383,12 +436,31 @@ local function touchPad(button: GuiButton): GuiButton
 	})
 	-- Cette méthode permet de recaler la zone tactile lorsque le bouton change de taille affichée (échelle, animation).
 	local function fit()
-		local size = button.AbsoluteSize
 		local scale = scaleChain(pad)
-		pad.Size = UDim2.new(1, TouchLayout.padExtra(size.X, scale), 1, TouchLayout.padExtra(size.Y, scale))
+		if scale <= 0 or button.AbsoluteSize.X <= 0 then
+			return
+		end
+		local own = rectOf(button)
+		local others = {}
+		for _, other in neighbours(button) do
+			table.insert(others, rectOf(other))
+		end
+		local zone = TouchLayout.padRect(own, others)
+		pad.Position = UDim2.fromOffset((zone.x0 - own.x0) / scale, (zone.y0 - own.y0) / scale)
+		pad.Size = UDim2.fromOffset((zone.x1 - zone.x0) / scale, (zone.y1 - zone.y0) / scale)
 	end
-	button:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
-	fit()
+	-- Un seul recalage par rafale (pop d'ouverture d'une fenêtre : la taille change à chaque image), après elle
+	local pending = false
+	button:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+		if not pending then
+			pending = true
+			task.delay(PAD_SETTLE, function()
+				pending = false
+				fit()
+			end)
+		end
+	end)
+	task.defer(fit) -- voisins posés après lui (même construction)
 	return pad
 end
 

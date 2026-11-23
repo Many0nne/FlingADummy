@@ -1020,6 +1020,19 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
   instances).
   Hub de #120 (mesuré en Studio, hors mannequins posés) : 2 371 instances contre 2 042 (+ 329 : tableaux, zone
   d'événement, chevrons) ; décor entier 25 436 instances construites en 291 ms (25 121 en 284 ms avant).
+  **Décor lointain allégé (#115)** : au-delà de 2,4 km, accessoires semés 1,6 fois plus espacés (`FAR_SPACING` de
+  `Server.CourseBuilder`), rien au pied des parois à moins de 10 studs d'un piège ; piste, parois et obstacles
+  inchangés. Studio, joueur neuf : 26 086 → 23 279 instances sous `Course` (− 11 %), mémoire des pièces (physique
+  77 → 71 Mo, rendu 24 → 21 Mo), 60 FPS au hub et en vol avant comme après (PC de bureau). Compte sous Lune :
+  `lune run tools/decor-count.luau` (total, par zone, avant / après 2,4 km). Streaming toujours coupé (pièces mobiles
+  des pièges, mannequin suivi à 6 km) : à reprendre seulement si la mesure sur un vrai téléphone le demande.
+- **Jeu sur écran tactile (#19)** (`Shared.TouchLayout`) : HUD un peu plus grand (cadre 1180 × 650 au lieu de
+  1280 × 720 : 0,6 au lieu de 0,54 sur un téléphone de 390 px de haut, 1 sur iPad) ; chaque bouton a une zone tactile
+  d'au moins 44 px d'écran, arrêtée à mi-chemin des boutons voisins (listes serrées : onglets de l'Index ≈ 21 px,
+  PLACE / SELL ≈ 33 px, toute la bande jusqu'au voisin) ; boutons et compteurs hors de l'encoche ; joystick et bouton
+  de saut cachés quand le joueur ne peut pas bouger (bande, vol, résultat, tirage : un toucher n'importe où lance) ;
+  paysage seulement (`StarterGui.ScreenOrientation`). En Studio, `DebugOpen` (attribut du joueur, côté client) ouvre
+  une fenêtre par son nom (le clic simulé du Device Simulator ne tombe pas au bon endroit).
 - **Obstacles partagés** (`Server.Obstacles`, plan dans `Shared.TrackPlan`) : dans chaque thème, les 2 ou 3 obstacles cassables du thème à
   tour de rôle (un site de plus que le minimum : il a remplacé la rangée de vitres retirée par #90) (`Server.ThemeObstacles`, un par colonne ou d'un seul tenant sur la largeur des colonnes) et son piège
   signature (section « Zones de la piste », un second piège dans les thèmes longs), sites espacés régulièrement

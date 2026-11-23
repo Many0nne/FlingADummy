@@ -10,6 +10,7 @@
 -- (même remote que la fenêtre) et ouverture de la fenêtre Training Gear.
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
@@ -1308,6 +1309,17 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 	Hud.refresh()
 	refreshTraining()
 	refreshState()
+	-- Studio : DebugOpen (attribut du joueur, côté client) ouvre ou ferme une fenêtre par son nom, comme son bouton ;
+	-- sert aux vérifications au Device Simulator, où le clic simulé ne tombe pas au bon endroit (#19)
+	if RunService:IsStudio() then
+		player:GetAttributeChangedSignal("DebugOpen"):Connect(function()
+			local name = player:GetAttribute("DebugOpen")
+			if type(name) == "string" and windows[name] then
+				player:SetAttribute("DebugOpen", nil)
+				toggle(name)
+			end
+		end)
+	end
 end
 
 return Hud

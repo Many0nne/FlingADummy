@@ -94,7 +94,7 @@ end
 Music.init(player, remotes)
 UserInputService.JumpRequest:Connect(stopTraining)
 -- Joystick et bouton de saut cachés quand le joueur ne peut pas bouger : un toucher n'importe où lance (#19)
-task.spawn(TouchControls.init, player)
+TouchControls.init(player)
 
 local prizeToken = 0 -- invalide un tirage programmé si le couloir redevient prêt ou qu'un autre vol part
 

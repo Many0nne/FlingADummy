@@ -18,13 +18,48 @@ function TouchLayout.hudScale(width: number, height: number, touch: boolean): nu
 	return math.clamp(scale, TouchLayout.MIN_SCALE, TouchLayout.MAX_SCALE)
 end
 
--- Cette méthode permet de donner l'avancée (unités de l'interface, à l'échelle `scale` des parents) qui porte un côté
--- de `size` px d'écran à MIN_TARGET px lorsque la zone tactile d'un bouton se cale ; 0 s'il est assez grand.
-function TouchLayout.padExtra(size: number, scale: number): number
-	if scale <= 0 then
-		return 0
+export type Rect = { x0: number, y0: number, x1: number, y1: number }
+
+-- Cette méthode permet d'arrêter la zone tactile `zone` du bouton `own` à mi-distance du voisin `other` le long de
+-- `axis` lorsque la zone empiète sur lui ; jamais en deçà du bouton lui-même.
+local function clip(zone: Rect, own: Rect, other: Rect, axis: "x" | "y")
+	if axis == "x" then
+		if other.x0 >= own.x1 then
+			zone.x1 = math.max(own.x1, math.min(zone.x1, (own.x1 + other.x0) / 2))
+		else
+			zone.x0 = math.min(own.x0, math.max(zone.x0, (other.x1 + own.x0) / 2))
+		end
+	elseif other.y0 >= own.y1 then
+		zone.y1 = math.max(own.y1, math.min(zone.y1, (own.y1 + other.y0) / 2))
+	else
+		zone.y0 = math.min(own.y0, math.max(zone.y0, (other.y1 + own.y0) / 2))
 	end
-	return math.max(0, TouchLayout.MIN_TARGET - size) / scale
+end
+
+-- Cette méthode permet de donner la zone tactile d'un bouton `own` (px d'écran) : au moins MIN_TARGET de côté, centrée,
+-- mais arrêtée à mi-chemin des boutons voisins `others` (un PLACE et un SELL empilés ne se volent pas leurs touchers)
+-- lorsque la zone tactile du bouton se cale.
+function TouchLayout.padRect(own: Rect, others: { Rect }): Rect
+	local cx, cy = (own.x0 + own.x1) / 2, (own.y0 + own.y1) / 2
+	local half = TouchLayout.MIN_TARGET / 2
+	local zone = {
+		x0 = math.min(own.x0, cx - half),
+		y0 = math.min(own.y0, cy - half),
+		x1 = math.max(own.x1, cx + half),
+		y1 = math.max(own.y1, cy + half),
+	}
+	for _, other in others do
+		local overlaps = zone.x0 < other.x1 and other.x0 < zone.x1 and zone.y0 < other.y1 and other.y0 < zone.y1
+		if overlaps then
+			local gapX = math.max(other.x0 - own.x1, own.x0 - other.x1)
+			local gapY = math.max(other.y0 - own.y1, own.y0 - other.y1)
+			-- Séparés le long de l'axe où l'écart est le plus grand ; boutons qui se chevauchent déjà : rien à faire
+			if gapX >= 0 or gapY >= 0 then
+				clip(zone, own, other, if gapX >= gapY then "x" else "y")
+			end
+		end
+	end
+	return zone
 end
 
 -- Cette méthode permet de savoir si le joueur ne peut pas bouger (figé sur la bande, vol, résultat, tirage) lorsque ses
