@@ -90,6 +90,7 @@ type Flight = {
 	lastTrap: { kind: string, at: number }?, -- dernier piège déclenché : cause des os cassés juste après
 	clockSent: number, -- os.clock() du dernier échantillon FlightClock envoyé (#84)
 	stallChecked: boolean, -- sortie de la zone de lancer déjà vérifiée (FlightArc.STALL_TIME, #215)
+	reached: number, -- plus grande distance parcourue le long de la piste depuis le départ (studs, #215)
 	lucky: boolean?, -- lancer chanceux consommé au départ : rendu avec le lancer (#215)
 }
 
@@ -226,6 +227,7 @@ local function startFlight(
 		lastTrap = nil,
 		clockSent = -math.huge,
 		stallChecked = false,
+		reached = 0,
 	}
 	return dummy, origin, speed
 end
@@ -801,7 +803,7 @@ local function handBack(flight: Flight, along: number)
 	if RunService:IsStudio() then
 		print(
 			string.format(
-				"[Launch] vol rendu (calé dans la zone de lancer) : %s dummy=%s gauge=%.2f le long=%.1f phase=%s"
+				"[Launch] vol rendu (calé dans la zone de lancer) : %s dummy=%s gauge=%.2f plus loin=%.1f phase=%s"
 					.. " position=%s vitesse=%s ancré=%s près=%s",
 				if flight.owner then flight.owner.Name else tostring(flight.key),
 				flight.thrown.id,
@@ -824,7 +826,10 @@ local function handBack(flight: Flight, along: number)
 		StoreService.refundLuck(player)
 	end
 	-- Remise en prise comme THROW AGAIN (refusée : tutoriel, réapparu, bande pleine → hub, comme un vol perdu)
-	SlotService.holdAgain(player, "Flying")
+	local held = SlotService.holdAgain(player, "Flying")
+	if RunService:IsStudio() then
+		print(string.format("[Launch] vol rendu à %s : %s", player.Name, if held then "en prise" else "retour au hub"))
+	end
 	player:SetAttribute("LaneState", "Ready")
 end
 
@@ -854,12 +859,18 @@ local function step(flight: Flight, dt: number)
 	checkTraps(flight, previous, position)
 	sendClock(flight, position)
 	flight.distance = math.max(flight.distance, position.Z)
-	-- Garde-fou (#215) : un mannequin resté dans la zone de lancer est rendu au joueur, pas compté comme un lancer raté
+	flight.reached = math.max(flight.reached, (position - flight.origin):Dot(flight.flat))
+	-- Garde-fou (#215) : un mannequin resté dans la zone de lancer (plus loin atteint, pas la position du moment : un
+	-- rebond en arrière ne compte pas) est rendu au joueur, pas compté comme un lancer raté
 	if not flight.stallChecked and elapsed >= FlightArc.STALL_TIME then
 		flight.stallChecked = true
-		local along = (position - flight.origin):Dot(flight.flat)
-		if FlightArc.stalled(flight.arc, along) then
-			handBack(flight, along)
+		if FlightArc.stalled(flight.arc, flight.reached) then
+			-- Chocs de cette frame (os, objets projetés) annoncés avant le retrait du mannequin
+			if #flight.impacts > 0 then
+				remotes.Impact:FireAllClients(flight.impacts)
+				flight.impacts = {}
+			end
+			handBack(flight, flight.reached)
 			return
 		end
 	end
