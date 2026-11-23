@@ -17,7 +17,8 @@ DisplayLag.KEEP = 1.2 -- échantillons gardés (s) : plus que le retard au plus 
 DisplayLag.MAX = 0.6 -- retard au plus (s)
 DisplayLag.MATCH = 6 -- écart (studs) au-delà duquel la position affichée n'est pas sur la trajectoire échantillonnée
 DisplayLag.MIN_SPAN = 0.3 -- pas plus court (studs) entre deux échantillons : mannequin presque arrêté, heure imprécise
--- Position affichée à moins de AHEAD studs du dernier échantillon : mannequin arrêté là, heure ambiguë (pas de mesure)
+-- Position affichée à moins de AHEAD studs du dernier échantillon d'un mannequin arrêté (dernier pas plus court que
+-- MIN_SPAN) : heure ambiguë, pas de mesure
 DisplayLag.AHEAD = 1
 -- Projection admise au-delà des bouts d'un pas (part du pas) : plus loin, la position est sur un pas voisin trop court
 -- (mannequin lent, pas ignoré), et le bout du pas donnerait une heure trop ancienne
@@ -62,9 +63,10 @@ end
 
 -- Cette méthode permet de donner l'heure serveur où le mannequin était à `position` (sa position affichée) lorsque
 -- l'on mesure le retard d'affichage ; nil si la position n'est en face d'aucun pas assez long de la trajectoire (à
--- MATCH studs près, EDGE près aux bouts) ou à moins de AHEAD studs du dernier échantillon. Le dernier pas se prolonge
--- d'un pas (échantillon suivant pas encore arrivé). Avec `now` (heure serveur présente), seules les heures de
--- `now` - MAX à `now` comptent.
+-- MATCH studs près, EDGE près aux bouts), au premier échantillon ou avant (copie figée à son apparition, le temps que
+-- le tampon d'interpolation se remplisse : heure inconnue), ou à moins de AHEAD studs du dernier échantillon d'un
+-- mannequin arrêté. Le dernier pas se prolonge d'un pas (échantillon suivant pas encore arrivé). Avec `now` (heure
+-- serveur présente), seules les heures de `now` - MAX à `now` comptent.
 function DisplayLag.shownAt(track: Track, position: Vector3, now: number?): number?
 	local times, positions = track.times, track.positions
 	local best, bestDistance = nil, DisplayLag.MATCH
@@ -75,7 +77,8 @@ function DisplayLag.shownAt(track: Track, position: Vector3, now: number?): numb
 		if span >= DisplayLag.MIN_SPAN then
 			local u = (position - a):Dot(step) / (span * span)
 			local last = i == #times - 1
-			if u >= -DisplayLag.EDGE and u <= (if last then 2 else 1 + DisplayLag.EDGE) then
+			local low = if i == 1 then 0.01 else -DisplayLag.EDGE
+			if u >= low and u <= (if last then 2 else 1 + DisplayLag.EDGE) then
 				u = math.clamp(u, 0, if last then 2 else 1)
 				local distance = (a + step * u - position).Magnitude
 				local time = times[i] + (times[i + 1] - times[i]) * u
@@ -87,10 +90,11 @@ function DisplayLag.shownAt(track: Track, position: Vector3, now: number?): numb
 			end
 		end
 	end
-	-- Mannequin arrêté (ou presque) là où il est affiché : la fin de son dernier pas en mouvement colle à sa position
-	-- et le retard mesuré grandirait sans fin (0,6 s mesurés en Studio après l'arrêt)
+	-- Mannequin arrêté là où il est affiché : la fin de son dernier pas en mouvement colle à sa position et le retard
+	-- mesuré grandirait sans fin (0,6 s mesurés en Studio après l'arrêt)
 	local count = #positions
-	if best and (positions[count] - position).Magnitude < DisplayLag.AHEAD then
+	local stopped = count >= 2 and (positions[count] - positions[count - 1]).Magnitude < DisplayLag.MIN_SPAN
+	if best and stopped and (positions[count] - position).Magnitude < DisplayLag.AHEAD then
 		return nil
 	end
 	return best

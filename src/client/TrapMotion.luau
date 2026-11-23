@@ -3,7 +3,8 @@
 -- seulement ceux proches de sa caméra. Rien ne se réplique à chaque image. Horloge et phase sont celles que le serveur
 -- prend pour déclencher le piège (Shared.Traps.active), décalées du retard d'affichage des mannequins (#84,
 -- Shared.DisplayLag : mesuré sur le mannequin en vol le plus proche de la caméra, échantillons FlightClock du serveur) :
--- la pièce frappe quand le mannequin affiché la touche. Les pièces nommées
+-- la pièce frappe quand le mannequin affiché la touche. Un seul retard par client : le moteur affiche tous les
+-- mannequins répliqués avec le même tampon d'interpolation (seule la copie locale du lanceur est en avance, ≈ 1 s). Les pièces nommées
 -- Traps.POWER_PART (plaque de l'aimant, bouche du geyser, faisceaux laser) ne s'allument que pendant la phase active ;
 -- celles qui portent l'attribut Traps.POWER_FADE disparaissent éteintes.
 local CollectionService = game:GetService("CollectionService")
@@ -14,6 +15,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local DisplayLag = require(Shared:WaitForChild("DisplayLag"))
+local LaunchGhost = require(script.Parent.LaunchGhost)
 local Traps = require(Shared:WaitForChild("Traps"))
 
 local TrapMotion = {}
@@ -122,7 +124,10 @@ local function measure(eye: Vector3, now: number): number?
 			tracks[torso] = nil
 			continue
 		end
-		local position = torso.Position
+		-- Position affichée : celle de la copie locale du lanceur tant qu'elle est montrée (Client.LaunchGhost, en
+		-- avance sur la copie répliquée, masquée), sinon celle de la copie répliquée
+		local model = torso.Parent
+		local position = torso.Position + (if model:IsA("Model") then LaunchGhost.offset(model) else Vector3.zero)
 		local distance = (position - eye).Magnitude
 		if distance < nearest then
 			local lag = DisplayLag.measure(entry.track, now, position)
@@ -149,7 +154,7 @@ local function step(dt: number)
 		-- Mesures en Studio (#84) : retard appliqué, lu par une sonde
 		local player = Players.LocalPlayer
 		local shown = player:GetAttribute("TrapDelay")
-		if type(shown) ~= "number" or math.abs(shown - lag) >= 0.001 then
+		if type(shown) ~= "number" or math.abs(shown - lag) >= 0.005 then
 			player:SetAttribute("TrapDelay", lag)
 		end
 	end

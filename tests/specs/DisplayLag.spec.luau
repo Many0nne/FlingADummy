@@ -86,6 +86,19 @@ return function(T, Loader)
 			T.expectNear(DisplayLag.shownAt(track, loop(10.3)) :: number, 10.3, 0.01)
 		end)
 
+		T.it("ne mesure rien sur une copie figée à son apparition (tampon d'interpolation, revue)", function()
+			local track = sampled(10, 10.15)
+			T.expectEqual(DisplayLag.shownAt(track, flight(10), 10.2), nil, "au premier échantillon : heure inconnue")
+			T.expectEqual(DisplayLag.shownAt(track, flight(10) - Vector3.new(0, 0, 0.5), 10.2), nil, "avant")
+			T.expectNear(DisplayLag.shownAt(track, flight(10.03), 10.2) :: number, 10.03, 0.005)
+		end)
+
+		T.it("mesure un petit retard sur un mannequin qui avance, même tout près du dernier échantillon", function()
+			local track = sampled(10, 11)
+			-- 0,005 s de retard à 120 studs/s : 0,6 stud derrière le dernier échantillon
+			T.expectNear(DisplayLag.shownAt(track, flight(10.995), 11) :: number, 10.995, 0.005)
+		end)
+
 		T.it("prolonge le dernier pas quand l'échantillon suivant n'est pas encore arrivé", function()
 			local track = sampled(10, 10.5)
 			local t = 10.5 + DT / 2
