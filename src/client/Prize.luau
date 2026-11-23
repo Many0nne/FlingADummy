@@ -6,9 +6,9 @@
 -- plein écran, mannequin en couleurs qui grossit, rayons ; rareté, nom, « NEW! », $/s et cote une seule fois, en haut
 -- au centre (comme 09) ; boutons THROW AGAIN (remise en prise sur la bande, #76) et GO BACK. La mise en scène monte avec la rareté (#67, paliers : Shared.RevealPlan,
 -- effets : Client.RevealFx) : révélation vive en Common ; silhouette qui hésite entre 2 ou 3 formes et confettis dès
--- Rare ; ciel qui s'assombrit, rayons, cote qui grimpe longtemps, explosion et forte secousse dès Legendary ; séquence
+-- Rare ; ciel qui s'assombrit, rayons, long roulement, explosion et forte secousse dès Legendary ; séquence
 -- complète du secret (écran noir et phrase, décor dédié, portail, pièces, « SECRET!! »). Pendant le suspense, contour,
--- ciel et rayons suivent le palier affiché, jamais la rareté gagnée (#201). Le tirage ne se passe pas (#197) : seuls
+-- ciel, rayons et rythme suivent le palier affiché ou visé, jamais la rareté gagnée (#201, #204). Le tirage ne se passe pas (#197) : seuls
 -- THROW AGAIN et GO BACK, à la fin, rendent la main. De retour au hub, panneau « Place your … » en bas au centre : la première
 -- pose se fait à la main (tutoriel : flèche vers un présentoir libre, invite « Place »). Ensuite la pose s'appuie sur
 -- la barre d'outils (#54) : mannequin équipé près d'un présentoir libre → invite « Place » ; le bouton AUTO, dans sa
@@ -649,10 +649,11 @@ local function playTease(a: Active, current: number)
 	teaseOdds.Text = "1 IN 1"
 	teaseOdds.TextColor3 = Color3.new(1, 1, 1)
 	UIKit.openWindow(tease, false)
-	local rarity = a.prize.rarity
+	-- Montées et arrêts au rythme du candidat visé, jamais de la rareté gagnée (#204)
+	local pace = RevealPlan.pace(a.sequence)
 	local shown = 1
 	for index, step in a.sequence do
-		if not climb(shown, step.odds, RevealPlan.climbTime(rarity, shown, step.odds), index, current) then
+		if not climb(shown, step.odds, pace[index].climb, index, current) then
 			return
 		end
 		shown = step.odds
@@ -673,7 +674,7 @@ local function playTease(a: Active, current: number)
 		UIKit.pop(exclaimLabel, 1.6)
 		UIKit.pop(teaseOdds, 1.4)
 		UIKit.playSound("Whoosh", 1.2 + index * 0.15)
-		task.wait(a.plan.pause)
+		task.wait(pace[index].pause)
 		if current ~= token then
 			return
 		end

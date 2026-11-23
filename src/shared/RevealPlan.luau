@@ -4,11 +4,14 @@
 --   1. Common / Uncommon : révélation vive (éclair, éclat, son).
 --   2. Rare / Epic : la silhouette hésite entre 2 ou 3 formes pendant le roulement, cote qui grimpe, confettis de la
 --      couleur de la rareté.
---   3. Legendary / Mythic : ciel qui s'assombrit, rayons et colonne de lumière sur la silhouette, cote qui grimpe
---      longtemps, explosion de particules, forte secousse.
+--   3. Legendary / Mythic : ciel qui s'assombrit, rayons et colonne de lumière sur la silhouette, long roulement,
+--      explosion de particules, forte secousse.
 --   4. Secret et au-delà (Divine … Infinity, #94) : palier 3, puis séquence complète (CINEMATIC).
 -- Pendant le suspense, ciel, rayons et contour suivent le palier affiché (cote atteinte), jamais la rareté gagnée
--- (#201 : teaseCues). Le tirage ne se passe pas (#197) : seuls GO BACK et THROW AGAIN, à la fin, rendent la main.
+-- (#201 : teaseCues). Le rythme aussi (#204) : chaque montée de la cote et chaque arrêt prennent le palier du candidat
+-- visé (`climbFactor`, `pause`) ; seuls le roulement et la séquence du secret, une fois la cote finale affichée,
+-- dépendent de la rareté gagnée. Le tirage ne se passe pas (#197) : seuls GO BACK et THROW AGAIN, à la fin, rendent la
+-- main.
 -- Logique pure (paliers, durées, hésitation, phrase, annonce serveur, délai de fin forcée, rareté forcée en Studio) ;
 -- la mise en scène est dans Client.Prize et Client.RevealFx.
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
@@ -23,9 +26,9 @@ local RevealPlan = {}
 
 export type Tier = {
 	name: string,
-	climbFactor: number, -- multiplie la durée de montée de la cote (Collection.climbTime)
-	pause: number, -- arrêt sur chaque palier atteint (s)
-	drumroll: number, -- roulement avant la révélation (s)
+	climbFactor: number, -- multiplie la durée d'une montée de la cote vers un candidat de ce palier (Collection.climbTime)
+	pause: number, -- arrêt sur un candidat de ce palier, une fois atteint (s)
+	drumroll: number, -- roulement avant la révélation, rareté gagnée (s)
 	forms: number, -- formes entre lesquelles la silhouette hésite pendant le roulement, gagnant compris (0 : aucune)
 	confetti: number, -- confettis de la couleur de la rareté à la révélation
 	darkSky: boolean, -- ciel qui s'assombrit dès la silhouette
@@ -39,40 +42,47 @@ export type Tier = {
 -- Effets du suspense pour le palier affiché (#201) : rareté affichée, couleur du contour, ciel, rayons
 export type Cues = { rarity: number, outline: Color3, darkSky: boolean, rays: boolean }
 
+-- Rythme d'un palier du suspense (#204) : montée de la cote, arrêt une fois atteint, instant où il est atteint (s)
+export type Pace = { climb: number, pause: number, reached: number }
+
 export type Step = { name: string, duration: number }
 export type Swap = { at: number, form: number }
 export type Announcement = { userId: number?, player: string, name: string, rarity: number, odds: number }
 
 -- stylua: ignore
 RevealPlan.TIERS = {
-	{ name = "Bright",  climbFactor = 1,    pause = 0.45, drumroll = 1.1, forms = 0, confetti = 0,   darkSky = false, rays = false, explosion = false, shake = 0.8, cinematic = false, autoClose = 5 },
-	{ name = "Hesitate", climbFactor = 1.15, pause = 0.5,  drumroll = 1.8, forms = 3, confetti = 60,  darkSky = false, rays = false, explosion = false, shake = 1.1, cinematic = false, autoClose = 5 },
-	{ name = "Storm",   climbFactor = 1.6,  pause = 0.6,  drumroll = 2.2, forms = 3, confetti = 100, darkSky = true,  rays = true,  explosion = true,  shake = 2,   cinematic = false, autoClose = 6 },
-	{ name = "Secret",  climbFactor = 1.6,  pause = 0.6,  drumroll = 2.2, forms = 3, confetti = 120, darkSky = true,  rays = true,  explosion = true,  shake = 2.4, cinematic = true,  autoClose = 8 },
+	{ name = "Bright",   climbFactor = 1,    pause = 0.45, drumroll = 1.1, forms = 0, confetti = 0,   darkSky = false, rays = false, explosion = false, shake = 0.8, cinematic = false, autoClose = 5 },
+	{ name = "Hesitate", climbFactor = 1.05, pause = 0.5,  drumroll = 1.8, forms = 3, confetti = 60,  darkSky = false, rays = false, explosion = false, shake = 1.1, cinematic = false, autoClose = 5 },
+	{ name = "Storm",    climbFactor = 1.1,  pause = 0.55, drumroll = 2,   forms = 3, confetti = 100, darkSky = true,  rays = true,  explosion = true,  shake = 2,   cinematic = false, autoClose = 6 },
+	{ name = "Secret",   climbFactor = 1.1,  pause = 0.55, drumroll = 1.5, forms = 3, confetti = 120, darkSky = true,  rays = true,  explosion = true,  shake = 2.4, cinematic = true,  autoClose = 8 },
 } :: { Tier }
+-- Secret : roulement plus court que Storm, la séquence complète prend le relais du suspense (#204)
 
--- Étapes de la séquence du secret, après le roulement (s)
+-- Étapes de la séquence du secret, après le roulement (s) ; resserrées par #204 (12,6 → 8,6 s)
 RevealPlan.CINEMATIC = {
-	{ name = "Blackout", duration = 3.4 }, -- écran noir et phrase lettre à lettre
-	{ name = "Stage", duration = 3 }, -- décor dédié (tapis rouge, colonnes, lumière dorée), caméra le long du tapis
-	{ name = "Portal", duration = 2.2 }, -- portail qui s'ouvre au bout du tapis
-	{ name = "Coins", duration = 1.4 }, -- le mannequin sort du portail, pluie de pièces
-	{ name = "Banner", duration = 2.6 }, -- « SECRET!! » géant et cote complète
+	{ name = "Blackout", duration = 3 }, -- écran noir et phrase lettre à lettre
+	{ name = "Stage", duration = 1.8 }, -- décor dédié (tapis rouge, colonnes, lumière dorée), caméra le long du tapis
+	{ name = "Portal", duration = 1.3 }, -- portail qui s'ouvre au bout du tapis
+	{ name = "Coins", duration = 0.9 }, -- le mannequin sort du portail, pluie de pièces
+	{ name = "Banner", duration = 1.6 }, -- « SECRET!! » géant et cote complète
 } :: { Step }
 
 RevealPlan.TEASE_FIRST = 0.45 -- silhouette seule avant le premier palier (s)
 RevealPlan.ANNOUNCE_MIN = 5 -- rareté à partir de laquelle le serveur annonce le tirage à tous (Legendary)
-RevealPlan.TYPE_RATE = 20 -- lettres par seconde de la phrase du secret
+RevealPlan.TYPE_RATE = 28 -- lettres par seconde de la phrase du secret
+-- Part de l'écran noir sans frappe (s) : 0,35 de fondu au noir avant la première lettre, 0,65 de fondu de sortie
+RevealPlan.BLACKOUT_FRAME = 1
+RevealPlan.READ_TIME = 0.8 -- phrase entière lisible au moins ce temps avant le fondu de sortie (s)
 RevealPlan.RESULT_MARGIN = 5 -- s ajoutées à la durée maximale du tirage : CHANCE finale à l'arrêt, latence
 local MAX_CLIMBS = 4 -- au plus 3 candidats puis le gagné (Collection.teaseSteps)
-local MAX_CLIMB_TIME = 1.5 -- plafond de Collection.climbTime (s)
+local MAX_CLIMB_TIME = 1.5 -- plafond d'une montée, palier du candidat compris (s)
 local FIRST_GAP = 0.09 -- premier écart entre deux formes pendant l'hésitation (s), puis de plus en plus long
 local GAP_GROWTH = 1.3
 local SETTLE = 0.3 -- part finale du roulement où la silhouette reste sur le gagné
 
 -- Phrase de l'écran noir, propre à chaque secret (« THE KINGDOM HAS FOUND ITS KING… » de la référence)
 RevealPlan.SECRET_LINES = {
-	king = "THE CRASH KINGDOM HAS FOUND ITS KING...",
+	king = "THE CRASH KINGDOM HAS ITS KING...",
 	void = "SOMETHING STIRS IN THE VOID...",
 	cosmic = "THE STARS HAVE ALIGNED...",
 } :: { [string]: string }
@@ -99,23 +109,41 @@ function RevealPlan.get(rarity: number): Tier
 	return RevealPlan.TIERS[RevealPlan.tierOf(rarity)]
 end
 
--- Cette méthode permet de donner la durée (s) de la montée de la cote de `from` à `to` pour un mannequin de rareté
--- `rarity` lorsque le suspense passe au palier suivant : plus rare, plus longue.
-function RevealPlan.climbTime(rarity: number, from: number, to: number): number
-	return Collection.climbTime(from, to) * RevealPlan.get(rarity).climbFactor
+-- Cette méthode permet de donner la durée (s) de la montée de la cote de `from` à `to` vers un candidat de rareté
+-- `target` (jamais la rareté gagnée, #204) lorsque le suspense passe au palier suivant : plus rare, plus longue, 1,5 s
+-- au plus.
+function RevealPlan.climbTime(target: number, from: number, to: number): number
+	return math.min(Collection.climbTime(from, to) * RevealPlan.get(target).climbFactor, MAX_CLIMB_TIME)
+end
+
+-- Cette méthode permet de donner l'arrêt (s) sur un candidat de rareté `target` lorsque la cote vient de l'atteindre.
+function RevealPlan.pauseOf(target: number): number
+	return RevealPlan.get(target).pause
+end
+
+-- Cette méthode permet de donner le rythme du suspense de `sequence` (par palier : durée de la montée, arrêt, instant
+-- où la cote l'atteint depuis la silhouette ; puis début du roulement) lorsque le client le joue ou qu'on le mesure :
+-- rythme du candidat visé, jamais de la rareté gagnée (#204).
+function RevealPlan.pace(sequence: { Collection.TeaseStep }): ({ Pace }, number)
+	local list: { Pace } = {}
+	local at = RevealPlan.TEASE_FIRST
+	local shown = 1
+	for _, step in sequence do
+		local climb = RevealPlan.climbTime(step.rarity, shown, step.odds)
+		local pause = RevealPlan.pauseOf(step.rarity)
+		at += climb
+		table.insert(list, { climb = climb, pause = pause, reached = at })
+		at += pause
+		shown = step.odds
+	end
+	return list, at
 end
 
 -- Cette méthode permet de calculer la durée du suspense (silhouette seule, montées de la cote et arrêts sur chaque
--- palier, roulement) d'une suite de paliers lorsque l'on mesure ou planifie le tirage.
+-- palier au rythme du candidat visé, roulement de la rareté gagnée `rarity`) lorsque l'on mesure ou planifie le tirage.
 function RevealPlan.teaseTime(rarity: number, sequence: { Collection.TeaseStep }): number
-	local tier = RevealPlan.get(rarity)
-	local total = RevealPlan.TEASE_FIRST + tier.drumroll
-	local shown = 1
-	for _, step in sequence do
-		total += RevealPlan.climbTime(rarity, shown, step.odds) + tier.pause
-		shown = step.odds
-	end
-	return total
+	local _, drumroll = RevealPlan.pace(sequence)
+	return drumroll + RevealPlan.get(rarity).drumroll
 end
 
 -- Cette méthode permet de donner la durée de la séquence du secret (écran noir à « SECRET!! ») lorsque l'on planifie
@@ -141,13 +169,11 @@ function RevealPlan.revealTime(rarity: number, sequence: { Collection.TeaseStep 
 end
 
 -- Cette méthode permet de donner la durée maximale (s) d'un tirage de rareté `rarity`, du début de la silhouette au
--- GO BACK automatique, lorsque le serveur fixe sa fin forcée : 4 montées au plafond.
+-- GO BACK automatique, lorsque le serveur fixe sa fin forcée : 4 montées au plafond, chacune suivie de l'arrêt du
+-- palier gagné (un candidat n'est jamais plus rare que le gagné).
 function RevealPlan.maxDuration(rarity: number): number
 	local tier = RevealPlan.get(rarity)
-	local total = RevealPlan.TEASE_FIRST
-		+ MAX_CLIMBS * (MAX_CLIMB_TIME * tier.climbFactor + tier.pause)
-		+ tier.drumroll
-		+ tier.autoClose
+	local total = RevealPlan.TEASE_FIRST + MAX_CLIMBS * (MAX_CLIMB_TIME + tier.pause) + tier.drumroll + tier.autoClose
 	return total + cinematicOf(rarity)
 end
 
