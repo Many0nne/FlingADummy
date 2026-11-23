@@ -2,8 +2,10 @@
 -- (clôture, décor) s'enfoncent en s'effaçant, puis les nouvelles tombent en place une à une depuis l'entrée, avec un
 -- petit rebond, poussière et chocs de briques ; le sol change de couleur à mi-parcours et les confettis jaillissent à
 -- la fin. Le serveur pose l'état final tout de suite (Server.CourseBuilder.styleBase) ; chaque client anime un double
--- à partir de l'état répliqué (Client.BaseFx). Mouvement réduit : simple fondu court.
--- Logique pure (testée) : ordre et instants des pièces, durée totale bornée, courbes de chute et d'enfoncement.
+-- à partir de l'état répliqué (Client.BaseFx). Mouvement réduit : simple fondu court. La même animation sert quand la
+-- base s'agrandit d'une rangée (#212, terrain allongé pendant le fondu du sol) ; un présentoir acheté tombe à sa place.
+-- Logique pure (testée) : ordre et instants des pièces, durée totale bornée, courbes de chute et d'enfoncement,
+-- départs des présentoirs qui tombent, profondeur du terrain qui s'allonge.
 
 local BaseUpgrade = {}
 
@@ -27,6 +29,18 @@ BaseUpgrade.MAX_TOTAL = 2.3
 BaseUpgrade.FLOOR_TIME = 0.4 -- s de fondu du sol, au milieu des chutes
 BaseUpgrade.FADE_TIME = 0.3 -- mouvement réduit : fondu des pièces et du sol
 BaseUpgrade.MAX_AGE = 1 -- s : un changement plus ancien (client arrivé après, retard) s'affiche tel quel
+
+-- Base qui s'agrandit (#212) : à l'ouverture d'une rangée, l'habillage est refait avec l'animation ci-dessus et le
+-- terrain s'allonge vers le fond pendant le fondu du sol ; chaque présentoir acheté tombe à sa place (même chute)
+BaseUpgrade.FROM_DEPTH_ATTRIBUTE = "UpgradeFromDepth" -- profondeur du terrain avant l'agrandissement
+-- Terrain tel que le serveur l'a posé (couleur, profondeur) : le client y revient même après des changements
+-- rapprochés, quand ses propres valeurs animées masquent celles reçues
+BaseUpgrade.PLOT_COLOR_ATTRIBUTE = "PlotColor"
+BaseUpgrade.PLOT_DEPTH_ATTRIBUTE = "PlotDepth"
+BaseUpgrade.DROP_ATTRIBUTE = "DropAt" -- sur le dessus d'un présentoir : heure serveur où il commence à tomber
+BaseUpgrade.ROW_DROP_DELAY = 1 -- s : le présentoir d'une rangée qui s'ouvre attend que le terrain soit allongé
+BaseUpgrade.DROP_STAGGER = 0.08 -- s entre deux présentoirs ouverts d'un coup (passe Big Base)
+BaseUpgrade.MAX_LEAD = 2.5 -- s : avance maximale d'une chute annoncée (au-delà, l'heure est tenue pour fausse)
 
 -- Pièce de l'habillage à animer : position (centre) et étage (on pose le sol avant ce qui est dessus)
 export type Piece = { position: Vector3, stage: number }
@@ -131,6 +145,30 @@ end
 -- animé lorsque le client le reçoit à l'heure serveur `now` (sinon : état final directement).
 function BaseUpgrade.isFresh(at: any, now: number): boolean
 	return typeof(at) == "number" and now - at <= BaseUpgrade.MAX_AGE and now - at >= -BaseUpgrade.MAX_AGE
+end
+
+-- Cette méthode permet de donner l'instant (s après l'achat) où commence la chute de chacun des `count` présentoirs
+-- ouverts par un achat, l'un après l'autre, après l'allongement du terrain si `rowOpened` (#212).
+function BaseUpgrade.dropDelays(count: number, rowOpened: boolean): { number }
+	local first = if rowOpened then BaseUpgrade.ROW_DROP_DELAY else 0
+	local delays = table.create(count, 0)
+	for index = 1, count do
+		delays[index] = first + (index - 1) * BaseUpgrade.DROP_STAGGER
+	end
+	return delays
+end
+
+-- Cette méthode permet de savoir si la chute d'un présentoir annoncée pour l'heure serveur `at` est à jouer lorsque le
+-- client la reçoit à l'heure serveur `now` : pas encore finie (sinon il est déjà posé) et pas trop loin dans le futur.
+function BaseUpgrade.dropFresh(at: any, now: number): boolean
+	return typeof(at) == "number" and now - at <= BaseUpgrade.FALL_TIME and at - now <= BaseUpgrade.MAX_LEAD
+end
+
+-- Cette méthode permet de donner la profondeur du terrain pendant l'agrandissement (de `from` à `to`) lorsque le fondu
+-- du sol en est à `share` (0 à 1), en douceur au départ et à l'arrivée.
+function BaseUpgrade.plotDepth(from: number, to: number, share: number): number
+	local s = math.clamp(share, 0, 1)
+	return from + (to - from) * s * s * (3 - 2 * s)
 end
 
 return BaseUpgrade

@@ -917,14 +917,26 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
 - **Studio** : `DebugWipe` (section « Architecture ») remet le compte à zéro, renaissances comprises.
 
 ## Base et collection (`Server.BaseService`, `Shared.Inventory`)
-- **Présentoirs** (#156) : 8 au départ (comme les 8 emplacements de jardin de 09), jusqu'à 30, en rangées de 5 depuis
+- **Présentoirs** (#156, #211) : 5 au départ (une rangée ; 8 avant #211), jusqu'à 30, en rangées de 5 depuis
   l'entrée (7,5 studs d'une colonne à l'autre, 7 d'une rangée à l'autre, socles de 4 studs, `CourseLayout.displayPositions`),
-  chaque rangée remplie du milieu vers les côtés : une base neuve a la rangée avant et le milieu de la suivante. Place
-  prévue pour 10 de plus (passe « Big Base » de #160 : deux rangées au fond, base allongée de 48 à 62 studs dans le
+  chaque rangée remplie du milieu vers les côtés : une base neuve a sa rangée avant complète. Place
+  prévue pour 10 de plus (passe « Big Base » de #160 : deux rangées au fond, jusqu'à 62 studs de profondeur dans le
   hub, vérifié par les tests). Échelle des mannequins posés plafonnée à × 2 (× 2,5 avant, présentoirs à 9 studs). 6 à
   10 présentoirs avant #156 ; une sauvegarde à 10 garde ses 10 et ses posés (mesuré en Studio : 10 posés relus,
   revenu $290 763/s = somme des 10, pad « 10 > 11 · $70M »), une à 6 passe à 8. Les mannequins posés sont construits par le serveur
   (visibles de tous), nom coloré par rareté et $/s au-dessus.
+- **La base grandit rangée par rangée** (#212, retour de la sprint review 5 : « la base a sa longueur totale dès le
+  départ, présentoirs grisés ») : seuls les présentoirs achetés existent à l'œil (un emplacement libre de la rangée en
+  cours reste du sol, ni grisé ni transparent) ; terrain, clôture et décor ont la profondeur des rangées ouvertes
+  (`CourseLayout.baseBox`, `baseRows` : 13 studs pour une rangée, + 7 par rangée, 48 pour 30, 62 pour 40), entrée,
+  appareil et pads fixes, la base s'allonge vers le fond ; une rangée de plus s'ouvre au 6e, 11e, 16e, 21e et 26e
+  présentoir (36e en Big Base, dont le passe ouvre ses deux rangées d'un coup). Massifs, arbres et tours des coins du
+  fond, lanternes et paillettes suivent la profondeur ; le texte flottant et les confettis restent au-dessus du centre.
+  Le plan du hub garde la place de la profondeur maximale. **Achat** : le nouveau socle tombe à sa place (chute de 12
+  studs, rebond, poussière et choc de briques, 0,45 s ; attribut `DropAt` de son dessus, `Client.BaseFx`). **Rangée qui
+  s'ouvre** : animation de construction ci-dessous, le terrain s'allonge vers le fond pendant le fondu du sol, puis le
+  socle tombe (1 s après l'achat ; Big Base : les 10 l'un après l'autre, 0,08 s d'écart). Mouvement réduit : fondus.
+  Un joueur arrivé après voit l'état final.
 - **Texte flottant** au-dessus du centre de la base (#91, comme les jardins de 09 et les enclos de 01 ; `BillboardGui`
   à 24 studs, police Fredoka One et contour du HUD) : portrait du joueur, « NOM'S BASE », revenu « $223/s » en vert,
   record « 🏆 BEST 3.6 km » en or juste dessous (#44 : le record d'un joueur se voit de tous ; rien sans record) et
@@ -1004,8 +1016,9 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
   (`DISPLAY_PRICES`, #156, #211) : 400, 1,5 K et 6 K pour les 6e à 8e (vers 1, 1,5 et 3 min), 450 K, 7 M, 70 M pour les 9e à 11e (vers 9, 21 et 47 min), puis de 220 M à 81 B pour les
   12e à 30e (de 69 min à 10 h simulées ; 7e à 10e à 450 K, 7 M, 70 M et 3 B avant, #15) ; panneau « MAX » et
   « 30 / 30 » au maximum (mesuré en Studio : 20 achats de 10 à 30 pour $228,4B, le 21e refusé, 30 posés construits,
-  revenu égal à la somme des 30). Les présentoirs achetables existent dès la construction (grisés, semi-transparents,
-  sans invite tant qu'ils ne sont pas achetés), à leur place définitive : un achat ne déplace aucun autre présentoir.
+  revenu égal à la somme des 30). Les présentoirs achetables existent dès la construction (cachés, sans collision ni
+  invite tant qu'ils ne sont pas achetés, #212 ; grisés et semi-transparents avant), à leur place définitive : un achat
+  ne déplace aucun autre présentoir.
 - **Index** (bouton Index, fenêtre bleue comme 09) : raretés en onglets à gauche (« Common 2/3 »), titre et barre de
   progression de la rareté, cases des mannequins (cote « 1 IN N », rendu et nom, ✔ et meilleure taille obtenue ;
   silhouette noire et « ??? » s'il n'a jamais été obtenu), total « Unlocked: x / 64 » en bas. L'Index garde les

@@ -133,4 +133,42 @@ return function(T, Loader)
 			T.expect(not BaseUpgrade.isFresh("100", 100))
 		end)
 	end)
+
+	T.describe("Base qui s'agrandit (#212)", function()
+		T.it("un présentoir acheté tombe tout de suite ; dans une rangée qui s'ouvre, après le terrain", function()
+			T.expectEqual(BaseUpgrade.dropDelays(1, false)[1], 0)
+			local opened = BaseUpgrade.dropDelays(1, true)[1]
+			T.expect(opened >= BaseUpgrade.OUT_TIME + 0.4, "terrain déjà en train de s'allonger, obtenu " .. opened)
+			T.expect(opened + BaseUpgrade.FALL_TIME <= BaseUpgrade.MAX_TOTAL + 0.2, "fini avec l'habillage")
+		end)
+		T.it("Big Base : dix présentoirs l'un après l'autre, tous annoncés dans l'avance tolérée", function()
+			local delays = BaseUpgrade.dropDelays(10, true)
+			T.expectEqual(#delays, 10)
+			for index = 2, #delays do
+				T.expect(delays[index] > delays[index - 1], "l'un après l'autre")
+			end
+			T.expect(delays[10] <= BaseUpgrade.MAX_LEAD, "dernier annoncé dans l'avance tolérée : " .. delays[10])
+			T.expect(BaseUpgrade.dropFresh(100 + delays[10], 100), "joué par un client à l'heure")
+		end)
+		T.it("chute jouée si pas encore finie, ignorée pour un client arrivé après", function()
+			T.expect(BaseUpgrade.dropFresh(100, 100))
+			T.expect(BaseUpgrade.dropFresh(101, 100), "annoncée pour bientôt")
+			T.expect(BaseUpgrade.dropFresh(100, 100 + BaseUpgrade.FALL_TIME - 0.05), "en cours")
+			T.expect(not BaseUpgrade.dropFresh(100, 100 + BaseUpgrade.FALL_TIME + 0.05), "déjà posée")
+			T.expect(not BaseUpgrade.dropFresh(100 + BaseUpgrade.MAX_LEAD + 1, 100), "heure fausse")
+			T.expect(not BaseUpgrade.dropFresh(nil, 100))
+		end)
+		T.it("terrain : de l'ancienne profondeur à la nouvelle, sans à-coup", function()
+			T.expectNear(BaseUpgrade.plotDepth(13, 20, 0), 13)
+			T.expectNear(BaseUpgrade.plotDepth(13, 20, 1), 20)
+			T.expectNear(BaseUpgrade.plotDepth(13, 20, 0.5), 16.5)
+			T.expectNear(BaseUpgrade.plotDepth(13, 20, 2), 20, 1e-9, "borné")
+			local before = 13
+			for step = 1, 20 do
+				local depth = BaseUpgrade.plotDepth(13, 20, step / 20)
+				T.expect(depth >= before, "toujours croissante")
+				before = depth
+			end
+		end)
+	end)
 end

@@ -251,8 +251,8 @@ return function(T, Loader)
 				local neighbour = CourseLayout.basePosition(2)
 				local inside = neighbour - Vector3.new(CourseLayout.BASE_SIZE.X / 2 - 0.5, 0, 0)
 				T.expect(not CourseLayout.isNearBase(1, inside), "dans la base voisine")
-				T.expect(CourseLayout.isNearBase(1, CourseLayout.stationPosition(1)), "appareil d'entraînement")
-				T.expect(CourseLayout.isNearBase(1, CourseLayout.padPosition(1)), "pad d'achat")
+				T.expect(CourseLayout.isNearBase(1, (CourseLayout.stationPosition(1))), "appareil d'entraînement")
+				T.expect(CourseLayout.isNearBase(1, (CourseLayout.padPosition(1))), "pad d'achat")
 				T.expect(not CourseLayout.isNearBase(1, Vector3.new(0, 0, -8)), "bande de lancer")
 			end
 		)
@@ -307,6 +307,78 @@ return function(T, Loader)
 				end
 			end
 		)
+		T.it(
+			"la base a la profondeur de ses rangées ouvertes, entrée fixe, dans la place prévue du hub (#212)",
+			function()
+				local columns = CourseLayout.DISPLAY_COLUMNS
+				T.expectEqual(CourseLayout.baseRows(1), 1)
+				T.expectEqual(CourseLayout.baseRows(columns), 1)
+				T.expectEqual(CourseLayout.baseRows(columns + 1), 2, "une rangée de plus au présentoir suivant")
+				T.expectEqual(
+					CourseLayout.baseRows(CourseLayout.DISPLAY_ROOM + 50),
+					math.ceil(CourseLayout.DISPLAY_ROOM / columns)
+				)
+				-- Base neuve : DISPLAY_START par défaut
+				local _, start = CourseLayout.baseBox(1)
+				T.expectEqual(start.Z, CourseLayout.baseDepthFor(GameConfig.DISPLAY_START))
+				local footprints = CourseLayout.hubFootprints()
+				local previous = 0
+				for _, displays in { 5, 6, 8, 30, 40 } do
+					for index = 1, count do
+						local center, size = CourseLayout.baseBox(index, displays)
+						local label = string.format("base %d à %d présentoirs", index, displays)
+						T.expectNear(center.Z + size.Z / 2, CourseLayout.BASE_FRONT, 1e-6, label .. " : entrée fixe")
+						T.expectEqual(size.X, CourseLayout.BASE_SIZE.X, label)
+						T.expectEqual(
+							size.Z,
+							CourseLayout.baseDepthFor(CourseLayout.baseRows(displays) * columns),
+							label
+						)
+						T.expect(center.Z - size.Z / 2 >= CourseLayout.HUB_BACK + 2, label .. " : dans le hub")
+						T.expect(
+							math.abs(center.X) + size.X / 2 <= GameConfig.HUB_WIDTH / 2,
+							label .. " : largeur du hub"
+						)
+						-- Ses présentoirs dedans, loin de la clôture du fond
+						local positions =
+							CourseLayout.displayPositions(index, math.min(displays, CourseLayout.DISPLAY_ROOM))
+						for _, position in positions do
+							local back = position.Z - CourseLayout.PEDESTAL_SIZE / 2 - (center.Z - size.Z / 2)
+							T.expect(back >= 3, label .. " : socle loin du fond, obtenu " .. back)
+						end
+						-- Ni appareil, ni pad, ni stands, ni autre base (à sa profondeur maximale)
+						for _, item in footprints do
+							if item.name == "base" .. index then
+								continue
+							end
+							local apart = math.abs(item.center.X - center.X) >= (item.size.X + size.X) / 2
+								or math.abs(item.center.Z - center.Z) >= (item.size.Z + size.Z) / 2
+							T.expect(apart, label .. " : hors de " .. item.name)
+						end
+					end
+					local _, size = CourseLayout.baseBox(1, displays)
+					T.expect(size.Z >= previous, "la base ne rétrécit pas quand on achète")
+					previous = size.Z
+				end
+				-- 5 : une rangée ; 6 : deux ; 30 : six ; 40 (Big Base) : huit
+				T.expectEqual(select(2, CourseLayout.baseBox(1, 5)).Z, CourseLayout.baseDepthFor(5))
+				T.expect(
+					select(2, CourseLayout.baseBox(1, 6)).Z > select(2, CourseLayout.baseBox(1, 5)).Z,
+					"6 : rangée 2"
+				)
+				T.expectEqual(select(2, CourseLayout.baseBox(1, 30)).Z, CourseLayout.BASE_SIZE.Z)
+				T.expectEqual(
+					select(2, CourseLayout.baseBox(1, 40)).Z,
+					CourseLayout.baseDepthFor(CourseLayout.DISPLAY_ROOM)
+				)
+			end
+		)
+		T.it("près de la base : suit sa profondeur du moment (#212)", function()
+			local center, size = CourseLayout.baseBox(1, 5)
+			local behind = Vector3.new(center.X, 0, center.Z - size.Z / 2 - CourseLayout.BASE_REACH - 2)
+			T.expect(not CourseLayout.isNearBase(1, behind, 5), "derrière une base d'une rangée : loin")
+			T.expect(CourseLayout.isNearBase(1, behind, CourseLayout.DISPLAY_ROOM), "dans la base agrandie : près")
+		end)
 		T.it("pad devant la base, hors de la clôture, à côté de l'entrée, loin de l'appareil", function()
 			for index = 1, count do
 				local pad, facing = CourseLayout.padPosition(index)
