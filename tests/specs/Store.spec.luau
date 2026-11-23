@@ -392,6 +392,24 @@ return function(T, Loader)
 		end)
 	end)
 
+	T.describe("textures de lumière de l'interface (#194)", function()
+		T.it("publie chaque texture rendue par assets/ui (identifiant > 0), et rien de plus", function()
+			local fs = require("@lune/fs")
+			local Assets = loader:require("src/shared/Assets")
+			local rendered = {}
+			for _, file in fs.readDir("assets/ui/export") do
+				local name = string.match(file, "^(.+)%.png$")
+				if name and name ~= "sheet" then
+					rendered[name] = true
+					T.expect((Assets.UI_TEXTURES[name] or 0) > 0, name .. " publiée dans Assets.UI_TEXTURES")
+				end
+			end
+			for name in Assets.UI_TEXTURES do
+				T.expect(rendered[name] == true, name .. " rendue par assets/ui/build_ui_textures.py")
+			end
+		end)
+	end)
+
 	T.describe("Store.clock", function()
 		T.it("écrit les minuteurs en m:ss ou h:mm:ss", function()
 			T.expectEqual(Store.clock(899.2), "15:00")

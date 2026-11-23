@@ -188,6 +188,16 @@ Assets.FX_TEXTURES = {
 	beam = 132792901333329,
 } :: { [string]: number }
 
+-- Textures de lumière de l'interface (#194, assets/ui/export/<nom>.png, rendues par assets/ui/build_ui_textures.py) :
+-- soleil de rayons, halo, faisceaux en coin, bords assombris. 0 = pas encore publiée : UIKit se rabat sur les textures
+-- d'effets (rays, glow) ou s'en passe
+Assets.UI_TEXTURES = {
+	sunburst = 102005131184264,
+	halo = 117128536893111,
+	sheen = 88187939561300,
+	vignette = 136018208800358,
+} :: { [string]: number }
+
 -- Animations de l'avatar (assets/anim/export/<Nom>.rbxm)
 Assets.ANIMATIONS = {
 	Hold = 134156774546186,
