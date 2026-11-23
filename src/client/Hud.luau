@@ -230,7 +230,7 @@ local function placeCounters(safeBottom: number)
 		return
 	end
 	local lift, x = 14, 16
-	if UserInputService.TouchEnabled then
+	if UserInputService.TouchEnabled and Workspace.CurrentCamera then
 		-- Sur écran tactile, la colonne de boutons de gauche descend jusqu'au joystick : les compteurs se posent à sa
 		-- droite, remontés au-dessus du joystick
 		x = 14 + BUTTON_SIZE + 10
