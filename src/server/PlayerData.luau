@@ -269,6 +269,16 @@ function PlayerData.tutorialStep(player: Player, event: string)
 	end
 end
 
+-- Cette méthode permet de reprendre l'étape « Throw » du tutoriel lorsque le lancer est rendu au joueur (#221) ;
+-- `before` : masque du joueur avant ce lancer.
+function PlayerData.tutorialRevokeThrow(player: Player, before: number)
+	local flags = (player:GetAttribute("Tutorial") :: number?) or 0
+	local updated = Tutorial.revokeThrow(flags, before)
+	if updated ~= flags then
+		player:SetAttribute("Tutorial", updated)
+	end
+end
+
 -- Cette méthode permet de noter le choix du bouton musique (true = coupée) lorsque le client l'envoie ; au plus un
 -- changement par MUSIC_COOLDOWN s (attribut répliqué à tout le serveur), le dernier choix reçu appliqué en différé.
 function PlayerData.setMusicOff(player: Player, off: any)
