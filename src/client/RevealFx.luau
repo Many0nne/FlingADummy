@@ -96,7 +96,7 @@ local function alive(mine: number): boolean
 end
 
 -- Cette méthode permet d'assombrir le ciel en `time` s (soir, ou nuit si `night`, teinte `color`) lorsque la
--- silhouette d'un Legendary ou plus apparaît, ou que le décor du secret s'affiche.
+-- cote affichée du suspense atteint Legendary (#201), ou que le décor du secret s'affiche.
 function RevealFx.darkenSky(color: Color3, night: boolean, time: number)
 	local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
 	if not saved then
@@ -561,25 +561,17 @@ function RevealFx.banner(title: string, odds: number, color: Color3, duration: n
 	end)
 end
 
--- Cette méthode permet d'arrêter les effets d'interface en cours (écran noir, bandeau, confettis, pièces) lorsque le
--- tirage est passé au clic alors que le mannequin est déjà sorti du portail.
-function RevealFx.clearOverlays()
+-- Cette méthode permet d'arrêter les effets en cours (écran noir, bandeau, confettis, pièces, décor, ciel) lorsque le
+-- tirage se termine (GO BACK, THROW AGAIN, fin forcée, nouveau lancer).
+function RevealFx.clear()
 	generation += 1
 	for _, screen in { layer, cover } do
 		for _, child in screen:GetChildren() do
 			child:Destroy()
 		end
 	end
-end
-
--- Cette méthode permet d'arrêter les effets en cours (interface, décor, ciel) lorsque le tirage est passé au clic ou
--- se termine ; `keepSky` garde le ciel assombri (révélation qui suit un passage).
-function RevealFx.clear(keepSky: boolean?)
-	RevealFx.clearOverlays()
 	RevealFx.clearStage()
-	if not keepSky then
-		RevealFx.restoreSky()
-	end
+	RevealFx.restoreSky()
 end
 
 -- Cette méthode permet de créer les couches d'interface des effets lorsque le client démarre.

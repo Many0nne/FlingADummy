@@ -7,6 +7,8 @@
 --   3. Legendary / Mythic : ciel qui s'assombrit, rayons et colonne de lumière sur la silhouette, cote qui grimpe
 --      longtemps, explosion de particules, forte secousse.
 --   4. Secret et au-delà (Divine … Infinity, #94) : palier 3, puis séquence complète (CINEMATIC).
+-- Pendant le suspense, ciel, rayons et contour suivent le palier affiché (cote atteinte), jamais la rareté gagnée
+-- (#201 : teaseCues). Le tirage ne se passe pas (#197) : seuls GO BACK et THROW AGAIN, à la fin, rendent la main.
 -- Logique pure (paliers, durées, hésitation, phrase, annonce serveur, délai de fin forcée, rareté forcée en Studio) ;
 -- la mise en scène est dans Client.Prize et Client.RevealFx.
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
@@ -34,6 +36,9 @@ export type Tier = {
 	autoClose: number, -- GO BACK automatique après la révélation (s)
 }
 
+-- Effets du suspense pour le palier affiché (#201) : rareté affichée, couleur du contour, ciel, rayons
+export type Cues = { rarity: number, outline: Color3, darkSky: boolean, rays: boolean }
+
 export type Step = { name: string, duration: number }
 export type Swap = { at: number, form: number }
 export type Announcement = { userId: number?, player: string, name: string, rarity: number, odds: number }
@@ -56,7 +61,6 @@ RevealPlan.CINEMATIC = {
 } :: { Step }
 
 RevealPlan.TEASE_FIRST = 0.45 -- silhouette seule avant le premier palier (s)
-RevealPlan.SKIP_AFTER = 1 -- le tirage se passe au clic après ce délai (s)
 RevealPlan.ANNOUNCE_MIN = 5 -- rareté à partir de laquelle le serveur annonce le tirage à tous (Legendary)
 RevealPlan.TYPE_RATE = 20 -- lettres par seconde de la phrase du secret
 RevealPlan.RESULT_MARGIN = 5 -- s ajoutées à la durée maximale du tirage : CHANCE finale à l'arrêt, latence
@@ -124,6 +128,16 @@ function RevealPlan.cinematicTime(): number
 	return total
 end
 
+-- Cette méthode permet de donner la durée (s) du tirage d'un mannequin de rareté `rarity` jusqu'aux textes de la
+-- révélation et à GO BACK (suspense, puis séquence du secret) lorsque l'on mesure l'attente imposée au joueur.
+function RevealPlan.revealTime(rarity: number, sequence: { Collection.TeaseStep }): number
+	local total = RevealPlan.teaseTime(rarity, sequence)
+	if RevealPlan.get(rarity).cinematic then
+		total += RevealPlan.cinematicTime()
+	end
+	return total
+end
+
 -- Cette méthode permet de donner la durée maximale (s) d'un tirage de rareté `rarity`, du début de la silhouette au
 -- GO BACK automatique, lorsque le serveur fixe sa fin forcée : 4 montées au plafond.
 function RevealPlan.maxDuration(rarity: number): number
@@ -183,10 +197,25 @@ function RevealPlan.hesitation(count: number, duration: number): { Swap }
 	return swaps
 end
 
--- Cette méthode permet de donner les effets ajoutés à la silhouette dès Legendary (gloire de rayons, colonne de
--- lumière, poussières, couleur `color`) lorsque la silhouette apparaît ; vide sinon.
-function RevealPlan.teaseEffects(rarity: number, color: Color3): { DummyModels.Effect }
-	if not RevealPlan.get(rarity).rays then
+-- Cette méthode permet de donner la rareté affichée pendant le suspense lorsque `reached` paliers de `sequence` sont
+-- atteints : Common (« 1 IN 1 ») avant le premier, puis celle du dernier candidat atteint, jamais celle du gagné avant.
+function RevealPlan.shownRarity(sequence: { Collection.TeaseStep }, reached: number): number
+	local step = sequence[math.min(reached, #sequence)]
+	return if reached >= 1 and step then step.rarity else 1
+end
+
+-- Cette méthode permet de donner les effets du suspense (contour, ciel, rayons) du palier affiché `shown` lorsque la
+-- cote atteint un palier ou que la silhouette apparaît (#201) : rien qui en dise plus que la cote affichée.
+function RevealPlan.teaseCues(shown: number): Cues
+	local tier = RevealPlan.get(shown)
+	local rarity = math.clamp(math.floor(shown), 1, #Rarity.LIST)
+	return { rarity = rarity, outline = Rarity.get(rarity).color, darkSky = tier.darkSky, rays = tier.rays }
+end
+
+-- Cette méthode permet de donner les effets ajoutés à la silhouette du palier affiché `shown` dès Legendary (gloire
+-- de rayons, colonne de lumière, poussières, couleur `color`) lorsque la cote l'atteint ; vide sinon.
+function RevealPlan.teaseEffects(shown: number, color: Color3): { DummyModels.Effect }
+	if not RevealPlan.teaseCues(shown).rays then
 		return {}
 	end
 	local white = Color3.new(1, 1, 1)
