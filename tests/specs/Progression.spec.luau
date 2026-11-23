@@ -157,13 +157,14 @@ return function(T, Loader, Lib)
 				T.expect(count >= 20, count .. " achats entre 1 h et la première renaissance (5,5 h)")
 			end
 		)
-		T.it("raretés hautes rares (#156) : Secret vers 4 h, Divine vers 9 h de jeu", function()
+		-- Divine vers 9 h avec #223 seule ; les tours du portail font monter la CHANCE au-delà du bout de piste (≈ 7,6 h)
+		T.it("raretés hautes rares (#156, #224) : Secret vers 4 h, Divine après 7 h de jeu", function()
 			local secret, divine = median("rarity:7"), median("rarity:8")
 			T.expect(
 				secret ~= nil and secret > 3 * 3600 and secret < 5 * 3600,
 				"Secret à " .. tostring(secret) .. " s"
 			)
-			T.expect(divine ~= nil and divine > 8 * 3600, "Divine à " .. tostring(divine) .. " s")
+			T.expect(divine ~= nil and divine > 7 * 3600, "Divine à " .. tostring(divine) .. " s")
 		end)
 		T.it("bout de piste vers la fin des équipements (#157) : entre 3,5 h et 6 h", function()
 			local t = median("trackEnd")
@@ -178,20 +179,25 @@ return function(T, Loader, Lib)
 				"renaissance " .. tostring(t) .. " s, bout de piste " .. tostring(trackEnd) .. " s"
 			)
 		end)
-		T.it("renaissances suivantes pas trop rapprochées (#223) : 1,5 h au moins entre les 4 premières", function()
-			for k = 2, 4 do
-				local previous, current = median("rebirth:" .. (k - 1)), median("rebirth:" .. k)
-				T.expect(
-					previous ~= nil and current ~= nil and current - previous >= 1.5 * 3600,
-					string.format(
-						"renaissance %d à %s s, la précédente à %s s",
-						k,
-						tostring(current),
-						tostring(previous)
+		-- 1,5 h au moins avec #223 seule (écarts 3,6 / 2,9 / 1,7 h) ; les tours du portail (#224) font monter la CHANCE
+		-- des cycles suivants (écarts ≈ 2,9 / 2,2 / 1 h) : pas de renaissances en chaîne, 45 min au moins
+		T.it(
+			"renaissances suivantes pas trop rapprochées (#223, #224) : 45 min au moins entre les 4 premières",
+			function()
+				for k = 2, 4 do
+					local previous, current = median("rebirth:" .. (k - 1)), median("rebirth:" .. k)
+					T.expect(
+						previous ~= nil and current ~= nil and current - previous >= 0.75 * 3600,
+						string.format(
+							"renaissance %d à %s s, la précédente à %s s",
+							k,
+							tostring(current),
+							tostring(previous)
+						)
 					)
-				)
+				end
 			end
-		end)
+		)
 		T.it(
 			"chaque cycle de renaissance garde des achats (#223) : pas 45 min sans achat, médiane des joueurs",
 			function()

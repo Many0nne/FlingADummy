@@ -167,7 +167,7 @@ Comme 01 et 09 : le lancer fait le lien entre les deux.
 - CHANCE = chance des zones × (1 + 2 % par os cassé + 1 % par objet détruit) × multiplicateur du mannequin lancé
   (section suivante) × 2^k (k renaissances, section « Renaissance »), arrondie au centième. La chance des zones
   vaut celle de la zone à son entrée et monte en continu jusqu'à celle de la suivante (18 à 2,4 km, 60 au bout de la
-  piste de 6 km) : un
+  piste de 6 km, puis × 1,8 par tour de plus du portail : section « Tours de piste », #224) : un
   premier lancer (≈ 145 m) donne ≈ 1.4X, comme le 1.36X de 09.
 - Tirage : les mannequins sont essayés du plus rare au plus courant, chacun sort avec la probabilité min(1, CHANCE / n)
   (le plus courant ramasse le reste) ; la taille se tire de même à CHANCE^0,5. Probabilités exactes affichables
@@ -866,6 +866,92 @@ sien et ceux des voisins) :
   Rubber 4 084-4 326 m, Glider 4 248-4 553 m, Rocket 4 268-4 509 m, dans la dispersion de #130).
 - **Mouvement réduit** : débits et éclats à 40 %, pas d'anneau qui s'étend.
 
+### Tours de piste : portail du bout de piste (#224, `Shared.Laps`, `Server.Portals`)
+Retour de jeu du 2026-11-23 : une fois le bout des 6 km atteint (≈ 3 h pour le testeur avec les passes, 4,4 h
+simulées), la puissance ne servait plus qu'à casser quelques os de plus ; le bout ressemblait à un plafond. Idée du
+testeur, retenue à la place d'un mur de crash : à la ligne d'arrivée, un **portail** renvoie le mannequin au début de
+son couloir pour un **tour de plus** (« LAP 2 », « LAP 3 »…). La piste reste à 6 km, son décor, ses obstacles et ses
+pièges servent à chaque tour.
+- **Échelle d'après le portail** (`Laps.total`) : la portée virtuelle du lancer (point de chute du plan
+  `FlightArc.plan`, comportement compris, plus 0,4 de la glissade théorique, sans paroi : celle du joueur simulé)
+  donne la distance telle quelle en deçà du bout, puis **un tour de plus chaque fois qu'elle est multipliée par 1,08**
+  (`Laps.RATIO`). Au bout de la piste, × 10 de puissance multiplie la portée virtuelle par ≈ 1,15 : un tour de plus
+  vaut ≈ **× 3,1 à × 3,4 de puissance** selon le mannequin (test Lune), contre + 1,2 km pour × 30 avec la seule courbe de
+  vitesse. Continue, tour partiel compris ; 10 tours au plus (`Laps.MAX`, garde-fou : au dernier, la paroi du bout).
+- **Portail** (`Server.Portals`) : piliers et linteau en briques à tenons arc-en-ciel (blocs saturés de 01 et 09),
+  rideau violet lumineux du sol à 120 studs (au-dessus du plafond du vol), tourbillon néon à 4 bras qui tourne
+  (`Client.TrapMotion`, « Spin »), étincelles aspirées, panneau « FINISH 6 KM >> NEXT LAP ». **Portail de sortie** au
+  début de la piste (z = 12, juste après la bande), rideau de 18 à 46 studs : au-dessus des joueurs de la bande et du
+  lâcher (≈ 12 studs de haut à cet endroit), hors du cadrage de la bande. Pièces traversables : le passage est décidé
+  par le serveur.
+- **Passage** (`LaunchService` : `passPortal`) : quand le torse franchit la ligne d'arrivée, le tour est compté, le
+  mannequin entier passe à la sortie dans **son couloir** (abscisse du lâcher, 30 studs de haut) et repart à **15°**
+  (32° au lâcher : vol plus tendu, un tour de 6 km en ≈ 6 s au lieu de 8,5) avec la vitesse qui pose sa portée
+  virtuelle à la distance restante (`Laps.relaunch`, comportement compris : la flamme du Rocket se rallume, le Glider
+  replane, le Rubber rebondit au dernier tour). Plan, phase, pièges et rebonds repartent à neuf ; délai de grâce du
+  lâcher (pas d'os cassé par le changement de vitesse) ; garde-fou `MAX_FLIGHT_TIME` compté par tour.
+- **Anneau propulseur** (Moon Base, au plafond) : il levait le plafond comme tout piège, et un vol en croisière
+  retombait ≈ 1,4 km plus loin (mesuré en Studio à 600 B et 1,5 T : 3,5 à 4 km au lieu du bout de piste, lancers des
+  mannequins de test et du joueur passés par l'anneau de leur colonne). Depuis #224 (`Traps.KINDS.Booster.cruise`), il
+  pousse un vol en montée ou en croisière vers l'avant (+ 70 studs/s) sans lever le plafond ni le faire sauter ; un vol
+  libre (chute, rebond) réagit comme avant.
+- **Os et objets au tour suivant** (choix) : les os restent plafonnés à 3 par membre sur tout le vol (le mannequin est
+  déjà cassé : pas de bonus d'os en plus par tour) ; les objets détruits comptent une fois par passage (pièce réclamée
+  par le vol, puis réapparue 5 s après le dernier choc : un tour dure ≥ 6 s). Pièges : un déclenchement par piège et
+  par tour. Aucun levier pour le joueur : le nombre de tours ne dépend que de la puissance, de la jauge et du
+  mannequin lancé.
+- **CHANCE** (`Economy.zoneChance`) : au-delà du bout, × 60 × **1,8 par tour de plus** (`Laps.CHANCE_PER_LAP`,
+  continue) ; la bannière continue de monter au deuxième tour (pas de retour à × 1 de la Prairie), la zone affichée est
+  celle du décor survolé.
+- **Record** : la distance totale, tours compris (attribut `Distance`, `BestDistance`, classement : « 7.4 km »).
+- **Écran** (`Client.FlightView`, `Client.FlightCamera`, `Client.Effects`) : quand le mannequin affiché ressort au début
+  de la piste, flash blanc plein écran (0,45 s ; 0,2 s à moitié en mouvement réduit), **« LAP 2! »** géant au centre
+  (1,3 s), badge violet « LAP 2 » collé à la bannière de zone jusqu'à la fin du vol, son de réacteur et de palier ; la
+  caméra de vol **coupe** sur la sortie sous le flash (saut du torse affiché de plus de 300 studs en une image) au lieu
+  de survoler la piste. Tous les joueurs : son et étincelles au portail d'arrivée, étincelles, confettis et « LAP 2! »
+  à la sortie (choc `Portal` de `Impact`, à l'heure du mannequin affiché).
+- **Durée du vol** : estimée sur sol plat (`Laps.duration`, test Lune) à 2 tours de plus : 19,1 s (Crash), 19,9 s
+  (Rubber), 20,5 s (Glider), 16,7 s (Rocket), ≤ 25 s visés.
+- **Mesures en Studio** (joueur neuf, `DebugLaunchBots` avec `DebugBotsPower` et `DebugBotsDummy`, jauge pleine, 3 vols
+  par ligne ; tours prévus d'après `planned_total`) :
+  | Mannequin, puissance | Prévu | Obtenu | Tours | Durée du vol | CHANCE (os et objets compris) |
+  |---|---|---|---|---|---|
+  | Crash, 600 B | 8 201 m | 8 276 à 8 429 m | 2 | 12,4 à 12,8 s | 123 à 127 |
+  | Crash, 1,5 T | 12 617 m | 12 637 à 12 644 m | 3 | 14,7 à 15,3 s | 160 à 170 |
+  | Crash, 4,7 T | 17 951 m | 18 051 m | 4 (glissade dans le portail en fin de 3e tour, 4e de 51 m) | 17,4 à 17,7 s | 330 à 352 |
+  | Glider, 50 B | 9 384 m | 10 827 à 11 335 m (portique laser au 2e tour : plafond levé, vol plané) | 2 | 15,3 à 16,4 s | 409 à 486 |
+  | Glider, 100 B | 13 015 m | 12 999 à 13 014 m | 3 | 17,1 à 17,7 s | 524 à 602 |
+  | Glider, 260 B | 17 886 m | 18 051 m | 4 (idem, trou de ver à 5 848 m) | 18,8 à 19,0 s | 596 à 801 |
+  Portail passé à 7 s du lâcher (tour 1), puis toutes les 4 à 6 s. Lancer du joueur (`DebugLaunch`, Crash, 1,5 T) :
+  12 706 m pour 12 450 prévus, 3 tours, 15,8 s, CHANCE 178 ; « LAP 2 » puis « LAP 3 » montrés par le client, caméra
+  coupée sur la sortie, record (`BestDistance`) et classement à 12 706 m (« 12.7 km »). Captures :
+  `docs/captures/portail-224/` (avant : arche à damier de #97 ; après : portail d'arrivée, portail de sortie, arrêt au
+  3e tour).
+- **Mannequins à lancer** : le surplus suit leur portée réelle. Leur part de portée (+ 15 à + 20 %) vaut ≈ 2 tours
+  au-delà du bout : le Glider atteint le bout vers 26 B de puissance, le Crash Dummy vers 375 B (× 14). Conséquence
+  simulée (calibrage d'avant #223, sans renaissance avant 10 h) : un mannequin sans comportement acheté après le Nebula
+  Rubber (Plasma Glass, 75x) fait retomber le lancer de 2,6 à 1 tour (CHANCE des zones × 140 → × 59, mannequin
+  compris : 7,7 K → 4,4 K). Depuis #223, il arrive dans les cycles suivants. Suivi : #228.
+
+Joueur simulé (60 joueurs, 14 h, médianes ; avant : `main` après #223, piste plafonnée au bout) :
+| Repère | Avant | Après |
+|---|---|---|
+| Bout de piste | 4,4 h | 4,4 h |
+| Tours du lancer à 4 / 5 / 8 h (8 h : 2e cycle) | 0,87 / 1 / 1 | 0,87 / 1,82 / 2,30 |
+| CHANCE des zones à 5 / 8 h | × 60 / × 60 | × 97 / × 129 |
+| 1,5 / 2 tours | — | 4,4 / 5,2 h |
+| Lancer d'avant la première renaissance | 104 B, 1 tour, × 60 | 104 B, **2,22 tours, × 123** (× 2,05) |
+| Revenu à 8 h / 14 h | $19.7M/s / $147M/s | $29.6M/s / $455M/s |
+| Premier Secret / Divine | 3,9 / 8,6 h | 3,9 / 8,0 h |
+| Renaissances 1 à 5 | 5,5 / 9,1 / 12,0 / 13,7 / > 14 h | 5,4 / 8,4 / 10,7 / 11,9 / 13,4 h |
+| Saut le plus fort du ratio | × 1,58 | × 1,58 |
+Calibré sur la courbe de #223 (première renaissance vers 5,5 h) : 1,2 tour de plus et CHANCE des zones × 2,05 juste
+avant la première renaissance (cible : 1 à 2 tours, × 2 à × 3). Essais écartés (15 joueurs, 16 h) : × 1,7 par tour
+(CHANCE × 1,9 avant la renaissance), RATIO 1,10 ou 1,12 (1 tour de plus, × 1,8). Toute CHANCE en plus resserre les
+cycles suivants : l'écart entre les renaissances 3 et 4 passe de 1,7 à ≈ 1 h quel que soit le réglage. Première
+heure inchangée (la piste n'est pas finie avant 4 h). Garde-fous de `Progression.spec` : Divine après 7 h (8 h avant
+#224), 45 min au moins entre les 4 premières renaissances (1,5 h avec #223 seule) : pas de renaissances en chaîne.
+
 ### Renaissance (#108, `Shared.Rebirth`)
 Le levier juste après le bout de piste et le dernier équipement (≈ 5,5 h simulées depuis #223 ; 12,4 h avant), comme la
 RENAISSANCE de *Net a Fish!* (12) et
@@ -1175,6 +1261,8 @@ du dessus des gradins, décor), comme les zones de *Throw a Seed*, ses obstacles
 | Galaxy | 5,4 km | ×49 (×60 au bout) | astéroïdes, soucoupes volantes | portail de trou de ver |
 
 CHANCE de 2,4 à 6 km : progression géométrique (× 1,22 par thème), × 27 à 3,6 km, × 40 à 4,8 km, × 60 au bout.
+Au bout, le portail renvoie le mannequin au début de la piste pour un tour de plus (#224, section « Tours de piste ») :
+les zones repassent sous lui (bannière et ciel du décor survolé), la CHANCE continue de monter (× 1,8 par tour).
 Décor : rochers, cratères et radars (Mars), grands cristaux et stalagmites (Crystal Cave), tours à ceintures néon,
 enseignes et lampadaires (Neon City), nuages, arcs-en-ciel et îles flottantes (Sky Kingdom), citrouilles-lanternes,
 tombes, toiles d'araignée et arbres morts (Haunted Castle), planètes à anneau, étoiles et astéroïdes (Galaxy). Dans la

@@ -3,6 +3,7 @@ return function(T, Loader)
 	local loader = Loader.new()
 	local Economy = loader:require("src/shared/Economy")
 	local GameConfig = loader:require("src/shared/GameConfig")
+	local Laps = loader:require("src/shared/Laps")
 	local Zones = loader:require("src/shared/Zones")
 
 	T.describe("Economy.launchSpeed", function()
@@ -48,9 +49,23 @@ return function(T, Loader)
 		end)
 		T.it("atteint FINAL_CHANCE au bout de la piste et n'est jamais sous 1", function()
 			T.expectNear(Economy.zoneChance(GameConfig.COURSE_LENGTH), Zones.FINAL_CHANCE, 1e-9)
-			T.expectNear(Economy.zoneChance(1e9), Zones.FINAL_CHANCE, 1e-9)
 			T.expectNear(Economy.zoneChance(-50), 1)
 		end)
+		T.it(
+			"continue de monter au-delà du bout, tours du portail compris (#224) : × CHANCE_PER_LAP par tour",
+			function()
+				local length = GameConfig.COURSE_LENGTH
+				T.expectNear(Economy.zoneChance(length + 1e-6), Zones.FINAL_CHANCE, 1e-6)
+				T.expectNear(Economy.zoneChance(2 * length), Zones.FINAL_CHANCE * Laps.CHANCE_PER_LAP, 1e-9)
+				T.expectNear(Economy.zoneChance(2.5 * length), Zones.FINAL_CHANCE * Laps.CHANCE_PER_LAP ^ 1.5, 1e-9)
+				local previous = 0
+				for d = length - 600, 4 * length, 50 do
+					local value = Economy.zoneChance(d)
+					T.expect(value >= previous, "croissante à " .. d .. " m")
+					previous = value
+				end
+			end
+		)
 		T.it("garde la courbe d'avant #97 jusqu'à 2,4 km (Moon Base de × 10 à × 18), puis × 60 à 6 km", function()
 			-- Ancienne courbe : Moon Base de 1 650 m (× 10) au bout de la piste de 2,4 km (× 18)
 			for d = 1650, 2400, 50 do

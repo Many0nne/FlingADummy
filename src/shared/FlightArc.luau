@@ -52,6 +52,7 @@ export type Plan = {
 	airTime: number, -- durée de l'arc naturel jusqu'au premier contact (s)
 	natural: number, -- portée de l'arc naturel sans comportement (studs) : la référence des parts gagnées
 	range: number, -- distance au premier contact au sol, depuis le départ, le long de la piste (studs)
+	contactTime: number, -- durée du vol jusqu'au premier contact au sol (s, sol plat)
 	drop: number?, -- vol plafonné : distance depuis le départ où la croisière finit et la chute commence
 	boost: number, -- réacteur : poussée vers l'avant (studs/s²) pendant `boostTime` (0 : aucune)
 	boostTime: number,
@@ -143,16 +144,17 @@ function FlightArc.plan(
 		sink = sinkFor(fallHeight, descent, gravity)
 	end
 
-	local range, drop
+	local range, drop, contactTime
 	if capped then
 		-- Montée freinée régulièrement de `vy` à 0 sur (top - height), croisière, puis descente depuis le plafond
 		local riseTime = 2 * (top - height) / vy
 		local dropTime = math.max(airTime - fallTime, riseTime)
 		drop = along(dropTime)
-		range = along(dropTime + descent)
+		contactTime = dropTime + descent
 	else
-		range = along(airTime - fallTime + descent)
+		contactTime = airTime - fallTime + descent
 	end
+	range = along(contactTime)
 
 	-- Caoutchouc : rebonds à élan constant, réglé pour ajouter `bounce` × la portée naturelle à l'arrêt (rebonds puis
 	-- glissade plus courte, sur sol plat) : v × durée + v² / (2 × GROUND_BRAKE) = part + glissade sans rebond
@@ -178,6 +180,7 @@ function FlightArc.plan(
 		airTime = airTime,
 		natural = natural,
 		range = range,
+		contactTime = contactTime,
 		drop = drop,
 		boost = boost,
 		boostTime = boostTime,

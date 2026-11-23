@@ -2,7 +2,8 @@
 -- gros plan sur l'avatar pendant le geste (côté du bras qui lance, léger rapprochement ; cadrages et fondus :
 -- Shared.ThrowFraming), puis suit le torse du mannequin lancé (arrière, côté, haut ; plongée qui suit l'altitude :
 -- Shared.FlightFraming), secousses proportionnelles aux chocs,
--- coup de champ de vision au départ ; rend la caméra normale quand le couloir redevient prêt.
+-- coup de champ de vision au départ, coupe sur la sortie du portail du bout de piste (#224) ; rend la caméra normale
+-- quand le couloir redevient prêt.
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
@@ -21,6 +22,9 @@ local MAX_SHAKE = 2.5 -- amplitude maximale (studs)
 local BASE_FOV = 70
 local BIND_NAME = "FlightCamera"
 local SHOWCASE_PUSH = 6 -- durée du lent rapprochement sur le mannequin gagné (s)
+-- Saut du torse affiché en une image (studs) qui fait couper la caméra : passage du portail (#224) ; un vol rapide
+-- parcourt ≈ 20 studs par image à 60 i/s, 120 à 10 i/s
+local CUT_DISTANCE = 300
 
 local FlightCamera = {}
 
@@ -203,16 +207,26 @@ function FlightCamera.follow(model: Model, shown: (() -> (Vector3?, Vector3?, nu
 	end
 	local position = camera.CFrame.Position
 	local focus = kept or displayed()
+	local last = (displayed())
 	RunService:BindToRenderStep(BIND_NAME, Enum.RenderPriority.Camera.Value + 1, function(dt)
 		if not torso.Parent then
 			FlightCamera.stop()
 			return
 		end
 		local target, velocity, speed = displayed()
-		position += velocity * dt
 		-- Distance du cadrage selon la vitesse réelle (répliquée, ou du plan avant elle) : pas de va-et-vient quand
 		-- l'affichage ralentit au départ
 		local offset = FlightFraming.offset(target.Y, speed) -- piste à y = 0
+		-- Portail du bout de piste (#224) : le mannequin affiché saute au début de la piste, la caméra coupe sur lui
+		-- (sous le flash de Client.FlightView) au lieu de survoler toute la piste
+		local jumped = (target - last).Magnitude > CUT_DISTANCE
+		last = target
+		if jumped then
+			position = target + offset
+			focus = target
+			shake = 0
+		end
+		position += velocity * dt
 		position = position:Lerp(target + offset, 1 - math.exp(-POSITION_SHARPNESS * dt))
 		-- Le point visé avance lui aussi avec le torse : sinon, en montée rapide, il traîne en dessous et le mannequin
 		-- sort par le haut de l'image (#88)

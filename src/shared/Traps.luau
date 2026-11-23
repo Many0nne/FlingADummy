@@ -23,6 +23,7 @@ export type Kind = {
 	restitution: number, -- part de la vitesse verticale d'arrivée renvoyée vers le haut (rebond)
 	spin: number, -- rotation donnée au mannequin (rad/s, axe vertical)
 	bones: number, -- os cassés au déclenchement (membres les plus proches)
+	cruise: boolean?, -- garde le plafond et la croisière du vol (#224 : l'anneau au plafond pousse sans faire retomber)
 }
 
 Traps.WIDTH = 12 -- largeur d'un piège : une colonne d'obstacles (SLOT_SPACING), moins un passage de 2 studs
@@ -72,7 +73,7 @@ Traps.KINDS = {
 	-- (boîte de 8 × 8 studs autour du centre du cerceau, voir plus haut)
 	Booster    = { label = "BOOST!",    sound = "Rocket", burst = "Sparks",   height = GameConfig.APEX_HEIGHT + Traps.RING_HALF,  depth = 6,
 	               bottom = GameConfig.APEX_HEIGHT - Traps.RING_HALF, width = 8,
-	               keep = 1,    forward = 70,  side = 0,  up = 25,  restitution = 0,   spin = 0,  bones = 1 },
+	               keep = 1,    forward = 70,  side = 0,  up = 25,  restitution = 0,   spin = 0,  bones = 1, cruise = true },
 	-- Piste prolongée (#97) ----------------------------------------------------------------------------------------
 	-- Mars : geyser de poussière, projette à la verticale pendant son éruption (Traps.CYCLES)
 	Geyser     = { label = "ERUPTION!", sound = "Gust",   burst = "Dust",     height = 30,  depth = 8,

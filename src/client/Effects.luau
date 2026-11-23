@@ -1,5 +1,6 @@
 -- Effets des crashs, joués par chaque client à partir des chocs annoncés par le serveur : son positionné, gerbe de
--- particules, popup dans la scène (« +1 BONE », « SMASH x6 », « BOING! » des pièges des thèmes), combos, foule sur les gros crashs ; secousses de
+-- particules, popup dans la scène (« +1 BONE », « SMASH x6 », « BOING! » des pièges des thèmes, « LAP 2! » au portail du
+-- bout de piste), combos, foule sur les gros crashs ; secousses de
 -- caméra et souffle du vent pour le vol du joueur local. Les chocs d'un vol se montrent quand le mannequin affiché (en
 -- retard sur le serveur) y arrive, à l'heure des pièges animés (#84, Client.TrapMotion).
 local Debris = game:GetService("Debris")
@@ -174,6 +175,17 @@ local function onImpact(impact: any)
 				FlightCamera.shake(0.9)
 				bumpCombo(position)
 			end
+		end
+	elseif impact.kind == "Portal" then
+		-- Portail du bout de piste (#224) : aspiré à l'arrivée, recraché au début de la piste (vus de tous)
+		playAt("Rocket", position, 1.4)
+		burst("Sparks", position, 60)
+		local exit = impact.to
+		if typeof(exit) == "Vector3" then
+			playAt("Whoosh", exit, 1.2)
+			burst("Sparks", exit, 50)
+			burst("Confetti", exit, 40)
+			popup(exit + Vector3.new(0, 4, 0), "LAP " .. tostring(impact.value or 2) .. "!", C.gold, 52)
 		end
 	elseif impact.kind == "Thud" then
 		playAt("Thud", position)
