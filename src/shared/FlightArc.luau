@@ -26,6 +26,12 @@ FlightArc.BOUNCE_RESTITUTION = 0.6 -- part de la vitesse de chute rendue vers le
 FlightArc.BOUNCE_MIN_FALL = 20 -- chute (studs/s) arrêtée net en une frame qui compte comme un rebond au sol
 FlightArc.BOUNCE_DETECT = 0.75 -- un rebond prévu est reconnu dès 75 % de BOUNCE_MIN_FALL (sol un peu plus haut, frames)
 FlightArc.BOUNCE_STOP = -2 -- vitesse verticale (studs/s) au-dessus de laquelle la chute est arrêtée
+-- Vol calé (#215) : un mannequin qui a perdu son élan vers l'avant pendant la montée ou la croisière n'atteint jamais la
+-- fin de la croisière ; le plafond le tenait en l'air jusqu'au délai maximal du vol. Il retombe librement
+FlightArc.STALL_SPEED = 5 -- élan le long de la piste (studs/s) sous lequel montée et croisière s'arrêtent
+FlightArc.STALL_TIME = 1 -- délai (s) après lequel le serveur vérifie que le mannequin a quitté la zone de lancer
+FlightArc.STALL_DISTANCE = 20 -- zone de lancer (studs depuis le départ, le long de la piste)
+FlightArc.STALL_SHARE = 0.5 -- part de la distance au premier contact prévue qui suffit à un lancer court
 
 -- "Rise" : montée freinée vers le plafond ; "Cruise" : à plat au plafond ; "Free" : arc naturel ou chute après la
 -- croisière ; "Landed" : après le premier choc, frein au sol et amortissement latéral
@@ -295,6 +301,12 @@ function FlightArc.slide(speed: number): number
 	return speed * speed / (2 * GameConfig.GROUND_BRAKE)
 end
 
+-- Cette méthode permet de savoir si un vol n'a pas quitté la zone de lancer (`along` studs parcourus le long de la
+-- piste, STALL_TIME s après le lâcher) lorsque le serveur décide de rendre le lancer au joueur (#215).
+function FlightArc.stalled(plan: Plan, along: number): boolean
+	return along < math.min(FlightArc.STALL_DISTANCE, FlightArc.STALL_SHARE * plan.range)
+end
+
 -- Cette méthode permet de donner le freinage vertical (studs/s², en plus de la gravité) qui arrête une montée à
 -- `vy` studs/s pile au plafond, `remaining` studs plus haut, lorsque le mannequin monte vers le plafond.
 local function ceilingBrake(vy: number, remaining: number, gravity: number): number
@@ -313,6 +325,14 @@ function FlightArc.step(plan: Plan, state: State): (Phase, Vector3)
 		phase = "Landed"
 	end
 	if (phase == "Rise" or phase == "Cruise") and plan.drop and state.along >= plan.drop then
+		phase = "Free"
+	end
+	-- Élan perdu (#215) : la fin de la croisière ne viendrait jamais, le mannequin retombe au lieu de rester au plafond
+	if
+		(phase == "Rise" or phase == "Cruise")
+		and state.armed
+		and velocity:Dot(state.forward) < FlightArc.STALL_SPEED
+	then
 		phase = "Free"
 	end
 	local remaining = plan.ceiling - state.height

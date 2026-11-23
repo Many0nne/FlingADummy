@@ -89,6 +89,9 @@ type Flight = {
 	trapMisses: { [number]: boolean }, -- pièges traversés hors phase (trace Studio, une fois par vol et par piège)
 	lastTrap: { kind: string, at: number }?, -- dernier piège déclenché : cause des os cassés juste après
 	clockSent: number, -- os.clock() du dernier échantillon FlightClock envoyé (#84)
+	stallChecked: boolean, -- sortie de la zone de lancer déjà vérifiée (FlightArc.STALL_TIME, #215)
+	reached: number, -- plus grande distance parcourue le long de la piste depuis le départ (studs, #215)
+	lucky: boolean?, -- lancer chanceux consommé au départ : rendu avec le lancer (#215)
 }
 
 local LaunchService = {}
@@ -223,6 +226,8 @@ local function startFlight(
 		trapMisses = {},
 		lastTrap = nil,
 		clockSent = -math.huge,
+		stallChecked = false,
+		reached = 0,
 	}
 	return dummy, origin, speed
 end
@@ -318,9 +323,10 @@ function LaunchService.launch(player: Player, gauge: any, force: boolean?)
 	local owned, equipped =
 		ThrowDummies.sanitize(player:GetAttribute("ThrowTier"), player:GetAttribute("ThrowEquipped"))
 	local rebirth = Rebirth.luck(Rebirth.read(player:GetAttribute("Rebirths")))
-	local boost = StoreService.launchLuck(player) -- consomme un lancer chanceux s'il en reste
+	local boost, lucky = StoreService.launchLuck(player) -- consomme un lancer chanceux s'il en reste
 	local luck = ThrowDummies.luckOf(equipped, owned)
 	local dummy, origin, speed = startFlight(player, player, slot, power, gauge, equipped, rebirth, boost, luck)
+	flights[player].lucky = lucky
 	-- Départ du vol pour le lanceur : il rejoue le plan en avance sur la copie répliquée (Client.LaunchGhost, #117)
 	remotes.LaunchStarted:FireClient(player, dummy, {
 		origin = origin,
@@ -770,6 +776,63 @@ local function sendClock(flight: Flight, position: Vector3)
 	remotes.FlightClock:FireAllClients(flight.torso, Workspace:GetServerTimeNow(), position)
 end
 
+-- Cette méthode permet de décrire les pièces proches du torse (hors mannequin) lorsque le vol est rendu au joueur
+-- (trace Studio : ce qui a pu arrêter le mannequin, #215).
+local function nearbyParts(flight: Flight): string
+	local params = OverlapParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { flight.dummy }
+	local names = {}
+	for _, part in Workspace:GetPartBoundsInRadius(flight.torso.Position, 6, params) do
+		if #names >= 6 then
+			break
+		end
+		table.insert(
+			names,
+			string.format("%s[%s,%s]", part:GetFullName(), part.CollisionGroup, tostring(part.CanCollide))
+		)
+	end
+	return if #names > 0 then table.concat(names, " ") else "-"
+end
+
+-- Cette méthode permet de rendre le lancer au joueur, sans résultat ni tirage (lancer chanceux rendu, remise en prise
+-- sur la bande quand c'est possible), lorsque son mannequin n'a pas quitté la zone de lancer (#215).
+local function handBack(flight: Flight, along: number)
+	flights[flight.key] = nil
+	local torso = flight.torso
+	if RunService:IsStudio() then
+		print(
+			string.format(
+				"[Launch] vol rendu (calé dans la zone de lancer) : %s dummy=%s gauge=%.2f plus loin=%.1f phase=%s"
+					.. " position=%s vitesse=%s ancré=%s près=%s",
+				if flight.owner then flight.owner.Name else tostring(flight.key),
+				flight.thrown.id,
+				flight.gauge,
+				along,
+				flight.phase,
+				tostring(torso.Position),
+				tostring(torso.AssemblyLinearVelocity),
+				tostring(torso.Anchored),
+				nearbyParts(flight)
+			)
+		)
+	end
+	flight.dummy:Destroy()
+	local player = flight.owner
+	if not player or not player.Parent then
+		return
+	end
+	if flight.lucky then
+		StoreService.refundLuck(player)
+	end
+	-- Remise en prise comme THROW AGAIN (refusée : tutoriel, réapparu, bande pleine → hub, comme un vol perdu)
+	local held = SlotService.holdAgain(player, "Flying")
+	if RunService:IsStudio() then
+		print(string.format("[Launch] vol rendu à %s : %s", player.Name, if held then "en prise" else "retour au hub"))
+	end
+	player:SetAttribute("LaneState", "Ready")
+end
+
 -- Cette méthode permet d'avancer le suivi d'un vol d'une frame lorsque Heartbeat tourne.
 local function step(flight: Flight, dt: number)
 	local elapsed = os.clock() - flight.startTime
@@ -796,6 +859,21 @@ local function step(flight: Flight, dt: number)
 	checkTraps(flight, previous, position)
 	sendClock(flight, position)
 	flight.distance = math.max(flight.distance, position.Z)
+	flight.reached = math.max(flight.reached, (position - flight.origin):Dot(flight.flat))
+	-- Garde-fou (#215) : un mannequin resté dans la zone de lancer (plus loin atteint, pas la position du moment : un
+	-- rebond en arrière ne compte pas) est rendu au joueur, pas compté comme un lancer raté
+	if not flight.stallChecked and elapsed >= FlightArc.STALL_TIME then
+		flight.stallChecked = true
+		if FlightArc.stalled(flight.arc, flight.reached) then
+			-- Chocs de cette frame (os, objets projetés) annoncés avant le retrait du mannequin
+			if #flight.impacts > 0 then
+				remotes.Impact:FireAllClients(flight.impacts)
+				flight.impacts = {}
+			end
+			handBack(flight, flight.reached)
+			return
+		end
+	end
 	applyBehavior(flight, elapsed, dt, before, impact)
 	publish(flight)
 	if #flight.impacts > 0 then

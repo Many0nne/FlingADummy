@@ -267,14 +267,24 @@ end
 
 -- Cette méthode permet de donner le multiplicateur de CHANCE de la boutique pour un lancer qui part (2x Luck,
 -- potions, chance du serveur, lancer chanceux consommé s'il en reste) lorsque LaunchService lance pour un joueur.
-function StoreService.launchLuck(player: Player): number
+function StoreService.launchLuck(player: Player): (number, boolean)
 	local state = PlayerData.store(player)
 	local lucky = state ~= nil and state.lucky > 0
 	if state and lucky then
 		state.lucky -= 1
 		player:SetAttribute("LuckyThrows", state.lucky)
 	end
-	return Store.luck(activeOf(player, lucky))
+	return Store.luck(activeOf(player, lucky)), lucky
+end
+
+-- Cette méthode permet de rendre au joueur le lancer chanceux consommé par un lancer qui lui est rendu (vol calé dans
+-- la zone de lancer, #215).
+function StoreService.refundLuck(player: Player)
+	local state = PlayerData.store(player)
+	if state then
+		state.lucky += 1
+		player:SetAttribute("LuckyThrows", state.lucky)
+	end
 end
 
 -- Cette méthode permet de faire avancer les minuteurs (boosts, temps de jeu du pack de démarrage) des joueurs
