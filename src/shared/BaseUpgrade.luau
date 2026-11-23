@@ -33,6 +33,10 @@ BaseUpgrade.MAX_AGE = 1 -- s : un changement plus ancien (client arrivé après,
 -- Base qui s'agrandit (#212) : à l'ouverture d'une rangée, l'habillage est refait avec l'animation ci-dessus et le
 -- terrain s'allonge vers le fond pendant le fondu du sol ; chaque présentoir acheté tombe à sa place (même chute)
 BaseUpgrade.FROM_DEPTH_ATTRIBUTE = "UpgradeFromDepth" -- profondeur du terrain avant l'agrandissement
+-- Terrain tel que le serveur l'a posé (couleur, profondeur) : le client y revient même après des changements
+-- rapprochés, quand ses propres valeurs animées masquent celles reçues
+BaseUpgrade.PLOT_COLOR_ATTRIBUTE = "PlotColor"
+BaseUpgrade.PLOT_DEPTH_ATTRIBUTE = "PlotDepth"
 BaseUpgrade.DROP_ATTRIBUTE = "DropAt" -- sur le dessus d'un présentoir : heure serveur où il commence à tomber
 BaseUpgrade.ROW_DROP_DELAY = 1 -- s : le présentoir d'une rangée qui s'ouvre attend que le terrain soit allongé
 BaseUpgrade.DROP_STAGGER = 0.08 -- s entre deux présentoirs ouverts d'un coup (passe Big Base)

@@ -1241,6 +1241,8 @@ function CourseBuilder.styleBase(slot: Slot, tier: number, capacity: number, upg
 	local hx, hz = size.X / 2, size.Z / 2
 	base.plot.Size = Vector3.new(size.X, PLOT_TOP, size.Z)
 	base.plot.Position = center + Vector3.new(0, PLOT_TOP / 2, 0)
+	base.model:SetAttribute(BaseUpgrade.PLOT_COLOR_ATTRIBUTE, base.plot.Color)
+	base.model:SetAttribute(BaseUpgrade.PLOT_DEPTH_ATTRIBUTE, size.Z)
 	base.labelAnchor.Position = center + Vector3.new(0, LABEL_HEIGHT, 0)
 	base.burst.Position = center + Vector3.new(0, BURST_HEIGHT, 0)
 	-- Socles des présentoirs au palier (#198) : teinte, bandeau doré des hauts paliers sur ceux des rangées ouvertes (sa

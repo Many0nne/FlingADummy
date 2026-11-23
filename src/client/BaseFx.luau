@@ -158,20 +158,32 @@ local function pose(piece: Piece, lift: number, fade: number)
 	end
 end
 
+-- Cette méthode permet de donner le terrain d'une base tel que le serveur l'a posé (couleur, taille, repère ; entrée
+-- fixe) lorsque l'animation démarre ou s'arrête, même si une animation précédente l'a modifié localement.
+local function serverPlot(base: Model, plot: BasePart): (Color3, Vector3, CFrame)
+	local color = base:GetAttribute(BaseUpgrade.PLOT_COLOR_ATTRIBUTE)
+	local depth = base:GetAttribute(BaseUpgrade.PLOT_DEPTH_ATTRIBUTE)
+	if typeof(depth) ~= "number" then
+		depth = plot.Size.Z
+	end
+	local position = plot.Position
+	return if typeof(color) == "Color3" then color else plot.Color,
+		Vector3.new(plot.Size.X, plot.Size.Y, depth),
+		CFrame.new(position.X, position.Y, CourseLayout.BASE_FRONT - depth / 2)
+end
+
 -- Cette méthode permet de rendre les pièces et le sol tels que le serveur les a posés lorsque l'animation d'une base
 -- se termine, qu'une autre la remplace ou que le serveur change l'habillage.
 local function stop(run: Run)
 	runs[run.base] = nil
-	-- Pièces rendues même si le serveur a rangé l'habillage pour une animation suivante ; sol seulement s'il est à jour
+	-- Pièces rendues même si le serveur a rangé l'habillage pour une animation suivante ; sol remis à l'état publié
 	if run.look.Parent then
 		for _, piece in run.pieces do
 			settle(piece)
 		end
 	end
-	if run.plot and run.look.Parent == run.base then
-		run.plot.Color = run.toPlot
-		run.plot.Size = run.toSize
-		run.plot.CFrame = run.toCFrame
+	if run.plot then
+		run.plot.Color, run.plot.Size, run.plot.CFrame = serverPlot(run.base, run.plot)
 	end
 	if run.old then
 		run.old:Destroy()
@@ -270,6 +282,24 @@ local function celebrateNow(base: Model)
 	end
 end
 
+-- Cette méthode permet de confier à la chute en cours de son présentoir le bandeau `part` d'un habillage refait (true)
+-- lorsque l'animation de construction démarre pendant cette chute : il tombe avec son socle.
+local function adoptCollar(base: Model, part: BasePart): boolean
+	local display = part:GetAttribute(DISPLAY_ATTRIBUTE)
+	if typeof(display) ~= "number" then
+		return false
+	end
+	for _, drop in drops do
+		if drop.base == base and drop.display == display then
+			table.insert(drop.parts, { part = part, cframe = part.CFrame, collide = false, query = false })
+			dropping[part] = true
+			part.LocalTransparencyModifier = 1 -- la chute le replace dès l'image suivante
+			return true
+		end
+	end
+	return false
+end
+
 -- Cette méthode permet de donner au terrain la profondeur de l'agrandissement en cours (`share` : 0 avant, 1 après),
 -- entrée fixe, lorsque l'animation d'une rangée qui s'ouvre avance (#212) ; rien si la profondeur ne change pas.
 local function stretch(run: Run, share: number)
@@ -305,14 +335,18 @@ local function start(base: Model)
 		return
 	end
 	local plot = base:FindFirstChild("Plot") :: BasePart?
-	local center = if plot then plot.Position else base:GetPivot().Position
-	local depth = if plot then plot.Size.Z else CourseLayout.BASE_SIZE.Z
+	local toPlot, toSize, toCFrame = Color3.new(), Vector3.zero, base:GetPivot()
+	if plot then
+		toPlot, toSize, toCFrame = serverPlot(base, plot)
+	end
+	local center = toCFrame.Position
+	local depth = if plot then toSize.Z else CourseLayout.BASE_SIZE.Z
 	local gate = center + CourseLayout.ENTRANCE * depth / 2
 	local pieces, plans = collect(look)
-	-- Bandeau d'un présentoir qui tombe : sa chute le pose, l'animation de construction le laisse
+	-- Bandeau d'un présentoir qui tombe (ancien ou refait) : sa chute le pose, l'animation de construction le laisse
 	for _, piece in pieces do
 		for _, state in piece.parts do
-			if dropping[state.part] then
+			if dropping[state.part] or adoptCollar(base, state.part) then
 				piece.done = true
 			end
 		end
@@ -321,7 +355,6 @@ local function start(base: Model)
 	local old, oldParts = cloneOld(base)
 	local dust, emitter = dustEmitter(base, center)
 	local fromPlot = base:GetAttribute(BaseUpgrade.FROM_PLOT_ATTRIBUTE)
-	local toPlot = if plot then plot.Color else Color3.new()
 	local fromDepth = base:GetAttribute(BaseUpgrade.FROM_DEPTH_ATTRIBUTE)
 	local debugSpeed = if RunService:IsStudio() then Workspace:GetAttribute("DebugUpgradeSpeed") else nil
 	local run: Run = {
@@ -338,8 +371,8 @@ local function start(base: Model)
 		fromPlot = if typeof(fromPlot) == "Color3" then fromPlot else toPlot,
 		toPlot = toPlot,
 		fromDepth = if typeof(fromDepth) == "number" then fromDepth else depth,
-		toSize = if plot then plot.Size else Vector3.zero,
-		toCFrame = if plot then plot.CFrame else CFrame.identity,
+		toSize = toSize,
+		toCFrame = toCFrame,
 		dust = dust,
 		emitter = emitter,
 	}
@@ -433,16 +466,21 @@ end
 -- remplace.
 local function land(drop: Drop)
 	for _, state in drop.parts do
-		state.part.CFrame = state.cframe
-		state.part.LocalTransparencyModifier = 0
-		dropping[state.part] = nil
+		local part = state.part
+		part.CFrame = state.cframe
+		part.LocalTransparencyModifier = 0
+		dropping[part] = nil
+		if state.collide then
+			-- Socle et dessus : solides s'ils sont affichés (le serveur a pu les cacher entre-temps)
+			part.CanCollide = part.Transparency < 1
+			part.CanQuery = part.Transparency < 1
+		end
 	end
 	Debris:AddItem(drop.dust, 2) -- la dernière poussière retombe
 end
 
--- Cette méthode permet de lancer la chute du présentoir `top` (socle, dessus, bandeau du palier) lorsque le serveur
--- l'annonce (attribut DropAt : il vient d'être acheté) ; annonce trop vieille (client arrivé après) : rien, il est
--- déjà posé.
+-- Cette méthode permet de lancer la chute du présentoir `top` (socle, dessus, bandeau) lorsque le serveur l'annonce
+-- (attribut DropAt, il vient d'être acheté) ; annonce trop vieille (client arrivé après) : rien, il est déjà posé.
 local function startDrop(base: Model, top: BasePart)
 	local at = top:GetAttribute(BaseUpgrade.DROP_ATTRIBUTE)
 	local now = Workspace:GetServerTimeNow()
@@ -455,10 +493,13 @@ local function startDrop(base: Model, top: BasePart)
 		drops[top] = nil
 		land(previous)
 	end
+	-- Socle et dessus : sans collision ni rayons pendant la chute (`collide` : à rendre selon l'état publié)
 	local members: { BasePart } = { top }
+	local solid: { [BasePart]: boolean } = { [top] = true }
 	local pedestal = base:FindFirstChild("Pedestal" .. display)
 	if pedestal and pedestal:IsA("BasePart") then
 		table.insert(members, pedestal)
+		solid[pedestal] = true
 	end
 	local look = base:FindFirstChild("Look")
 	local collar: BasePart? = nil
@@ -485,7 +526,12 @@ local function startDrop(base: Model, top: BasePart)
 	local parts: { PartState } = {}
 	local low = math.huge
 	for _, part in members do
-		table.insert(parts, { part = part, cframe = part.CFrame, collide = part.CanCollide, query = part.CanQuery })
+		local own = solid[part] == true
+		table.insert(parts, { part = part, cframe = part.CFrame, collide = own, query = own })
+		if own then
+			part.CanCollide = false
+			part.CanQuery = false
+		end
 		part.LocalTransparencyModifier = 1
 		dropping[part] = true
 		low = math.min(low, part.Position.Y - part.Size.Y / 2)

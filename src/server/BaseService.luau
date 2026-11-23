@@ -171,9 +171,8 @@ local function updateLabel(slot: Slot, player: Player?)
 	label.avatar.Image = if player and portrait then string.format(HEADSHOT, player.UserId) else ""
 end
 
--- Cette méthode permet d'annoncer aux clients la chute des présentoirs `from` à `to` qui viennent de s'ouvrir
--- (Client.BaseFx), l'un après l'autre, après l'allongement du terrain si une rangée s'ouvre, lorsque le propriétaire
--- en achète (pad, passe Big Base).
+-- Cette méthode permet d'annoncer aux clients la chute des présentoirs `from` à `to` (Client.BaseFx), l'un après
+-- l'autre, après l'allongement du terrain si une rangée s'ouvre, lorsque le propriétaire en achète.
 local function dropDisplays(slot: Slot, from: number, to: number, rowOpened: boolean)
 	local now = Workspace:GetServerTimeNow()
 	local delays = BaseUpgrade.dropDelays(to - from + 1, rowOpened)
