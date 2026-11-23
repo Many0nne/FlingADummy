@@ -60,4 +60,7 @@ Nombre de prises : collection 11 (une par rareté), à lancer 4 (rangées de 6),
   un fond neutre au-dessus du hub, caméra du côté du soleil (champ de 30°) : la rangée remplit toute la largeur de
   l'image, `planches.py` la coupe en 6 cases égales.
 - Base et appareil : la dernière place libre du lobby, habillée palier par palier (`BaseService.showcase`,
-  `CourseBuilder.styleStation`), vue de 3/4 depuis l'entrée ; l'appareil est recadré au centre en 4:3.
+  `CourseBuilder.styleStation`), vue de 3/4 depuis l'entrée ; l'appareil est recadré au centre en 4:3. La base a la
+  profondeur des présentoirs achetés au seuil du palier (#212) ; `workspace:SetAttribute("PhotoDisplays", n)` (contexte
+  `Server`, avant la prise) impose n présentoirs à toutes les prises de base, pour voir un palier à une autre
+  profondeur (une rangée : 5 ; base pleine : 30) ; le retirer (`nil`) avant de photographier la planche.

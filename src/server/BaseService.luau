@@ -11,10 +11,12 @@ local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
 local BackpackPlan = require(Shared.BackpackPlan)
 local BaseLook = require(Shared.BaseLook)
+local BaseUpgrade = require(Shared.BaseUpgrade)
 local Collection = require(Shared.Collection)
 local CourseLayout = require(Shared.CourseLayout)
 local DummyShape = require(Shared.DummyShape)
@@ -45,8 +47,6 @@ export type Prize = {
 }
 
 local FEET = 3.82 -- du centre du torse au bas des pieds, échelle 1 (Shared.DummyShape)
-local LOCKED_COLOR = Color3.fromRGB(120, 122, 132) -- présentoir pas encore acheté
-local LOCKED_TRANSPARENCY = 0.55
 -- Étiquette d'un mannequin posé (nom, $/s) : lue dans la base et devant elle, pas depuis la bande où elle encombrait
 -- le texte de la base (#150 ; 120 studs avant)
 local DISPLAY_LABEL_DISTANCE = 60
@@ -63,9 +63,9 @@ local slotOf: { [Player]: Slot } = {}
 -- Joueurs arrivés avant que SlotService leur donne une place : connexion à l'attribut Slot, coupée au départ
 local waitingSlot: { [Player]: RBXScriptConnection } = {}
 local shown: { [number]: { [number]: Shown } } = {} -- mannequins posés, par place puis présentoir
--- Palier visuel et présentoirs achetés de chaque base, pour le propriétaire chargé qui l'a (animation de construction
--- ou confettis seulement s'ils montent pour lui)
-local styled: { [number]: { player: Player, tier: number, displays: number } } = {}
+-- Palier visuel, présentoirs achetés et utilisables de chaque base, pour le propriétaire chargé qui l'a (animation de
+-- construction ou confettis seulement s'ils montent pour lui)
+local styled: { [number]: { player: Player, tier: number, displays: number, capacity: number } } = {}
 local rng = Random.new()
 
 -- Cette méthode permet de construire le mannequin posé sur un présentoir (pièces ancrées sans collision, regard vers
@@ -122,24 +122,11 @@ local function buildDisplayed(entry: Collection.Entry, top: BasePart, facing: Ve
 	return model
 end
 
--- Cette méthode permet d'habiller un présentoir selon qu'il est acheté (couleur de la place) ou non (grisé, sans
--- invite ni objectif) lorsque la base est rendue ; ceux de Big Base (au-delà de DISPLAY_MAX) sont cachés et sans
--- collision quand la base n'est pas agrandie.
+-- Cette méthode permet d'afficher un présentoir acheté ou de cacher un présentoir qui ne l'est pas (ni grisé ni
+-- transparent : un emplacement libre reste du sol, #212), sans invite ni objectif, lorsque la base est rendue.
 local function styleDisplay(slot: Slot, display: number, unlocked: boolean)
-	local top = slot.base.displays[display]
-	local pedestal = slot.base.pedestals[display]
-	local hidden = display > CourseLayout.DISPLAY_MAX and not slot.base.big
-	local open = unlocked and not hidden
-	top.Color = if open then slot.color else LOCKED_COLOR
-	top.Transparency = if hidden then 1 elseif open then 0 else LOCKED_TRANSPARENCY
-	pedestal.Transparency = if hidden then 1 elseif open then 0 else LOCKED_TRANSPARENCY
-	pedestal.CanCollide = not hidden
-	top.CanCollide = not hidden
-	local collar = slot.base.collars[display]
-	if collar then
-		collar.Transparency = pedestal.Transparency
-	end
-	top:SetAttribute("Locked", if open then nil else true)
+	CourseBuilder.showDisplay(slot, display, unlocked)
+	slot.base.displays[display]:SetAttribute("Locked", if unlocked then nil else true)
 end
 
 -- Cette méthode permet d'afficher sur le pad d'achat le présentoir suivant et son prix (« 8 > 9 », « $450K »), ou MAX,
@@ -184,19 +171,41 @@ local function updateLabel(slot: Slot, player: Player?)
 	label.avatar.Image = if player and portrait then string.format(HEADSHOT, player.UserId) else ""
 end
 
--- Cette méthode permet d'habiller la base au palier de ses présentoirs achetés lorsque la base est rendue ; achat qui
--- monte de palier : animation de construction (confettis à la fin, Client.BaseFx), autre achat : confettis tout de suite.
-local function styleTier(slot: Slot, player: Player?, ready: boolean, displays: number)
+-- Cette méthode permet d'annoncer aux clients la chute des présentoirs `from` à `to` qui viennent de s'ouvrir
+-- (Client.BaseFx), l'un après l'autre, après l'allongement du terrain si une rangée s'ouvre, lorsque le propriétaire
+-- en achète (pad, passe Big Base).
+local function dropDisplays(slot: Slot, from: number, to: number, rowOpened: boolean)
+	local now = Workspace:GetServerTimeNow()
+	local delays = BaseUpgrade.dropDelays(to - from + 1, rowOpened)
+	for display = from, math.min(to, #slot.base.displays) do
+		slot.base.displays[display]:SetAttribute(BaseUpgrade.DROP_ATTRIBUTE, now + delays[display - from + 1])
+	end
+end
+
+-- Cette méthode permet d'habiller la base au palier de ses présentoirs achetés et à la profondeur de ses `capacity`
+-- présentoirs utilisables (#212) lorsque la base est rendue ; achat qui monte de palier ou ouvre une rangée : animation
+-- de construction (confettis à la fin, Client.BaseFx), autre achat : confettis tout de suite ; chaque présentoir
+-- ouvert par un achat tombe à sa place.
+local function styleTier(slot: Slot, player: Player?, ready: boolean, displays: number, capacity: number)
 	local tier = BaseLook.baseTier(displays)
 	local previous = styled[slot.index]
 	local bought = ready and player ~= nil and previous ~= nil and previous.player == player
-	local upgrade = bought and previous ~= nil and tier > previous.tier
+	local grown = bought and previous ~= nil and capacity > previous.capacity
+	local rowOpened = grown
+		and previous ~= nil
+		and CourseLayout.baseRows(capacity) > CourseLayout.baseRows(previous.capacity)
+	local upgrade = bought and previous ~= nil and (tier > previous.tier or rowOpened)
 	if ready and player then
-		styled[slot.index] = { player = player, tier = tier, displays = displays }
+		styled[slot.index] = { player = player, tier = tier, displays = displays, capacity = capacity }
 	else
 		styled[slot.index] = nil
 	end
-	local animated = CourseBuilder.styleBase(slot, tier, upgrade) and upgrade
+	local animated = CourseBuilder.styleBase(slot, tier, capacity, upgrade) and upgrade
+	-- Chute annoncée après le nouvel habillage (bandeaux des socles compris) et avant que les présentoirs s'affichent
+	-- (Server.BaseService.render) : un client ne les voit pas posés avant de les voir tomber
+	if grown and previous then
+		dropDisplays(slot, previous.capacity + 1, capacity, rowOpened)
+	end
 	if bought and not animated and previous and displays > previous.displays then
 		CourseBuilder.celebrate(slot.base.burst)
 	end
@@ -212,9 +221,7 @@ local function render(slot: Slot, player: Player?, force: boolean?)
 	local ready = player ~= nil and data ~= nil and player:GetAttribute("DataReady") == true
 	local displays = if ready and data then data.displays else GameConfig.DISPLAY_START
 	local capacity = if ready and data then Inventory.capacity(data) else displays
-	-- Big Base : base agrandie avant l'habillage du palier (clôture refaite à la bonne taille)
-	CourseBuilder.setBaseBig(slot, ready and data ~= nil and data.bonus > 0)
-	styleTier(slot, player, ready, displays)
+	styleTier(slot, player, ready, displays, capacity)
 	for display, top in slot.base.displays do
 		local unlocked = display <= capacity
 		styleDisplay(slot, display, unlocked)
@@ -342,7 +349,7 @@ local function canAuto(player: Player): boolean
 	-- Marge pour la latence : l'avatar a pu bouger depuis le clic
 	local near = slot ~= nil
 		and root ~= nil
-		and CourseLayout.isNearBase(slot.index, root.Position - (root.AssemblyLinearVelocity * 0.3), slot.base.big)
+		and CourseLayout.isNearBase(slot.index, root.Position - (root.AssemblyLinearVelocity * 0.3), slot.base.capacity)
 	-- Règle partagée avec le client (Shared.PlaceRule) ; la cible et le mannequin se jugent plus loin dans `place`
 	return PlaceRule.status({
 		tutorialStep = player:GetAttribute("Tutorial") :: number?,
@@ -446,7 +453,7 @@ function BaseService.act(player: Player, action: any, arg: any): boolean
 		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 		return slot ~= nil
 			and root ~= nil
-			and CourseLayout.isNearBase(slot.index, root.Position, slot.base.big)
+			and CourseLayout.isNearBase(slot.index, root.Position, slot.base.capacity)
 			and BaseService.buyDisplay(player)
 	elseif action == "SellRarity" then
 		if typeof(arg) == "number" and Rarity.LIST[arg] and not firstPlacePending(player) then
@@ -588,13 +595,14 @@ local function watchTemplates()
 end
 
 -- Cette méthode permet d'habiller une base sans propriétaire comme s'il avait acheté `displays` présentoirs (palier
--- visuel, présentoirs achetés, pad) lorsque Studio la photographie (Server.PhotoStudio) ; nil la rend à son état vide.
-function BaseService.showcase(slot: Slot, displays: number?)
+-- visuel, ou `tier` imposé, profondeur, présentoirs achetés, pad) lorsque Studio la photographie (Server.PhotoStudio) ;
+-- nil la rend à son état vide.
+function BaseService.showcase(slot: Slot, displays: number?, tier: number?)
 	if displays == nil then
 		render(slot, nil, true)
 		return
 	end
-	CourseBuilder.styleBase(slot, BaseLook.baseTier(displays))
+	CourseBuilder.styleBase(slot, tier or BaseLook.baseTier(displays), displays)
 	for display in slot.base.displays do
 		styleDisplay(slot, display, display <= displays)
 	end

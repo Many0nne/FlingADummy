@@ -4,7 +4,9 @@
 -- Le serveur pose l'habillage final tout de suite (Server.CourseBuilder.styleBase) et garde l'ancien quelques secondes
 -- dans ReplicatedStorage : chaque client en anime un double local qui s'enfonce, cache les nouvelles pièces puis les
 -- fait tomber une à une (sans collision jusqu'à leur arrivée), poussière et chocs de briques à l'impact, sol en fondu,
--- confettis à la fin. Un client arrivé après (ou en retard) voit l'état final directement. Rien n'est répliqué.
+-- confettis à la fin. Une rangée qui s'ouvre (#212) : même animation, le terrain s'allonge vers le fond pendant le
+-- fondu du sol ; chaque présentoir acheté tombe à sa place (attribut DropAt de son dessus). Un client arrivé après (ou
+-- en retard) voit l'état final directement. Rien n'est répliqué.
 local CollectionService = game:GetService("CollectionService")
 local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -51,16 +53,39 @@ type Run = {
 	plot: BasePart?,
 	fromPlot: Color3,
 	toPlot: Color3,
+	fromDepth: number, -- profondeur du terrain avant l'agrandissement (celle d'arrivée sinon)
+	toSize: Vector3, -- terrain tel que le serveur l'a posé
+	toCFrame: CFrame,
 	dust: Part,
 	emitter: ParticleEmitter,
-	lastSound: number,
+}
+
+-- Chute d'un présentoir acheté (#212) : socle, dessus et bandeau du palier, cachés jusqu'au départ
+type Drop = {
+	base: Model,
+	display: number,
+	parts: { PartState },
+	bottom: Vector3,
+	started: number, -- os.clock() du départ de la chute (peut être à venir)
+	fall: number,
+	reduced: boolean,
+	speed: number,
+	alpha: number,
+	dust: Part,
+	emitter: ParticleEmitter,
 }
 
 local BaseFx = {}
 
 local DISPLAYED = "Displayed_" -- préfixe des mannequins posés (Server.BaseService), étiquette nom et $/s au-dessus
 
+local DISPLAY_NAME = "^Display%d+$" -- dessus d'un présentoir (Server.CourseBuilder)
+local DISPLAY_ATTRIBUTE = "Display" -- numéro du présentoir, sur son dessus, son socle et son bandeau
+
 local runs: { [Model]: Run } = {}
+local drops: { [BasePart]: Drop } = {} -- chutes en cours, par dessus de présentoir
+local dropping: { [BasePart]: boolean } = {} -- pièces d'une chute en cours : l'animation de construction n'y touche pas
+local lastSound = -math.huge -- dernier choc de briques joué (os.clock)
 local labels: { [Model]: BillboardGui } = {} -- texte flottant de chaque base
 local tags: { [BillboardGui]: boolean } = {} -- étiquettes des mannequins posés
 
@@ -145,6 +170,8 @@ local function stop(run: Run)
 	end
 	if run.plot and run.look.Parent == run.base then
 		run.plot.Color = run.toPlot
+		run.plot.Size = run.toSize
+		run.plot.CFrame = run.toCFrame
 	end
 	if run.old then
 		run.old:Destroy()
@@ -152,19 +179,19 @@ local function stop(run: Run)
 	Debris:AddItem(run.dust, 2) -- la dernière poussière retombe
 end
 
--- Cette méthode permet de faire un nuage de poussière et un choc de briques (espacés) au pied d'une pièce lorsqu'elle
--- touche le sol.
-local function impact(run: Run, piece: Piece, now: number)
-	local attachment = run.emitter.Parent :: Attachment
-	attachment.WorldPosition = piece.bottom
-	run.emitter:Emit(DUST_COUNT)
-	if now - run.lastSound < SOUND_GAP then
+-- Cette méthode permet de faire un nuage de poussière (émetteur `emitter`) et un choc de briques (espacés) au point
+-- `bottom` lorsqu'une pièce ou un présentoir touche le sol.
+local function impact(emitter: ParticleEmitter, bottom: Vector3, now: number)
+	local attachment = emitter.Parent :: Attachment
+	attachment.WorldPosition = bottom
+	emitter:Emit(DUST_COUNT)
+	if now - lastSound < SOUND_GAP then
 		return
 	end
-	run.lastSound = now
+	lastSound = now
 	-- Son porté par son propre point (pas celui de la poussière, qui se déplace), sous le terrain : il survit à l'animation
 	local source = Instance.new("Attachment")
-	source.WorldPosition = piece.bottom
+	source.WorldPosition = bottom
 	source.Parent = Workspace.Terrain
 	Debris:AddItem(source, 3)
 	local definition = Sounds.Brick
@@ -243,6 +270,20 @@ local function celebrateNow(base: Model)
 	end
 end
 
+-- Cette méthode permet de donner au terrain la profondeur de l'agrandissement en cours (`share` : 0 avant, 1 après),
+-- entrée fixe, lorsque l'animation d'une rangée qui s'ouvre avance (#212) ; rien si la profondeur ne change pas.
+local function stretch(run: Run, share: number)
+	local plot = run.plot
+	local to = run.toSize.Z
+	if not plot or math.abs(run.fromDepth - to) < 1e-3 then
+		return
+	end
+	local depth = BaseUpgrade.plotDepth(run.fromDepth, to, share)
+	plot.Size = Vector3.new(run.toSize.X, run.toSize.Y, depth)
+	-- Bord côté entrée inchangé : le terrain grandit vers le fond (-ENTRANCE)
+	plot.CFrame = run.toCFrame + CourseLayout.ENTRANCE * (to - depth) / 2
+end
+
 -- Cette méthode permet de démarrer l'animation de construction d'une base lorsque le serveur signale un changement de
 -- palier récent (attribut UpgradeAt) ; reçu trop tard : confettis seuls, l'état final est déjà là.
 local function start(base: Model)
@@ -268,11 +309,20 @@ local function start(base: Model)
 	local depth = if plot then plot.Size.Z else CourseLayout.BASE_SIZE.Z
 	local gate = center + CourseLayout.ENTRANCE * depth / 2
 	local pieces, plans = collect(look)
+	-- Bandeau d'un présentoir qui tombe : sa chute le pose, l'animation de construction le laisse
+	for _, piece in pieces do
+		for _, state in piece.parts do
+			if dropping[state.part] then
+				piece.done = true
+			end
+		end
+	end
 	local reduced = UIKit.reducedMotion()
 	local old, oldParts = cloneOld(base)
 	local dust, emitter = dustEmitter(base, center)
 	local fromPlot = base:GetAttribute(BaseUpgrade.FROM_PLOT_ATTRIBUTE)
 	local toPlot = if plot then plot.Color else Color3.new()
+	local fromDepth = base:GetAttribute(BaseUpgrade.FROM_DEPTH_ATTRIBUTE)
 	local debugSpeed = if RunService:IsStudio() then Workspace:GetAttribute("DebugUpgradeSpeed") else nil
 	local run: Run = {
 		base = base,
@@ -287,12 +337,17 @@ local function start(base: Model)
 		plot = plot,
 		fromPlot = if typeof(fromPlot) == "Color3" then fromPlot else toPlot,
 		toPlot = toPlot,
+		fromDepth = if typeof(fromDepth) == "number" then fromDepth else depth,
+		toSize = if plot then plot.Size else Vector3.zero,
+		toCFrame = if plot then plot.CFrame else CFrame.identity,
 		dust = dust,
 		emitter = emitter,
-		lastSound = -math.huge,
 	}
 	-- Nouvelles pièces cachées, sans collision ni rayons (caméra) jusqu'à leur arrivée, sol remis à l'ancienne couleur
 	for _, piece in pieces do
+		if piece.done then
+			continue
+		end
 		for _, state in piece.parts do
 			state.part.LocalTransparencyModifier = 1
 			state.part.CanCollide = false
@@ -306,6 +361,7 @@ local function start(base: Model)
 		plot.Color = run.fromPlot
 	end
 	runs[base] = run
+	stretch(run, 0)
 end
 
 -- Cette méthode permet d'avancer l'animation d'une base d'une image (anciennes pièces, chutes, sol, confettis à la fin)
@@ -344,7 +400,7 @@ local function step(run: Run, now: number)
 			else
 				pose(piece, BaseUpgrade.dropOffset(alpha), 0)
 				if piece.visible and BaseUpgrade.landed(piece.alpha, alpha) then
-					impact(run, piece, now)
+					impact(run.emitter, piece.bottom, now)
 				end
 			end
 			piece.alpha = alpha
@@ -353,6 +409,7 @@ local function step(run: Run, now: number)
 	if run.plot then
 		local share = math.clamp((t - plan.floorStart) / math.max(plan.floorEnd - plan.floorStart, 1e-3), 0, 1)
 		run.plot.Color = run.fromPlot:Lerp(run.toPlot, share)
+		stretch(run, share)
 	end
 	if t >= plan.finish then
 		stop(run)
@@ -369,6 +426,126 @@ local function step(run: Run, now: number)
 				)
 			)
 		end
+	end
+end
+
+-- Cette méthode permet de rendre un présentoir tel que le serveur l'a posé lorsque sa chute finit ou qu'une autre la
+-- remplace.
+local function land(drop: Drop)
+	for _, state in drop.parts do
+		state.part.CFrame = state.cframe
+		state.part.LocalTransparencyModifier = 0
+		dropping[state.part] = nil
+	end
+	Debris:AddItem(drop.dust, 2) -- la dernière poussière retombe
+end
+
+-- Cette méthode permet de lancer la chute du présentoir `top` (socle, dessus, bandeau du palier) lorsque le serveur
+-- l'annonce (attribut DropAt : il vient d'être acheté) ; annonce trop vieille (client arrivé après) : rien, il est
+-- déjà posé.
+local function startDrop(base: Model, top: BasePart)
+	local at = top:GetAttribute(BaseUpgrade.DROP_ATTRIBUTE)
+	local now = Workspace:GetServerTimeNow()
+	local display = top:GetAttribute(DISPLAY_ATTRIBUTE)
+	if typeof(display) ~= "number" or not BaseUpgrade.dropFresh(at, now) then
+		return
+	end
+	local previous = drops[top]
+	if previous then
+		drops[top] = nil
+		land(previous)
+	end
+	local members: { BasePart } = { top }
+	local pedestal = base:FindFirstChild("Pedestal" .. display)
+	if pedestal and pedestal:IsA("BasePart") then
+		table.insert(members, pedestal)
+	end
+	local look = base:FindFirstChild("Look")
+	local collar: BasePart? = nil
+	if look then
+		for _, child in look:GetChildren() do
+			if child:IsA("BasePart") and child:GetAttribute(DISPLAY_ATTRIBUTE) == display then
+				collar = child
+				table.insert(members, child)
+				break
+			end
+		end
+	end
+	-- Bandeau pris par une animation de construction en cours : rendu à sa place, la chute s'en charge
+	local run = runs[base]
+	if run and collar then
+		for _, piece in run.pieces do
+			for _, state in piece.parts do
+				if state.part == collar then
+					settle(piece)
+				end
+			end
+		end
+	end
+	local parts: { PartState } = {}
+	local low = math.huge
+	for _, part in members do
+		table.insert(parts, { part = part, cframe = part.CFrame, collide = part.CanCollide, query = part.CanQuery })
+		part.LocalTransparencyModifier = 1
+		dropping[part] = true
+		low = math.min(low, part.Position.Y - part.Size.Y / 2)
+	end
+	local reduced = UIKit.reducedMotion()
+	local debugSpeed = if RunService:IsStudio() then Workspace:GetAttribute("DebugUpgradeSpeed") else nil
+	local speed = if typeof(debugSpeed) == "number" and debugSpeed > 0 then debugSpeed else 1
+	local bottom = Vector3.new(top.Position.X, low, top.Position.Z)
+	local dust, emitter = dustEmitter(base, bottom)
+	drops[top] = {
+		base = base,
+		display = display,
+		parts = parts,
+		bottom = bottom,
+		started = os.clock() + ((at :: number) - now) / speed,
+		fall = if reduced then BaseUpgrade.FADE_TIME else BaseUpgrade.FALL_TIME,
+		reduced = reduced,
+		speed = speed,
+		alpha = -1,
+		dust = dust,
+		emitter = emitter,
+	}
+end
+
+-- Cette méthode permet d'avancer la chute d'un présentoir d'une image (caché avant son départ, chute et rebond, ou
+-- fondu en mouvement réduit ; poussière et choc de briques à l'impact) lorsque RenderStepped tourne.
+local function stepDrop(top: BasePart, drop: Drop, now: number)
+	local alpha = (now - drop.started) * drop.speed / drop.fall
+	if alpha >= 1 or not top.Parent then
+		drops[top] = nil
+		land(drop)
+		if RunService:IsStudio() then
+			print(string.format("[BaseFx] %s : présentoir %d posé", drop.base.Name, drop.display))
+		end
+		return
+	end
+	for _, state in drop.parts do
+		if alpha < 0 then
+			state.part.LocalTransparencyModifier = 1
+		elseif drop.reduced then
+			state.part.CFrame = state.cframe
+			state.part.LocalTransparencyModifier = 1 - alpha
+		else
+			state.part.CFrame = state.cframe + Vector3.new(0, BaseUpgrade.dropOffset(alpha), 0)
+			state.part.LocalTransparencyModifier = 0
+		end
+	end
+	if not drop.reduced and BaseUpgrade.landed(drop.alpha, alpha) then
+		impact(drop.emitter, drop.bottom, now)
+	end
+	drop.alpha = alpha
+end
+
+-- Cette méthode permet de suivre le dessus d'un présentoir (chute annoncée par le serveur) lorsqu'il apparaît dans une
+-- base.
+local function trackDisplay(base: Model, child: Instance)
+	if child:IsA("BasePart") and string.match(child.Name, DISPLAY_NAME) then
+		child:GetAttributeChangedSignal(BaseUpgrade.DROP_ATTRIBUTE):Connect(function()
+			startDrop(base, child)
+		end)
 	end
 end
 
@@ -464,8 +641,12 @@ local function track(base: Instance)
 	end)
 	for _, child in base:GetChildren() do
 		trackTag(child)
+		trackDisplay(base, child)
 	end
-	base.ChildAdded:Connect(trackTag)
+	base.ChildAdded:Connect(function(child)
+		trackTag(child)
+		trackDisplay(base, child)
+	end)
 	task.spawn(function()
 		local anchor = base:WaitForChild("BaseLabel", 10)
 		local gui = anchor and anchor:FindFirstChildOfClass("BillboardGui")
@@ -485,6 +666,10 @@ function BaseFx.init()
 		local now = os.clock()
 		for _, run in runs do
 			step(run, now)
+		end
+		-- Après les animations de construction : la chute garde la main sur ses pièces
+		for top, drop in drops do
+			stepDrop(top, drop, now)
 		end
 		arrangeLabels()
 	end)

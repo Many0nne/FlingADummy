@@ -84,6 +84,9 @@ local TREE_INSET = 2 -- arbres des coins du fond plantés à l'intérieur de la 
 -- Bas du texte flottant de la base, au-dessus de son centre : au-dessus des plus grands mannequins posés vus de la bande
 -- (#150 ; le texte grandit vers le haut, sa marge en pixels ne le fait plus descendre derrière eux)
 local LABEL_HEIGHT = 26
+local BURST_HEIGHT = 3 -- confettis d'achat au-dessus du centre de la base
+-- Sur un socle et sur son bandeau : numéro du présentoir (chute du présentoir acheté, Client.BaseFx)
+local DISPLAY_ATTRIBUTE = "Display"
 local LABEL_DISTANCE = 600 -- distance d'affichage du texte flottant (tout le hub et la zone de lancer)
 local LABEL_GREEN = Color3.fromRGB(80, 215, 70) -- revenu (vert du HUD)
 local LABEL_CYAN = Color3.fromRGB(90, 205, 255) -- Throw Power (cyan du HUD)
@@ -112,14 +115,16 @@ export type Base = {
 	plot: BasePart, -- terrain, teinté au palier
 	look: Folder, -- clôture et décor du palier visuel (Shared.BaseLook), refaits à chaque palier
 	tier: number, -- palier visuel affiché
-	big: boolean, -- agrandie vers le fond (passe Big Base, #160) : terrain et clôture pour DISPLAY_ROOM présentoirs
+	-- Présentoirs utilisables (Big Base compris) : terrain, clôture et décor à la profondeur de leurs rangées (#212)
+	capacity: number,
 	label: BaseLabel,
+	labelAnchor: BasePart, -- support du texte flottant, au-dessus du centre de la base
 	burst: BasePart, -- confettis d'achat de présentoir (CourseBuilder.celebrate)
-	-- dessus des DISPLAY_ROOM présentoirs (invite « Place » dedans), grisés tant que pas achetés ; ceux au-delà de
-	-- DISPLAY_MAX (Big Base) cachés quand la base n'est pas agrandie
+	-- dessus des DISPLAY_ROOM présentoirs (invite « Place » dedans), cachés tant que pas achetés (#212)
 	displays: { BasePart },
 	pedestals: { BasePart }, -- socles des présentoirs
-	collars: { [number]: BasePart }, -- bandeaux des socles aux hauts paliers (#198), par présentoir, dans l'habillage
+	-- Bandeaux des socles aux hauts paliers (#198), par présentoir des rangées ouvertes, dans l'habillage
+	collars: { [number]: BasePart },
 	facing: Vector3, -- direction de l'entrée (vers la bande) : les mannequins posés regardent par là
 	pad: Pad,
 }
@@ -1076,8 +1081,9 @@ local function buildPad(parent: Instance, slot: Slot): Pad
 end
 
 -- Cette méthode permet de construire le texte flottant d'une base (portrait, nom, revenu, Throw Power et renaissances ; taille en
--- studs plus une marge en pixels, lisible de loin) lorsque la base est construite ; rempli par Server.BaseService.
-local function baseLabel(parent: Instance, position: Vector3): BaseLabel
+-- studs plus une marge en pixels, lisible de loin) et son support lorsque la base est construite ; rempli par
+-- Server.BaseService.
+local function baseLabel(parent: Instance, position: Vector3): (BaseLabel, BasePart)
 	local anchor = Build.decor({
 		Name = "BaseLabel",
 		Size = Vector3.one,
@@ -1142,7 +1148,8 @@ local function baseLabel(parent: Instance, position: Vector3): BaseLabel
 		income = line("Income", 0.49, 0.2, LABEL_GREEN),
 		best = line("Best", 0.69, 0.15, LABEL_GOLD),
 		power = power,
-	}
+	},
+		anchor :: BasePart
 end
 
 -- Cette méthode permet de poser la clôture d'une base au style `fence` (ouverte côté bande, entrée de 10 studs) dans
@@ -1153,7 +1160,7 @@ local function baseFence(
 	slot: Slot,
 	fence: BaseLook.Fence
 ): ({ Vector3 }, { Vector3 }, { { Vector3 } })
-	local center, size = CourseLayout.baseBox(slot.index, slot.base.big)
+	local center, size = CourseLayout.baseBox(slot.index, slot.base.capacity)
 	local hx, hz = size.X / 2, size.Z / 2
 	local corners = {
 		center + Vector3.new(-hx, 0, -hz),
@@ -1210,11 +1217,15 @@ local function keepPrevious(base: Base, old: Folder): boolean
 	return true
 end
 
--- Cette méthode permet d'habiller une base au palier `tier` (`upgrade` : animée par les clients, Shared.BaseUpgrade)
--- lorsque son propriétaire change ou achète un présentoir ; renvoie false si la base avait déjà ce palier.
-function CourseBuilder.styleBase(slot: Slot, tier: number, upgrade: boolean?): boolean
+-- Cette méthode permet d'habiller une base au palier `tier`, à la profondeur des rangées de ses `capacity` présentoirs
+-- utilisables (#212 ; `upgrade` : animée par les clients, Shared.BaseUpgrade) lorsque son propriétaire change ou
+-- achète un présentoir ; renvoie false si rien n'a changé à l'œil (même palier, mêmes rangées).
+function CourseBuilder.styleBase(slot: Slot, tier: number, capacity: number, upgrade: boolean?): boolean
 	local base = slot.base
-	if base.tier == tier then
+	local rows = CourseLayout.baseRows(capacity)
+	local sameRows = rows == CourseLayout.baseRows(base.capacity)
+	base.capacity = capacity
+	if base.tier == tier and sameRows then
 		return false
 	end
 	local look, fence, gateLook = BaseLook.base(tier)
@@ -1223,16 +1234,26 @@ function CourseBuilder.styleBase(slot: Slot, tier: number, upgrade: boolean?): b
 	folder.Name = "Look"
 	local old = base.look
 	local oldPlot = base.plot.Color
+	local oldDepth = base.plot.Size.Z
 	base.plot.Color = look.plot or Build.shade(slot.color, 0.6)
-	local center, size = CourseLayout.baseBox(slot.index, base.big)
+	-- Terrain à la profondeur des rangées ouvertes (entrée fixe), texte flottant et confettis au-dessus de son centre
+	local center, size = CourseLayout.baseBox(slot.index, capacity)
 	local hx, hz = size.X / 2, size.Z / 2
-	-- Socles des présentoirs au palier (#198) : teinte, bandeau doré des hauts paliers (sa transparence suit le socle,
-	-- Server.BaseService) ; pas de bandeau sur les présentoirs de Big Base tant que la base n'est pas agrandie
+	base.plot.Size = Vector3.new(size.X, PLOT_TOP, size.Z)
+	base.plot.Position = center + Vector3.new(0, PLOT_TOP / 2, 0)
+	base.labelAnchor.Position = center + Vector3.new(0, LABEL_HEIGHT, 0)
+	base.burst.Position = center + Vector3.new(0, BURST_HEIGHT, 0)
+	-- Socles des présentoirs au palier (#198) : teinte, bandeau doré des hauts paliers sur ceux des rangées ouvertes (sa
+	-- transparence suit le socle, Server.BaseService : caché tant que le présentoir n'est pas acheté)
 	local collars = {}
 	for index, pedestal in base.pedestals do
 		pedestal.Color = look.pedestal or COLORS.stone
-		if look.collar and (index <= CourseLayout.DISPLAY_MAX or base.big) then
-			collars[index] = Props.collar(folder, pedestal, look.collar)
+		if look.collar and index <= rows * CourseLayout.DISPLAY_COLUMNS then
+			local collar = Props.collar(folder, pedestal, look.collar)
+			collar:SetAttribute(DISPLAY_ATTRIBUTE, index) -- tombe avec son présentoir (Client.BaseFx)
+			collar.Transparency = pedestal.Transparency
+			collar.CanQuery = pedestal.CanQuery
+			collars[index] = collar
 		end
 	end
 	-- Clôture et décor du palier d'un tenant : une pièce qui en affleure une autre ressort un peu (#93)
@@ -1327,6 +1348,7 @@ function CourseBuilder.styleBase(slot: Slot, tier: number, upgrade: boolean?): b
 		-- clients ont vu, gardé si une autre montée a eu lieu dans la même image)
 		if keepPrevious(base, old) then
 			base.model:SetAttribute(BaseUpgrade.FROM_PLOT_ATTRIBUTE, oldPlot)
+			base.model:SetAttribute(BaseUpgrade.FROM_DEPTH_ATTRIBUTE, oldDepth)
 		end
 		base.model:SetAttribute(BaseUpgrade.AT_ATTRIBUTE, Workspace:GetServerTimeNow())
 	else
@@ -1338,27 +1360,28 @@ function CourseBuilder.styleBase(slot: Slot, tier: number, upgrade: boolean?): b
 	return true
 end
 
--- Cette méthode permet d'agrandir la base d'une place vers le fond (ou de la rendre à sa taille) lorsque son
--- propriétaire a le passe Big Base (#160) ou qu'il part : terrain étiré, clôture et décor refaits au même palier.
-function CourseBuilder.setBaseBig(slot: Slot, big: boolean)
+-- Cette méthode permet d'afficher ou de cacher le présentoir `index` d'une base (socle, dessus, bandeau du palier)
+-- lorsque la base est rendue : un présentoir pas encore acheté n'existe pas à l'œil, ni collision ni rayons (#212).
+function CourseBuilder.showDisplay(slot: Slot, index: number, shown: boolean)
 	local base = slot.base
-	if base.big == big then
-		return
+	for _, part in { base.pedestals[index], base.displays[index] } do
+		part.Transparency = if shown then 0 else 1
+		part.CanCollide = shown
+		part.CanQuery = shown
+		part.CanTouch = shown
 	end
-	base.big = big
-	local center, size = CourseLayout.baseBox(slot.index, big)
-	base.plot.Size = Vector3.new(size.X, PLOT_TOP, size.Z)
-	base.plot.Position = center + Vector3.new(0, PLOT_TOP / 2, 0)
-	local tier = base.tier
-	base.tier = 0 -- habillage refait au même palier, sans animation de construction
-	CourseBuilder.styleBase(slot, tier)
+	local collar = base.collars[index]
+	if collar then
+		collar.Transparency = if shown then 0 else 1
+		collar.CanQuery = shown
+	end
 end
 
 -- Cette méthode permet de construire la base d'une place (terrain, présentoirs vides, texte flottant, confettis
--- d'achat, habillage du premier palier, pad d'amélioration de l'équipement) lorsque le hub est construit.
+-- d'achat, habillage du premier palier à la profondeur de départ, pad d'amélioration de l'équipement) lorsque le hub est
+-- construit.
 local function buildBase(parent: Instance, slot: Slot)
-	local center = CourseLayout.basePosition(slot.index)
-	local size = CourseLayout.BASE_SIZE
+	local center, size = CourseLayout.baseBox(slot.index, GameConfig.DISPLAY_START)
 	local model = Instance.new("Model")
 	model.Name = "Base" .. slot.index
 	CollectionService:AddTag(model, BaseUpgrade.BASE_TAG) -- animation de construction, taille du texte (Client.BaseFx)
@@ -1383,6 +1406,8 @@ local function buildBase(parent: Instance, slot: Slot)
 			CFrame.new(position + Vector3.new(0, 0.8, 0)),
 			COLORS.stone
 		)
+		pedestal.Name = "Pedestal" .. index
+		pedestal:SetAttribute(DISPLAY_ATTRIBUTE, index)
 		table.insert(pedestals, pedestal)
 		local top = Build.block(
 			model,
@@ -1391,6 +1416,7 @@ local function buildBase(parent: Instance, slot: Slot)
 			slot.color
 		)
 		top.Name = "Display" .. index
+		top:SetAttribute(DISPLAY_ATTRIBUTE, index)
 		-- Cible d'objectif de cette place ; l'attribut Objective (« Place » si libre) est posé par Server.BaseService
 		top:SetAttribute("Slot", slot.index)
 		CollectionService:AddTag(top, Objectives.TAG)
@@ -1412,22 +1438,27 @@ local function buildBase(parent: Instance, slot: Slot)
 		table.insert(displays, top)
 	end
 	model.Parent = parent
+	local label, labelAnchor = baseLabel(model, center + Vector3.new(0, LABEL_HEIGHT, 0))
 	slot.base = {
 		model = model,
 		plot = plot,
 		look = look,
 		tier = 0,
-		big = false,
+		capacity = 0,
 		-- Au-dessus du centre de la base, plus haut que les plus grands mannequins posés (comme les jardins de 09)
-		label = baseLabel(model, center + Vector3.new(0, LABEL_HEIGHT, 0)),
-		burst = upgradeBurst(model, center + Vector3.new(0, 3, 0), slot.color),
+		label = label,
+		labelAnchor = labelAnchor,
+		burst = upgradeBurst(model, center + Vector3.new(0, BURST_HEIGHT, 0), slot.color),
 		displays = displays,
 		pedestals = pedestals,
 		collars = {},
 		facing = CourseLayout.ENTRANCE,
 		pad = Build.settled(buildPad, parent, slot),
 	}
-	CourseBuilder.styleBase(slot, 1)
+	CourseBuilder.styleBase(slot, 1, GameConfig.DISPLAY_START)
+	for index in displays do
+		CourseBuilder.showDisplay(slot, index, index <= GameConfig.DISPLAY_START)
+	end
 	slot.gearPad = Build.settled(buildGearPad, parent, slot)
 	CourseBuilder.styleGearPad(slot, 1, nil)
 end

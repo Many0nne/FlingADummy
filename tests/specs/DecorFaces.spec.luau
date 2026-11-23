@@ -12,13 +12,11 @@ return function(T, Loader, Lib)
 	local Training = scene.loader:require("src/shared/Training")
 	local CourseBuilder = scene.CourseBuilder
 
-	-- Cette méthode permet de cacher les présentoirs Big Base d'une base qui n'est pas agrandie, comme le fait
-	-- Server.BaseService, lorsque le test contrôle les bases.
-	local function hideSpareDisplays(slot)
-		for index, top in slot.base.displays do
-			local hidden = index > CourseLayout.DISPLAY_MAX and not slot.base.big
-			top.Transparency = if hidden then 1 else 0
-			slot.base.pedestals[index].Transparency = if hidden then 1 else 0
+	-- Cette méthode permet de n'afficher que les `capacity` premiers présentoirs d'une base, comme le fait
+	-- Server.BaseService (les autres ne sont pas achetés, #212), lorsque le test contrôle les bases.
+	local function showDisplays(slot, capacity: number)
+		for index in slot.base.displays do
+			CourseBuilder.showDisplay(slot, index, index <= capacity)
 		end
 	end
 
@@ -53,32 +51,38 @@ return function(T, Loader, Lib)
 	T.describe("DecorFaces (#93)", function()
 		T.it("aucune face confondue visible dans le décor construit", function()
 			for _, slot in scene.built.slots do
-				hideSpareDisplays(slot)
+				showDisplays(slot, slot.base.capacity)
 			end
 			local count, detail = check({ scene.course })
 			T.expectEqual(count, 0, detail)
 		end)
 
-		T.it("bases et appareils d'entraînement à tous les paliers, base agrandie comprise", function()
-			local slot = scene.built.slots[1]
-			for _, big in { false, true } do
-				CourseBuilder.setBaseBig(slot, big)
-				for tier = 1, #BaseLook.BASE_TIERS do
-					CourseBuilder.styleBase(slot, tier)
-					hideSpareDisplays(slot)
-					local count, detail = check({ slot.base.model })
-					T.expectEqual(
-						count,
-						0,
-						string.format("base palier %d%s : %s", tier, if big then " agrandie" else "", detail)
-					)
+		T.it(
+			"bases et appareils d'entraînement à tous les paliers, d'une rangée à la base agrandie (#212)",
+			function()
+				local slot = scene.built.slots[1]
+				local columns = CourseLayout.DISPLAY_COLUMNS
+				-- Une rangée, une rangée et un présentoir, rangée en cours à moitié, base pleine, Big Base
+				for _, capacity in
+					{ columns, columns + 1, 2 * columns + 3, CourseLayout.DISPLAY_MAX, CourseLayout.DISPLAY_ROOM }
+				do
+					for tier = 1, #BaseLook.BASE_TIERS do
+						CourseBuilder.styleBase(slot, tier, capacity)
+						showDisplays(slot, capacity)
+						local count, detail = check({ slot.base.model })
+						T.expectEqual(
+							count,
+							0,
+							string.format("base palier %d à %d présentoirs : %s", tier, capacity, detail)
+						)
+					end
+				end
+				for tier = 1, #Training.GEARS do
+					CourseBuilder.styleStation(slot, tier)
+					local count, detail = check({ slot.trainer.model })
+					T.expectEqual(count, 0, string.format("appareil palier %d : %s", tier, detail))
 				end
 			end
-			for tier = 1, #Training.GEARS do
-				CourseBuilder.styleStation(slot, tier)
-				local count, detail = check({ slot.trainer.model })
-				T.expectEqual(count, 0, string.format("appareil palier %d : %s", tier, detail))
-			end
-		end)
+		)
 	end)
 end

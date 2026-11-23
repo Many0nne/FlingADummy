@@ -3,7 +3,9 @@
 -- caméra, puis le MCP capture l'écran. Mannequins : construits comme en jeu (Shared.DummyShape, déclinaisons de
 -- Shared.Collection avec leur aura et de Shared.ThrowDummies), en rangée devant un fond neutre au-dessus du hub, face au
 -- soleil. Base et appareil : une place libre habillée au palier voulu (Server.BaseService, Server.CourseBuilder),
--- photographiée en place. Attribut retiré : scène détruite, place rendue à son état vide.
+-- photographiée en place. Attribut retiré : scène détruite, place rendue à son état vide. PhotoDisplays (nombre, sur
+-- Workspace) impose les présentoirs achetés des prises de base, au palier de la prise : profondeur minimale ou
+-- maximale de la base à chaque palier (#212) ; sans lui, ceux du seuil du palier.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Lighting = game:GetService("Lighting")
@@ -34,6 +36,7 @@ local BASE_VIEW = { aim = Vector3.new(-8, 0, 0), from = Vector3.new(1, 1, 0), wi
 -- Cadrage de l'appareil d'entraînement : de face, un peu au-dessus (podium, râtelier et ses trois mannequins) ;
 -- tools/planches.py en garde le centre en 4:3
 local STATION_VIEW = { aim = Vector3.new(0, 4.5, 0), from = Vector3.new(1, 0.5, 0.35), width = 44 }
+local DISPLAYS_ATTRIBUTE = "PhotoDisplays" -- Workspace : présentoirs achetés imposés aux prises de base (#212)
 
 local slots: { Slot } = {}
 local scene: Folder? = nil
@@ -162,7 +165,9 @@ local function stageSlot(parent: Instance, shot: PlanchePlan.Shot): boolean
 	end
 	local center, view
 	if shot.framing == "base" then
-		BaseService.showcase(slot, BaseLook.BASE_TIERS[tier].displays)
+		local forced = Workspace:GetAttribute(DISPLAYS_ATTRIBUTE)
+		local displays = if typeof(forced) == "number" then forced else BaseLook.BASE_TIERS[tier].displays
+		BaseService.showcase(slot, displays, tier)
 		center, view = CourseLayout.basePosition(slot.index), BASE_VIEW
 	else
 		CourseBuilder.styleStation(slot, tier)

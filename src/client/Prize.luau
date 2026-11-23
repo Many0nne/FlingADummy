@@ -31,7 +31,6 @@ local PlaceRule = require(Shared:WaitForChild("PlaceRule"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local RevealPlan = require(Shared:WaitForChild("RevealPlan"))
-local Store = require(Shared:WaitForChild("Store"))
 local Tutorial = require(Shared:WaitForChild("Tutorial"))
 
 local FlightCamera = require(script.Parent.FlightCamera)
@@ -958,14 +957,15 @@ local function canPlace(): boolean
 	return player:GetAttribute("LaneState") == "Ready" and player:GetAttribute("Action") == nil and not showing
 end
 
--- Cette méthode permet de savoir si l'avatar est dans sa base ou tout près (base agrandie comprise) lorsque AUTO se
+-- Cette méthode permet de savoir si l'avatar est dans sa base ou tout près (à sa profondeur du moment) lorsque AUTO se
 -- met à jour ou qu'un retour doit expliquer pourquoi rien n'est posé.
 local function nearBase(): boolean
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local slot = player:GetAttribute("Slot")
-	local big = Store.decodePasses(player:GetAttribute("Passes")).BigBase -- base agrandie (Big Base, #160)
-	return root ~= nil and typeof(slot) == "number" and CourseLayout.isNearBase(slot, root.Position, big)
+	-- Base à la profondeur de ses présentoirs utilisables (Big Base compris, #212)
+	local displays = player:GetAttribute("Displays") :: number?
+	return root ~= nil and typeof(slot) == "number" and CourseLayout.isNearBase(slot, root.Position, displays)
 end
 
 -- Cette méthode permet de donner l'état de la pose AUTO (règle partagée Shared.PlaceRule) pour le mannequin tenu, sinon

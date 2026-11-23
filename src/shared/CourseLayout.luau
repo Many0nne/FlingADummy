@@ -18,7 +18,8 @@ CourseLayout.BASE_PITCH = 48 -- d'un centre de base au suivant : 8 studs de pass
 CourseLayout.BASE_FRONT = -62 -- clôture d'entrée des bases (z) : place pour les appareils, une allée, puis les stands
 -- Présentoirs par base (#156) : GameConfig.DISPLAY_START au départ, puis achetés au pad jusqu'à DISPLAY_MAX, en rangées
 -- de DISPLAY_COLUMNS depuis l'entrée ; DISPLAY_ROOM emplacements prévus (passe « Big Base » de #160 : + 10, deux
--- rangées de plus au fond, la base s'allongera alors dans le hub)
+-- rangées de plus au fond). La base n'a que la profondeur de ses rangées ouvertes (#212, CourseLayout.baseBox) ;
+-- BASE_SIZE est celle d'une base à DISPLAY_MAX, la place prévue dans le hub va jusqu'à DISPLAY_ROOM.
 CourseLayout.DISPLAY_MAX = GameConfig.DISPLAY_START + #GameConfig.DISPLAY_PRICES
 CourseLayout.DISPLAY_ROOM = CourseLayout.DISPLAY_MAX + 10
 CourseLayout.DISPLAY_COLUMNS = 5
@@ -144,23 +145,29 @@ function CourseLayout.basePosition(index: number): Vector3
 	return Vector3.new(x, 0, CourseLayout.BASE_FRONT - CourseLayout.BASE_SIZE.Z / 2)
 end
 
--- Cette méthode permet de donner le centre au sol et la taille de la base `index`, agrandie vers le fond (même entrée)
--- pour tenir DISPLAY_ROOM présentoirs quand `big` (passe Big Base, #160), lorsque l'on construit son terrain et sa
--- clôture ou que l'on vérifie qu'un point en est proche.
-function CourseLayout.baseBox(index: number, big: boolean?): (Vector3, Vector3)
-	local size = CourseLayout.BASE_SIZE
-	if big then
-		size = Vector3.new(size.X, size.Y, CourseLayout.baseDepthFor(CourseLayout.DISPLAY_ROOM))
-	end
+-- Cette méthode permet de donner le nombre de rangées ouvertes d'une base qui a `displays` présentoirs utilisables
+-- (Big Base compris) : au moins une, au plus celles des DISPLAY_ROOM emplacements (#212).
+function CourseLayout.baseRows(displays: number): number
+	local columns = CourseLayout.DISPLAY_COLUMNS
+	return math.clamp(math.ceil(displays / columns), 1, math.ceil(CourseLayout.DISPLAY_ROOM / columns))
+end
+
+-- Cette méthode permet de donner le centre au sol et la taille de la base `index` quand elle a `displays` présentoirs
+-- utilisables (DISPLAY_START par défaut) : profondeur de ses rangées ouvertes, entrée fixe, elle grandit vers le fond
+-- (#212), lorsque l'on construit son terrain et sa clôture ou que l'on vérifie qu'un point en est proche.
+function CourseLayout.baseBox(index: number, displays: number?): (Vector3, Vector3)
+	local rows = CourseLayout.baseRows(displays or GameConfig.DISPLAY_START)
+	local size =
+		Vector3.new(CourseLayout.BASE_SIZE.X, 0, CourseLayout.baseDepthFor(rows * CourseLayout.DISPLAY_COLUMNS))
 	local x = CourseLayout.basePosition(index).X
 	return Vector3.new(x, 0, CourseLayout.BASE_FRONT - size.Z / 2), size
 end
 
--- Cette méthode permet de savoir si un point est dans la base `index` (agrandie si `big`) ou à moins de BASE_REACH
--- studs de sa clôture avant ou arrière (au sol, hauteur ignorée ; sur les côtés, pas au-delà du milieu du passage vers
--- la base voisine) lorsque le bouton AUTO de pose s'affiche ou que le serveur le valide.
-function CourseLayout.isNearBase(index: number, position: Vector3, big: boolean?): boolean
-	local center, size = CourseLayout.baseBox(index, big)
+-- Cette méthode permet de savoir si un point est dans la base `index` (à `displays` présentoirs utilisables) ou à moins
+-- de BASE_REACH studs de sa clôture avant ou arrière (au sol, hauteur ignorée ; sur les côtés, pas au-delà du milieu du
+-- passage vers la base voisine) lorsque le bouton AUTO de pose s'affiche ou que le serveur le valide.
+function CourseLayout.isNearBase(index: number, position: Vector3, displays: number?): boolean
+	local center, size = CourseLayout.baseBox(index, displays)
 	local reach = CourseLayout.BASE_REACH
 	-- Un peu moins que le demi-passage : le milieu du passage n'est près d'aucune des deux bases
 	local side = math.min(reach, (CourseLayout.BASE_PITCH - size.X) / 2 - 0.5)
@@ -181,8 +188,8 @@ local COLUMN_ORDER = { 0, -1, 1, -2, 2 }
 
 -- Cette méthode permet de donner les emplacements des `count` premiers présentoirs d'une base (DISPLAY_MAX par défaut ;
 -- DISPLAY_ROOM pour la place prévue) lorsque l'on construit la base : rangées de DISPLAY_COLUMNS depuis l'entrée, chacune
--- remplie du milieu vers les côtés (#156, comme les emplacements de jardin de 09) ; les achetables existent dès la
--- construction (grisés tant qu'ils ne sont pas achetés).
+-- remplie du milieu vers les côtés (#156, comme les emplacements de jardin de 09) ; tous existent dès la construction,
+-- cachés tant qu'ils ne sont pas achetés (#212).
 function CourseLayout.displayPositions(index: number, count: number?): { Vector3 }
 	local center = CourseLayout.basePosition(index)
 	local positions = {}
@@ -197,7 +204,7 @@ function CourseLayout.displayPositions(index: number, count: number?): { Vector3
 end
 
 -- Cette méthode permet de donner la profondeur (Z) d'une base qui tient `count` présentoirs (de la clôture d'entrée à
--- celle du fond) lorsque l'on vérifie la place prévue dans le hub pour le passe « Big Base » (#160).
+-- celle du fond) lorsque l'on dimensionne une base (#212) ou que l'on vérifie la place prévue dans le hub (#160).
 function CourseLayout.baseDepthFor(count: number): number
 	local rows = math.ceil(count / CourseLayout.DISPLAY_COLUMNS)
 	return CourseLayout.DISPLAY_FIRST_ROW
