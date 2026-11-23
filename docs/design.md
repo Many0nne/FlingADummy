@@ -890,6 +890,11 @@ pièges servent à chaque tour.
   virtuelle à la distance restante (`Laps.relaunch`, comportement compris : la flamme du Rocket se rallume, le Glider
   replane, le Rubber rebondit au dernier tour). Plan, phase, pièges et rebonds repartent à neuf ; délai de grâce du
   lâcher (pas d'os cassé par le changement de vitesse) ; garde-fou `MAX_FLIGHT_TIME` compté par tour.
+- **Anneau propulseur** (Moon Base, au plafond) : il levait le plafond comme tout piège, et un vol en croisière
+  retombait ≈ 1,4 km plus loin (mesuré en Studio à 600 B et 1,5 T : 3,5 à 4 km au lieu du bout de piste, lancers des
+  mannequins de test et du joueur passés par l'anneau de leur colonne). Depuis #224 (`Traps.KINDS.Booster.cruise`), il
+  pousse un vol en montée ou en croisière vers l'avant (+ 70 studs/s) sans lever le plafond ni le faire sauter ; un vol
+  libre (chute, rebond) réagit comme avant.
 - **Os et objets au tour suivant** (choix) : les os restent plafonnés à 3 par membre sur tout le vol (le mannequin est
   déjà cassé : pas de bonus d'os en plus par tour) ; les objets détruits comptent une fois par passage (pièce réclamée
   par le vol, puis réapparue 5 s après le dernier choc : un tour dure ≥ 6 s). Pièges : un déclenchement par piège et

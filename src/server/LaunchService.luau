@@ -411,14 +411,21 @@ end
 local function triggerTrap(flight: Flight, box: TrackPlan.TrapBox, position: Vector3, now: number)
 	flight.traps[box.site] = true
 	flight.lastTrap = { kind = box.kind, at = os.clock() }
-	-- Le piège rend le vol libre : son rebond peut passer le plafond (#113)
-	flight.trapped = true
-	if flight.phase == "Rise" or flight.phase == "Cruise" then
-		flight.phase = "Free"
-	end
 	local def = Traps.KINDS[box.kind]
 	local before = flight.torso.AssemblyLinearVelocity
 	local after = Traps.react(box.kind, before, Traps.push(box.kind, now, Traps.phaseOffset(box.x, box.z)))
+	-- Anneau propulseur au plafond (#224) : il pousse un vol en croisière sans le faire retomber (il levait le plafond,
+	-- et un vol plafonné retombait ≈ 1,4 km plus loin : les lancers puissants n'atteignaient plus le bout de piste)
+	local cruising = def.cruise == true and (flight.phase == "Rise" or flight.phase == "Cruise")
+	if cruising then
+		after = Vector3.new(after.X, before.Y, after.Z)
+	else
+		-- Le piège rend le vol libre : son rebond peut passer le plafond (#113)
+		flight.trapped = true
+		if flight.phase == "Rise" or flight.phase == "Cruise" then
+			flight.phase = "Free"
+		end
+	end
 	-- Rotation du corps entier autour du torse (chaque membre suit), pas de chaque membre sur lui-même
 	local spin = Vector3.new(0, def.spin, 0)
 	local center = flight.torso.Position
