@@ -140,7 +140,7 @@ export type BaseTier = {
 BaseLook.BASE_TIERS = {
 	{
 		name = "Wood",
-		displays = 8,
+		displays = GameConfig.DISPLAY_START,
 		fence = "wood",
 		plot = rgb(175, 115, 65),
 		gate = "wood",
