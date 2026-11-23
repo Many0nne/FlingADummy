@@ -60,16 +60,19 @@ RevealPlan.TIERS = {
 
 -- Étapes de la séquence du secret, après le roulement (s) ; resserrées par #204 (12,6 → 8,6 s)
 RevealPlan.CINEMATIC = {
-	{ name = "Blackout", duration = 2.8 }, -- écran noir et phrase lettre à lettre
+	{ name = "Blackout", duration = 3 }, -- écran noir et phrase lettre à lettre
 	{ name = "Stage", duration = 1.8 }, -- décor dédié (tapis rouge, colonnes, lumière dorée), caméra le long du tapis
 	{ name = "Portal", duration = 1.3 }, -- portail qui s'ouvre au bout du tapis
 	{ name = "Coins", duration = 0.9 }, -- le mannequin sort du portail, pluie de pièces
-	{ name = "Banner", duration = 1.8 }, -- « SECRET!! » géant et cote complète
+	{ name = "Banner", duration = 1.6 }, -- « SECRET!! » géant et cote complète
 } :: { Step }
 
 RevealPlan.TEASE_FIRST = 0.45 -- silhouette seule avant le premier palier (s)
 RevealPlan.ANNOUNCE_MIN = 5 -- rareté à partir de laquelle le serveur annonce le tirage à tous (Legendary)
-RevealPlan.TYPE_RATE = 25 -- lettres par seconde de la phrase du secret
+RevealPlan.TYPE_RATE = 28 -- lettres par seconde de la phrase du secret
+-- Part de l'écran noir sans frappe (s) : 0,35 de fondu au noir avant la première lettre, 0,65 de fondu de sortie
+RevealPlan.BLACKOUT_FRAME = 1
+RevealPlan.READ_TIME = 0.8 -- phrase entière lisible au moins ce temps avant le fondu de sortie (s)
 RevealPlan.RESULT_MARGIN = 5 -- s ajoutées à la durée maximale du tirage : CHANCE finale à l'arrêt, latence
 local MAX_CLIMBS = 4 -- au plus 3 candidats puis le gagné (Collection.teaseSteps)
 local MAX_CLIMB_TIME = 1.5 -- plafond d'une montée, palier du candidat compris (s)
@@ -79,7 +82,7 @@ local SETTLE = 0.3 -- part finale du roulement où la silhouette reste sur le ga
 
 -- Phrase de l'écran noir, propre à chaque secret (« THE KINGDOM HAS FOUND ITS KING… » de la référence)
 RevealPlan.SECRET_LINES = {
-	king = "THE CRASH KINGDOM HAS FOUND ITS KING...",
+	king = "THE CRASH KINGDOM HAS ITS KING...",
 	void = "SOMETHING STIRS IN THE VOID...",
 	cosmic = "THE STARS HAVE ALIGNED...",
 } :: { [string]: string }

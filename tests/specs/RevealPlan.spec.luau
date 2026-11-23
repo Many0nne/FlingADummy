@@ -69,6 +69,19 @@ return function(T, Loader)
 					local sequence = Collection.teaseSequence({ id = dummy.id, size = size })
 					local pace = RevealPlan.pace(sequence)
 					T.expectEqual(#pace, #sequence)
+					-- Chaque palier au rythme de son candidat : montée et arrêt de la rareté du palier visé
+					local shown = 1
+					for index, step in sequence do
+						local label = string.format("%s taille %d, palier %d", dummy.id, size, index)
+						T.expectNear(
+							pace[index].climb,
+							RevealPlan.climbTime(step.rarity, shown, step.odds),
+							1e-9,
+							label
+						)
+						T.expectNear(pace[index].pause, RevealPlan.pauseOf(step.rarity), 1e-9, label)
+						shown = step.odds
+					end
 					-- Même suite de cotes, gagné remplacé par un Common puis par un Infinity
 					for _, rarity in { 1, #Rarity.LIST } do
 						local rigged = table.clone(sequence)
@@ -101,12 +114,16 @@ return function(T, Loader)
 		T.it("Client.Prize joue le rythme de RevealPlan.pace, pas celui du gagné", function()
 			local fs = require("@lune/fs")
 			local source = fs.readFile("src/client/Prize.luau")
-			T.expect(
-				string.find(source, "RevealPlan.pace(a.sequence)", 1, true) ~= nil,
-				"rythme lu dans RevealPlan.pace"
-			)
-			for _, pattern in { "plan.pause", "plan.climbFactor", "climbTime(" } do
-				T.expect(not string.find(source, pattern, 1, true), pattern .. " : rythme de montée lu hors de pace")
+			-- Montées et arrêts de playTease, jusqu'au roulement : rien n'y lit le gagné
+			local start = string.find(source, "local function playTease", 1, true)
+			local stop = start and string.find(source, "-- Roulement", start, true)
+			T.expect(start ~= nil and stop ~= nil, "playTease et son roulement trouvés")
+			local climbs = string.sub(source, start or 1, stop or 0)
+			T.expect(string.find(climbs, "RevealPlan.pace(a.sequence)", 1, true) ~= nil, "rythme lu dans pace")
+			T.expect(string.find(climbs, "pace[index].climb", 1, true) ~= nil, "montée de pace")
+			T.expect(string.find(climbs, "pace[index].pause", 1, true) ~= nil, "arrêt de pace")
+			for _, pattern in { "a.prize", "a.plan", "a.entry" } do
+				T.expect(not string.find(climbs, pattern, 1, true), pattern .. " : gagné lu pendant les montées")
 			end
 		end)
 		T.it("le suspense s'allonge avec la rareté", function()
@@ -321,7 +338,7 @@ return function(T, Loader)
 
 	T.describe("RevealPlan.secretLine et typed", function()
 		T.it("une phrase propre à chaque secret, à sa rareté au-delà de Secret ou à sa famille (#94)", function()
-			T.expectEqual(RevealPlan.secretLine("king"), "THE CRASH KINGDOM HAS FOUND ITS KING...")
+			T.expectEqual(RevealPlan.secretLine("king"), "THE CRASH KINGDOM HAS ITS KING...")
 			for _, dummy in Collection.DUMMIES do
 				if dummy.rarity == 7 and table.find(Collection.DRAWN, dummy) then
 					T.expect(RevealPlan.SECRET_LINES[dummy.id] ~= nil, dummy.id .. " a sa phrase")
@@ -336,12 +353,6 @@ return function(T, Loader)
 			T.expectEqual(RevealPlan.secretLine("golden_void"), RevealPlan.SECRET_LINES.void)
 			T.expectEqual(RevealPlan.secretLine("radiant_king"), RevealPlan.RARITY_LINES[8])
 			T.expectEqual(RevealPlan.secretLine("inconnu"), RevealPlan.SECRET_LINE_DEFAULT)
-			for _, line in RevealPlan.RARITY_LINES do
-				T.expect(
-					#line / RevealPlan.TYPE_RATE < RevealPlan.CINEMATIC[1].duration - 0.8,
-					line .. " : lue au moins 0,8 s"
-				)
-			end
 		end)
 		T.it("écrit la phrase lettre à lettre, en entier à la fin", function()
 			local text = "THE KING"
@@ -352,11 +363,24 @@ return function(T, Loader)
 		T.it("ne coupe pas un caractère UTF-8", function()
 			T.expectEqual(RevealPlan.typed("é…a", 2 / RevealPlan.TYPE_RATE), "é…")
 		end)
-		T.it("la phrase tient dans l'écran noir", function()
+		T.it("chaque phrase reste entière à l'écran au moins READ_TIME avant le fondu (#204)", function()
 			local blackout = RevealPlan.CINEMATIC[1]
 			T.expectEqual(blackout.name, "Blackout")
+			-- Client.RevealFx.blackout : frappe pendant `duration - BLACKOUT_FRAME`, puis fondu de sortie
+			local window = blackout.duration - RevealPlan.BLACKOUT_FRAME
+			local lines = { RevealPlan.SECRET_LINE_DEFAULT }
 			for _, line in RevealPlan.SECRET_LINES do
-				T.expect(#line / RevealPlan.TYPE_RATE < blackout.duration - 0.8, line .. " : lue au moins 0,8 s")
+				table.insert(lines, line)
+			end
+			for _, line in RevealPlan.RARITY_LINES do
+				table.insert(lines, line)
+			end
+			for _, line in lines do
+				local typing = (utf8.len(line) or #line) / RevealPlan.TYPE_RATE
+				T.expect(
+					window - typing >= RevealPlan.READ_TIME - 1e-9,
+					string.format("%s : entière %.2f s", line, window - typing)
+				)
 			end
 		end)
 	end)

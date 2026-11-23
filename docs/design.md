@@ -77,8 +77,8 @@ base, il rapporte des $/s, seule source d'argent.
    roulement (1,8 s), confettis de la couleur de la rareté ; Legendary / Mythic, ciel qui s'assombrit, rayons et colonne
    de lumière quand la cote affichée atteint Legendary (#201 : le suspense suit le palier affiché, jamais le gagné),
    roulement de 2 s une fois la cote finale affichée, explosion et forte secousse ; Secret, en plus, la séquence de 09 : écran noir et phrase propre au mannequin écrite lettre à lettre, décor dédié (tapis rouge, colonnes
-   dorées, construit au-dessus de la piste), portail, pluie de pièces, « SECRET!! » et cote complète. Séquence du secret resserrée par #204 : roulement de 1,5 s puis 8,6 s (noir 2,8 s, décor 1,8 s, portail
-   1,3 s, pièces 0,9 s, bandeau 1,8 s). Paliers atteints (mesure, taille normale) : Epic « ice » et Legendary
+   dorées, construit au-dessus de la piste), portail, pluie de pièces, « SECRET!! » et cote complète. Séquence du secret resserrée par #204 : roulement de 1,5 s puis 8,6 s (noir 3 s, décor 1,8 s, portail
+   1,3 s, pièces 0,9 s, bandeau 1,6 s ; phrase écrite à 28 lettres/s, entière 0,8 s au moins). Paliers atteints (mesure, taille normale) : Epic « ice » et Legendary
    « gold » à 8 (1,38 s), 62 (2,79 s), 502 (4,27 s), puis gold à 4002 (5,79 s) ; révélation de gold à 8,3 s. **Non passable** (#197) : seuls THROW
    AGAIN et GO BACK rendent la main ; GO BACK apparaît après 2,8 à 5,9 s (Common), 6,2 à 8,7 s (Rare, Epic), 8,3 à
    9,9 s (Legendary, Mythic), 17,2 à 18,8 s (Secret et au-delà), test « durée du tirage par rareté ».
