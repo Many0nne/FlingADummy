@@ -912,6 +912,21 @@ pièges servent à chaque tour.
   à la sortie (choc `Portal` de `Impact`, à l'heure du mannequin affiché).
 - **Durée du vol** : estimée sur sol plat (`Laps.duration`, test Lune) à 2 tours de plus : 19,1 s (Crash), 19,9 s
   (Rubber), 20,5 s (Glider), 16,7 s (Rocket), ≤ 25 s visés.
+- **Mesures en Studio** (joueur neuf, `DebugLaunchBots` avec `DebugBotsPower` et `DebugBotsDummy`, jauge pleine, 3 vols
+  par ligne ; tours prévus d'après `planned_total`) :
+  | Mannequin, puissance | Prévu | Obtenu | Tours | Durée du vol | CHANCE (os et objets compris) |
+  |---|---|---|---|---|---|
+  | Crash, 600 B | 8 201 m | 8 276 à 8 429 m | 2 | 12,4 à 12,8 s | 123 à 127 |
+  | Crash, 1,5 T | 12 617 m | 12 637 à 12 644 m | 3 | 14,7 à 15,3 s | 160 à 170 |
+  | Crash, 4,7 T | 17 951 m | 18 051 m | 4 (glissade dans le portail en fin de 3e tour, 4e de 51 m) | 17,4 à 17,7 s | 330 à 352 |
+  | Glider, 50 B | 9 384 m | 10 827 à 11 335 m (portique laser au 2e tour : plafond levé, vol plané) | 2 | 15,3 à 16,4 s | 409 à 486 |
+  | Glider, 100 B | 13 015 m | 12 999 à 13 014 m | 3 | 17,1 à 17,7 s | 524 à 602 |
+  | Glider, 260 B | 17 886 m | 18 051 m | 4 (idem, trou de ver à 5 848 m) | 18,8 à 19,0 s | 596 à 801 |
+  Portail passé à 7 s du lâcher (tour 1), puis toutes les 4 à 6 s. Lancer du joueur (`DebugLaunch`, Crash, 1,5 T) :
+  12 706 m pour 12 450 prévus, 3 tours, 15,8 s, CHANCE 178 ; « LAP 2 » puis « LAP 3 » montrés par le client, caméra
+  coupée sur la sortie, record (`BestDistance`) et classement à 12 706 m (« 12.7 km »). Captures :
+  `docs/captures/portail-224/` (avant : arche à damier de #97 ; après : portail d'arrivée, portail de sortie, arrêt au
+  3e tour).
 - **Mannequins à lancer** : le surplus suit leur portée réelle. Leur part de portée (+ 15 à + 20 %) vaut ≈ 2 tours
   au-delà du bout : le Glider atteint le bout vers 26 B de puissance, le Crash Dummy vers 375 B (× 14). Conséquence
   simulée (calibrage d'avant #223, sans renaissance avant 10 h) : un mannequin sans comportement acheté après le Nebula
