@@ -102,6 +102,13 @@ return function(T, Loader)
 				T.expect(gate.height > BaseLook.postTop(fence), "pilier plus haut que le poteau au palier " .. tier)
 			end
 		end)
+		T.it("garde le linteau de l'entrée haut et fin : le mannequin du présentoir 1 reste visible (#208)", function()
+			T.expect(BaseLook.LINTEL_HEIGHT <= 1, "linteau fin")
+			for tier = 1, #BaseLook.BASE_TIERS do
+				local _, _, gate = BaseLook.base(tier)
+				T.expect(gate.height >= 10, "dessous du linteau à 10 studs au moins au palier " .. tier)
+			end
+		end)
 		T.it("pose les lanternes des poteaux symétriques, jamais aux bouts d'un tronçon", function()
 			T.expectEqual(#BaseLook.lanternPosts(8, nil), 0)
 			T.expectEqual(table.concat(BaseLook.lanternPosts(8, 2), ","), "2,4,6")
