@@ -44,7 +44,13 @@ return function(T, Loader)
 				tostring(look.lanterns),
 				tostring(look.flowers),
 				tostring(look.flags),
-				tostring(look.arch),
+				look.gate,
+				tostring(look.stars),
+				tostring(look.postLanterns),
+				tostring(look.bushes),
+				tostring(look.corners),
+				tostring(look.pedestal),
+				tostring(look.collar),
 				tostring(fence.shine),
 				tostring(fence.post),
 				tostring(fence.rail),
@@ -62,8 +68,55 @@ return function(T, Loader)
 			for tier = 2, #BaseLook.BASE_TIERS do
 				local now, before = BaseLook.base(tier), BaseLook.base(tier - 1)
 				T.expect(now.lanterns >= before.lanterns, "lanternes au palier " .. tier)
-				for _, key in { "flowers", "flags", "arch" } do
+				for _, key in { "flowers", "bushes", "flags", "collar" } do
 					T.expect(now[key] or not before[key], key .. " retiré au palier " .. tier)
+				end
+			end
+		end)
+		T.it("enrichit l'entourage à chaque palier : étoiles, entrée, coins, lanternes (#198)", function()
+			local cornerRank = { tree = 1, tower = 2 }
+			for tier = 1, #BaseLook.BASE_TIERS do
+				local look, _, gate = BaseLook.base(tier)
+				T.expectEqual(look.stars, tier, "une étoile par rang sur l'entrée")
+				T.expect(gate ~= nil, "entrée connue au palier " .. tier)
+				T.expect(look.corners == nil or cornerRank[look.corners] ~= nil, "coin connu au palier " .. tier)
+				if tier > 1 then
+					local before, _, gateBefore = BaseLook.base(tier - 1)
+					T.expect(gate.height >= gateBefore.height, "entrée plus basse au palier " .. tier)
+					local rank = cornerRank[look.corners or ""] or 0
+					T.expect(rank >= (cornerRank[before.corners or ""] or 0), "coins appauvris au palier " .. tier)
+					-- Une lanterne tous les N poteaux : N ne grandit pas (nil = aucune)
+					local every, everyBefore = look.postLanterns or math.huge, before.postLanterns or math.huge
+					T.expect(every <= everyBefore, "moins de lanternes sur les poteaux au palier " .. tier)
+				end
+			end
+			local last = BaseLook.base(#BaseLook.BASE_TIERS)
+			T.expectEqual(last.corners, "tower", "élément en hauteur au dernier palier")
+			T.expect(last.postLanterns ~= nil and last.collar ~= nil, "lanternes et socles ornés au dernier palier")
+		end)
+		T.it("cache le poteau de l'entrée dans le pilier, sous le linteau (#198)", function()
+			for tier = 1, #BaseLook.BASE_TIERS do
+				local _, fence, gate = BaseLook.base(tier)
+				local post = fence.width + (if fence.cap then 2 * BaseLook.CAP_OVERHANG else 0)
+				T.expect(gate.width > post, "pilier plus large que le poteau au palier " .. tier)
+				T.expect(gate.height > BaseLook.postTop(fence), "pilier plus haut que le poteau au palier " .. tier)
+			end
+		end)
+		T.it("pose les lanternes des poteaux symétriques, jamais aux bouts d'un tronçon", function()
+			T.expectEqual(#BaseLook.lanternPosts(8, nil), 0)
+			T.expectEqual(table.concat(BaseLook.lanternPosts(8, 2), ","), "2,4,6")
+			T.expectEqual(table.concat(BaseLook.lanternPosts(7, 2), ","), "2,5")
+			T.expectEqual(table.concat(BaseLook.lanternPosts(8, 4), ","), "4")
+			T.expectEqual(table.concat(BaseLook.lanternPosts(3, 2), ","), "")
+			for count = 1, 12 do
+				for every = 1, 4 do
+					for _, rank in BaseLook.lanternPosts(count, every) do
+						T.expect(rank > 0 and rank < count, "bout de tronçon : " .. count .. "/" .. every)
+						T.expect(
+							table.find(BaseLook.lanternPosts(count, every), count - rank) ~= nil,
+							"asymétrique : " .. count .. "/" .. every
+						)
+					end
 				end
 			end
 		end)

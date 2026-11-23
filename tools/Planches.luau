@@ -99,12 +99,12 @@ function Planches.build(loader: any): ({ [string]: any }, { [string]: number })
 				look = fingerprint(ThrowDummies.variant(item.key)),
 			}
 		elseif item.kind == "base" then
-			local tier, fence = BaseLook.base(item.key)
+			local tier, fence, gate = BaseLook.base(item.key)
 			return {
 				key = item.key,
 				title = string.format("%d. %s", item.key, tier.name),
 				lines = { string.format("%d présentoirs", tier.displays) },
-				look = fingerprint({ tier = tier, fence = fence }),
+				look = fingerprint({ tier = tier, fence = fence, gate = gate }),
 			}
 		end
 		local gear = Training.GEARS[item.key]

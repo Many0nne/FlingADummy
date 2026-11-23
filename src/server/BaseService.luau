@@ -135,6 +135,10 @@ local function styleDisplay(slot: Slot, display: number, unlocked: boolean)
 	pedestal.Transparency = if hidden then 1 elseif open then 0 else LOCKED_TRANSPARENCY
 	pedestal.CanCollide = not hidden
 	top.CanCollide = not hidden
+	local collar = slot.base.collars[display]
+	if collar then
+		collar.Transparency = pedestal.Transparency
+	end
 	top:SetAttribute("Locked", if open then nil else true)
 end
 

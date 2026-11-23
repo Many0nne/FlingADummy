@@ -722,14 +722,25 @@ function Props.build(kind: string, parent: Instance, at: CFrame, rng: Random, so
 end
 
 -- Cette méthode permet de poser une barrière en blocs au style `style` (bois par défaut) de `from` à `to` lorsque l'on
--- clôture une base ; `skipStart` : pas de poteau en `from` (coin déjà posé par le tronçon voisin).
-function Props.fence(parent: Instance, from: Vector3, to: Vector3, style: BaseLook.Fence?, skipStart: boolean?)
+-- clôture une base ; `skipStart` : pas de poteau en `from` (coin déjà posé par le tronçon voisin). Renvoie le pied
+-- de chaque poteau du tronçon, de `from` à `to` (`from` compris même sans son poteau).
+function Props.fence(
+	parent: Instance,
+	from: Vector3,
+	to: Vector3,
+	style: BaseLook.Fence?,
+	skipStart: boolean?
+): { Vector3 }
 	local look = style or BaseLook.FENCES.wood
 	local delta = to - from
 	local length = delta.Magnitude
 	local count = math.max(1, math.floor(length / 6 + 0.5))
 	local frame = CFrame.lookAt(from, to)
 	local h, w = look.height, look.width
+	local feet = {}
+	for i = 0, count do
+		table.insert(feet, from + delta * (i / count))
+	end
 	for i = if skipStart then 1 else 0, count do
 		local at = frame * CFrame.new(0, 0, -length * i / count)
 		local post = lookPiece(parent, "Post", 0)
@@ -747,9 +758,11 @@ function Props.fence(parent: Instance, from: Vector3, to: Vector3, style: BaseLo
 		local size = Vector3.new(w * BaseLook.RAIL_RATIO, 0.9, length - w)
 		Build.block(lookPiece(parent, "Rail", 1), size, frame * CFrame.new(0, y, -length / 2), look.rail)
 	end
+	return feet
 end
 
--- Décor des paliers de base (#61, Shared.BaseLook) : lanternes, massifs de fleurs, drapeaux, arche d'entrée
+-- Décor des paliers de base (#61, #198, Shared.BaseLook) : lanternes, massifs de fleurs, drapeaux, entrée à étoiles,
+-- tours et arbres des coins du fond, buissons, bandeaux des socles
 local LANTERN_FRAME = rgb(60, 45, 35)
 local LANTERN_LIGHT = rgb(255, 210, 90)
 local FLOWER_COLORS =
@@ -758,7 +771,7 @@ local SOIL = rgb(120, 75, 40)
 local GOLD = rgb(255, 200, 40)
 
 -- Cette méthode permet de poser une lanterne (socle et toit sombres, lumière néon chaude) dont le pied est en `top`
--- lorsque l'on habille le haut d'un poteau de clôture ou d'une arche.
+-- lorsque l'on habille le haut d'un poteau de clôture ou du linteau de l'entrée.
 function Props.lantern(parent: Instance, top: Vector3)
 	parent = lookPiece(parent, "Lantern", 2)
 	Build.block(parent, Vector3.new(1.1, 0.3, 1.1), CFrame.new(top + Vector3.new(0, 0.15, 0)), LANTERN_FRAME, false)
@@ -805,46 +818,179 @@ function Props.flowerBed(parent: Instance, from: Vector3, to: Vector3)
 end
 
 -- Cette méthode permet de planter un drapeau (mât, fanion à la couleur `color` tourné vers `side`, boule dorée) au sol
--- en `at` lorsque l'on habille les coins d'une base.
-function Props.flag(parent: Instance, at: Vector3, side: Vector3, color: Color3)
-	parent = lookPiece(parent, "Flag", 0)
-	local height = 11
-	Build.block(parent, Vector3.new(0.5, height, 0.5), CFrame.new(at + Vector3.new(0, height / 2, 0)), WHITE, false)
-	Build.block(parent, Vector3.new(0.9, 0.9, 0.9), CFrame.new(at + Vector3.new(0, height + 0.45, 0)), GOLD, false)
+-- en `at` lorsque l'on habille les coins d'une base ; `height` : hauteur du mât (11 par défaut, plus court au sommet
+-- d'une tour) ; `stage` : étage de l'animation de construction (0 au sol, 2 au sommet d'une tour : il arrive après
+-- elle).
+function Props.flag(parent: Instance, at: Vector3, side: Vector3, color: Color3, height: number?, stage: number?)
+	parent = lookPiece(parent, "Flag", stage or 0)
+	local mast = height or 11
+	Build.block(parent, Vector3.new(0.5, mast, 0.5), CFrame.new(at + Vector3.new(0, mast / 2, 0)), WHITE, false)
+	Build.block(parent, Vector3.new(0.9, 0.9, 0.9), CFrame.new(at + Vector3.new(0, mast + 0.45, 0)), GOLD, false)
 	local frame = CFrame.lookAt(at, at + side)
 	-- Fanion décollé du mât (0,1 stud) : pas de faces confondues
-	put(parent, frame, Vector3.new(0.2, 2.6, 3.6), Vector3.new(0, height - 1.6, -2.15), color, false)
+	put(parent, frame, Vector3.new(0.2, 2.6, 3.6), Vector3.new(0, mast - 1.6, -2.15), color, false)
 end
 
--- Cette méthode permet de bâtir une arche d'entrée (piliers `color`, linteau doré) entre deux points au sol lorsque
--- l'on habille le dernier palier d'une base ; renvoie le dessus du linteau au-dessus de chaque pilier.
-function Props.arch(parent: Instance, a: Vector3, b: Vector3, color: Color3): (Vector3, Vector3)
-	local height = 10
+local UP = Vector3.yAxis
+
+-- Cette méthode permet de suspendre une bannière (`width` × `length`, couleur `color`, barre `trim` en haut, pointe en
+-- losange en bas) contre la face d'un pilier ou d'une tour dont `face` est le pied, tournée vers `out`, haut à `top`
+-- studs du sol, lorsque l'on habille l'entrée ou les tours d'une base des hauts paliers.
+local function banner(
+	parent: Instance,
+	face: Vector3,
+	out: Vector3,
+	top: number,
+	length: number,
+	width: number,
+	color: Color3,
+	trim: Color3
+)
+	local frame = CFrame.lookAt(face, face + out)
+	-- Décollée de la face (0,05 stud), pointe plus fine que le panneau : pas de faces confondues
+	Build.block(parent, Vector3.new(width, length, 0.2), frame * CFrame.new(0, top - length / 2, -0.15), color, false)
+	Build.block(parent, Vector3.new(width + 0.4, 0.4, 0.3), frame * CFrame.new(0, top + 0.2, -0.2), trim, false)
+	local tip = width * 0.5
+	Build.block(
+		parent,
+		Vector3.new(tip, tip, 0.14),
+		frame * CFrame.new(0, top - length, -0.15) * CFrame.Angles(0, 0, math.rad(45)),
+		color,
+		false
+	)
+end
+
+-- Cette méthode permet de bâtir l'entrée d'une base au style `gate` entre deux points au sol (piliers, chapeaux,
+-- linteau, `stars` étoiles lumineuses dessus, bannières `color` tournées vers `out`) lorsque l'on habille une base ;
+-- renvoie le dessus du linteau au-dessus de chaque pilier (pied des lanternes de l'entrée).
+function Props.gate(
+	parent: Instance,
+	a: Vector3,
+	b: Vector3,
+	gate: BaseLook.Gate,
+	stars: number,
+	color: Color3,
+	out: Vector3
+): (Vector3, Vector3)
+	local height, w = gate.height, gate.width
 	local frame = CFrame.lookAt(a, b)
 	local span = (b - a).Magnitude
-	for _, z in { 0, -span } do
-		put(
-			lookPiece(parent, "Pillar", 0),
-			frame,
-			Vector3.new(2.6, height, 2.6),
-			Vector3.new(0, height / 2, z),
-			color,
-			true
-		)
+	for _, foot in { a, b } do
+		local pillar = lookPiece(parent, "Pillar", 0)
+		local at = CFrame.new(foot) * frame.Rotation
+		Build.block(pillar, Vector3.new(w, height, w), at * CFrame.new(0, height / 2, 0), gate.pillar)
+		if gate.cap then
+			-- Chapeau débordant, son dessus 0,1 stud au-dessus du pilier (sous le linteau, pas de faces coplanaires)
+			local side = w + 2 * BaseLook.CAP_OVERHANG
+			Build.block(pillar, Vector3.new(side, 0.8, side), at * CFrame.new(0, height - 0.3, 0), gate.cap)
+		end
+		if gate.banners then
+			local trim = gate.cap or gate.lintel
+			banner(pillar, foot + out * (w / 2), out, height - 1.4, height * 0.45, w - 0.8, color, trim)
+		end
 	end
+	-- Linteau en retrait des faces des piliers (0,2 stud), débordant au-delà de chacun
+	local thick = BaseLook.LINTEL_HEIGHT
 	local lintel = lookPiece(parent, "Lintel", 1)
-	put(lintel, frame, Vector3.new(2.2, 1.6, span + 3), Vector3.new(0, height + 0.8, -span / 2), GOLD, true)
 	put(
 		lintel,
 		frame,
-		Vector3.new(1.6, 1.6, 1.6),
-		Vector3.new(0, height + 2.6, -span / 2),
-		GOLD,
-		false,
-		Vector3.new(0, 0, 45)
+		Vector3.new(w - 0.4, thick, span + w + 0.6),
+		Vector3.new(0, height + thick / 2, -span / 2),
+		gate.lintel,
+		true
 	)
-	local lift = Vector3.new(0, height + 1.6, 0)
+	-- Étoiles du palier, en losanges tournés vers l'entrée, centrées sur le linteau
+	local lights = lookPiece(parent, "Stars", 2)
+	for k = 1, stars do
+		local z = -span / 2 + (k - (stars + 1) / 2) * BaseLook.STAR_SPACING
+		local star = put(
+			lights,
+			frame,
+			Vector3.new(0.6, 1, 1),
+			Vector3.new(0, height + thick + 0.5, z),
+			gate.star,
+			false,
+			Vector3.new(45, 0, 0)
+		)
+		star.Material = Enum.Material.Neon
+		star.MaterialVariant = ""
+		star.CastShadow = false
+	end
+	local lift = UP * (height + thick)
 	return a + lift, b + lift
+end
+
+-- Cette méthode permet de bâtir une tour d'angle (fût à la matière de la clôture `fence`, anneau, couronne à
+-- créneaux, bannière `color` sur la face tournée vers `face`, drapeau au sommet) au pied `at` lorsque l'on habille le
+-- fond d'une base des hauts paliers (élément vu de loin).
+function Props.tower(parent: Instance, at: Vector3, fence: BaseLook.Fence, face: Vector3, color: Color3)
+	local height = fence.height * BaseLook.TOWER_RATIO
+	local side = 3.2
+	local trim = fence.cap or fence.rail
+	Build.block(
+		lookPiece(parent, "Tower", 0),
+		Vector3.new(side, height, side),
+		CFrame.new(at + UP * height / 2),
+		fence.post
+	)
+	local crown = lookPiece(parent, "Crown", 1)
+	-- Anneau et couronne débordants, créneaux aux coins (0,05 stud au-delà de la couronne)
+	Build.block(crown, Vector3.new(side + 0.4, 0.8, side + 0.4), CFrame.new(at + UP * height * 0.5), fence.rail)
+	Build.block(crown, Vector3.new(side + 0.8, 1.2, side + 0.8), CFrame.new(at + UP * (height + 0.5)), trim)
+	local reach = (side + 0.8) / 2 + 0.05 - 0.45
+	for _, sx in { -1, 1 } do
+		for _, sz in { -1, 1 } do
+			Build.block(
+				crown,
+				Vector3.new(0.9, 0.9, 0.9),
+				CFrame.new(at + Vector3.new(sx * reach, height + 1.55, sz * reach)),
+				trim
+			)
+		end
+	end
+	local drape = lookPiece(parent, "Banner", 2)
+	-- Bannière arrêtée au-dessus de l'anneau (pointe comprise) : pas de faces presque confondues
+	banner(drape, at + face * (side / 2), face, height - 0.6, height * 0.32, side - 0.8, color, trim)
+	Props.flag(parent, at + UP * (height + 1.1), face, color, 6, 2)
+end
+
+-- Cette méthode permet de planter un arbre voxel (tronc haut, houppier en cubes de deux verts) au pied `at`, ses
+-- cubes de côté vers `outward`, lorsque l'on habille un coin du fond d'une base (élément vu de loin).
+function Props.cornerTree(parent: Instance, at: Vector3, outward: Vector3)
+	Build.block(lookPiece(parent, "Trunk", 0), Vector3.new(2, 9, 2), CFrame.new(at + UP * 4.5), TRUNK)
+	local crown = lookPiece(parent, "Leaves", 1)
+	Build.block(crown, Vector3.new(7, 4, 7), CFrame.new(at + UP * 10.5), LEAF_DARK, false)
+	Build.block(crown, Vector3.new(5, 3.5, 5), CFrame.new(at + UP * 14.25), LEAF, false)
+	local side = Vector3.new(outward.X, 0, 0)
+	local back = Vector3.new(0, 0, outward.Z)
+	Build.block(crown, Vector3.new(3, 3, 3), CFrame.new(at + side * 3.2 + back * 1.5 + UP * 9.5), LEAF, false)
+	Build.block(crown, Vector3.new(3, 3, 3), CFrame.new(at - side * 1.8 + back * 3.1 + UP * 9.2), LEAF, false)
+end
+
+-- Cette méthode permet de poser un petit buisson voxel (deux cubes de verts) au pied `at` lorsque l'on borde les
+-- massifs de fleurs d'une base.
+function Props.shrub(parent: Instance, at: Vector3)
+	local shrub = lookPiece(parent, "Shrub", 1)
+	Build.block(shrub, Vector3.new(1.8, 1.8, 1.8), CFrame.new(at + UP * 0.9), LEAF_DARK, false)
+	Build.block(shrub, Vector3.new(1.2, 1.2, 1.2), CFrame.new(at + UP * 2.2), LEAF, false)
+end
+
+-- Cette méthode permet de poser un bandeau `color` autour du haut du socle `pedestal` d'un présentoir lorsque la base
+-- monte à un palier aux présentoirs ornés ; renvoie le bandeau (sa transparence suit celle du socle).
+function Props.collar(parent: Instance, pedestal: BasePart, color: Color3): BasePart
+	local size = pedestal.Size
+	-- Débordant de 0,2 stud, son dessus 0,05 stud sous celui du socle : pas de faces coplanaires
+	local band = Build.block(
+		parent,
+		Vector3.new(size.X + 0.4, 0.4, size.Z + 0.4),
+		pedestal.CFrame * CFrame.new(0, size.Y / 2 - 0.25, 0),
+		color,
+		false
+	)
+	band.Name = "Collar"
+	band:SetAttribute(BaseUpgrade.STAGE_ATTRIBUTE, 1)
+	return band
 end
 
 -- Stands du hub (#68), calés sur les stands de 01 et 09 : échoppe en bois à auvent rayé, comptoir garni, marchand

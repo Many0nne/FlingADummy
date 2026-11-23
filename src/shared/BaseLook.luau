@@ -53,75 +53,175 @@ function BaseLook.postTop(fence: Fence): number
 	return fence.height + (if fence.cap then BaseLook.CAP_HEIGHT else 0)
 end
 
--- Palier visuel d'une base. `plot` : sol (nil = couleur de la place, en tapis) ; `lanterns` : 0, 2 (entrée) ou
--- 6 (entrée et coins) ; `flowers` : massifs fleuris le long des clôtures ; `flags` : drapeaux à la couleur de la place
--- aux quatre coins ; `arch` : arche d'entrée à la couleur de la place ; `displays` : présentoirs achetés à partir
--- desquels la base prend ce palier.
+-- Entrée d'une base (#198) : deux piliers coiffés d'un linteau, au bout des clôtures de l'entrée ; chapeau sous le
+-- linteau (nil : sans), bannières à la couleur de la place sur l'avant des piliers, étoiles lumineuses du linteau
+-- (blanches sur un linteau doré : elles s'en détachent)
+export type Gate = {
+	pillar: Color3,
+	lintel: Color3,
+	star: Color3,
+	cap: Color3?,
+	height: number,
+	width: number,
+	banners: boolean,
+}
+
+BaseLook.GATES = {
+	wood = {
+		pillar = rgb(185, 130, 75),
+		lintel = rgb(230, 185, 120),
+		star = rgb(255, 215, 40),
+		height = 8,
+		width = 2,
+		banners = false,
+	},
+	stone = {
+		pillar = rgb(150, 152, 165),
+		lintel = rgb(200, 202, 212),
+		star = rgb(255, 215, 40),
+		height = 9,
+		width = 2.4,
+		banners = false,
+	},
+	noble = {
+		pillar = rgb(150, 152, 165),
+		lintel = rgb(255, 200, 40),
+		star = rgb(255, 255, 255),
+		cap = rgb(255, 200, 40),
+		height = 9.5,
+		width = 2.6,
+		banners = true,
+	},
+	gold = {
+		pillar = rgb(255, 190, 30),
+		lintel = rgb(255, 225, 90),
+		star = rgb(255, 255, 255),
+		cap = rgb(255, 245, 170),
+		height = 10.5,
+		width = 2.8,
+		banners = true,
+	},
+} :: { [string]: Gate }
+
+BaseLook.LINTEL_HEIGHT = 1.4 -- épaisseur du linteau de l'entrée
+BaseLook.STAR_SPACING = 1.75 -- d'une étoile du linteau à la suivante (studs) : 0,3 stud d'écart entre deux
+BaseLook.TOWER_RATIO = 2.5 -- hauteur d'une tour d'angle / hauteur des poteaux de la clôture
+
+-- Palier visuel d'une base. `plot` : sol (nil = couleur de la place, en tapis) ; `gate` : entrée (GATES) ; `stars` :
+-- étoiles sur le linteau de l'entrée (rang du palier, lisible de loin) ; `lanterns` : 0, 2 (entrée) ou 6 (entrée et
+-- coins) ; `postLanterns` : en plus, une lanterne tous les N poteaux de clôture (nil : sans) ; `flowers` : massifs
+-- fleuris le long des clôtures ; `bushes` : buissons voxel au bout des massifs ; `corners` : élément en hauteur aux
+-- deux coins du fond (nil, "tree" : arbre voxel, "tower" : tour à la matière de la clôture, bannière et drapeau à la
+-- couleur de la place) ; `flags` : drapeaux à la couleur de la place aux coins (au sommet des tours au fond) ;
+-- `pedestal` : socle des présentoirs (nil : pierre claire) ; `collar` : bandeau autour du haut des socles (nil :
+-- sans) ; `displays` : présentoirs achetés à partir desquels la base prend ce palier.
 export type BaseTier = {
 	name: string,
 	displays: number,
 	fence: string,
 	plot: Color3?,
+	gate: string,
+	stars: number,
 	lanterns: number,
+	postLanterns: number?,
 	flowers: boolean,
+	bushes: boolean,
+	corners: string?,
 	flags: boolean,
-	arch: boolean,
+	pedestal: Color3?,
+	collar: Color3?,
 }
 
 -- Paliers par nombre de présentoirs (#156 : 8 au départ, jusqu'à 30) : Garden au premier achat (≈ 9 min), Stone vers
--- 70 min, Noble vers 2 h, Golden vers 4,5 h de jeu simulées (un palier par présentoir de 6 à 10 avant #156)
+-- 70 min, Noble vers 2 h, Golden vers 4,5 h de jeu simulées (un palier par présentoir de 6 à 10 avant #156). Entourage
+-- enrichi à chaque palier (#198, comme les jardins de 09 : lanternes sur les poteaux, buissons et arbres voxel).
 BaseLook.BASE_TIERS = {
 	{
 		name = "Wood",
 		displays = 8,
 		fence = "wood",
 		plot = rgb(175, 115, 65),
+		gate = "wood",
+		stars = 1,
 		lanterns = 0,
 		flowers = false,
+		bushes = false,
 		flags = false,
-		arch = false,
 	},
 	{
 		name = "Garden",
 		displays = 9,
 		fence = "wood",
 		plot = rgb(175, 115, 65),
+		gate = "wood",
+		stars = 2,
 		lanterns = 2,
 		flowers = true,
+		bushes = true,
 		flags = false,
-		arch = false,
 	},
 	{
 		name = "Stone",
 		displays = 12,
 		fence = "stone",
 		plot = rgb(205, 205, 215),
+		gate = "stone",
+		stars = 3,
 		lanterns = 6,
 		flowers = true,
+		bushes = true,
+		corners = "tree",
 		flags = false,
-		arch = false,
 	},
 	{
 		name = "Noble",
 		displays = 18,
 		fence = "stoneGold",
 		plot = rgb(235, 200, 140),
+		gate = "noble",
+		stars = 4,
 		lanterns = 6,
+		postLanterns = 4,
 		flowers = true,
+		bushes = true,
+		corners = "tower",
 		flags = true,
-		arch = false,
+		collar = rgb(255, 200, 40),
 	},
 	{
 		name = "Golden",
 		displays = 25,
 		fence = "gold",
 		plot = nil,
+		gate = "gold",
+		stars = 5,
 		lanterns = 6,
+		postLanterns = 2,
 		flowers = true,
+		bushes = true,
+		corners = "tower",
 		flags = true,
-		arch = true,
+		pedestal = rgb(250, 245, 230),
+		collar = rgb(255, 200, 40),
 	},
 } :: { BaseTier }
+
+-- Cette méthode permet de donner les rangs (0 à `count`) des poteaux d'un tronçon de clôture qui portent une lanterne
+-- lorsque le palier en met une tous les `every` poteaux : symétriques depuis les deux bouts, jamais aux bouts (coins
+-- et entrée ont les leurs).
+function BaseLook.lanternPosts(count: number, every: number?): { number }
+	local posts = {}
+	if not every or every < 1 then
+		return posts
+	end
+	for i = 1, count - 1 do
+		local fromEnd = math.min(i, count - i)
+		if fromEnd % every == 0 then
+			table.insert(posts, i)
+		end
+	end
+	return posts
+end
 
 -- Habillage de l'appareil d'entraînement : planches du podium (deux tons), montants et marches du râtelier, socle (nil :
 -- pierre claire), couleur des pièces ajoutées (`accent`), liseré lumineux (néon, nil : sans), étincelles autour du
@@ -193,10 +293,11 @@ function BaseLook.baseTier(displays: number?): number
 	return tier
 end
 
--- Cette méthode permet de donner le palier visuel `tier` de la base et sa clôture lorsque l'on construit la base.
-function BaseLook.base(tier: number): (BaseTier, Fence)
+-- Cette méthode permet de donner le palier visuel `tier` de la base, sa clôture et son entrée lorsque l'on construit
+-- la base.
+function BaseLook.base(tier: number): (BaseTier, Fence, Gate)
 	local look = BaseLook.BASE_TIERS[math.clamp(tier, 1, #BaseLook.BASE_TIERS)]
-	return look, BaseLook.FENCES[look.fence]
+	return look, BaseLook.FENCES[look.fence], BaseLook.GATES[look.gate]
 end
 
 -- Cette méthode permet de donner l'habillage de l'appareil d'entraînement lorsque son propriétaire possède le Training
