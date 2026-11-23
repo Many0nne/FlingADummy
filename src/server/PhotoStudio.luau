@@ -168,7 +168,8 @@ local function stageSlot(parent: Instance, shot: PlanchePlan.Shot): boolean
 		local forced = Workspace:GetAttribute(DISPLAYS_ATTRIBUTE)
 		local displays = if typeof(forced) == "number" then forced else BaseLook.BASE_TIERS[tier].displays
 		BaseService.showcase(slot, displays, tier)
-		center, view = CourseLayout.basePosition(slot.index), BASE_VIEW
+		-- Visée sur le centre de la base à sa profondeur (#212 : elle grandit vers le fond, l'entrée ne bouge pas)
+		center, view = (CourseLayout.baseBox(slot.index, displays)), BASE_VIEW
 	else
 		CourseBuilder.styleStation(slot, tier)
 		-- Pad d'amélioration au même palier, équipement suivant abordable (plaque verte) : tel que le joueur le voit
