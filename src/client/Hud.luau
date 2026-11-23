@@ -222,6 +222,25 @@ local function buildCounters()
 	moneyLabel = counter(row, 2, "Money", "cash", C.white, C.yellow, Format.money)
 end
 
+-- Cette méthode permet de poser le bloc des compteurs en bas à gauche, remonté au-dessus de la zone du joystick sur
+-- écran tactile (#218), lorsque l'écran, l'échelle ou la marge sûre du bas (`safeBottom`, unités du HUD) changent.
+local function placeCounters(safeBottom: number)
+	local row = root and root:FindFirstChild("Counters")
+	if not row then
+		return
+	end
+	local lift, x = 14, 16
+	if UserInputService.TouchEnabled and Workspace.CurrentCamera then
+		-- Sur écran tactile, la colonne de boutons de gauche descend jusqu'au joystick : les compteurs se posent à sa
+		-- droite, remontés au-dessus du joystick
+		x = 14 + BUTTON_SIZE + 10
+		local size = Workspace.CurrentCamera.ViewportSize
+		local reserve = TouchLayout.joystickReserve(size.X, size.Y)
+		lift = math.max(lift, reserve.height / math.max(hudScale.Scale, 0.01) - safeBottom)
+	end
+	row.Position = UDim2.new(0, x, 1, -lift)
+end
+
 -- Cette méthode permet de construire les boutons à icône (Index, Shop et Rebirth à gauche avec reflet sur Shop,
 -- Dummies à droite avec reflet) lorsque le HUD est construit ; ancrés au centre, ils grossissent sur place au survol.
 -- Rebirth n'apparaît qu'après le premier lancer (Hud.refresh), comme le bouton Renaissance de la référence 12.
@@ -1100,14 +1119,17 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 		Parent = gui,
 	})
 	-- Boutons et compteurs hors de l'encoche ; « My Dummies », posée à côté du bouton Dummies, suit sa marge droite
-	local safeRight = 0
-	UIKit.keepSafe(root, function(_left: number, right: number)
+	local safeRight, safeBottom = 0, 0
+	UIKit.keepSafe(root, function(_left: number, right: number, _top: number, bottom: number)
 		safeRight = right
+		safeBottom = bottom
+		placeCounters(bottom)
 		if windows.Dummies then
 			windows.Dummies.Position = UDim2.new(1, -(30 + BUTTON_SIZE) - safeRight, 0.5, 0)
 		end
 	end)
 	buildCounters()
+	placeCounters(safeBottom)
 	buildButtons()
 	buildGearOffer()
 	buildWindows()

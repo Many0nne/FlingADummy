@@ -18,6 +18,25 @@ function TouchLayout.hudScale(width: number, height: number, touch: boolean): nu
 	return math.clamp(scale, TouchLayout.MIN_SCALE, TouchLayout.MAX_SCALE)
 end
 
+-- Thumbstick de Roblox (PlayerModule) : 70 px sur un écran dont le petit côté fait au plus 500 px, 120 px au-delà ; posé
+-- à (taille / 2 − 10) du bord gauche, son haut à (1,75 × taille + 10) du bas.
+TouchLayout.SMALL_SCREEN = 500
+TouchLayout.STICK_SMALL = 70
+TouchLayout.STICK_LARGE = 120
+TouchLayout.STICK_MARGIN = 10 -- px d'écran de garde autour de la zone du joystick
+
+-- Cette méthode permet de donner la zone du bas de l'écran (px d'écran, depuis le coin bas gauche : `width`, `height`)
+-- que le joystick occupe lorsque l'écran fait `width` × `height` px, pour y laisser libre l'interface tactile.
+function TouchLayout.joystickReserve(width: number, height: number): { width: number, height: number }
+	local stick = if math.min(width, height) <= TouchLayout.SMALL_SCREEN
+		then TouchLayout.STICK_SMALL
+		else TouchLayout.STICK_LARGE
+	return {
+		width = stick * 1.5 - 10 + TouchLayout.STICK_MARGIN,
+		height = stick * 1.75 + 10 + TouchLayout.STICK_MARGIN,
+	}
+end
+
 export type Rect = { x0: number, y0: number, x1: number, y1: number }
 
 -- Cette méthode permet d'arrêter la zone tactile `zone` du bouton `own` à mi-distance du voisin `other` le long de
