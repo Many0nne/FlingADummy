@@ -101,8 +101,22 @@ return function(T, Loader, Lib)
 			function()
 				local start = m.GameConfig.DISPLAY_START
 				local last = start + #m.GameConfig.DISPLAY_PRICES
-				local fourth = median("display:" .. (start + 4))
-				T.expect(fourth ~= nil and fourth > 3600, "4e présentoir acheté à " .. tostring(fourth) .. " s")
+				-- Présentoirs 6 à 8 bon marché (#211) : achetés dans les 10 premières minutes, dans l'ordre
+				local previous = 0
+				for display = start + 1, start + 3 do
+					local at = median("display:" .. display)
+					T.expect(
+						at ~= nil and at < 600 and at > previous,
+						string.format("présentoir %d acheté à %s s", display, tostring(at))
+					)
+					previous = at or previous
+				end
+				-- Un présentoir de la deuxième moitié de la liste n'arrive qu'après la première heure
+				local half = median("display:" .. (start + math.ceil(#m.GameConfig.DISPLAY_PRICES / 2) + 1))
+				T.expect(
+					half ~= nil and half > 3600,
+					"présentoir de la 2e moitié acheté à " .. tostring(half) .. " s"
+				)
 				local t = median("display:" .. last)
 				local rebirth = median("rebirth:1")
 				T.expect(t ~= nil and t > 8 * 3600, "dernier présentoir à " .. tostring(t) .. " s")

@@ -12,7 +12,8 @@ return function(T, Loader)
 	T.describe("BaseLook.baseTier (paliers par nombre de présentoirs, #156)", function()
 		T.it("premier palier au départ, seuils croissants, dernier atteint avant le maximum", function()
 			T.expectEqual(BaseLook.BASE_TIERS[1].displays, start)
-			T.expectEqual(BaseLook.BASE_TIERS[2].displays, start + 1, "le premier achat change la base")
+			-- Wood de 5 à 8 présentoirs (#211, achats bon marché sans changement de palier), Garden au 9e (≈ 9 min)
+			T.expectEqual(BaseLook.BASE_TIERS[2].displays, 9, "Garden au 9e présentoir")
 			for tier = 2, #BaseLook.BASE_TIERS do
 				T.expect(BaseLook.BASE_TIERS[tier].displays > BaseLook.BASE_TIERS[tier - 1].displays, "seuil " .. tier)
 			end

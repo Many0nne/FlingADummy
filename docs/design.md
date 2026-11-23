@@ -333,7 +333,7 @@ dans la barre d'outils (icône de rareté jusqu'à Secret, nom au-delà).
 | Infinite Rocket | 135x | $97B ($200B) | 11,0 h | 8,6 h | $47B, 8,9 h |
 
 Atteint : joueur simulé rejoué par #156 (60 joueurs, 14 h, médianes ; bonus de #155, courbe de vitesse de #157, 8 à
-30 présentoirs), avant #156 : relevé de #133. Prix calés par #15 (section « Rythme et économie ») : la règle Rocket ×
+30 présentoirs ; #211 : 5 au départ, temps décalés de ± 1 min, section « #211 »), avant #156 : relevé de #133. Prix calés par #15 (section « Rythme et économie ») : la règle Rocket ×
 (chance / 3)^1,8 de #94 laissait un trou de × 6 à × 12 entre les mannequins dessinés et les équipements ($300K → $2M →
 $4M → $25M), le « mur » de la review 2. Amber Glider, Golden Rocket et Frost Rubber baissés par #133 ; #156 garde les
 chances et recale les prix d'après la première heure sur un calendrier étalé jusqu'à 11 h (section « Piste et économie
@@ -366,7 +366,7 @@ avant #129, 4,6 h avec le modèle de distance d'avant #113, 6,8 h avant #15), av
 mesurés par #113.
 
 ### Rythme et économie (#15)
-Historique (#15, #129, #130, #133) : la courbe actuelle (8 à 30 présentoirs, piste de #157) est dans la section « Piste
+Historique (#15, #129, #130, #133) : la courbe actuelle (5 à 30 présentoirs, piste de #157) est dans la section « Piste
 et économie de la review 3 ».
 Retours de la review 2 (compte neuf) : les présentoirs s'achetaient trop vite (point 2 : les quatre en 7 min), et « à
 partir des premiers millions, il devient beaucoup plus dur de s'améliorer » (point 10 : 12.7K/s, prochaine
@@ -677,9 +677,55 @@ Achat par achat (après #156 ; avant : tableau de la section « Rythme et écono
 | 52 | Infinite Rocket Dummy | $97B | 11,0 h | 96 min | × 1,7 |
 | | Renaissance 1 | $200B | 12,3 h (10,6 h avant) | | |
 
-Garde-fous ajoutés à `Progression.spec` : pas plus d'une heure sans achat entre 1 h et 9 h (au moins 25 achats), 4e
-présentoir acheté après la première heure, dernier après 8 h et avant la renaissance ; Secret entre 3 et 5 h, Divine
-après 8 h ; bout de piste entre 3,5 et 6 h.
+Garde-fous ajoutés à `Progression.spec` : pas plus d'une heure sans achat entre 1 h et 9 h (au moins 25 achats), un
+présentoir de la deuxième moitié de la liste acheté après la première heure (le 4e avant #211), dernier après 8 h et
+avant la renaissance ; Secret entre 3 et 5 h, Divine après 8 h ; bout de piste entre 3,5 et 6 h.
+
+### #211 : 5 présentoirs au départ, premiers achats bon marché
+Retour de la sprint review 5 (point 1) : avec 8 présentoirs au départ, le premier achat de présentoir arrivait à
+$450K vers 9 min, le joueur ne voyait pas sa base grandir. Calé sur *Break and Steal an Egg* (02 : 5 enclos sur 9 au
+départ) et *Throw a Seed* (09 : pad « 8 > 9 » à $3K vu à 1:45). `DISPLAY_START` = 5 (une rangée avant complète),
+maximum 30 inchangé : **25 prix** dans `DISPLAY_PRICES`, `DISPLAY_MAX` = 30 et `DISPLAY_ROOM` = 40.
+- Présentoirs 6 à 8 à **$400, $1,5K et $6K**, glissés entre les premiers équipements : achetés à **60 s, 90 s et 3 min**
+  (médianes, 60 joueurs), peu après que la base est pleine (5, 6 puis 7 mannequins gagnés). Présentoir 9 inchangé
+  (9 min). Prix arrondis à deux chiffres, calés au joueur simulé.
+- Présentoirs 9 à 30 : prix inchangés. Le revenu de la première heure monte un peu (60 min : $428K/s contre $431K/s,
+  520 M de puissance : inchangés) : les temps d'achat d'après 10 min bougent de ± 1 min (Display 30 à 10,1 h, renaissance
+  à 14 h simulées : une renaissance).
+- Première heure : 24 achats (21 avant), écart le plus long 5 min (garde-fou : 6 min).
+- Paliers : Wood de 5 à 8 (`BaseTier.displays`), Garden au 9e, les autres inchangés.
+- Sauvegardes : une base à 8 (d'avant #211) garde ses 8 présentoirs et ses mannequins posés ; une base à 6 ou 7 les
+  garde aussi (la lecture ne rétrécit jamais une base : `Inventory.read` borne seulement entre `DISPLAY_START` et
+  `DISPLAY_MAX`). Avant #211 une sauvegarde d'avant #156 à 6 passait à 8 ; elle reste à 6 (indiscernable d'un achat).
+
+Relevés (60 joueurs, 14 h, médianes ; avant : #156) :
+| Relevé | Achats | Revenu | Puissance | Rareté max | Avant #211 : achats, revenu |
+|---|---|---|---|---|---|
+| 2 min | 3 | $107/s | 403 | Uncommon | 2, $110/s |
+| 5 min | 7 | $956/s | 3.98K | Rare | 4, $1.08K/s |
+| 10 min | 10 | $5.9K/s | 78.8K | Epic | 7, $6.99K/s |
+| 30 min | 18 | $92.3K/s | 21.2M | Legendary | 15, $84.2K/s |
+| 60 min | 24 | $428K/s | 520M | Mythic | 21, $431K/s |
+| 3 h | 37 | $3.65M/s | 24.3B | Mythic | 35, $3.81M/s |
+| 8 h | 50 | $16.6M/s | 325B | Secret | 48, $16.8M/s |
+| 14 h | 86 (1 renaissance) | $53.9M/s | 130B | Divine | 83, $53.7M/s |
+
+Achat par achat, début de courbe (après #211 ; la suite est celle du tableau de #156, décalée de 3 numéros) :
+| # | Achat | Prix | Atteint | Prix suivant / revenu | Saut |
+|---|---|---|---|---|---|
+| 1 | Stone Dummy | $100 | 45 s | 13 s | × 1,0 |
+| 2 | Présentoir 6 | $400 | 60 s | 35 s | × 1,0 |
+| 3 | Présentoir 7 | $1.5K | 90 s | 16 s | × 1,0 |
+| 4 | Rubber Dummy | $1.5K | 2 min | 51 s | × 1,0 |
+| 5 | Présentoir 8 | $6K | 3 min | 28 s | × 1,0 |
+| 6 | Iron Dummy | $8K | 3 min | 95 s | × 1,6 |
+| 7 | Glass Dummy | $40K | 4 min | 2 min | × 1,5 |
+| 8 | Gold Dummy | $120K | 6 min | 3 min | × 1,1 |
+| 9 | Steel Dummy | $250K | 7 min | 2 min | × 0,9 |
+| 10 | Présentoir 9 | $450K | 9 min | 2 min | × 1,1 |
+Saut le plus fort du ratio : × 1,71 (le dernier mannequin à lancer, inchangé). Garde-fous de `Progression.spec` : présentoirs
+6 à 8 achetés dans les 10 premières minutes, dans l'ordre ; un présentoir de la deuxième moitié de la liste après la
+première heure.
 
 ### Repères comparés aux références
 | Repère | Fling a Dummy (simulé) | 09 *Throw a Seed* | 01 *Throw Food For Animals* |
@@ -893,12 +939,13 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
   (nom, $/s) est masquée tant qu'elle passerait devant un texte de base à l'écran (`BaseLook.overlaps`) et n'est
   affichée qu'à 60 studs au plus (120 avant : elles encombraient le texte vu de la bande).
 - **Paliers visuels de la base** (#61, `Shared.BaseLook`) : la base change d'aspect avec les présentoirs achetés, un
-  joueur voit de loin les bases les plus avancées du serveur. Seuils de #156 (`BaseTier.displays` ; un palier par
-  présentoir de 6 à 10 avant) : Garden au premier achat (≈ 9 min), Stone vers 70 min, Noble vers 2 h, Golden vers 4,5 h
+  joueur voit de loin les bases les plus avancées du serveur. Seuils de #156 et #211 (`BaseTier.displays` ; un palier
+  par présentoir de 6 à 10 avant #156) : Wood de 5 à 8 (les achats des présentoirs 6 à 8 ne changent pas l'aspect),
+  Garden au 9e (≈ 9 min), Stone vers 70 min, Noble vers 2 h, Golden vers 4,5 h
   de jeu simulées ; les présentoirs 26 à 30 n'ajoutent pas de palier.
   | Présentoirs | Palier | Clôture | Sol | Entrée (étoiles) | Décor | Coins du fond | Socles |
   |---|---|---|---|---|---|---|---|
-  | 8 | Wood | bois | terre | portique en bois (1) | — | — | pierre |
+  | 5 | Wood | bois | terre | portique en bois (1) | — | — | pierre |
   | 9 | Garden | bois | terre | portique en bois (2) | massifs de fleurs bordés de buissons voxel, lanternes sur l'entrée | — | pierre |
   | 12 | Stone | pierre (plus haute) | dalles grises | portique en pierre (3) | + lanternes aux 4 coins | arbres voxel | pierre |
   | 18 | Noble | pierre à chapeaux dorés | grès | pierre, chapeaux et linteau dorés, bannières (4) | + drapeaux aux coins de l'entrée, lanterne au milieu des côtés | tours de pierre (bannière, drapeau) | pierre, bandeau doré |
@@ -951,10 +998,10 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
 - **Stand SELL** du hub (invite « Sell dummies ») : fenêtre rouge, boutons « Sell all » colorés par rareté (nombre en
   stock ; deux clics : « SURE? » et le total, puis vente), puis le stock et ses prix. Prix de vente = **2 min de
   revenu** (`SELL_MINUTES`). L'argent vendu vole du bouton au compteur.
-- **Pad « 8 > 9 »** devant la base (dalle en briques vertes, panneau en bois et prix sur plaque verte, comme le pad
+- **Pad « 5 > 6 »** devant la base (dalle en briques vertes, panneau en bois et prix sur plaque verte, comme le pad
   « 8 > 9 » de 09 ; de l'autre côté de l'entrée que l'appareil) : invite « Buy display » (propriétaire seulement)
   qui achète le présentoir suivant, popup « NEW DISPLAY! » ; refus « NOT ENOUGH MONEY! » si l'argent manque. Prix
-  (`DISPLAY_PRICES`, #156) : 450 K, 7 M, 70 M pour les 9e à 11e (vers 9, 21 et 47 min), puis de 220 M à 81 B pour les
+  (`DISPLAY_PRICES`, #156, #211) : 400, 1,5 K et 6 K pour les 6e à 8e (vers 1, 1,5 et 3 min), 450 K, 7 M, 70 M pour les 9e à 11e (vers 9, 21 et 47 min), puis de 220 M à 81 B pour les
   12e à 30e (de 69 min à 10 h simulées ; 7e à 10e à 450 K, 7 M, 70 M et 3 B avant, #15) ; panneau « MAX » et
   « 30 / 30 » au maximum (mesuré en Studio : 20 achats de 10 à 30 pour $228,4B, le 21e refusé, 30 posés construits,
   revenu égal à la somme des 30). Les présentoirs achetables existent dès la construction (grisés, semi-transparents,
@@ -981,7 +1028,7 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
 - **Hub** (#120, pelouse à damier de 256 × 112 studs depuis #156 (96 avant : bases allongées vers le fond) entourée de parois en gradins ; plan dans `Shared.CourseLayout`,
   vérifié par les tests : rien ne se chevauche, tout reste dans le hub), calé sur les jardins de 09 :
   - les **4 bases sur une rangée, côte à côte** (40 × 48 studs depuis #156, 40 × 34 avant, 8 studs de passage entre deux clôtures, dans l'ordre
-    des places : la place 1 à droite), entrée tournée vers la bande ; chaque base : terrain clôturé, 8 à 30 présentoirs
+    des places : la place 1 à droite), entrée tournée vers la bande ; chaque base : terrain clôturé, 5 à 30 présentoirs
     pour la collection, texte flottant, aspect qui monte avec les présentoirs achetés ;
   - devant chaque base, de part et d'autre de l'entrée : son **appareil d'entraînement** à gauche (podium à tenons,
     pastille jaune, râtelier, invite « Lift », briques fines `FadBrickFine`, avatar face à la bande) et son **pad
