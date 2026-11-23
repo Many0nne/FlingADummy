@@ -229,13 +229,16 @@ local function placeCounters(safeBottom: number)
 	if not row then
 		return
 	end
-	local lift = 14
+	local lift, x = 14, 16
 	if UserInputService.TouchEnabled then
+		-- Sur écran tactile, la colonne de boutons de gauche descend jusqu'au joystick : les compteurs se posent à sa
+		-- droite, remontés au-dessus du joystick
+		x = 14 + BUTTON_SIZE + 10
 		local size = Workspace.CurrentCamera.ViewportSize
 		local reserve = TouchLayout.joystickReserve(size.X, size.Y)
 		lift = math.max(lift, reserve.height / math.max(hudScale.Scale, 0.01) - safeBottom)
 	end
-	row.Position = UDim2.new(0, 16, 1, -lift)
+	row.Position = UDim2.new(0, x, 1, -lift)
 end
 
 -- Cette méthode permet de construire les boutons à icône (Index, Shop et Rebirth à gauche avec reflet sur Shop,
