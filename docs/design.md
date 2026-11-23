@@ -252,8 +252,9 @@ L'équivalent des aliments de 01 et des graines de 09 : le mannequin qu'on lance
 ## Progression longue (#94)
 Retour de la sprint review 1 : on arrivait au bout des améliorations en ≈ 1 h (Rocket et Cosmic achetés, bout de la
 piste atteint à 43 min, dernier mannequin de collection à « 1 IN 2M »). *Throw a Seed* (09) monte jusqu'à des plantes
-« 1 IN 300Qa » et des graines à 135x. La courbe ci-dessous vise **une douzaine d'heures** de jeu sans renaissance (≈ 6 h depuis #223 : bout de piste à 4,4 h,
-première renaissance à 5,5 h), puis des jours avec la renaissance plus bas ; revenus et prix recalés par #15, cotes inchangées (section « Rythme et
+« 1 IN 300Qa » et des graines à 135x. La courbe ci-dessous (tableaux de #94 à #211 : historique, avant #223) visait **une douzaine d'heures** de jeu sans
+renaissance ; depuis #223 la première renaissance arrive à ≈ 5,5 h (bout de piste à 4,4 h, section « Renaissance »), puis
+des jours avec la renaissance plus bas ; revenus et prix recalés par #15, cotes inchangées (section « Rythme et
 économie »).
 
 **Joueur simulé** (`lune run tools/progression [joueurs] [heures]`, `tools/ProgressionSim.luau`, médiane de 60

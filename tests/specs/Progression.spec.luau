@@ -208,9 +208,13 @@ return function(T, Loader, Lib)
 							end
 							previous = purchase.t
 						end
-						table.insert(worst, longest)
+						-- Un joueur qui n'a pas atteint ce cycle en 16 h, ou qui n'y a rien acheté, ne compte pas
+						if count >= cycle and longest > 0 then
+							table.insert(worst, longest)
+						end
 					end
 					local value = Sim.median(worst)
+					T.expect(#worst >= PLAYERS / 2, string.format("cycle %d : %d joueurs l'ont atteint", cycle, #worst))
 					T.expect(
 						value ~= nil and value <= 45 * 60,
 						string.format("cycle %d : %s s sans achat", cycle, tostring(value))
