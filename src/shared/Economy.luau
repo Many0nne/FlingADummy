@@ -3,6 +3,7 @@
 -- seulement du revenu des mannequins posés dans la base (Shared.Collection).
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
+local Laps = require(Shared:WaitForChild("Laps"))
 local Zones = require(Shared:WaitForChild("Zones"))
 
 local Economy = {}
@@ -40,9 +41,13 @@ function Economy.launchSpeed(power: number): number
 end
 
 -- Cette méthode permet de donner la chance due à la distance lorsque le mannequin est à `distance` mètres : celle de
--- la zone atteinte, qui monte en continu vers celle de la zone suivante (bannière qui grimpe pendant le vol).
+-- la zone atteinte, qui monte en continu vers celle de la zone suivante (bannière qui grimpe pendant le vol) ; au-delà
+-- du bout de la piste (tours du portail, #224), FINAL_CHANCE × Laps.CHANCE_PER_LAP par tour de plus.
 function Economy.zoneChance(distance: number): number
 	local d = math.max(0, distance)
+	if d > GameConfig.COURSE_LENGTH then
+		return Zones.FINAL_CHANCE * Laps.chanceFactor(d)
+	end
 	local index = Zones.indexAt(d)
 	local zone = Zones.LIST[index]
 	local nextZone = Zones.LIST[index + 1]

@@ -74,11 +74,12 @@ end
 
 print(string.format("Joueur simulé : %d joueurs, %d h, médianes\n", PLAYERS, HOURS))
 
-print("| Relevé | Achats | Revenu | Puissance | Rareté max | Renaissances |")
-print("|---|---|---|---|---|---|")
+print("| Relevé | Achats | Revenu | Puissance | Rareté max | Renaissances | Tours | CHANCE des zones |")
+print("|---|---|---|---|---|---|---|---|")
 for index, at in ProgressionSim.SNAPSHOTS do
 	if at <= HOURS * 3600 then
-		local columns = { purchases = {}, income = {}, power = {}, rarity = {}, rebirths = {} }
+		local columns =
+			{ purchases = {}, income = {}, power = {}, rarity = {}, rebirths = {}, laps = {}, zoneChance = {} }
 		for _, run in runs do
 			local snapshot = run.snapshots[index]
 			for field, list in columns do
@@ -88,13 +89,15 @@ for index, at in ProgressionSim.SNAPSHOTS do
 		local rarity = ProgressionSim.median(columns.rarity)
 		print(
 			string.format(
-				"| %s | %d | %s | %s | %s | %d |",
+				"| %s | %d | %s | %s | %s | %d | %.2f | %s |",
 				duration(at),
 				ProgressionSim.median(columns.purchases) or 0,
 				Format.perSecond(ProgressionSim.median(columns.income) or 0),
 				Format.short(ProgressionSim.median(columns.power) or 0),
 				if rarity then Rarity.get(rarity).name else "-",
-				ProgressionSim.median(columns.rebirths) or 0
+				ProgressionSim.median(columns.rebirths) or 0,
+				ProgressionSim.median(columns.laps) or 0,
+				Format.multiplier(ProgressionSim.median(columns.zoneChance) or 0)
 			)
 		)
 	end
@@ -251,6 +254,10 @@ for _, key in
 		"track:3.6km",
 		"track:4.8km",
 		"trackEnd",
+		"laps:1.5",
+		"laps:2.0",
+		"laps:2.5",
+		"laps:3.0",
 		"income:100",
 		"income:1K",
 		"income:10K",
@@ -260,6 +267,25 @@ for _, key in
 	}
 do
 	print(string.format("| %s | %s |", key, duration(median(key))))
+end
+-- Lancer d'avant la première renaissance (#224) : puissance, tours du portail, CHANCE des zones
+local before = { power = {}, laps = {}, zoneChance = {} }
+for _, run in runs do
+	local moment = run.beforeRebirth
+	for field, list in before do
+		table.insert(list, if moment then (moment :: any)[field] else math.huge)
+	end
+end
+local beforeLaps = ProgressionSim.median(before.laps)
+if beforeLaps then
+	print(
+		string.format(
+			"\nAvant la première renaissance (médiane) : puissance %s, %.2f tours, CHANCE des zones %s",
+			Format.short(ProgressionSim.median(before.power) or 0),
+			beforeLaps,
+			Format.multiplier(ProgressionSim.median(before.zoneChance) or 0)
+		)
+	)
 end
 print(
 	string.format(

@@ -2,7 +2,8 @@
 -- du multiplicateur du mannequin à lancer, « RUBBER 1.25x », à droite et des renaissances, « REBIRTH x2 », à gauche) et zone traversée, compteurs en direct (distance, os, objets) et panneau radio du mannequin (membres colorés selon leur gravité).
 -- À l'arrêt du mannequin (détecté ici, sans attendre le serveur) : trèfle et CHANCE finale « X1.36 » au-dessus de lui,
 -- titre du crash dessous (« BRUTAL! »), comme le « X1.22 » de 09 ; la radio reste quelques secondes dans son coin avec
--- le bilan (os, objets, blessures, cause) pendant que le tirage (Client.Prize) enchaîne.
+-- le bilan (os, objets, blessures, cause) pendant que le tirage (Client.Prize) enchaîne. Au portail du bout de piste
+-- (#224) : flash blanc, « LAP 2! » au centre et badge du tour à côté de la zone quand le mannequin affiché ressort.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -30,6 +31,9 @@ local REPORT_TIME = 3 -- s de radio et bilan après le comptage (dans leur coin 
 local TAG_OFFSET = 4.5 -- studs au-dessus du torse
 local REPORT_MAX = Vector2.new(300, 160) -- taille maximale du bilan (px) ; plus étroit sur petit écran
 local REPORT_MARGIN = 12 -- px libres à gauche du bilan
+local PORTAL_COLOR = Color3.fromRGB(170, 70, 255) -- violet du portail de bout de piste (#224)
+local LAP_SPLASH_TIME = 1.3 -- « LAP 2! » au centre de l'écran (s), puis fondu
+local LAP_FALLBACK = 1 -- passage du portail montré au plus tard ce temps (s) après l'annonce du serveur
 
 local FlightView = {}
 
@@ -48,6 +52,11 @@ local boostBadge: Frame
 local boostLabel: TextLabel
 local zoneBanner: Frame
 local zoneLabel: TextLabel
+local lapBadge: Frame
+local lapLabel: TextLabel
+local lapSplash: TextLabel
+local flashFrame: Frame
+local shownLap = 1 -- tour montré à l'écran (le serveur l'annonce un peu avant que le mannequin affiché y soit)
 local xray: Frame
 local xrayLimbs: { [string]: Frame } = {}
 local xrayCount: TextLabel
@@ -328,6 +337,41 @@ local function build(gui: ScreenGui)
 		Parent = zoneBanner,
 	})
 	UIKit.create("UITextSizeConstraint", { MaxTextSize = 28, Parent = zoneLabel })
+	-- Tour en cours (#224), collé à gauche de la bannière de zone dès le deuxième tour
+	lapBadge = UIKit.create("Frame", {
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(0, -8, 0.5, 0),
+		Size = UDim2.fromOffset(104, 38),
+		Rotation = -4,
+		BackgroundColor3 = PORTAL_COLOR,
+		Visible = false,
+		Parent = zoneBanner,
+	})
+	UIKit.corner(lapBadge, 19)
+	UIKit.outline(lapBadge, 3)
+	lapLabel = UIKit.text({ Size = UDim2.fromScale(1, 1), TextSize = 26, Parent = lapBadge })
+	-- Passage du portail : flash blanc plein écran (coupe de la caméra dessous) et « LAP 2! » au centre
+	flashFrame = UIKit.create("Frame", {
+		Name = "PortalFlash",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = Color3.new(1, 1, 1),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ZIndex = 20,
+		Parent = root,
+	})
+	lapSplash = UIKit.text({
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.42),
+		Size = UDim2.fromOffset(520, 120),
+		TextSize = 104,
+		StrokeThickness = 6,
+		Rotation = -5,
+		Visible = false,
+		ZIndex = 21,
+		Parent = root,
+	})
+	UIKit.gradientText(lapSplash, Color3.fromRGB(255, 255, 255), Color3.fromRGB(230, 170, 255))
 	local stats = UIKit.create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 206),
@@ -372,6 +416,71 @@ end
 -- Cette méthode permet d'afficher la CHANCE du lancer (« 1.36X ») lorsque le serveur la met à jour pendant le vol.
 local function showChance(chance: number)
 	chanceLabel.Text = string.format("%.2fX", chance)
+end
+
+-- Cette méthode permet de montrer le passage du portail (flash blanc, « LAP 2! » au centre, badge du tour, son) lorsque
+-- le mannequin affiché ressort au début de la piste (#224).
+local function showLap(lap: number)
+	shownLap = lap
+	local current = token
+	local reduced = UIKit.reducedMotion()
+	flashFrame.BackgroundTransparency = if reduced then 0.5 else 0
+	TweenService:Create(flashFrame, TweenInfo.new(if reduced then 0.2 else 0.45, Enum.EasingStyle.Quad), {
+		BackgroundTransparency = 1,
+	}):Play()
+	lapLabel.Text = "LAP " .. lap
+	lapBadge.Visible = true
+	UIKit.pop(lapBadge, 1.5)
+	lapSplash.Text = "LAP " .. lap .. "!"
+	lapSplash.TextTransparency = 0
+	lapSplash.Visible = true
+	local stroke = lapSplash:FindFirstChildOfClass("UIStroke")
+	if stroke then
+		stroke.Transparency = 0
+	end
+	UIKit.pop(lapSplash, 2)
+	UIKit.pop(chanceBox, 1.25)
+	UIKit.playSound("Rocket", 1.35)
+	UIKit.playSound("LevelUp", 1.6)
+	task.delay(LAP_SPLASH_TIME, function()
+		if current ~= token or shownLap ~= lap then
+			return
+		end
+		TweenService:Create(lapSplash, TweenInfo.new(0.3), { TextTransparency = 1 }):Play()
+		if stroke then
+			TweenService:Create(stroke, TweenInfo.new(0.3), { Transparency = 1 }):Play()
+		end
+	end)
+	if RunService:IsStudio() then
+		print(string.format("[Lap] tour %d montré", lap))
+	end
+end
+
+-- Cette méthode permet de guetter le passage du portail du mannequin affiché (tour annoncé par le serveur, torse
+-- affiché revenu dans la première moitié de la piste ; au plus tard LAP_FALLBACK s après l'annonce) lorsque le vol est
+-- à l'écran (#224).
+local function watchLaps(model: Model)
+	local current = token
+	local announcedAt: number? = nil
+	table.insert(
+		connections,
+		RunService.RenderStepped:Connect(function()
+			if current ~= token or settled then
+				return
+			end
+			local lap = model:GetAttribute("Lap")
+			if typeof(lap) ~= "number" or lap <= shownLap then
+				announcedAt = nil
+				return
+			end
+			announcedAt = announcedAt or os.clock()
+			local torso = model:FindFirstChild("Torso")
+			local back = torso ~= nil and torso:IsA("BasePart") and torso.Position.Z < GameConfig.COURSE_LENGTH / 2
+			if back or os.clock() - (announcedAt :: number) >= LAP_FALLBACK then
+				showLap(lap)
+			end
+		end)
+	)
 end
 
 -- Cette méthode permet de colorer un membre de la radio selon ses os cassés lorsque le serveur met à jour le membre.
@@ -566,6 +675,7 @@ function FlightView.show(model: Model)
 	showZone(1)
 	update()
 	watchRest(model, os.clock())
+	watchLaps(model)
 	root.Visible = true
 	for _, bar in bars do
 		bar.Size = UDim2.fromScale(1, 0)
@@ -640,6 +750,10 @@ function FlightView.hide()
 	stoppedAt = nil
 	settled = false
 	stopEstimated = false
+	shownLap = 1
+	lapBadge.Visible = false
+	lapSplash.Visible = false
+	flashFrame.BackgroundTransparency = 1
 	FlightView.hideTag()
 	root.Visible = false
 	distanceLabel.Visible = true

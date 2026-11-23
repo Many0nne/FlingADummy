@@ -2,7 +2,8 @@
 -- sa poussée, traînées d'air au bout des bras du Glider pendant sa descente planée (souffle au début), « boing »,
 -- anneau de poussière et étoiles à chaque rebond réglé du Rubber. Quand les allumer : Shared.FlightFx, d'après le plan
 -- du vol (attributs `LaunchOrigin`, `LaunchVelocity`, `ThrownIndex` posés par Server.LaunchService) et le compteur
--- `Bounces` du serveur, sur la position affichée du torse.
+-- `Bounces` du serveur, sur la position affichée du torse. Au portail du bout de piste (#224), le serveur relance le
+-- mannequin (nouveaux attributs de départ, `Lap`) : ses effets repartent avec le tour.
 --
 -- Les effets sont portés par des pièces du client (hors du mannequin) qui suivent à chaque image les pièces affichées :
 -- la copie locale du lanceur (Client.LaunchGhost, décalage sur la copie répliquée) puis la copie répliquée, sans
@@ -65,6 +66,9 @@ local dust: ParticleEmitter
 local stars: ParticleEmitter
 local rayParams = RaycastParams.new()
 local flights: { [Model]: Flight } = {}
+-- Mannequins dont le serveur a annoncé un nouveau tour (#224, attribut `Lap`) : leurs effets repartent quand le torse
+-- affiché ressort du portail, au début de la piste (le serveur l'annonce un peu avant que l'affichage y soit)
+local relaunched: { [Model]: number } = {}
 
 -- Cette méthode permet de créer une pièce d'effet du client (ancrée, invisible, sans collision) lorsque un vol démarre.
 local function rigPart(name: string, parent: Instance): BasePart
@@ -440,6 +444,28 @@ local function step(flight: Flight, dt: number)
 	end
 end
 
+-- Cette méthode permet de relancer les effets d'un mannequin passé par le portail (#224 : nouveau plan du tour, lu
+-- dans ses attributs) lorsque son torse affiché est revenu dans la première moitié de la piste, ou au plus tard 1 s
+-- après l'annonce du serveur.
+local function relaunch()
+	for model, announcedAt in relaunched do
+		local torso = model:FindFirstChild("Torso")
+		if not model.Parent or not torso or not torso:IsA("BasePart") then
+			relaunched[model] = nil
+			continue
+		end
+		local shown = torso.Position + LaunchGhost.offset(model)
+		if shown.Z < GameConfig.COURSE_LENGTH / 2 or os.clock() - announcedAt > 1 then
+			relaunched[model] = nil
+			local flight = flights[model]
+			if flight then
+				finish(flight)
+			end
+			start(model)
+		end
+	end
+end
+
 -- Cette méthode permet de commencer les effets du vol sur le décoratif lâché par le joueur local (`visual`, départ prévu
 -- par le client) lorsque il part sans attendre le serveur (#144).
 local function preview(visual: Model, origin: Vector3, velocity: Vector3, index: number)
@@ -537,6 +563,7 @@ function FlightFx.init()
 		end
 	end
 	RunService:BindToRenderStep(BIND_NAME, Enum.RenderPriority.Camera.Value + 2, function(dt)
+		relaunch()
 		for _, flight in flights do
 			step(flight, dt)
 		end
@@ -549,6 +576,9 @@ function FlightFx.init()
 			if not child:IsA("Model") then
 				return
 			end
+			child:GetAttributeChangedSignal("Lap"):Connect(function()
+				relaunched[child] = os.clock()
+			end)
 			if child:GetAttribute("LaunchVelocity") ~= nil then
 				task.spawn(start, child)
 			else

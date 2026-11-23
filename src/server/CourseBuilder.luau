@@ -15,6 +15,7 @@ local Drips = require(ReplicatedStorage.Shared.Drips)
 local DummyShape = require(ReplicatedStorage.Shared.DummyShape)
 local GearPad = require(ReplicatedStorage.Shared.GearPad)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local Laps = require(ReplicatedStorage.Shared.Laps)
 local Leaderboard = require(ReplicatedStorage.Shared.Leaderboard)
 local Objectives = require(ReplicatedStorage.Shared.Objectives)
 local ThrowDummies = require(ReplicatedStorage.Shared.ThrowDummies)
@@ -26,6 +27,7 @@ local Zones = require(ReplicatedStorage.Shared.Zones)
 local Build = require(script.Parent.Build)
 local CollisionGroups = require(script.Parent.CollisionGroups)
 local Obstacles = require(script.Parent.Obstacles)
+local Portals = require(script.Parent.Portals)
 local Props = require(script.Parent.Props)
 local StationPieces = require(script.Parent.StationPieces)
 
@@ -42,7 +44,9 @@ local END_EXTRA = 200 -- les parois de la dernière zone dépassent d'autant la 
 local FAR_START = 2400
 local FAR_SPACING = 1.6
 local TRAP_MARGIN = 10 -- pas d'accessoire au pied des parois à moins de 10 studs d'un piège (rayon de l'arc-en-ciel)
-local FINISH_CLEARANCE = 12 -- pas de décor au pied des parois à moins de 12 studs avant l'arche d'arrivée (piliers)
+local FINISH_CLEARANCE = 12 -- pas de décor au pied des parois à moins de 12 studs avant le portail d'arrivée (piliers, #224)
+-- Ni au pied du portail de sortie (#224), au début de la piste : décor du pied des parois après ses piliers
+local EXIT_CLEARANCE = Laps.EXIT_Z + Portals.BRICK
 local STATION_HEIGHT = 1.4 -- hauteur du podium de l'appareil d'entraînement
 local STATION_SPOT = 0.6 -- avance de la place de l'avatar devant le centre du podium (le râtelier est derrière)
 local RACK_SCALE = 0.5 -- taille des mannequins suspendus au râtelier (sans se toucher)
@@ -1616,8 +1620,8 @@ local function buildHub(parent: Instance, slots: { Slot }, walls: SurfaceGap.Are
 	return boards, decor
 end
 
--- Cette méthode permet de dresser l'arche d'arrivée traversable (ligne et bandeau à damier, piliers, panneau « FINISH »)
--- au bout de la piste lorsqu'elle est construite : le mannequin passe dessous et finit contre la paroi du bout (#97).
+-- Cette méthode permet de poser la ligne d'arrivée à damier et les portails des tours (#224 : portail de la ligne
+-- d'arrivée, portail de sortie au début de la piste, Server.Portals) lorsque la piste est construite.
 local function buildFinish(parent: Instance)
 	local half = GameConfig.TRACK_WIDTH / 2
 	local z = GameConfig.COURSE_LENGTH
@@ -1636,30 +1640,8 @@ local function buildFinish(parent: Instance)
 			})
 		end
 	end
-	local height = 24
-	local pillarX = half - 3
-	for _, side in { -1, 1 } do
-		Build.block(model, Vector3.new(3, height, 3), CFrame.new(side * pillarX, height / 2, z), COLORS.line, false)
-		Build.block(model, Vector3.new(4, 1.2, 4), CFrame.new(side * pillarX, height + 0.6, z), COLORS.pad, false)
-	end
-	-- Bandeau à damier entre les piliers, deux rangées
-	local span = 2 * pillarX - 3
-	local count = 16
-	local width = span / count
-	for row = 0, 1 do
-		for col = 0, count - 1 do
-			Build.block(
-				model,
-				Vector3.new(width, 1.6, 1.2),
-				CFrame.new(-span / 2 + (col + 0.5) * width, height - 0.8 - row * 1.6, z),
-				if (row + col) % 2 == 0 then COLORS.line else rgb(30, 30, 35),
-				false
-			)
-		end
-	end
-	local last = Zones.LIST[#Zones.LIST]
-	local board = Build.block(model, Vector3.new(30, 6, 1), CFrame.new(0, height - 6.4, z), last.color, false)
-	Build.surfaceText(board, Enum.NormalId.Front, string.format("FINISH  %g KM", GameConfig.COURSE_LENGTH / 1000))
+	Portals.buildFinish(model)
+	Portals.buildExit(model)
 	model.Parent = parent
 end
 
@@ -1717,7 +1699,7 @@ local function buildTrack(parent: Instance, walls: SurfaceGap.Area): () -> { str
 			local footEnd = if index == #Zones.LIST then length - FINISH_CLEARANCE else zoneEnd
 			for _, side in { -1, 1 } do
 				local x = side * (half - 4)
-				local from, to = Vector3.new(x, 0, math.max(zoneStart, 8)), Vector3.new(x, 0, footEnd)
+				local from, to = Vector3.new(x, 0, math.max(zoneStart, EXIT_CLEARANCE)), Vector3.new(x, 0, footEnd)
 				Build.within(walls, scatter, folder, zone, from, to, 22, Vector3.xAxis, 1.5, false, traps)
 			end
 			-- Panneaux d'entrée de zone (pas au départ : la zone de lancer reste dégagée, comme dans les références), au

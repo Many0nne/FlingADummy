@@ -10,15 +10,16 @@ local ProgressionSim = {}
 ProgressionSim.THROW_TIME = 15 -- lancer, vol, tirage et retour (s ; 15 s mesurés sur Throw a Seed)
 ProgressionSim.TRAIN_TIME = 15 -- entraînement entre deux lancers (s)
 -- Distance (m) : premier contact au sol prévu par Shared.FlightArc (main à ORIGIN_HEIGHT au-dessus de la piste) avec
--- le comportement du mannequin lancé (poussée, descente lente, rebonds : #130), plus SLIDE_SHARE de la glissade freinée
--- théorique (0,3 à 0,75 mesuré par #113 : obstacles et rebonds au point de chute)
+-- le comportement du mannequin lancé (poussée, descente lente, rebonds : #130), plus Laps.SLIDE_SHARE de la glissade
+-- freinée théorique (0,3 à 0,75 mesuré par #113 : obstacles et rebonds au point de chute) ; au-delà du bout de la piste,
+-- tours du portail (#224, Shared.Laps.total)
 ProgressionSim.ORIGIN_HEIGHT = 5.3
-ProgressionSim.SLIDE_SHARE = 0.4
 -- Bonus des os et objets (part ajoutée à la CHANCE) : ≈ +30 % au départ, ≈ +55 % à 10,5 K de puissance (mesures #14)
 ProgressionSim.BONUS_BASE = 0.3
 ProgressionSim.BONUS_PER_LOG = 0.035
--- Relevés de l'état du joueur (s) : 2, 5, 10, 30, 60 min, 3, 8, 14 h
-ProgressionSim.SNAPSHOTS = { 120, 300, 600, 1800, 3600, 3 * 3600, 8 * 3600, 14 * 3600 }
+-- Relevés de l'état du joueur (s) : 2, 5, 10, 30, 60 min, 3, 4, 5, 6, 8, 14 h (4 à 6 h : tours du portail, #224)
+ProgressionSim.SNAPSHOTS =
+	{ 120, 300, 600, 1800, 3600, 3 * 3600, 4 * 3600, 5 * 3600, 6 * 3600, 8 * 3600, 14 * 3600 }
 -- Attente en dessous de laquelle un « prix suivant / revenu » ne compte pas comme un mur (s) : deux achats coup sur
 -- coup donnent un ratio minuscule, puis normal, sans que le joueur sente une marche
 ProgressionSim.RATIO_FLOOR = 60
@@ -35,13 +36,25 @@ export type Purchase = {
 	nextCost: number?, -- prix du prochain achat (le moins cher restant, sinon la renaissance)
 }
 
-export type Snapshot = { purchases: number, income: number, power: number, rarity: number, rebirths: number }
+export type Snapshot = {
+	purchases: number,
+	income: number,
+	power: number,
+	rarity: number,
+	rebirths: number,
+	laps: number, -- distance du lancer en tours de piste (1,5 : moitié du deuxième tour)
+	zoneChance: number, -- CHANCE des zones du lancer (sans os, mannequin lancé ni renaissances)
+}
+
+-- Lancer à un instant donné : puissance, distance en tours, CHANCE des zones
+export type Moment = { power: number, laps: number, zoneChance: number }
 
 export type Run = {
 	marks: { [string]: number }, -- instant (s) de chaque palier, par clé (« gear:3 », « rarity:5 », « power:1M »…)
 	purchases: { Purchase },
 	snapshots: { Snapshot }, -- un par instant de SNAPSHOTS atteint
 	minutes: { number }, -- « prix suivant / revenu » (s) à chaque minute de jeu (math.huge sans revenu)
+	beforeRebirth: Moment?, -- lancer d'avant la première renaissance (nil sans renaissance)
 	final: { chance: number, rebirths: number, income: number, power: number },
 }
 
@@ -57,6 +70,7 @@ function ProgressionSim.modules(loader: any): { [string]: any }
 			"Format",
 			"GameConfig",
 			"Inventory",
+			"Laps",
 			"Rarity",
 			"Rebirth",
 			"ThrowDummies",
@@ -82,8 +96,7 @@ function ProgressionSim.distanceFor(m: { [string]: any }, power: number, thrown:
 		m.GameConfig.GRAVITY,
 		thrown or m.ThrowDummies.get(1)
 	)
-	local slide = ProgressionSim.SLIDE_SHARE * m.FlightArc.slide(plan.landingSpeed)
-	return math.min(plan.reach + slide, m.GameConfig.COURSE_LENGTH)
+	return m.Laps.total(m.Laps.virtual(plan))
 end
 
 -- Cette méthode permet d'estimer la CHANCE d'un lancer lorsque le joueur a `power` et lance le mannequin `thrown`
@@ -127,6 +140,7 @@ function ProgressionSim.simulate(m: { [string]: any }, seed: number, seconds: nu
 	local snapshots: { Snapshot } = {}
 	local minutes: { number } = {}
 	local stopped = false
+	local beforeRebirth: Moment? = nil
 
 	-- Cette méthode permet de noter l'instant où un palier est atteint pour la première fois lorsque la simulation avance.
 	local function mark(key: string)
@@ -221,6 +235,15 @@ function ProgressionSim.simulate(m: { [string]: any }, seed: number, seconds: nu
 			return
 		end
 		local price = Rebirth.price(rebirths)
+		if rebirths == 0 then
+			-- Lancer d'avant la première renaissance (#224 : tours du portail et CHANCE au plus fort du premier cycle)
+			local distance = ProgressionSim.distanceFor(m, power, ThrowDummies.get(thrown))
+			beforeRebirth = {
+				power = power,
+				laps = distance / GameConfig.COURSE_LENGTH,
+				zoneChance = m.Economy.zoneChance(distance),
+			}
+		end
 		rebirths += 1
 		mark("rebirth:" .. rebirths)
 		money, power = 0, GameConfig.START_POWER
@@ -240,12 +263,15 @@ function ProgressionSim.simulate(m: { [string]: any }, seed: number, seconds: nu
 		end
 		for index, at in ProgressionSim.SNAPSHOTS do
 			if from < at and t >= at then
+				local distance = ProgressionSim.distanceFor(m, power, ThrowDummies.get(thrown))
 				snapshots[index] = {
 					purchases = #purchases,
 					income = income(),
 					power = power,
 					rarity = bestRarity,
 					rebirths = rebirths,
+					laps = distance / GameConfig.COURSE_LENGTH,
+					zoneChance = m.Economy.zoneChance(distance),
 				}
 			end
 		end
@@ -305,6 +331,14 @@ function ProgressionSim.simulate(m: { [string]: any }, seed: number, seconds: nu
 		if distance >= GameConfig.COURSE_LENGTH then
 			mark("trackEnd")
 		end
+		-- Tours du portail (#224) : moitié et fin du deuxième tour, puis du troisième (avant la première renaissance)
+		if rebirths == 0 then
+			for _, laps in { 1.5, 2, 2.5, 3 } do
+				if distance >= laps * GameConfig.COURSE_LENGTH then
+					mark(string.format("laps:%.1f", laps))
+				end
+			end
+		end
 		for _, threshold in { 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 } do
 			if income() >= threshold then
 				mark("income:" .. m.Format.short(threshold))
@@ -318,6 +352,7 @@ function ProgressionSim.simulate(m: { [string]: any }, seed: number, seconds: nu
 		purchases = purchases,
 		snapshots = snapshots,
 		minutes = minutes,
+		beforeRebirth = beforeRebirth,
 		final = {
 			chance = ProgressionSim.chanceFor(m, power, ThrowDummies.get(thrown)) * Rebirth.luck(rebirths),
 			rebirths = rebirths,

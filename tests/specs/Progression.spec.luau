@@ -140,13 +140,14 @@ return function(T, Loader, Lib)
 				T.expect(count >= 25, count .. " achats entre 1 h et 9 h")
 			end
 		)
-		T.it("raretés hautes rares (#156) : Secret vers 4 h, Divine vers 10 h de jeu", function()
+		-- Divine vers 10 h avant #224 ; les tours du portail font monter la CHANCE au-delà du bout de piste (≈ 7,3 h)
+		T.it("raretés hautes rares (#156, #224) : Secret vers 4 h, Divine après 7 h de jeu", function()
 			local secret, divine = median("rarity:7"), median("rarity:8")
 			T.expect(
 				secret ~= nil and secret > 3 * 3600 and secret < 5 * 3600,
 				"Secret à " .. tostring(secret) .. " s"
 			)
-			T.expect(divine ~= nil and divine > 8 * 3600, "Divine à " .. tostring(divine) .. " s")
+			T.expect(divine ~= nil and divine > 7 * 3600, "Divine à " .. tostring(divine) .. " s")
 		end)
 		T.it("bout de piste vers la fin des équipements (#157) : entre 3,5 h et 6 h", function()
 			local t = median("trackEnd")

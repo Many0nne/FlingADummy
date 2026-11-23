@@ -15,6 +15,7 @@ local Economy = require(Shared.Economy)
 local FlightArc = require(Shared.FlightArc)
 local GameConfig = require(Shared.GameConfig)
 local Gauge = require(Shared.Gauge)
+local Laps = require(Shared.Laps)
 local Rebirth = require(Shared.Rebirth)
 local Remotes = require(Shared.Remotes)
 local RevealPlan = require(Shared.RevealPlan)
@@ -43,10 +44,11 @@ local CAUSE_RADIUS = 7 -- un os cassé près d'une pièce d'obstacle lui est att
 local TRAP_CAUSE_WINDOW = 0.8 -- un os cassé juste après un piège (retombée de la presse, du trampoline) lui est attribué (s)
 
 export type Impact = {
-	kind: string, -- "Throw" | "Bone" | "Smash" | "Thud" | "Trap"
+	kind: string, -- "Throw" | "Bone" | "Smash" | "Thud" | "Trap" | "Portal"
 	position: Vector3,
-	value: number?, -- os ajoutés, objets détruits, ou force du choc
+	value: number?, -- os ajoutés, objets détruits, force du choc, ou tour qui commence (Portal)
 	material: string?, -- "Crate" | "Brick" pour Smash ; piège (Shared.Traps.KINDS) pour Trap
+	to: Vector3?, -- Portal : sortie du portail, au début de la piste (#224)
 	userId: number,
 	at: number?, -- heure serveur du choc (#84 : chaque client le montre quand son mannequin affiché y arrive)
 }
@@ -73,7 +75,12 @@ type Flight = {
 	dummy: Model,
 	torso: BasePart,
 	parts: { BasePart },
-	startTime: number,
+	startTime: number, -- os.clock() du départ du tour en cours (lâcher, puis chaque sortie du portail)
+	launchedAt: number, -- os.clock() du lâcher (durée totale du vol)
+	lap: number, -- tour en cours (#224 : 1 jusqu'au portail du bout de piste)
+	offset: number, -- distance des tours finis (studs) : (lap - 1) × Laps.LENGTH
+	total: number, -- distance totale prévue au lâcher, tours compris (Shared.Laps.total)
+	laneX: number, -- abscisse du lâcher : la sortie du portail rend le mannequin à son couloir
 	gauge: number,
 	prevVelocity: { [BasePart]: Vector3 },
 	bones: { [string]: number },
@@ -188,8 +195,10 @@ local function startFlight(
 		Economy.chance({ distance = 0, bones = 0, smashed = 0, luck = thrown.luck, rebirth = rebirth, boost = boost }).total
 	)
 	dummy:SetAttribute("Thrown", thrown.name)
+	dummy:SetAttribute("Lap", 1) -- tour en cours (#224) : le client montre « LAP 2 » au passage du portail
 
 	local torso = dummy.PrimaryPart :: BasePart
+	local now = os.clock()
 	flights[key] = {
 		owner = owner,
 		key = key,
@@ -211,7 +220,13 @@ local function startFlight(
 		dummy = dummy,
 		torso = torso,
 		parts = parts,
-		startTime = os.clock(),
+		startTime = now,
+		launchedAt = now,
+		lap = 1,
+		offset = 0,
+		-- Distance prévue, tours compris : portée virtuelle du plan depuis le départ de la piste (#224)
+		total = Laps.total(origin.Z + Laps.virtual(arc)),
+		laneX = origin.X,
 		gauge = gauge,
 		prevVelocity = {},
 		bones = {},
@@ -608,7 +623,7 @@ end
 -- Cette méthode permet de clore un vol lorsque le mannequin s'est arrêté : CHANCE du lancer, tirage du mannequin
 -- de collection (Server.BaseService), record, blessures et cause envoyés au client, qui joue le résultat puis le
 -- tirage. Le lancer ne rapporte pas d'argent. Le mannequin lancé quitte la piste après RESULT_CLEAR_TIME.
-local function finish(flight: Flight, elapsed: number)
+local function finish(flight: Flight)
 	flights[flight.key] = nil
 	local player = flight.owner
 	local result: any = Economy.chance({
@@ -622,6 +637,7 @@ local function finish(flight: Flight, elapsed: number)
 	result.bones = flight.totalBones
 	result.smashed = flight.smashed
 	result.landing = flight.torso.Position
+	result.lap = flight.lap -- tour où le mannequin s'est arrêté (#224)
 	if player then
 		local best = (player:GetAttribute("BestDistance") :: number?) or 0
 		result.record = result.distance > best and best > 0
@@ -651,30 +667,32 @@ local function finish(flight: Flight, elapsed: number)
 		task.delay(RevealPlan.resultTime(prize and prize.rarity), closeResult, player, flight)
 	end
 	if RunService:IsStudio() then
-		print(
-			string.format(
-				"[Launch] %s dummy=%s rebirth=x%g distance=%d zone=%d bones=%d smashed=%d chance=%.2f prize=%s gauge=%.2f time=%.1f | %s"
-					.. " | apex=%d landed=%s slide=%s planned=%d reach=%d bounces=%d",
-				if player then player.Name else tostring(flight.key),
-				flight.thrown.id,
-				flight.rebirth,
-				result.distance,
-				result.zone,
-				flight.totalBones,
-				flight.smashed,
-				result.total,
-				if result.prize then result.prize.name .. " (1 in " .. result.prize.odds .. ")" else "-",
-				flight.gauge,
-				elapsed,
-				tostring(result.cause),
-				math.floor(flight.apex),
-				if flight.landedAt then tostring(math.floor(flight.landedAt)) else "-",
-				if flight.landedAt then tostring(math.floor(flight.distance - flight.landedAt)) else "-",
-				math.floor(flight.origin.Z + flight.arc.range),
-				math.floor(flight.origin.Z + flight.arc.reach),
-				flight.bounces
-			)
-		)
+		print(string.format(
+			"[Launch] %s dummy=%s rebirth=x%g distance=%d zone=%d bones=%d smashed=%d chance=%.2f prize=%s gauge=%.2f time=%.1f | %s"
+				.. " | apex=%d landed=%s slide=%s planned=%d reach=%d bounces=%d | lap=%d total=%d planned_total=%d",
+			if player then player.Name else tostring(flight.key),
+			flight.thrown.id,
+			flight.rebirth,
+			result.distance,
+			result.zone,
+			flight.totalBones,
+			flight.smashed,
+			result.total,
+			if result.prize then result.prize.name .. " (1 in " .. result.prize.odds .. ")" else "-",
+			flight.gauge,
+			os.clock() - flight.launchedAt,
+			tostring(result.cause),
+			math.floor(flight.apex),
+			if flight.landedAt then tostring(math.floor(flight.landedAt)) else "-",
+			-- Glissade et points prévus dans le tour en cours (sortie du portail comprise)
+			if flight.landedAt then tostring(math.floor(flight.distance - flight.offset - flight.landedAt)) else "-",
+			math.floor(flight.origin.Z + flight.arc.range),
+			math.floor(flight.origin.Z + flight.arc.reach),
+			flight.bounces,
+			flight.lap,
+			result.distance,
+			math.floor(flight.total)
+		))
 	end
 	task.delay(GameConfig.RESULT_CLEAR_TIME, function()
 		flight.dummy:Destroy()
@@ -689,7 +707,8 @@ local function publish(flight: Flight)
 		Distance = math.max(0, math.floor(flight.distance)),
 		Bones = flight.totalBones,
 		Smashed = flight.smashed,
-		Zone = Zones.indexAt(flight.distance),
+		-- Zone survolée dans le tour en cours (décor sous le mannequin) ; la CHANCE suit la distance totale
+		Zone = Zones.indexAt(flight.distance - flight.offset),
 		Chance = Economy.chance({
 			distance = flight.distance,
 			bones = flight.totalBones,
@@ -841,6 +860,71 @@ local function handBack(flight: Flight, along: number)
 	player:SetAttribute("LaneState", "Ready")
 end
 
+-- Cette méthode permet de faire passer le portail du bout de piste au mannequin (tour compté, relance depuis la sortie
+-- au début de son couloir avec la vitesse qui pose son point de chute à la distance restante : Shared.Laps) lorsque
+-- son torse franchit la ligne d'arrivée en `entry` (#224).
+local function passPortal(flight: Flight, entry: Vector3)
+	local length = Laps.LENGTH
+	flight.distance = math.max(flight.distance, flight.offset + length)
+	flight.lap += 1
+	flight.offset = (flight.lap - 1) * length
+	local exit = Vector3.new(flight.laneX, Laps.EXIT_HEIGHT, Laps.EXIT_Z)
+	local run = flight.total - flight.offset - Laps.EXIT_Z
+	local forward, up, plan = Laps.relaunch(run, flight.thrown, Workspace.Gravity)
+	local velocity = flight.flat * forward + Vector3.new(0, up, 0)
+	-- Tout le mannequin (membres et accessoires) passe d'un bloc ; nouvelle vitesse de référence pour chaque pièce : ni
+	-- os cassé ni choc sur ce changement imposé (délai de grâce du tour qui commence)
+	local dummy = flight.dummy
+	dummy:PivotTo(dummy:GetPivot() + (exit - flight.torso.Position))
+	local spin =
+		Vector3.new(rng:NextNumber(-SPIN.X, SPIN.X), rng:NextNumber(-SPIN.Y, SPIN.Y), rng:NextNumber(-SPIN.Z, SPIN.Z))
+	for _, p in flight.parts do
+		p.AssemblyLinearVelocity = velocity
+		p.AssemblyAngularVelocity = spin
+		flight.prevVelocity[p] = velocity
+	end
+	-- Le tour repart comme un lancer : plan, phase, pièges et rebonds à neuf ; os et objets restent comptés (os plafonnés
+	-- par membre sur tout le vol, objets réapparus comptés une fois par passage)
+	flight.forward = velocity.Unit
+	flight.origin = exit
+	flight.arc = plan
+	flight.phase = FlightArc.startPhase(plan)
+	flight.trapped = false
+	flight.traps = {}
+	flight.trapMisses = {}
+	flight.lastTrap = nil
+	flight.fall = 0
+	flight.bounces = 0
+	flight.bounceUntil = 0
+	flight.restTime = 0
+	flight.landedAt = nil
+	flight.startTime = os.clock()
+	flight.prevPosition = exit
+	-- Départ du tour lu par chaque client (effets des comportements recalculés, Client.FlightFx) ; Lap en dernier
+	dummy:SetAttribute("LaunchOrigin", exit)
+	dummy:SetAttribute("LaunchTime", Workspace:GetServerTimeNow())
+	dummy:SetAttribute("LaunchVelocity", velocity)
+	dummy:SetAttribute("Bounces", 0)
+	dummy:SetAttribute("Lap", flight.lap)
+	addImpact(flight, "Portal", entry, flight.lap)
+	flight.impacts[#flight.impacts].to = exit
+	if RunService:IsStudio() then
+		print(
+			string.format(
+				"[Lap] %s tour %d : portail passé à %.0f s, distance prévue %.0f m (reste %.0f m), relance %.0f studs/s,"
+					.. " premier contact prévu à %.0f m",
+				if flight.owner then flight.owner.Name else tostring(flight.key),
+				flight.lap,
+				os.clock() - flight.launchedAt,
+				flight.total,
+				flight.total - flight.offset,
+				velocity.Magnitude,
+				flight.offset + exit.Z + plan.range
+			)
+		)
+	end
+end
+
 -- Cette méthode permet d'avancer le suivi d'un vol d'une frame lorsque Heartbeat tourne.
 local function step(flight: Flight, dt: number)
 	local elapsed = os.clock() - flight.startTime
@@ -869,8 +953,16 @@ local function step(flight: Flight, dt: number)
 	checkBones(flight, elapsed)
 	checkTraps(flight, previous, position)
 	sendClock(flight, position)
-	flight.distance = math.max(flight.distance, position.Z)
+	flight.distance = math.max(flight.distance, flight.offset + position.Z)
 	flight.reached = math.max(flight.reached, (position - flight.origin):Dot(flight.flat))
+	-- Portail de la ligne d'arrivée (#224) : un tour de plus, sauf au dernier (paroi du bout)
+	if position.Z >= Laps.LENGTH and flight.lap < Laps.MAX then
+		passPortal(flight, position)
+		publish(flight)
+		remotes.Impact:FireAllClients(flight.impacts)
+		flight.impacts = {}
+		return
+	end
 	-- Garde-fou (#215) : un mannequin resté dans la zone de lancer (plus loin atteint, pas la position du moment : un
 	-- rebond en arrière ne compte pas) est rendu au joueur, pas compté comme un lancer raté
 	if not flight.stallChecked and elapsed >= FlightArc.STALL_TIME then
@@ -902,7 +994,7 @@ local function step(flight: Flight, dt: number)
 		or elapsed >= GameConfig.MAX_FLIGHT_TIME
 		or position.Y < GameConfig.KILL_Y
 	then
-		finish(flight, elapsed)
+		finish(flight)
 	end
 end
 
