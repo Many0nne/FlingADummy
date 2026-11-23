@@ -314,10 +314,21 @@ return function(T, Loader)
 					"pad 10 > 11"
 				)
 				local old = Inventory.read({ displays = 6, base = { gold, mint, false, crash } })
-				T.expectEqual(old.displays, START)
-				T.expectEqual(baseKeys(old), upTo("gold:1 mint:1 - crash:1", 4))
+				T.expectEqual(old.displays, 6, "6 présentoirs achetés depuis #211 : gardés, aucun retiré")
+				T.expectEqual(baseKeys(old), upTo("gold:1 mint:1 - crash:1", 4, 6))
+				local fewer = Inventory.read({ displays = 3, base = { gold } })
+				T.expectEqual(fewer.displays, START, "en dessous du départ : porté à DISPLAY_START")
 			end
 		)
+		T.it("sauvegarde à 8 présentoirs d'avant #211 : garde ses 8 et ses mannequins posés", function()
+			local placed = { gold, mint, biker, crash, rookie, mint, crash, biker }
+			local data = Inventory.read({ displays = 8, base = placed })
+			T.expectEqual(data.displays, 8)
+			T.expectEqual(baseKeys(data), "gold:1 mint:1 biker:1 crash:1 rookie:1 mint:1 crash:1 biker:1")
+			T.expectEqual(#data.stock, 0, "rien ne quitte la base")
+			T.expectEqual(Inventory.capacity(data), 8)
+			T.expectEqual(Inventory.displayPrice(data.displays), GameConfig.DISPLAY_PRICES[8 - START + 1], "pad 8 > 9")
+		end)
 		T.it("un posé sur un présentoir non acheté retourne au stock", function()
 			local base = table.create(START, false)
 			base[START + 1] = mint

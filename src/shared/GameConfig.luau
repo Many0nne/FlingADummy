@@ -79,10 +79,11 @@ local GameConfig = {
 	INCOME_TICK         = 1,      -- versement du revenu de la base (s)
 	SELL_MINUTES        = 2,      -- prix de vente d'un mannequin (stand SELL, inventaire) : 2 min de son revenu
 	INVENTORY_MAX       = 200,    -- mannequins en stock au plus ; au-delà, le moins rentable est vendu d'office
-	DISPLAY_START       = 8,      -- présentoirs d'une base neuve (6 avant #156, comme les 8 emplacements de jardin de 09)
-	-- Présentoirs 9 à 30 (pad « 8 > 9 » devant la base), un achat de plus entre deux équipements ou mannequins à lancer :
-	-- 9 à 11 vers 9, 21 et 47 min (prix des anciens 7 à 9), puis 12 à 30 de 69 min à 9,8 h (#156, joueur simulé)
-	DISPLAY_PRICES      = { 450e3, 7e6, 70e6,
+	DISPLAY_START       = 5,      -- présentoirs d'une base neuve : une rangée avant complète (8 avant #211, 6 avant #156)
+	-- Présentoirs 6 à 30 (pad « 5 > 6 » devant la base), un achat de plus entre deux équipements ou mannequins à lancer :
+	-- 6 à 8 bon marché dans les premières minutes (#211, joueur simulé), 9 à 11 vers 9, 21 et 47 min (prix des anciens
+	-- 7 à 9), puis 12 à 30 de 69 min à 9,8 h (#156)
+	DISPLAY_PRICES      = { 400, 1500, 6000, 450e3, 7e6, 70e6,
 	                        220e6, 240e6, 260e6, 310e6, 660e6, 980e6, 1.2e9, 1.7e9, 2.2e9, 2.8e9,
 	                        3.3e9, 4.6e9, 5.5e9, 8.4e9, 16e9, 20e9, 28e9, 51e9, 81e9 },
 
