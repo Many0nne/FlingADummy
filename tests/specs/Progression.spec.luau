@@ -1,6 +1,6 @@
 -- Rythme de la progression (#15) : le joueur simulé (tools/ProgressionSim, vrais modules du jeu) achète tout le
 -- catalogue (équipements, mannequins à lancer, présentoirs) puis renaît ; aucun « mur » entre deux achats, rythme de la
--- première heure, présentoirs étalés, première renaissance vers une douzaine d'heures. Modèle : mannequins hors
+-- première heure, présentoirs étalés, première renaissance vers 6 h (#223). Modèle : mannequins hors
 -- présentoirs vendus aussitôt (un joueur qui ne passe pas au stand SELL touche le même argent, mais plus tard).
 return function(T, Loader, Lib)
 	local Sim = Lib.ProgressionSim
@@ -19,9 +19,9 @@ return function(T, Loader, Lib)
 	local hourSteps = {}
 
 	T.describe("Joueur simulé (#15) : partie", function()
-		T.it("15 joueurs simulés jusqu'à leur première renaissance, 200 sur la première heure", function()
+		T.it("15 joueurs simulés sur 16 h (renaissances comprises), 200 sur la première heure", function()
 			for seed = 1, PLAYERS do
-				table.insert(runs, Sim.simulate(m, seed, 16 * 3600, true))
+				table.insert(runs, Sim.simulate(m, seed, 16 * 3600))
 			end
 			local hourRuns = {}
 			for seed = 1, HOUR_PLAYERS do
@@ -46,19 +46,34 @@ return function(T, Loader, Lib)
 	end
 
 	T.describe("Joueur simulé (#15)", function()
-		T.it("achète tout le catalogue avant la première renaissance, dans le même ordre pour tous", function()
-			local catalog = (#m.Training.GEARS - 1) + (#m.ThrowDummies.LIST - 1) + #m.GameConfig.DISPLAY_PRICES
-			T.expectEqual(#steps, catalog)
-			for _, run in runs do
-				for k, step in steps do
-					local purchase = run.purchases[k]
-					T.expect(
-						purchase ~= nil and purchase.kind == step.kind and purchase.index == step.index,
-						string.format("achat %d : %s %d attendu", k, step.kind, step.index)
-					)
+		T.it(
+			"achète avant la première renaissance tout ce qui coûte moins cher qu'elle, dans le même ordre",
+			function()
+				-- Depuis #223 la renaissance ($15B) tombe avant les derniers mannequins à lancer et présentoirs : ils
+				-- deviennent les achats des cycles suivants
+				local price = m.Rebirth.price(0)
+				local catalog = 0
+				for tier = 2, #m.Training.GEARS do
+					catalog += if m.Training.GEARS[tier].cost < price then 1 else 0
+				end
+				for tier = 2, #m.ThrowDummies.LIST do
+					catalog += if m.ThrowDummies.LIST[tier].cost < price then 1 else 0
+				end
+				for _, displayPrice in m.GameConfig.DISPLAY_PRICES do
+					catalog += if displayPrice < price then 1 else 0
+				end
+				T.expectEqual(#steps, catalog)
+				for _, run in runs do
+					for k, step in steps do
+						local purchase = run.purchases[k]
+						T.expect(
+							purchase ~= nil and purchase.kind == step.kind and purchase.index == step.index,
+							string.format("achat %d : %s %d attendu", k, step.kind, step.index)
+						)
+					end
 				end
 			end
-		end)
+		)
 		T.it("pas de mur : le ratio « prix suivant / revenu » ne fait jamais de saut de plus de × 2", function()
 			for k, step in steps do
 				T.expect(
@@ -97,7 +112,7 @@ return function(T, Loader, Lib)
 			end
 		)
 		T.it(
-			"présentoirs étalés sur toute la courbe (#156) : pas plus d'une heure sans achat entre 1 h et 9 h",
+			"présentoirs étalés sur toute la courbe (#156) : pas plus d'une heure sans achat entre 1 h et la première renaissance",
 			function()
 				local start = m.GameConfig.DISPLAY_START
 				local last = start + #m.GameConfig.DISPLAY_PRICES
@@ -122,14 +137,16 @@ return function(T, Loader, Lib)
 					half ~= nil and half > 3600,
 					"présentoir de la 2e moitié acheté à " .. tostring(half) .. " s"
 				)
+				-- Depuis #223 la première renaissance (≈ 5,5 h) passe avant les derniers présentoirs (26 à 30, de $16B à
+				-- $81B) : ils deviennent les achats des cycles suivants, avec le revenu gardé (le dernier vers 11 h)
 				local t = median("display:" .. last)
 				local rebirth = median("rebirth:1")
 				T.expect(t ~= nil and t > 8 * 3600, "dernier présentoir à " .. tostring(t) .. " s")
-				T.expect(t ~= nil and rebirth ~= nil and t < rebirth, "dernier présentoir avant la renaissance")
+				T.expect(t ~= nil and rebirth ~= nil and t > rebirth, "dernier présentoir après la 1re renaissance")
 				local count = 0
 				for k = 2, #steps do
 					local from, to = steps[k - 1].t, steps[k].t
-					if to > 3600 and from < 9 * 3600 then
+					if to > 3600 then
 						count += 1
 						T.expect(
 							to - from <= 3600,
@@ -137,10 +154,10 @@ return function(T, Loader, Lib)
 						)
 					end
 				end
-				T.expect(count >= 25, count .. " achats entre 1 h et 9 h")
+				T.expect(count >= 20, count .. " achats entre 1 h et la première renaissance (5,5 h)")
 			end
 		)
-		T.it("raretés hautes rares (#156) : Secret vers 4 h, Divine vers 10 h de jeu", function()
+		T.it("raretés hautes rares (#156) : Secret vers 4 h, Divine vers 9 h de jeu", function()
 			local secret, divine = median("rarity:7"), median("rarity:8")
 			T.expect(
 				secret ~= nil and secret > 3 * 3600 and secret < 5 * 3600,
@@ -152,9 +169,58 @@ return function(T, Loader, Lib)
 			local t = median("trackEnd")
 			T.expect(t ~= nil and t > 3.5 * 3600 and t < 6 * 3600, "bout de piste à " .. tostring(t) .. " s")
 		end)
-		T.it("première renaissance vers une douzaine d'heures de jeu", function()
+		T.it("première renaissance vers 6 h de jeu (#223), peu après le bout de piste", function()
 			local t = median("rebirth:1")
-			T.expect(t ~= nil and t > 9 * 3600 and t < 15 * 3600, "première renaissance à " .. tostring(t) .. " s")
+			T.expect(t ~= nil and t > 5 * 3600 and t < 7 * 3600, "première renaissance à " .. tostring(t) .. " s")
+			local trackEnd = median("trackEnd")
+			T.expect(
+				t ~= nil and trackEnd ~= nil and t > trackEnd and t - trackEnd < 3 * 3600,
+				"renaissance " .. tostring(t) .. " s, bout de piste " .. tostring(trackEnd) .. " s"
+			)
 		end)
+		T.it("renaissances suivantes pas trop rapprochées (#223) : 1,5 h au moins entre les 4 premières", function()
+			for k = 2, 4 do
+				local previous, current = median("rebirth:" .. (k - 1)), median("rebirth:" .. k)
+				T.expect(
+					previous ~= nil and current ~= nil and current - previous >= 1.5 * 3600,
+					string.format(
+						"renaissance %d à %s s, la précédente à %s s",
+						k,
+						tostring(current),
+						tostring(previous)
+					)
+				)
+			end
+		end)
+		T.it(
+			"chaque cycle de renaissance garde des achats (#223) : pas 45 min sans achat, médiane des joueurs",
+			function()
+				-- Attente entre deux achats d'un même cycle (celle qui précède la renaissance elle-même n'en est pas une)
+				for cycle = 0, 3 do
+					local worst = {}
+					for _, run in runs do
+						local previous, count, longest = 0, 0, 0
+						for _, purchase in run.purchases do
+							if purchase.kind == "rebirth" then
+								count += 1
+							elseif count == cycle then
+								longest = math.max(longest, purchase.t - previous)
+							end
+							previous = purchase.t
+						end
+						-- Un joueur qui n'a pas atteint ce cycle en 16 h, ou qui n'y a rien acheté, ne compte pas
+						if count >= cycle and longest > 0 then
+							table.insert(worst, longest)
+						end
+					end
+					local value = Sim.median(worst)
+					T.expect(#worst >= PLAYERS / 2, string.format("cycle %d : %d joueurs l'ont atteint", cycle, #worst))
+					T.expect(
+						value ~= nil and value <= 45 * 60,
+						string.format("cycle %d : %s s sans achat", cycle, tostring(value))
+					)
+				end
+			end
+		)
 	end)
 end

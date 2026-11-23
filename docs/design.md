@@ -252,8 +252,9 @@ L'équivalent des aliments de 01 et des graines de 09 : le mannequin qu'on lance
 ## Progression longue (#94)
 Retour de la sprint review 1 : on arrivait au bout des améliorations en ≈ 1 h (Rocket et Cosmic achetés, bout de la
 piste atteint à 43 min, dernier mannequin de collection à « 1 IN 2M »). *Throw a Seed* (09) monte jusqu'à des plantes
-« 1 IN 300Qa » et des graines à 135x. La courbe ci-dessous vise **une douzaine d'heures** de jeu sans renaissance,
-puis des jours avec la renaissance plus bas ; revenus et prix recalés par #15, cotes inchangées (section « Rythme et
+« 1 IN 300Qa » et des graines à 135x. La courbe ci-dessous (tableaux de #94 à #211 : historique, avant #223) visait **une douzaine d'heures** de jeu sans
+renaissance ; depuis #223 la première renaissance arrive à ≈ 5,5 h (bout de piste à 4,4 h, section « Renaissance »), puis
+des jours avec la renaissance plus bas ; revenus et prix recalés par #15, cotes inchangées (section « Rythme et
 économie »).
 
 **Joueur simulé** (`lune run tools/progression [joueurs] [heures]`, `tools/ProgressionSim.luau`, médiane de 60
@@ -299,7 +300,7 @@ Règles de cote et de revenu :
 | Infinity | 6 | 1 IN 5T à 100T | 270M à 540M | 230M à 870M | 147 h (299 h ; > 300 h) |
 
 Premier obtenu : joueur simulé après #156 (60 joueurs sur 14 h ; Celestial à Infinity : 40 joueurs sur 300 h,
-renaissance à $200B × 2^k, section « Renaissance »), avant #156 puis avant #15 entre parenthèses ($50B × 4^k).
+renaissance à $15B × 3^k depuis #223, $200B × 2^k avant, section « Renaissance »), avant #156 puis avant #15 entre parenthèses ($50B × 4^k).
 Cotes du Secret et du Divine × 3 par #156 (section « Piste et économie de la review 3 ») ; les Mythic générés se
 placent entre le dernier Mythic dessiné et le premier Secret, leur cote monte avec.
 
@@ -866,11 +867,11 @@ sien et ceux des voisins) :
 - **Mouvement réduit** : débits et éclats à 40 %, pas d'anneau qui s'étend.
 
 ### Renaissance (#108, `Shared.Rebirth`)
-Le levier après tout le catalogue d'achats (≈ 11,1 h simulées depuis #129 ; 9,6 h avant), comme la
+Le levier juste après le bout de piste et le dernier équipement (≈ 5,5 h simulées depuis #223 ; 12,4 h avant), comme la
 RENAISSANCE de *Net a Fish!* (12) et
 d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour toujours.
-- **Condition** : posséder le dernier équipement d'entraînement (Infinite) **et** payer **$200B × 2^k** (k renaissances
-  déjà faites : $200B, $400B, $800B, $1.6T… ; $350B × 2^k avant #156, $50B × 4^k avant #15 et #109). Validée par le serveur (`PlayerData.rebirth` : chargé, au hub, ni en vol
+- **Condition** : posséder le dernier équipement d'entraînement (Infinite) **et** payer **$15B × 3^k** (k renaissances
+  déjà faites : $15B, $45B, $135B, $405B… ; $200B × 2^k avant #223, $350B × 2^k avant #156, $50B × 4^k avant #15 et #109). Validée par le serveur (`PlayerData.rebirth` : chargé, au hub, ni en vol
   ni jauge ouverte, `Rebirth.missing`), remote `Rebirth` sans charge ; la séance d'entraînement en cours s'arrête.
 - **Remis à zéro** (valeurs d'un nouveau joueur, `Rebirth.RESET`) : argent, Throw Power, niveau et EXP
   d'entraînement, équipement d'entraînement, mannequins à lancer achetés (retour au Crash Dummy). **Gardés** :
@@ -883,9 +884,9 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
   - popup **« REBIRTH READY! »** une fois par renaissance quand la condition est remplie (« Renaissance prête ! » de
     12) ;
   - fenêtre **Rebirth** (bandeau violet → rose) : « LUCK x2 FOREVER », « Luck x4 → x8 », colonnes **RESETS** (rouge,
-    ✖) et **KEEPS** (vert, ✔), condition « ✔ Infinite Dummy » et prix « ✔ $200B » (vert, rouge sinon), compteur
+    ✖) et **KEEPS** (vert, ✔), condition « ✔ Infinite Dummy » et prix « ✔ $15B » (vert, rouge sinon), compteur
     « Rebirths: k » (coches et croix en emoji ✅ / ❌), gros bouton vert **REBIRTH** grisé avec la condition manquante (« NEED INFINITE GEAR »,
-    « NEED $200B ») ; deux clics (« SURE? » orange pendant 3 s) : la renaissance efface beaucoup ;
+    « NEED $15B ») ; deux clics (« SURE? » orange pendant 3 s) : la renaissance efface beaucoup ;
   - à la renaissance, **écran plein violet** (« REBIRTH! », « LUCK x2 FOREVER! », « Rebirth k • total luck x8 »,
     rayons et gerbe d'étoiles violettes de 05, 3,4 s) ;
   - **annonce** aux autres joueurs du serveur (bandeau violet et ligne de chat, file de `Client.Announce`) :
@@ -914,6 +915,37 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
   Avec le prix × 4, l'écart entre deux renaissances double presque à chaque fois (6, 10, 21, 40, 84 h) : le revenu ne
   monte qu'avec la CHANCE (× 2) et le nombre de tirages. Avec × 2 (#109), il reste de 4 à 9 h jusqu'à la 7e, puis 11 à
   74 h ; Celestial, Ethereal et Infinity deviennent atteignables, dans l'esprit « des jours de jeu » visé par #94.
+- **Première renaissance près du bout de piste (#223)** : avec $200B, le bout de piste (4,4 h) et l'Infinite Dummy
+  (5,1 h) laissaient ≈ 8 h sans progression de la boucle principale avant la renaissance (12,4 h). Prix de base ramené à
+  **$15B**, × 3 par renaissance au lieu de × 2 : la renaissance tombe juste après l'Infinite Dummy ($11B) et le dernier
+  présentoir à moins de $15B (n° 25, $8,4B). Prix de base essayés (joueur simulé, 40 joueurs, 14 h) : 5,4 h à $8B,
+  5,5 h à $12B, 5,6 h à $15B, 7,0 h à $20B, 8,8 h à $45B. Avec × 2, les renaissances 2 à 4 se suivaient à 1,8 h, 1,9 h
+  puis 0,9 h d'écart ($15B) : le revenu gardé les rapproche, d'où le × 3 (écarts 3,6 h, 2,9 h, 1,7 h, 1,9 h).
+  Mannequins à lancer (Starlight Rocket $18B à Infinite Rocket $97B) et présentoirs 26 à 30 ($16B à $81B) : prix
+  inchangés, ils deviennent les achats des cycles suivants (le dernier présentoir à 11,2 h, après la 2e renaissance ;
+  jamais plus de 26 min sans achat dans un cycle, médiane des joueurs). Saut du ratio d'achat jusqu'à la
+  renaissance × 1,58 (× 1,71 avant) ; première heure inchangée.
+  | Joueur simulé (60 joueurs, 14 h, médianes) | Avant ($200B × 2^k) | Après ($15B × 3^k) |
+  |---|---|---|
+  | Bout de piste | 4,4 h | 4,4 h |
+  | Infinite Dummy (équipement) | 5,1 h | 5,1 h |
+  | Première renaissance | 12,4 h | 5,5 h |
+  | Écarts entre les renaissances 1 à 5 | 3,3 h, 3,0 h, 2,9 h, 2,7 h | 3,6 h, 2,9 h, 1,7 h, 1,9 h |
+  | Starlight Rocket ($18B) / Infinite Rocket ($97B) | 6,0 h / 10,9 h | 7,0 h / 11,5 h |
+  | Divine (premier obtenu) | 9,6 h | 8,6 h |
+  | Fin de 14 h | 1 renaissance, CHANCE x34K | 4 renaissances, CHANCE x137K |
+
+  Relevé sur 300 h (`lune run tools/progression 60 300`, médianes) :
+  | | Avant | Après |
+  |---|---|---|
+  | Renaissances 1 à 5 | 12,3 h, 15,6 h, 18,6 h, 21,5 h, 24,2 h | 5,5 h, 9,1 h, 12,0 h, 13,7 h, 15,6 h |
+  | 10e renaissance | 50,7 h | 58,4 h |
+  | Renaissances en 300 h | 16 (la 16e à 226 h) | 13 (la 13e à 280 h) |
+  | Celestial / Ethereal / Infinity (premiers obtenus) | 23,9 h / 48,9 h / 147 h | 17,0 h / 49,7 h / 296 h |
+
+  Coût du × 3 : la fin de courbe ralentit (Infinity à 296 h au lieu de 147 h, 13 renaissances en 300 h au lieu de 16),
+  car $15B × 3^k dépasse $200B × 2^k dès la 8e renaissance. Avec × 2,75, Infinity serait à 169 h (14 renaissances en
+  300 h) mais les renaissances 4 et 5 se suivraient à 1,4 h. À recaler si la sprint review juge la fin trop lente.
 - **Studio** : `DebugWipe` (section « Architecture ») remet le compte à zéro, renaissances comprises.
 
 ## Base et collection (`Server.BaseService`, `Shared.Inventory`)
