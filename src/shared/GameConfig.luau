@@ -46,7 +46,7 @@ local GameConfig = {
 	LATERAL_DAMP        = 6,      -- amortissement de la vitesse latérale après le premier contact (1/s) : reste dans sa colonne
 
 	-- Jauge (1 clic : l'aiguille court toute seule, le clic l'arrête)
-	GAUGE_PERIOD        = 1.2,    -- durée d'un aller-retour de l'aiguille (s)
+	GAUGE_PERIOD        = 1.32,   -- durée d'un aller-retour de l'aiguille (s) ; 1,2 jusqu'à #200 (9 % plus lente)
 	GAUGE_MIN_FACTOR    = 0.6,    -- fraction de la vitesse quand l'aiguille est en bas
 	GAUGE_STEPS         = 20,     -- valeur affichée à côté de l'aiguille : +1 à +20
 	-- Vérification par le serveur : il recalcule l'instant du clic depuis l'ouverture de la jauge (arrivée du GaugeStop
