@@ -36,9 +36,8 @@ local function clip(zone: Rect, own: Rect, other: Rect, axis: "x" | "y")
 	end
 end
 
--- Cette méthode permet de donner la zone tactile d'un bouton `own` (px d'écran) : au moins MIN_TARGET de côté, centrée,
--- mais arrêtée à mi-chemin des boutons voisins `others` (un PLACE et un SELL empilés ne se volent pas leurs touchers)
--- lorsque la zone tactile du bouton se cale.
+-- Cette méthode permet de donner la zone tactile d'un bouton `own` (px d'écran, ≥ MIN_TARGET, centrée) arrêtée à
+-- mi-chemin des boutons voisins `others` (PLACE et SELL empilés) lorsque la zone tactile du bouton se cale.
 function TouchLayout.padRect(own: Rect, others: { Rect }): Rect
 	local cx, cy = (own.x0 + own.x1) / 2, (own.y0 + own.y1) / 2
 	local half = TouchLayout.MIN_TARGET / 2

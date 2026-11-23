@@ -901,36 +901,6 @@ local function bindScale(scale: UIScale)
 	update()
 end
 
--- Cette méthode permet de garder les boutons et compteurs du HUD (`main`) hors de l'encoche et de la barre d'accueil
--- d'un téléphone (#19) lorsque l'écran ou l'échelle changent ; le reste du HUD (bandes, éclairs) couvre tout l'écran.
-local function bindSafeArea(main: Frame)
-	-- Repère vide aux marges sûres de l'appareil (sans la barre du haut, que le HUD recouvre déjà)
-	local probe = UIKit.create("ScreenGui", {
-		Name = "SafeArea",
-		ResetOnSpawn = false,
-		Parent = gui.Parent,
-	})
-	probe.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
-	local function update()
-		local from, size = gui.AbsolutePosition, gui.AbsoluteSize
-		local safeFrom, safeSize = probe.AbsolutePosition, probe.AbsoluteSize
-		local low = Vector2.new(math.max(0, safeFrom.X - from.X), math.max(0, safeFrom.Y - from.Y))
-		local high = Vector2.new(
-			math.max(0, from.X + size.X - safeFrom.X - safeSize.X),
-			math.max(0, from.Y + size.Y - safeFrom.Y - safeSize.Y)
-		)
-		local scale = math.max(hudScale.Scale, 0.01)
-		main.Position = UDim2.fromOffset(low.X / scale, low.Y / scale)
-		main.Size = UDim2.new(1, -(low.X + high.X) / scale, 1, -(low.Y + high.Y) / scale)
-	end
-	for _, source in { probe, gui } :: { GuiBase2d } do
-		source:GetPropertyChangedSignal("AbsolutePosition"):Connect(update)
-		source:GetPropertyChangedSignal("AbsoluteSize"):Connect(update)
-	end
-	hudScale:GetPropertyChangedSignal("Scale"):Connect(update)
-	update()
-end
-
 -- Cette méthode permet de donner le ScreenGui du jeu (créé par Hud.init) lorsqu'un autre module y ajoute ses éléments.
 function Hud.screen(): ScreenGui
 	return gui
@@ -1129,7 +1099,14 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 		BackgroundTransparency = 1,
 		Parent = gui,
 	})
-	bindSafeArea(root)
+	-- Boutons et compteurs hors de l'encoche ; « My Dummies », posée à côté du bouton Dummies, suit sa marge droite
+	local safeRight = 0
+	UIKit.keepSafe(root, function(_left: number, right: number)
+		safeRight = right
+		if windows.Dummies then
+			windows.Dummies.Position = UDim2.new(1, -(30 + BUTTON_SIZE) - safeRight, 0.5, 0)
+		end
+	end)
 	buildCounters()
 	buildButtons()
 	buildGearOffer()
@@ -1145,6 +1122,7 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 	do
 		windows[name] = frame
 	end
+	windows.Dummies.Position = UDim2.new(1, -(30 + BUTTON_SIZE) - safeRight, 0.5, 0)
 	-- Boutique des mannequins à lancer (stand SHOP, popup « NEW DUMMY! »)
 	windows.DummyShop = ThrowShop.init(player, remotes, gui, {
 		popup = Hud.popup,
@@ -1314,9 +1292,14 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 	if RunService:IsStudio() then
 		player:GetAttributeChangedSignal("DebugOpen"):Connect(function()
 			local name = player:GetAttribute("DebugOpen")
+			if name == nil then
+				return
+			end
+			player:SetAttribute("DebugOpen", nil)
 			if type(name) == "string" and windows[name] then
-				player:SetAttribute("DebugOpen", nil)
 				toggle(name)
+			else
+				warn("[Hud] DebugOpen : fenêtre inconnue " .. tostring(name))
 			end
 		end)
 	end

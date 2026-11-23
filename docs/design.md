@@ -1029,9 +1029,9 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
 - **Jeu sur écran tactile (#19)** (`Shared.TouchLayout`) : HUD un peu plus grand (cadre 1180 × 650 au lieu de
   1280 × 720 : 0,6 au lieu de 0,54 sur un téléphone de 390 px de haut, 1 sur iPad) ; chaque bouton a une zone tactile
   d'au moins 44 px d'écran, arrêtée à mi-chemin des boutons voisins (listes serrées : onglets de l'Index ≈ 21 px,
-  PLACE / SELL ≈ 33 px, toute la bande jusqu'au voisin) ; boutons et compteurs hors de l'encoche ; joystick et bouton
-  de saut cachés quand le joueur ne peut pas bouger (bande, vol, résultat, tirage : un toucher n'importe où lance) ;
-  paysage seulement (`StarterGui.ScreenOrientation`). En Studio, `DebugOpen` (attribut du joueur, côté client) ouvre
+  PLACE / SELL ≈ 33 px, toute la bande jusqu'au voisin) ; boutons, compteurs, My Dummies et panneau X-RAY hors de
+  l'encoche (`UIKit.keepSafe`) ; joystick et bouton de saut cachés quand le joueur ne peut pas bouger (bande, vol,
+  résultat, tirage : un toucher n'importe où lance) ; paysage seulement (`StarterGui.ScreenOrientation`). En Studio, `DebugOpen` (attribut du joueur, côté client) ouvre
   une fenêtre par son nom (le clic simulé du Device Simulator ne tombe pas au bon endroit).
 - **Obstacles partagés** (`Server.Obstacles`, plan dans `Shared.TrackPlan`) : dans chaque thème, les 2 ou 3 obstacles cassables du thème à
   tour de rôle (un site de plus que le minimum : il a remplacé la rangée de vitres retirée par #90) (`Server.ThemeObstacles`, un par colonne ou d'un seul tenant sur la largeur des colonnes) et son piège

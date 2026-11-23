@@ -105,7 +105,11 @@ local shineRunning = false
 local openWindows: { [GuiObject]: boolean } = {} -- fenêtre ouverte → floute le fond
 local blur: BlurEffect? = nil
 local fxLayer: ScreenGui? = nil
-local scopeButtons: { [Instance]: { GuiButton } } = setmetatable({}, { __mode = "k" }) :: any -- boutons par ensemble
+-- Zones tactiles par ensemble (fenêtre, HUD principal) : rectangles des boutons, recalages, ensembles suivis
+local scopeRects: { [Instance]: { [GuiButton]: TouchLayout.Rect } } = setmetatable({}, { __mode = "k" }) :: any
+local scopePads: { [Instance]: { [() -> ()]: boolean } } = setmetatable({}, { __mode = "k" }) :: any
+local scopeRefit: { [Instance]: boolean } = setmetatable({}, { __mode = "k" }) :: any
+local safeArea: ScreenGui? = nil -- repère des marges sûres de l'appareil (UIKit.keepSafe)
 local scopeWatched: { [Instance]: boolean } = setmetatable({}, { __mode = "k" }) :: any
 
 -- Cette méthode permet de créer une instance avec ses propriétés (Parent en dernier) lorsque l'on construit une
@@ -375,54 +379,71 @@ local function rectOf(gui: GuiObject): TouchLayout.Rect
 	return { x0 = at.X, y0 = at.Y, x1 = at.X + size.X, y1 = at.Y + size.Y }
 end
 
--- Cette méthode permet de donner les boutons d'un ensemble (fenêtre, HUD principal), tenus à jour quand l'ensemble
--- change, lorsque une zone tactile cherche ses voisins.
-local function buttonsIn(scope: Instance): { GuiButton }
-	local cached = scopeButtons[scope]
-	if cached then
-		return cached
-	end
-	local list = {}
-	for _, item in scope:GetDescendants() do
-		if item:IsA("GuiButton") and item.Name ~= "TouchPad" then
-			table.insert(list, item)
-		end
-	end
-	scopeButtons[scope] = list
-	if not scopeWatched[scope] then
-		scopeWatched[scope] = true
-		-- Cette méthode permet d'oublier la liste lorsque un bouton entre dans l'ensemble ou en sort.
-		local function forget(item: Instance)
-			if item:IsA("GuiButton") then
-				scopeButtons[scope] = nil
-			end
-		end
-		scope.DescendantAdded:Connect(forget)
-		scope.DescendantRemoving:Connect(forget)
-	end
-	return list
-end
-
--- Cette méthode permet de donner les boutons voisins d'un bouton (même fenêtre ou même HUD principal : PLACE et SELL
--- d'une ligne, PLACE BEST au-dessus de la liste) lorsque sa zone tactile s'arrête avant eux.
-local function neighbours(button: GuiButton): { GuiButton }
-	-- Ensemble : l'ancêtre posé directement dans le ScreenGui
+-- Cette méthode permet de donner l'ensemble d'un bouton (l'ancêtre posé directement dans le ScreenGui : fenêtre, HUD
+-- principal) lorsque sa zone tactile cherche ses voisins.
+local function scopeOf(button: GuiButton): Instance
 	local scope: Instance = button
 	while scope.Parent and not scope.Parent:IsA("LayerCollector") do
 		scope = scope.Parent
 	end
-	local list = {}
-	for _, other in buttonsIn(scope) do
-		if other ~= button and not other:IsDescendantOf(button) and not button:IsDescendantOf(other) then
-			table.insert(list, other)
-		end
-	end
-	return list
+	return scope
 end
 
--- Cette méthode permet d'élargir la zone tactile d'un bouton à TouchLayout.MIN_TARGET px d'écran (cadre transparent
--- posé dessus, qui relaie le toucher au bouton, arrêté à mi-chemin des boutons voisins) lorsque l'écran est tactile ;
--- recalée quand la taille affichée change.
+-- Cette méthode permet de recaler, une fois la rafale passée, toutes les zones tactiles d'un ensemble lorsque un bouton y
+-- entre ou en sort (ligne ajoutée à My Dummies : la zone du SELL du dessus s'arrête avant le nouveau PLACE).
+local function refitScope(scope: Instance)
+	if scopeRefit[scope] then
+		return
+	end
+	scopeRefit[scope] = true
+	task.delay(PAD_SETTLE, function()
+		scopeRefit[scope] = nil
+		local fits = scopePads[scope]
+		if fits then
+			for fit in fits do
+				fit()
+			end
+		end
+	end)
+end
+
+-- Cette méthode permet de donner les rectangles des boutons affichés d'un ensemble (liste tenue à jour quand l'ensemble
+-- change, rectangles relus une fois par vague de recalages) lorsque une zone tactile cherche ses voisins.
+local function rectsIn(scope: Instance): { [GuiButton]: TouchLayout.Rect }
+	local cached = scopeRects[scope]
+	if cached then
+		return cached
+	end
+	if not scopeWatched[scope] then
+		scopeWatched[scope] = true
+		-- Cette méthode permet d'oublier les rectangles et de recaler les zones lorsque un bouton entre ou sort.
+		local function changed(item: Instance)
+			if item:IsA("GuiButton") and item.Name ~= "TouchPad" then
+				scopeRects[scope] = nil
+				refitScope(scope)
+			end
+		end
+		scope.DescendantAdded:Connect(changed)
+		scope.DescendantRemoving:Connect(changed)
+	end
+	local rects = {}
+	for _, item in scope:GetDescendants() do
+		-- Bouton masqué lui-même (onglet, offre) : pas un voisin ; fenêtre fermée : ses boutons comptent
+		if item:IsA("GuiButton") and item.Name ~= "TouchPad" and item.Visible then
+			rects[item] = rectOf(item)
+		end
+	end
+	scopeRects[scope] = rects
+	task.defer(function()
+		if scopeRects[scope] == rects then
+			scopeRects[scope] = nil -- relus à la vague suivante (fenêtre déplacée, défilée)
+		end
+	end)
+	return rects
+end
+
+-- Cette méthode permet d'élargir la zone tactile d'un bouton à TouchLayout.MIN_TARGET px d'écran, arrêtée à mi-chemin
+-- des boutons voisins (cadre transparent posé dessus, qui relaie le toucher), lorsque l'écran est tactile.
 local function touchPad(button: GuiButton): GuiButton
 	local pad = UIKit.create("TextButton", {
 		Name = "TouchPad",
@@ -434,16 +455,29 @@ local function touchPad(button: GuiButton): GuiButton
 		ZIndex = button.ZIndex,
 		Parent = button,
 	})
-	-- Cette méthode permet de recaler la zone tactile lorsque le bouton change de taille affichée (échelle, animation).
+	local registered: Instance? = nil
+	-- Cette méthode permet de recaler la zone tactile lorsque le bouton change de taille affichée ou que ses voisins
+	-- changent.
 	local function fit()
 		local scale = scaleChain(pad)
-		if scale <= 0 or button.AbsoluteSize.X <= 0 then
+		if not button.Parent or scale <= 0 or button.AbsoluteSize.X <= 0 then
 			return
+		end
+		local scope = scopeOf(button)
+		if registered ~= scope then
+			if registered and scopePads[registered] then
+				scopePads[registered][fit] = nil
+			end
+			registered = scope
+			scopePads[scope] = scopePads[scope] or setmetatable({}, { __mode = "k" }) :: any
+			scopePads[scope][fit] = true
 		end
 		local own = rectOf(button)
 		local others = {}
-		for _, other in neighbours(button) do
-			table.insert(others, rectOf(other))
+		for other, rect in rectsIn(scope) do
+			if other ~= button and not other:IsDescendantOf(button) and not button:IsDescendantOf(other) then
+				table.insert(others, rect)
+			end
 		end
 		local zone = TouchLayout.padRect(own, others)
 		pad.Position = UDim2.fromOffset((zone.x0 - own.x0) / scale, (zone.y0 - own.y0) / scale)
@@ -1349,6 +1383,54 @@ function UIKit.popup(parent: Instance, options: PopupOptions): number
 		holder:Destroy()
 	end)
 	return duration
+end
+
+-- Cette méthode permet de donner le repère des marges sûres de l'appareil (ScreenGui vide, sans la barre du haut)
+-- lorsque un élément du HUD se tient hors de l'encoche.
+local function safeProbe(): ScreenGui
+	if safeArea and safeArea.Parent then
+		return safeArea
+	end
+	local probe = UIKit.create("ScreenGui", {
+		Name = "SafeArea",
+		ResetOnSpawn = false,
+		Parent = Players.LocalPlayer:WaitForChild("PlayerGui"),
+	})
+	-- Posé après la création : IgnoreGuiInset le remettrait à None
+	probe.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
+	safeArea = probe
+	return probe
+end
+
+-- Cette méthode permet de garder un cadre plein écran d'un ScreenGui à IgnoreGuiInset hors de l'encoche et de la
+-- barre d'accueil d'un téléphone (#19) ; `onChange(gauche, droite, haut, bas)` reçoit les marges en unités du HUD.
+function UIKit.keepSafe(frame: GuiObject, onChange: ((number, number, number, number) -> ())?)
+	local gui = frame:FindFirstAncestorOfClass("ScreenGui") :: ScreenGui
+	local hudScale = gui:FindFirstChildOfClass("UIScale")
+	local probe = safeProbe()
+	-- Cette méthode permet de recaler le cadre lorsque l'écran, la zone sûre ou l'échelle du HUD changent.
+	local function update()
+		local from, size = gui.AbsolutePosition, gui.AbsoluteSize
+		local safeFrom, safeSize = probe.AbsolutePosition, probe.AbsoluteSize
+		local scale = math.max(if hudScale then hudScale.Scale else 1, 0.01)
+		local left = math.max(0, safeFrom.X - from.X) / scale
+		local top = math.max(0, safeFrom.Y - from.Y) / scale
+		local right = math.max(0, from.X + size.X - safeFrom.X - safeSize.X) / scale
+		local bottom = math.max(0, from.Y + size.Y - safeFrom.Y - safeSize.Y) / scale
+		frame.Position = UDim2.fromOffset(left, top)
+		frame.Size = UDim2.new(1, -(left + right), 1, -(top + bottom))
+		if onChange then
+			onChange(left, right, top, bottom)
+		end
+	end
+	for _, source in { probe, gui } :: { GuiBase2d } do
+		source:GetPropertyChangedSignal("AbsolutePosition"):Connect(update)
+		source:GetPropertyChangedSignal("AbsoluteSize"):Connect(update)
+	end
+	if hudScale then
+		hudScale:GetPropertyChangedSignal("Scale"):Connect(update)
+	end
+	update()
 end
 
 -- Cette méthode permet de donner la couche d'effets (ScreenGui sans UIScale, au-dessus du HUD, en pixels d'écran)
