@@ -10,6 +10,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
 local Damage = require(Shared.Damage)
+local DisplayLag = require(Shared.DisplayLag)
 local Economy = require(Shared.Economy)
 local FlightArc = require(Shared.FlightArc)
 local GameConfig = require(Shared.GameConfig)
@@ -47,6 +48,7 @@ export type Impact = {
 	value: number?, -- os ajoutés, objets détruits, ou force du choc
 	material: string?, -- "Crate" | "Brick" pour Smash ; piège (Shared.Traps.KINDS) pour Trap
 	userId: number,
+	at: number?, -- heure serveur du choc (#84 : chaque client le montre quand son mannequin affiché y arrive)
 }
 
 type Flight = {
@@ -86,6 +88,7 @@ type Flight = {
 	traps: { [number]: boolean }, -- pièges déjà déclenchés par ce vol (site de TrackPlan.TrapBox, toutes colonnes)
 	trapMisses: { [number]: boolean }, -- pièges traversés hors phase (trace Studio, une fois par vol et par piège)
 	lastTrap: { kind: string, at: number }?, -- dernier piège déclenché : cause des os cassés juste après
+	clockSent: number, -- os.clock() du dernier échantillon FlightClock envoyé (#84)
 }
 
 local LaunchService = {}
@@ -219,6 +222,7 @@ local function startFlight(
 		traps = {},
 		trapMisses = {},
 		lastTrap = nil,
+		clockSent = -math.huge,
 	}
 	return dummy, origin, speed
 end
@@ -336,6 +340,7 @@ local function addImpact(flight: Flight, kind: string, position: Vector3, value:
 		value = value,
 		material = material,
 		userId = if flight.owner then flight.owner.UserId else 0,
+		at = Workspace:GetServerTimeNow(),
 	})
 end
 
@@ -753,6 +758,18 @@ local function applyBehavior(flight: Flight, elapsed: number, dt: number, before
 	end
 end
 
+-- Cette méthode permet d'envoyer à tous les clients l'heure serveur et la position du torse (`position`, celle qui
+-- décide des pièges cette frame) lorsque le vol avance, DisplayLag.SAMPLE_RATE fois par seconde au plus (#84).
+local function sendClock(flight: Flight, position: Vector3)
+	local clock = os.clock()
+	-- Tolérance de 5 ms : une frame sur trois à 60 Hz, pas une sur quatre au moindre écart
+	if clock - flight.clockSent < 1 / DisplayLag.SAMPLE_RATE - 0.005 then
+		return
+	end
+	flight.clockSent = clock
+	remotes.FlightClock:FireAllClients(flight.torso, Workspace:GetServerTimeNow(), position)
+end
+
 -- Cette méthode permet d'avancer le suivi d'un vol d'une frame lorsque Heartbeat tourne.
 local function step(flight: Flight, dt: number)
 	local elapsed = os.clock() - flight.startTime
@@ -777,6 +794,7 @@ local function step(flight: Flight, dt: number)
 	flight.apex = math.max(flight.apex, position.Y)
 	checkBones(flight, elapsed)
 	checkTraps(flight, previous, position)
+	sendClock(flight, position)
 	flight.distance = math.max(flight.distance, position.Z)
 	applyBehavior(flight, elapsed, dt, before, impact)
 	publish(flight)

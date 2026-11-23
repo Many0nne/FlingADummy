@@ -85,7 +85,7 @@ ThrowController.onReleased = function(gauge: number)
 end
 FlightFx.init()
 Effects.init(player, remotes.Impact)
-TrapMotion.init()
+TrapMotion.init(remotes.FlightClock)
 ZoneSky.init()
 -- Studio : cadrage des prises de vue des planches de référence (#121, attribut PhotoShot de Workspace)
 if RunService:IsStudio() then
