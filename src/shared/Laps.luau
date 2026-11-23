@@ -20,7 +20,7 @@ Laps.MAX = 10 -- tours au plus : au dernier, le portail ne renvoie plus (paroi d
 Laps.POWER_PER_LAP = 3.5 -- repère de conception : un tour de plus par × 3,5 de puissance environ
 Laps.RATIO = 1.08
 -- CHANCE des zones au-delà du bout : FINAL_CHANCE × CHANCE_PER_LAP par tour de plus (continue, tour partiel compris)
-Laps.CHANCE_PER_LAP = 1.7
+Laps.CHANCE_PER_LAP = 1.8
 -- Part de la glissade freinée théorique comptée dans la portée virtuelle (0,3 à 0,75 mesuré par #113)
 Laps.SLIDE_SHARE = 0.4
 -- Sortie du portail : au début de la piste, au-dessus de la bande de lancer franchie (les joueurs sont en z < 0)

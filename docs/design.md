@@ -167,7 +167,7 @@ Comme 01 et 09 : le lancer fait le lien entre les deux.
 - CHANCE = chance des zones × (1 + 2 % par os cassé + 1 % par objet détruit) × multiplicateur du mannequin lancé
   (section suivante) × 2^k (k renaissances, section « Renaissance »), arrondie au centième. La chance des zones
   vaut celle de la zone à son entrée et monte en continu jusqu'à celle de la suivante (18 à 2,4 km, 60 au bout de la
-  piste de 6 km, puis × 1,7 par tour de plus du portail : section « Tours de piste », #224) : un
+  piste de 6 km, puis × 1,8 par tour de plus du portail : section « Tours de piste », #224) : un
   premier lancer (≈ 145 m) donne ≈ 1.4X, comme le 1.36X de 09.
 - Tirage : les mannequins sont essayés du plus rare au plus courant, chacun sort avec la probabilité min(1, CHANCE / n)
   (le plus courant ramasse le reste) ; la taille se tire de même à CHANCE^0,5. Probabilités exactes affichables
@@ -895,7 +895,7 @@ pièges servent à chaque tour.
   par le vol, puis réapparue 5 s après le dernier choc : un tour dure ≥ 6 s). Pièges : un déclenchement par piège et
   par tour. Aucun levier pour le joueur : le nombre de tours ne dépend que de la puissance, de la jauge et du
   mannequin lancé.
-- **CHANCE** (`Economy.zoneChance`) : au-delà du bout, × 60 × **1,7 par tour de plus** (`Laps.CHANCE_PER_LAP`,
+- **CHANCE** (`Economy.zoneChance`) : au-delà du bout, × 60 × **1,8 par tour de plus** (`Laps.CHANCE_PER_LAP`,
   continue) ; la bannière continue de monter au deuxième tour (pas de retour à × 1 de la Prairie), la zone affichée est
   celle du décor survolé.
 - **Record** : la distance totale, tours compris (attribut `Distance`, `BestDistance`, classement : « 7.4 km »).
@@ -909,24 +909,28 @@ pièges servent à chaque tour.
   (Rubber), 20,5 s (Glider), 16,7 s (Rocket), ≤ 25 s visés.
 - **Mannequins à lancer** : le surplus suit leur portée réelle. Leur part de portée (+ 15 à + 20 %) vaut ≈ 2 tours
   au-delà du bout : le Glider atteint le bout vers 26 B de puissance, le Crash Dummy vers 375 B (× 14). Conséquence
-  simulée : un mannequin sans comportement acheté après le Nebula Rubber (Plasma Glass, 75x à 7,3 h) fait retomber le
-  lancer de 2,6 à 1 tour (CHANCE des zones × 140 → × 59, mannequin compris : 7,7 K → 4,4 K). Suivi : #228.
+  simulée (calibrage d'avant #223, sans renaissance avant 10 h) : un mannequin sans comportement acheté après le Nebula
+  Rubber (Plasma Glass, 75x) fait retomber le lancer de 2,6 à 1 tour (CHANCE des zones × 140 → × 59, mannequin
+  compris : 7,7 K → 4,4 K). Depuis #223, il arrive dans les cycles suivants. Suivi : #228.
 
-Joueur simulé (60 joueurs, 14 h, médianes ; avant : #211, piste plafonnée au bout) :
+Joueur simulé (60 joueurs, 14 h, médianes ; avant : `main` après #223, piste plafonnée au bout) :
 | Repère | Avant | Après |
 |---|---|---|
 | Bout de piste | 4,4 h | 4,4 h |
-| Tours du lancer à 4 / 5 / 6 / 8 h | 0,87 / 1 / 1 / 1 | 0,87 / 1,87 / 2,60 / 0,99 (Plasma Glass) |
-| CHANCE des zones à 5 / 6 h | × 60 | × 95 / × 140 (× 2,3 à 6 h) |
-| 1,5 / 2 / 2,5 / 3 tours | — | 4,4 / 5,2 / 5,8 / 7,9 h |
-| Revenu à 8 h | $16.6M/s | $28.7M/s |
-| Premier Secret / Divine | 3,9 / 9,6 h | 3,9 / 7,3 h |
-| Première renaissance | 12,3 h | 10,2 h (lancer : 518 B, 3,74 tours, CHANCE des zones × 256) |
-| Saut le plus fort du ratio | × 1,71 | × 1,58 |
-| 14 h | 1 renaissance, $53.9M/s | 2 renaissances, $175M/s |
-Calibrage fait sur la puissance médiane à 6 h simulées (#223, qui avance la première renaissance vers 6 h, n'était pas
-mergée) : 1,6 tour de plus et CHANCE des zones × 2,3 à 6 h. Première heure inchangée (la piste n'est pas finie avant
-4 h). Garde-fou de `Progression.spec` : Divine après 7 h (8 h avant #224).
+| Tours du lancer à 4 / 5 / 8 h (8 h : 2e cycle) | 0,87 / 1 / 1 | 0,87 / 1,82 / 2,30 |
+| CHANCE des zones à 5 / 8 h | × 60 / × 60 | × 97 / × 129 |
+| 1,5 / 2 tours | — | 4,4 / 5,2 h |
+| Lancer d'avant la première renaissance | 104 B, 1 tour, × 60 | 104 B, **2,22 tours, × 123** (× 2,05) |
+| Revenu à 8 h / 14 h | $19.7M/s / $147M/s | $29.6M/s / $455M/s |
+| Premier Secret / Divine | 3,9 / 8,6 h | 3,9 / 8,0 h |
+| Renaissances 1 à 5 | 5,5 / 9,1 / 12,0 / 13,7 / > 14 h | 5,4 / 8,4 / 10,7 / 11,9 / 13,4 h |
+| Saut le plus fort du ratio | × 1,58 | × 1,58 |
+Calibré sur la courbe de #223 (première renaissance vers 5,5 h) : 1,2 tour de plus et CHANCE des zones × 2,05 juste
+avant la première renaissance (cible : 1 à 2 tours, × 2 à × 3). Essais écartés (15 joueurs, 16 h) : × 1,7 par tour
+(CHANCE × 1,9 avant la renaissance), RATIO 1,10 ou 1,12 (1 tour de plus, × 1,8). Toute CHANCE en plus resserre les
+cycles suivants : l'écart entre les renaissances 3 et 4 passe de 1,7 à ≈ 1 h quel que soit le réglage. Première
+heure inchangée (la piste n'est pas finie avant 4 h). Garde-fous de `Progression.spec` : Divine après 7 h (8 h avant
+#224), 45 min au moins entre les 4 premières renaissances (1,5 h avec #223 seule) : pas de renaissances en chaîne.
 
 ### Renaissance (#108, `Shared.Rebirth`)
 Le levier juste après le bout de piste et le dernier équipement (≈ 5,5 h simulées depuis #223 ; 12,4 h avant), comme la
@@ -1238,7 +1242,7 @@ du dessus des gradins, décor), comme les zones de *Throw a Seed*, ses obstacles
 
 CHANCE de 2,4 à 6 km : progression géométrique (× 1,22 par thème), × 27 à 3,6 km, × 40 à 4,8 km, × 60 au bout.
 Au bout, le portail renvoie le mannequin au début de la piste pour un tour de plus (#224, section « Tours de piste ») :
-les zones repassent sous lui (bannière et ciel du décor survolé), la CHANCE continue de monter (× 1,7 par tour).
+les zones repassent sous lui (bannière et ciel du décor survolé), la CHANCE continue de monter (× 1,8 par tour).
 Décor : rochers, cratères et radars (Mars), grands cristaux et stalagmites (Crystal Cave), tours à ceintures néon,
 enseignes et lampadaires (Neon City), nuages, arcs-en-ciel et îles flottantes (Sky Kingdom), citrouilles-lanternes,
 tombes, toiles d'araignée et arbres morts (Haunted Castle), planètes à anneau, étoiles et astéroïdes (Galaxy). Dans la
