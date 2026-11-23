@@ -13,6 +13,7 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Assets = require(Shared:WaitForChild("Assets"))
 local Format = require(Shared:WaitForChild("Format"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Store = require(Shared:WaitForChild("Store"))
@@ -34,6 +35,10 @@ local CARD_DARK = Color3.fromRGB(28, 24, 40) -- bas des cartes, teintées en hau
 local GOLD_RIM = Color3.fromRGB(255, 232, 120) -- liseré doré de l'offre mise en avant (cadre de l'œuf de 02)
 local BREATH = TweenInfo.new(1.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
 local SPIN = TweenInfo.new(14, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1)
+-- Scintillement : apparaît et disparaît en 0,9 s, puis reste éteint 1,6 s (étincelles éparses, pas un clignotant)
+local TWINKLE = TweenInfo.new(0.45, Enum.EasingStyle.Sine, Enum.EasingDirection.Out, -1, true, 1.6)
+local TAB_DIM = Color3.fromRGB(44, 38, 62) -- onglets inactifs éteints vers le fond de la colonne (09)
+local TAB_SWAP = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
 -- Dessin d'une vignette : icône (nom de UIKit.icon), emoji de repli, dégradé du fond
 type Art = { art: string, icon: string, colors: { Color3 } }
@@ -54,7 +59,9 @@ local frame: Frame
 local list: ScrollingFrame
 local cards: { Card } = {}
 local headers: { [string]: Frame } = {}
-local tabs: { [string]: TextButton } = {}
+-- Onglets de la colonne de droite : bouton, couleur pleine de la section, halo derrière l'icône
+local tabs: { [string]: { button: TextButton, color: Color3, halo: ImageLabel? } } = {}
+local activeTab: string? = nil
 local starterCard: Frame
 local starterTimer: TextLabel
 local starterEmpty: TextLabel
@@ -160,9 +167,10 @@ local function artwork(parent: GuiObject, art: Art, scale: number, position: UDi
 	return holder
 end
 
--- Cette méthode permet de poser la vignette colorée d'un article (dégradé, éclat de lumière, reflets en biais et
--- brillant, grosse icône à ombre portée) lorsque une carte se construit ; renvoie la vignette.
-local function tile(parent: Instance, art: Art, props: { [string]: any }, scale: number?): Frame
+-- Cette méthode permet de poser la vignette colorée d'un article (dégradé, soleil et halo derrière l'icône, faisceaux
+-- depuis le coin haut gauche, brillant, grosse icône à ombre portée) lorsque une carte se construit ; renvoie la
+-- vignette. `compact` (mini-cartes du pack) : halo seul, sans faisceaux, pour ne pas charger une petite vignette.
+local function tile(parent: Instance, art: Art, props: { [string]: any }, scale: number?, compact: boolean?): Frame
 	local options: { [string]: any } = { BackgroundColor3 = Color3.new(1, 1, 1), ZIndex = 13, Parent = parent }
 	for key, value in props do
 		options[key] = value
@@ -171,7 +179,7 @@ local function tile(parent: Instance, art: Art, props: { [string]: any }, scale:
 	UIKit.corner(box, 8)
 	UIKit.outline(box, 2)
 	UIKit.create("UIGradient", { Color = ColorSequence.new(art.colors[1], art.colors[2]), Rotation = 90, Parent = box })
-	-- Lumière rognée à la vignette : rayons et halo derrière l'icône, deux reflets en biais (01, 02)
+	-- Lumière rognée à la vignette : soleil et halo derrière l'icône (02, fondus avant les coins), faisceaux en coin
 	local light = UIKit.create("Frame", {
 		Name = "Light",
 		Size = UDim2.fromScale(1, 1),
@@ -180,9 +188,13 @@ local function tile(parent: Instance, art: Art, props: { [string]: any }, scale:
 		ZIndex = 13,
 		Parent = box,
 	})
-	UIKit.burst(light, { size = 1.1, alpha = 0.45, zIndex = 13 })
-	UIKit.stripes(light, { count = 2, alpha = 0.86, rotation = 35, zIndex = 13 })
-	UIKit.gloss(box, 8, 0.3)
+	if compact then
+		UIKit.burst(light, { size = 1, alpha = 0.7, halo = 0.3, zIndex = 13 })
+	else
+		UIKit.burst(light, { size = 0.95, alpha = 0.55, halo = 0.3, zIndex = 13 })
+		UIKit.sheen(light, 8, 0.4, 13)
+	end
+	UIKit.gloss(box, 8, 0.28)
 	artwork(box, art, scale or 1.05)
 	return box
 end
@@ -351,7 +363,7 @@ local function packItem(parent: Instance, index: number, art: Art, tag: string, 
 		ZIndex = 14,
 		Parent = box,
 	})
-	tile(box, art, { Position = UDim2.fromOffset(5, 20), Size = UDim2.fromOffset(62, 62), ZIndex = 14 }, 0.95)
+	tile(box, art, { Position = UDim2.fromOffset(5, 20), Size = UDim2.fromOffset(62, 62), ZIndex = 14 }, 0.95, true)
 	UIKit.text({
 		Position = UDim2.fromOffset(2, 84),
 		Size = UDim2.new(1, -4, 0, 30),
@@ -361,6 +373,38 @@ local function packItem(parent: Instance, index: number, art: Art, tag: string, 
 		ZIndex = 14,
 		Parent = box,
 	})
+end
+
+-- Étincelles autour du cadeau du pack : position (fraction du cadre du cadeau), taille en px, décalage du scintillement
+local TWINKLES = {
+	{ x = 0.1, y = 0.16, size = 30, delay = 0 },
+	{ x = 0.92, y = 0.1, size = 22, delay = 0.7 },
+	{ x = 0.96, y = 0.76, size = 32, delay = 1.3 },
+	{ x = 0.06, y = 0.82, size = 20, delay = 0.4 },
+}
+
+-- Cette méthode permet de faire scintiller quelques étincelles à quatre branches autour du cadeau, tant que la
+-- boutique est ouverte, lorsque la carte du pack se construit ; rien en mouvement réduit.
+local function twinkles(hero: Frame)
+	local uri = Assets.uri(Assets.FX_TEXTURES.star)
+	if not uri then
+		return
+	end
+	for _, spot in TWINKLES do
+		local star = UIKit.create("ImageLabel", {
+			Name = "Twinkle",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(spot.x, spot.y),
+			Size = UDim2.fromOffset(spot.size, spot.size),
+			BackgroundTransparency = 1,
+			Image = uri,
+			ImageColor3 = Color3.fromRGB(255, 250, 220),
+			ZIndex = 16,
+			Parent = hero,
+		})
+		local scale = UIKit.create("UIScale", { Scale = 0, Parent = star })
+		UIKit.loopWhileShown(frame, scale, { Scale = 1 }, TWINKLE, spot.delay)
+	end
 end
 
 -- Cette méthode permet de poser la carte large du pack de démarrage (cadeau sur rayons tournants, mini-cartes du
@@ -392,9 +436,27 @@ local function starterPack(order: number)
 		Parent = starterCard,
 	})
 	local center = UDim2.fromOffset(88, PACK_HEIGHT / 2)
-	local burst = UIKit.burst(light, { position = center, size = 0.5, rays = 10, alpha = 0.35, zIndex = 12 })
+	-- Soleil chaud qui tourne lentement derrière le cadeau, halo crème au centre (« Œuf fantastique » de 02)
+	local burst = UIKit.burst(light, {
+		position = center,
+		size = 0.62,
+		color = Color3.fromRGB(255, 244, 196),
+		alpha = 0.3,
+		halo = 0.1,
+		zIndex = 12,
+	})
 	UIKit.loopWhileShown(frame, burst, { Rotation = 360 }, SPIN)
-	UIKit.stripes(light, { count = 3, alpha = 0.9, rotation = 30, zIndex = 12, from = 0.3, to = 0.98 })
+	-- Bords assombris : la lumière se concentre sur le cadeau et le contenu (profondeur)
+	local shadow = UIKit.light("vignette", {
+		Size = UDim2.fromScale(1, 1),
+		ImageColor3 = Color3.fromRGB(90, 20, 0),
+		ImageTransparency = 0.35,
+		ZIndex = 12,
+		Parent = light,
+	})
+	if shadow then
+		UIKit.corner(shadow, 12)
+	end
 	-- Liseré doré intérieur
 	local rim = UIKit.create("Frame", {
 		Position = UDim2.fromOffset(4, 4),
@@ -414,6 +476,7 @@ local function starterPack(order: number)
 		Parent = starterCard,
 	})
 	artwork(hero, item, 1)
+	twinkles(hero)
 	local title = UIKit.text({
 		Position = UDim2.fromOffset(172, 8),
 		Size = UDim2.new(1, -340, 0, 38),
@@ -524,6 +587,35 @@ local function scrollTo(id: string)
 	UIKit.playSound("Click", 1.2)
 end
 
+-- Cette méthode permet d'allumer l'onglet actif (couleur pleine, cerné de blanc, agrandi, halo derrière l'icône) et
+-- d'éteindre les autres (couleur assombrie, plus petits, comme les onglets de 09) lorsque la section affichée change.
+local function setTab(tab: { button: TextButton, color: Color3, halo: ImageLabel? }, active: boolean)
+	local button = tab.button
+	local goal = {
+		BackgroundColor3 = if active then tab.color else tab.color:Lerp(TAB_DIM, 0.55),
+		Size = if active then UDim2.fromOffset(TAB_WIDTH - 8, 84) else UDim2.fromOffset(TAB_WIDTH - 16, 76),
+	}
+	local stroke = button:FindFirstChildOfClass("UIStroke")
+	if stroke then
+		stroke.Color = if active then Color3.new(1, 1, 1) else C.ink
+	end
+	local still = UIKit.reducedMotion() or not frame.Visible
+	if still then
+		button.BackgroundColor3 = goal.BackgroundColor3
+		button.Size = goal.Size
+	else
+		TweenService:Create(button, TAB_SWAP, goal):Play()
+	end
+	if tab.halo then
+		local transparency = if active then 0.2 else 1
+		if still then
+			tab.halo.ImageTransparency = transparency
+		else
+			TweenService:Create(tab.halo, TAB_SWAP, { ImageTransparency = transparency }):Play()
+		end
+	end
+end
+
 -- Cette méthode permet d'éclairer l'onglet de la section affichée en haut de la liste lorsque le joueur fait défiler.
 local function highlightTab()
 	local current = Store.SECTIONS[1].id
@@ -537,11 +629,12 @@ local function highlightTab()
 	if list.CanvasPosition.Y >= list.AbsoluteCanvasSize.Y - list.AbsoluteWindowSize.Y - 2 then
 		current = Store.SECTIONS[#Store.SECTIONS].id
 	end
+	if current == activeTab then
+		return
+	end
+	activeTab = current
 	for id, tab in tabs do
-		local stroke = tab:FindFirstChildOfClass("UIStroke")
-		if stroke then
-			stroke.Color = if id == current then Color3.new(1, 1, 1) else C.ink
-		end
+		setTab(tab, id == current)
 	end
 end
 
@@ -576,10 +669,20 @@ local function buildTabs(body: Frame)
 		}, function()
 			scrollTo(section.id)
 		end)
+		-- Faisceaux en coin sur tous les onglets ; halo blanc derrière l'icône de l'onglet actif seulement
+		UIKit.sheen(tab, 8, 0.55, 13)
+		local halo = UIKit.light("halo", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(0.5, 0, 0, 30),
+			Size = UDim2.fromOffset(76, 76),
+			ImageTransparency = 0.2,
+			ZIndex = 13,
+			Parent = tab,
+		})
 		UIKit.icon(section.art, {
-			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, 0, 0, 4),
-			Size = UDim2.fromOffset(46, 46),
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(0.5, 0, 0, 30),
+			Size = UDim2.fromOffset(48, 48),
 			ZIndex = 14,
 			Parent = tab,
 		}, section.icon)
@@ -592,7 +695,7 @@ local function buildTabs(body: Frame)
 			ZIndex = 14,
 			Parent = tab,
 		})
-		tabs[section.id] = tab
+		tabs[section.id] = { button = tab, color = section.colors[2], halo = halo }
 	end
 end
 

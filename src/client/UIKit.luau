@@ -152,91 +152,86 @@ function UIKit.shade(parent: Instance, top: Color3?, bottom: Color3?, rotation: 
 	})
 end
 
--- Cette méthode permet de poser des bandes claires en biais sur un cadre (bandeau des fenêtres de 02 et 09, reflets des
--- vignettes de 01) lorsque l'on construit un élément ; chaque bande est une large barre suivie d'une fine, réparties
--- entre `from` et `to` (fractions de la largeur, loin des coins arrondis), largeurs rapportées à la hauteur du cadre.
-function UIKit.stripes(
-	parent: GuiObject,
-	props: {
-		count: number?,
-		alpha: number?,
-		rotation: number?,
-		zIndex: number?,
-		from: number?,
-		to: number?,
-	}
-): Frame
-	local zIndex = props.zIndex or parent.ZIndex
-	local overlay = UIKit.create("Frame", {
-		Name = "Stripes",
-		Size = UDim2.fromScale(1, 1),
+-- Textures de lumière (Shared.Assets.UI_TEXTURES) ; tant qu'elles ne sont pas publiées, repli sur les textures
+-- d'effets des mannequins (Shared.Assets.FX_TEXTURES) quand il y en a une proche
+local LIGHT_FALLBACK = { sunburst = "rays", halo = "glow" }
+
+-- Cette méthode permet de poser une texture de lumière blanche (soleil, halo, faisceaux, bords assombris), teintée par
+-- `props.ImageColor3`, lorsque l'on construit un effet ; renvoie nil si la texture n'est pas publiée et sans repli.
+function UIKit.light(name: string, props: { [string]: any }): ImageLabel?
+	local fallback = LIGHT_FALLBACK[name]
+	local uri = Assets.uri(Assets.UI_TEXTURES[name])
+		or (if fallback then Assets.uri(Assets.FX_TEXTURES[fallback]) else nil)
+	if not uri then
+		return nil
+	end
+	local image = UIKit.create("ImageLabel", {
+		Name = name,
 		BackgroundTransparency = 1,
-		ClipsDescendants = true,
-		ZIndex = zIndex,
-		Parent = parent,
+		Image = uri,
+		ScaleType = Enum.ScaleType.Stretch,
 	})
-	local count = props.count or 4
-	local from, to = props.from or 0.12, props.to or 0.92
-	for i = 1, count do
-		local x = from + (to - from) * (i - 0.5) / count
-		-- Paire de barres (large puis fine) dans un cadre incliné : largeurs rapportées à la hauteur du cadre
-		local pair = UIKit.create("Frame", {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(x, 0.5),
-			Size = UDim2.fromScale(0.8, 2.4),
-			SizeConstraint = Enum.SizeConstraint.RelativeYY,
-			Rotation = props.rotation or 25,
-			BackgroundTransparency = 1,
-			ZIndex = zIndex,
-			Parent = overlay,
-		})
-		for _, bar in { { 0, 0.68 }, { 0.78, 0.22 } } do
-			UIKit.create("Frame", {
-				Position = UDim2.fromScale(bar[1], 0),
-				Size = UDim2.fromScale(bar[2], 1),
-				BackgroundColor3 = Color3.new(1, 1, 1),
-				BackgroundTransparency = props.alpha or 0.85,
-				BorderSizePixel = 0,
-				ZIndex = zIndex,
-				Parent = pair,
-			})
+	for key, value in props do
+		if key ~= "Parent" then
+			(image :: any)[key] = value
 		end
 	end
-	return overlay
+	image.Parent = props.Parent
+	return image
 end
 
--- Cette méthode permet de poser le reflet brillant de la moitié haute d'un bouton ou d'une vignette (aspect bonbon des
--- références) lorsque l'élément est construit ; `radius` reprend son arrondi.
+-- Cette méthode permet de poser l'éventail de faisceaux de lumière qui part du coin haut gauche d'un cadre (cartes
+-- bleues de 02, vignettes de 01) lorsque l'élément est construit ; `radius` reprend son arrondi.
+function UIKit.sheen(parent: GuiObject, radius: number, alpha: number?, zIndex: number?): ImageLabel?
+	local image = UIKit.light("sheen", {
+		Size = UDim2.fromScale(1, 1),
+		ImageTransparency = alpha or 0.45,
+		ZIndex = zIndex or parent.ZIndex,
+		Parent = parent,
+	})
+	if image then
+		UIKit.corner(image, radius)
+	end
+	return image
+end
+
+-- Cette méthode permet de poser le reflet brillant de la moitié haute d'un bouton, d'un bandeau ou d'une vignette
+-- (aspect bonbon des références : vif en haut, bord bas net) lorsque l'élément est construit ; `radius` : son arrondi.
 function UIKit.gloss(parent: GuiObject, radius: number?, strength: number?): Frame
 	local band = UIKit.create("Frame", {
 		Name = "Gloss",
 		Position = UDim2.fromOffset(3, 3),
-		Size = UDim2.new(1, -6, 0.48, -3),
+		Size = UDim2.new(1, -6, 0.46, -3),
 		BackgroundColor3 = Color3.new(1, 1, 1),
 		BorderSizePixel = 0,
 		ZIndex = parent.ZIndex,
 		Parent = parent,
 	})
 	UIKit.corner(band, math.max(2, (radius or 8) - 2))
-	local top = 1 - (strength or 0.35)
+	local top = 1 - (strength or 0.38)
 	UIKit.create("UIGradient", {
 		Rotation = 90,
-		Transparency = NumberSequence.new(top, math.min(1, top + 0.3)),
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, top),
+			NumberSequenceKeypoint.new(0.55, math.min(1, top + 0.22)),
+			NumberSequenceKeypoint.new(1, math.min(1, top + 0.32)),
+		}),
 		Parent = band,
 	})
 	return band
 end
 
--- Cette méthode permet de poser un éclat de lumière (rayons fins effilés et halo en cercles) derrière l'objet d'une
--- vignette ou d'une carte (soleil de l'éclair de 02, fond des cartes de 01) lorsque l'élément est construit.
+-- Cette méthode permet de poser un éclat de lumière (soleil de rayons larges et halo doux, en images) derrière l'objet
+-- d'une vignette ou d'une carte (soleil de l'éclair de 02, fond des cartes de 01) lorsque l'élément est construit ;
+-- `size` : diamètre rapporté à la largeur du parent, `alpha` : transparence des rayons, `halo` : celle du halo.
 function UIKit.burst(
 	parent: GuiObject,
 	props: {
 		color: Color3?,
-		rays: number?,
 		size: number?,
 		position: UDim2?,
 		alpha: number?,
+		halo: number?,
 		zIndex: number?,
 	}
 ): Frame
@@ -253,50 +248,32 @@ function UIKit.burst(
 		ZIndex = zIndex,
 		Parent = parent,
 	})
-	local count = props.rays or 8
-	local alpha = props.alpha or 0.55
-	for i = 1, count do
-		local bar = UIKit.create("Frame", {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.fromScale(0.08, 1),
-			Rotation = i * 180 / count,
-			BackgroundColor3 = color,
-			BorderSizePixel = 0,
-			ZIndex = zIndex,
-			Parent = holder,
-		})
-		UIKit.create("UIGradient", {
-			Rotation = 90,
-			Transparency = NumberSequence.new({
-				NumberSequenceKeypoint.new(0, 1),
-				NumberSequenceKeypoint.new(0.5, alpha),
-				NumberSequenceKeypoint.new(1, 1),
-			}),
-			Parent = bar,
-		})
-	end
-	for index, ratio in { 0.6, 0.42, 0.26 } do
-		local disc = UIKit.create("Frame", {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.fromScale(ratio, ratio),
-			BackgroundColor3 = color,
-			BackgroundTransparency = 0.9 - index * 0.04,
-			BorderSizePixel = 0,
-			ZIndex = zIndex,
-			Parent = holder,
-		})
-		UIKit.create("UICorner", { CornerRadius = UDim.new(0.5, 0), Parent = disc })
-	end
+	UIKit.light("sunburst", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(1, 1),
+		ImageColor3 = color,
+		ImageTransparency = props.alpha or 0.45,
+		ZIndex = zIndex,
+		Parent = holder,
+	})
+	UIKit.light("halo", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(0.62, 0.62),
+		ImageColor3 = color,
+		ImageTransparency = props.halo or 0.25,
+		ZIndex = zIndex,
+		Parent = holder,
+	})
 	return holder
 end
 
 -- Cette méthode permet de recolorer un éclat de lumière (UIKit.burst) lorsque la rareté de sa carte change.
 function UIKit.tintBurst(holder: Frame, color: Color3)
 	for _, child in holder:GetChildren() do
-		if child:IsA("Frame") then
-			child.BackgroundColor3 = color
+		if child:IsA("ImageLabel") then
+			child.ImageColor3 = color
 		end
 	end
 end
@@ -1094,8 +1071,19 @@ function UIKit.window(
 		Parent = header,
 	})
 	UIKit.create("UIGradient", { Color = ColorSequence.new(props.colors[1], props.colors[2]), Parent = flat })
-	-- Bandes claires en biais sur le bandeau (02, 09)
-	UIKit.stripes(header, { count = 4, alpha = 0.84, rotation = 25, zIndex = 10 })
+	-- Bandeau bonbon (09) : brillant sur la moitié haute, bas assombri (dégradé vertical par-dessus le dégradé de couleur)
+	UIKit.gloss(header, 12, 0.34)
+	local depth = UIKit.create("Frame", {
+		Name = "Depth",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromScale(0, 1),
+		Size = UDim2.fromScale(1, 0.5),
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BorderSizePixel = 0,
+		ZIndex = 10,
+		Parent = header,
+	})
+	UIKit.create("UIGradient", { Rotation = 90, Transparency = NumberSequence.new(1, 0.82), Parent = depth })
 	-- Trait épais sous le bandeau : avec le contour de la fenêtre, le bandeau est cerné (référence 02)
 	UIKit.create("Frame", {
 		AnchorPoint = Vector2.new(0, 0.5),
@@ -1310,7 +1298,7 @@ function UIKit.card(parent: Instance, order: number, onAction: () -> ()): Card
 		ZIndex = 11,
 		Parent = frame,
 	})
-	local burst = UIKit.burst(light, { size = 1.15, alpha = 0.6, zIndex = 11 })
+	local burst = UIKit.burst(light, { size = 1.1, alpha = 0.5, halo = 0.35, zIndex = 11 })
 	local viewport = UIKit.create("ViewportFrame", {
 		Position = UDim2.fromOffset(8, 56),
 		Size = UDim2.new(1, -16, 0, 150),
