@@ -669,7 +669,7 @@ local function finish(flight: Flight)
 	if RunService:IsStudio() then
 		print(string.format(
 			"[Launch] %s dummy=%s rebirth=x%g distance=%d zone=%d bones=%d smashed=%d chance=%.2f prize=%s gauge=%.2f time=%.1f | %s"
-				.. " | apex=%d landed=%s slide=%s planned=%d reach=%d bounces=%d | lap=%d total=%d planned_total=%d",
+				.. " | apex=%d landed=%s slide=%s planned=%d reach=%d bounces=%d | lap=%d planned_total=%d",
 			if player then player.Name else tostring(flight.key),
 			flight.thrown.id,
 			flight.rebirth,
@@ -686,11 +686,11 @@ local function finish(flight: Flight)
 			if flight.landedAt then tostring(math.floor(flight.landedAt)) else "-",
 			-- Glissade et points prévus dans le tour en cours (sortie du portail comprise)
 			if flight.landedAt then tostring(math.floor(flight.distance - flight.offset - flight.landedAt)) else "-",
-			math.floor(flight.origin.Z + flight.arc.range),
-			math.floor(flight.origin.Z + flight.arc.reach),
+			-- Points du plan du tour en cours, ramenés à la distance totale
+			math.floor(flight.offset + flight.origin.Z + flight.arc.range),
+			math.floor(flight.offset + flight.origin.Z + flight.arc.reach),
 			flight.bounces,
 			flight.lap,
-			result.distance,
 			math.floor(flight.total)
 		))
 	end
@@ -708,7 +708,7 @@ local function publish(flight: Flight)
 		Bones = flight.totalBones,
 		Smashed = flight.smashed,
 		-- Zone survolée dans le tour en cours (décor sous le mannequin) ; la CHANCE suit la distance totale
-		Zone = Zones.indexAt(flight.distance - flight.offset),
+		Zone = Zones.indexAt(Laps.within(flight.distance)),
 		Chance = Economy.chance({
 			distance = flight.distance,
 			bones = flight.totalBones,
@@ -955,8 +955,11 @@ local function step(flight: Flight, dt: number)
 	sendClock(flight, position)
 	flight.distance = math.max(flight.distance, flight.offset + position.Z)
 	flight.reached = math.max(flight.reached, (position - flight.origin):Dot(flight.flat))
-	-- Portail de la ligne d'arrivée (#224) : un tour de plus, sauf au dernier (paroi du bout)
-	if position.Z >= Laps.LENGTH and flight.lap < Laps.MAX then
+	-- Portail de la ligne d'arrivée (#224) : un tour de plus, sauf au dernier (paroi du bout). Passé dès que la ligne est
+	-- à moins d'une frame et demie d'avance (au moins 1/30 s) : la paroi n'est que 40 studs plus loin, un mannequin
+	-- rapide (relance, frame lente du serveur) l'atteindrait entre deux frames et rebondirait sans passer
+	local lead = math.max(torso.AssemblyLinearVelocity.Z, 0) * math.max(dt, 1 / 30) * 1.5
+	if position.Z + lead >= Laps.LENGTH and flight.lap < Laps.MAX then
 		passPortal(flight, position)
 		publish(flight)
 		remotes.Impact:FireAllClients(flight.impacts)

@@ -909,7 +909,7 @@ pièges servent à chaque tour.
 - **Mannequins à lancer** : le surplus suit leur portée réelle. Leur part de portée (+ 15 à + 20 %) vaut ≈ 2 tours
   au-delà du bout : le Glider atteint le bout vers 26 B de puissance, le Crash Dummy vers 375 B (× 14). Conséquence
   simulée : un mannequin sans comportement acheté après le Nebula Rubber (Plasma Glass, 75x à 7,3 h) fait retomber le
-  lancer de 2,6 à 1 tour (CHANCE des zones × 140 → × 59, mannequin compris : 7,7 K → 4,4 K). Suivi : issue à part.
+  lancer de 2,6 à 1 tour (CHANCE des zones × 140 → × 59, mannequin compris : 7,7 K → 4,4 K). Suivi : #228.
 
 Joueur simulé (60 joueurs, 14 h, médianes ; avant : #211, piste plafonnée au bout) :
 | Repère | Avant | Après |

@@ -17,6 +17,7 @@ local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local UIMotion = require(Shared:WaitForChild("UIMotion"))
 local Zones = require(Shared:WaitForChild("Zones"))
 
+local LaunchGhost = require(script.Parent.LaunchGhost)
 local UIKit = require(script.Parent.UIKit)
 
 local C = UIKit.COLORS
@@ -474,10 +475,14 @@ local function watchLaps(model: Model)
 				return
 			end
 			announcedAt = announcedAt or os.clock()
+			-- Position affichée : copie locale du lanceur tant qu'elle est montrée (comme Client.FlightFx)
 			local torso = model:FindFirstChild("Torso")
-			local back = torso ~= nil and torso:IsA("BasePart") and torso.Position.Z < GameConfig.COURSE_LENGTH / 2
+			local back = torso ~= nil
+				and torso:IsA("BasePart")
+				and (torso.Position + LaunchGhost.offset(model)).Z < GameConfig.COURSE_LENGTH / 2
 			if back or os.clock() - (announcedAt :: number) >= LAP_FALLBACK then
 				showLap(lap)
+				showZone((model:GetAttribute("Zone") :: number?) or 1)
 			end
 		end)
 	)
@@ -632,7 +637,10 @@ function FlightView.show(model: Model)
 		xrayCount.Text = bones .. " BONES"
 		showChance((model:GetAttribute("Chance") :: number?) or 1)
 		local zone = (model:GetAttribute("Zone") :: number?) or 1
-		if zone ~= currentZone then
+		-- Tour annoncé mais mannequin affiché pas encore ressorti du portail (#224) : la zone du bout reste à l'écran
+		local lap = model:GetAttribute("Lap")
+		local pending = typeof(lap) == "number" and lap > shownLap
+		if zone ~= currentZone and not pending then
 			showZone(zone)
 		end
 		if landedAt and not settled then
