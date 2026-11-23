@@ -79,6 +79,8 @@ local GATE_WIDTH = 10 -- entrée de la base, côté hub
 local BED_INSET = 2.2 -- du bord de la base à l'axe d'un massif de fleurs
 local BED_END = 5 -- massifs arrêtés à cette distance des clôtures de côté
 local FLAG_INSET = 2.5 -- drapeaux plantés à l'intérieur des coins
+local SHRUB_GAP = 1 -- buissons au-delà du bout des massifs de fleurs (#198)
+local TREE_INSET = 2 -- arbres des coins du fond plantés à l'intérieur de la clôture (#198)
 -- Bas du texte flottant de la base, au-dessus de son centre : au-dessus des plus grands mannequins posés vus de la bande
 -- (#150 ; le texte grandit vers le haut, sa marge en pixels ne le fait plus descendre derrière eux)
 local LABEL_HEIGHT = 26
@@ -117,6 +119,7 @@ export type Base = {
 	-- DISPLAY_MAX (Big Base) cachés quand la base n'est pas agrandie
 	displays: { BasePart },
 	pedestals: { BasePart }, -- socles des présentoirs
+	collars: { [number]: BasePart }, -- bandeaux des socles aux hauts paliers (#198), par présentoir, dans l'habillage
 	facing: Vector3, -- direction de l'entrée (vers la bande) : les mannequins posés regardent par là
 	pad: Pad,
 }
@@ -1143,8 +1146,13 @@ local function baseLabel(parent: Instance, position: Vector3): BaseLabel
 end
 
 -- Cette méthode permet de poser la clôture d'une base au style `fence` (ouverte côté bande, entrée de 10 studs) dans
--- `folder` lorsque la base est habillée ; renvoie les deux bouts de l'entrée et les quatre coins, au sol.
-local function baseFence(folder: Instance, slot: Slot, fence: BaseLook.Fence): ({ Vector3 }, { Vector3 })
+-- `folder` lorsque la base est habillée ; renvoie les deux bouts de l'entrée, les quatre coins (fond puis entrée) et
+-- les pieds des poteaux de chaque tronçon, au sol.
+local function baseFence(
+	folder: Instance,
+	slot: Slot,
+	fence: BaseLook.Fence
+): ({ Vector3 }, { Vector3 }, { { Vector3 } })
 	local center, size = CourseLayout.baseBox(slot.index, slot.base.big)
 	local hx, hz = size.X / 2, size.Z / 2
 	local corners = {
@@ -1154,6 +1162,7 @@ local function baseFence(folder: Instance, slot: Slot, fence: BaseLook.Fence): (
 		center + Vector3.new(-hx, 0, hz),
 	}
 	local gate = {}
+	local runs = {}
 	for i, from in corners do
 		local to = corners[i % 4 + 1]
 		-- Chaque coin n'a qu'un poteau : posé par le tronçon qui y finit ; l'entrée est au milieu du côté qui regarde la
@@ -1163,13 +1172,13 @@ local function baseFence(folder: Instance, slot: Slot, fence: BaseLook.Fence): (
 			local mid = (from + to) / 2
 			local dir = (to - from).Unit
 			gate = { mid - dir * GATE_WIDTH / 2, mid + dir * GATE_WIDTH / 2 }
-			Props.fence(folder, from, gate[1], fence, true)
-			Props.fence(folder, gate[2], to, fence)
+			table.insert(runs, Props.fence(folder, from, gate[1], fence, true))
+			table.insert(runs, Props.fence(folder, gate[2], to, fence))
 		else
-			Props.fence(folder, from, to, fence, true)
+			table.insert(runs, Props.fence(folder, from, to, fence, true))
 		end
 	end
-	return gate, corners
+	return gate, corners, runs
 end
 
 -- Cette méthode permet de garder l'ancien habillage d'une base 5 s dans ReplicatedStorage pour l'animation des clients
@@ -1208,7 +1217,7 @@ function CourseBuilder.styleBase(slot: Slot, tier: number, upgrade: boolean?): b
 	if base.tier == tier then
 		return false
 	end
-	local look, fence = BaseLook.base(tier)
+	local look, fence, gateLook = BaseLook.base(tier)
 	-- Nouvel habillage posé avant de retirer l'ancien : la clôture ne disparaît jamais
 	local folder = Instance.new("Folder")
 	folder.Name = "Look"
@@ -1217,32 +1226,46 @@ function CourseBuilder.styleBase(slot: Slot, tier: number, upgrade: boolean?): b
 	base.plot.Color = look.plot or Build.shade(slot.color, 0.6)
 	local center, size = CourseLayout.baseBox(slot.index, base.big)
 	local hx, hz = size.X / 2, size.Z / 2
+	-- Socles des présentoirs au palier (#198) : teinte, bandeau doré des hauts paliers (sa transparence suit le socle,
+	-- Server.BaseService) ; pas de bandeau sur les présentoirs de Big Base tant que la base n'est pas agrandie
+	local collars = {}
+	for index, pedestal in base.pedestals do
+		pedestal.Color = look.pedestal or COLORS.stone
+		if look.collar and (index <= CourseLayout.DISPLAY_MAX or base.big) then
+			collars[index] = Props.collar(folder, pedestal, look.collar)
+		end
+	end
 	-- Clôture et décor du palier d'un tenant : une pièce qui en affleure une autre ressort un peu (#93)
 	Build.settled(function()
-		local gate, corners = baseFence(folder, slot, fence)
+		local gate, corners, runs = baseFence(folder, slot, fence)
 		local lift = Vector3.new(0, BaseLook.postTop(fence), 0)
-		-- Arche d'entrée : les lanternes de l'entrée montent sur son linteau
-		local gateTops = { gate[1] + lift, gate[2] + lift }
-		if look.arch then
-			local a, b = Props.arch(folder, gate[1], gate[2], slot.color)
-			gateTops = { a, b }
-		end
+		local towers = look.corners == "tower"
+		-- Entrée (#198) : piliers et linteau au style du palier, étoiles du rang ; les lanternes montent sur le linteau
+		local a, b = Props.gate(folder, gate[1], gate[2], gateLook, look.stars, slot.color, CourseLayout.ENTRANCE)
 		if look.lanterns >= 2 then
-			for _, top in gateTops do
-				Props.lantern(folder, top)
-			end
+			Props.lantern(folder, a)
+			Props.lantern(folder, b)
 		end
 		if look.lanterns >= 6 then
-			for _, corner in corners do
-				Props.lantern(folder, corner + lift)
+			for index, corner in corners do
+				-- Coins du fond (1 et 2) : la tour remplace la lanterne de son poteau
+				if not (towers and index <= 2) then
+					Props.lantern(folder, corner + lift)
+				end
+			end
+		end
+		-- Lanternes sur les poteaux, symétriques sur chaque tronçon (09 : lanternes sur la clôture des jardins)
+		for _, feet in runs do
+			for _, rank in BaseLook.lanternPosts(#feet - 1, look.postLanterns) do
+				Props.lantern(folder, feet[rank + 1] + lift)
 			end
 		end
 		local plotTop = center.Y + PLOT_TOP
+		local back = center.Z - (hz - BED_INSET)
+		local front = center.Z + (hz - BED_INSET)
+		local reach = hx - BED_END
 		if look.flowers then
 			-- Le long du fond (côté opposé à l'entrée) et de part et d'autre de l'entrée, entre clôture et présentoirs
-			local back = center.Z - (hz - BED_INSET)
-			local front = center.Z + (hz - BED_INSET)
-			local reach = hx - BED_END
 			Props.flowerBed(
 				folder,
 				Vector3.new(center.X - reach, plotTop, back),
@@ -1256,8 +1279,31 @@ function CourseBuilder.styleBase(slot: Slot, tier: number, upgrade: boolean?): b
 				)
 			end
 		end
+		if look.bushes then
+			-- Buissons voxel au bout des massifs, côté clôtures de côté
+			for _, side in { -1, 1 } do
+				for _, z in { back, front } do
+					Props.shrub(folder, Vector3.new(center.X + side * (reach + SHRUB_GAP), plotTop, z))
+				end
+			end
+		end
+		-- Élément en hauteur aux deux coins du fond, vu de loin (#198)
+		for index = 1, 2 do
+			local corner = corners[index]
+			local outward = Vector3.new(math.sign(corner.X - center.X), 0, -1)
+			if look.corners == "tree" then
+				local foot = Vector3.new(corner.X - outward.X * TREE_INSET, plotTop, corner.Z + TREE_INSET)
+				Props.cornerTree(folder, foot, outward)
+			elseif towers then
+				Props.tower(folder, corner, fence, CourseLayout.ENTRANCE, slot.color)
+			end
+		end
 		if look.flags then
-			for _, corner in corners do
+			for index, corner in corners do
+				-- Coins du fond : le drapeau est au sommet de la tour
+				if towers and index <= 2 then
+					continue
+				end
 				local inside = Vector3.new(math.sign(center.X - corner.X), 0, math.sign(center.Z - corner.Z))
 				-- Fanion tourné vers l'extérieur de la base, côté entrée ou fond
 				local outward = Vector3.new(0, 0, -inside.Z)
@@ -1287,6 +1333,7 @@ function CourseBuilder.styleBase(slot: Slot, tier: number, upgrade: boolean?): b
 		old:Destroy()
 	end
 	base.look = folder
+	base.collars = collars
 	base.tier = tier
 	return true
 end
@@ -1376,6 +1423,7 @@ local function buildBase(parent: Instance, slot: Slot)
 		burst = upgradeBurst(model, center + Vector3.new(0, 3, 0), slot.color),
 		displays = displays,
 		pedestals = pedestals,
+		collars = {},
 		facing = CourseLayout.ENTRANCE,
 		pad = Build.settled(buildPad, parent, slot),
 	}

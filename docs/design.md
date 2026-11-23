@@ -893,13 +893,23 @@ d'*Ant Evolution* (05) : on repart de zéro contre une CHANCE plus forte, pour t
   joueur voit de loin les bases les plus avancées du serveur. Seuils de #156 (`BaseTier.displays` ; un palier par
   présentoir de 6 à 10 avant) : Garden au premier achat (≈ 9 min), Stone vers 70 min, Noble vers 2 h, Golden vers 4,5 h
   de jeu simulées ; les présentoirs 26 à 30 n'ajoutent pas de palier.
-  | Présentoirs | Palier | Clôture | Sol | Décor |
-  |---|---|---|---|---|
-  | 8 | Wood | bois | terre | — |
-  | 9 | Garden | bois | terre | massifs de fleurs, lanternes à l'entrée |
-  | 12 | Stone | pierre (plus haute) | dalles grises | + lanternes aux 4 coins |
-  | 18 | Noble | pierre à chapeaux dorés | grès | + drapeaux à la couleur de la place aux coins |
-  | 25 | Golden | métal doré | tapis à la couleur de la place | + arche d'entrée (piliers à la couleur de la place, linteau doré), paillettes dorées sur toute la base |
+  | Présentoirs | Palier | Clôture | Sol | Entrée (étoiles) | Décor | Coins du fond | Socles |
+  |---|---|---|---|---|---|---|---|
+  | 8 | Wood | bois | terre | portique en bois (1) | — | — | pierre |
+  | 9 | Garden | bois | terre | portique en bois (2) | massifs de fleurs bordés de buissons voxel, lanternes sur l'entrée | — | pierre |
+  | 12 | Stone | pierre (plus haute) | dalles grises | portique en pierre (3) | + lanternes aux 4 coins | arbres voxel | pierre |
+  | 18 | Noble | pierre à chapeaux dorés | grès | pierre, chapeaux et linteau dorés, bannières (4) | + drapeaux aux coins de l'entrée, lanterne au milieu des côtés | tours de pierre (bannière, drapeau) | pierre, bandeau doré |
+  | 25 | Golden | métal doré | tapis à la couleur de la place | arche dorée, bannières (5) | + lanternes un poteau sur deux, paillettes dorées sur toute la base | tours dorées | ivoire, bandeau doré |
+  **Entourage** (#198, retour de la sprint review 4 : « la base reste assez sobre ») : chaque palier enrichit aussi les
+  abords, calés sur les jardins de 09 (lanternes sur les poteaux de clôture, buissons et arbres voxel) et les enclos de
+  01. L'entrée est un portique dont les **étoiles** lumineuses du linteau donnent le rang du palier (1 à 5), lisible de
+  la bande ; bannières et drapeaux à la couleur de la place ; aux deux coins du fond, un élément en hauteur vu de tout
+  le hub (arbres, puis tours à la matière de la clôture coiffées d'un drapeau), derrière les mannequins (ils ne les
+  masquent pas). Socles des présentoirs ornés aux deux derniers paliers (bandeau doré, socles ivoire au Golden).
+  Coût mesuré en Studio (instances de l'habillage d'une base) : Wood 88, Garden 159, Stone 194, Noble 291 (323 en Big
+  Base), Golden 324 (236 pièces) ; hub de 4 bases au Golden : 1 296, soit 944 de plus qu'au Wood, pour ≈ 23 000
+  instances construites au démarrage. Pas de particule ajoutée (paillettes du Golden inchangées), étoiles en néon.
+  Animation de construction mesurée : Wood → Garden 71 pièces, 2,14 s ; achats jusqu'au Noble 127 pièces, 2,27 s.
   Achat : confettis au-dessus de la base, vus de tous (en plus du popup « NEW DISPLAY! » du propriétaire).
   **Animation de construction** (#122, `Shared.BaseUpgrade`, `Client.BaseFx`) quand l'achat change le palier : les
   anciennes pièces (clôture, décor) s'enfoncent en s'effaçant (0,35 s), puis les nouvelles tombent de 12 studs une à
