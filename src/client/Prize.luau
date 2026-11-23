@@ -1023,12 +1023,12 @@ local function refreshPanel()
 	local entry = pendingEntry()
 	local ready = entry ~= nil and free
 	local visible = ready and firstPlace
-	-- Hors tutoriel : seul le bouton AUTO compact, tant qu'il y a un mannequin tenu ou gagné à poser. Grisé (« FULL »
-	-- base pleine de plus rentables, ou AUTO loin de la base), un clic dit pourquoi rien n'est posé (#70)
+	-- Hors tutoriel : seul le bouton AUTO compact, près de sa base seulement (#196), tant qu'il y a un mannequin tenu ou
+	-- gagné à poser. Grisé « FULL » (base pleine de plus rentables) : un clic dit pourquoi rien n'est posé (#70)
 	local status = placeStatus()
-	placeAuto.Visible = free and not firstPlace and status ~= "none"
-	local blocked = status == "far" or status == "full"
-	placeAuto.Text = if status == "full" then "FULL" else "AUTO"
+	placeAuto.Visible = free and not firstPlace and status ~= "none" and status ~= "far"
+	local blocked = status == "full"
+	placeAuto.Text = if blocked then "FULL" else "AUTO"
 	placeAuto.BackgroundTransparency = if blocked then 0.55 else 0
 	placeAuto.TextTransparency = if blocked then 0.35 else 0
 	if visible and entry then

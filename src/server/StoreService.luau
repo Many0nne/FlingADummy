@@ -211,8 +211,13 @@ function StoreService.simulate(player: Player, id: any, purchaseId: string?): bo
 end
 
 -- Cette méthode permet de retrouver à l'arrivée les passes achetés hors de cette session (vérifiés auprès de Roblox,
--- identifiants créés seulement) lorsque les données du joueur sont prêtes.
+-- identifiants créés seulement) lorsque les données du joueur sont prêtes ; jamais dans Studio (#199).
 local function verifyPasses(player: Player)
+	-- Studio : le testeur est le créateur des passes, que UserOwnsGamePassAsync dit toujours possédés ; il ne les
+	-- obtient que par un achat de la session (invite de test, DebugBuy), pour jouer comme un joueur qui ne paie pas
+	if RunService:IsStudio() then
+		return
+	end
 	for _, item in Store.ITEMS do
 		local state = PlayerData.store(player)
 		if not state or not player.Parent then
