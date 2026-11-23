@@ -265,6 +265,87 @@ return function(T, Loader)
 			state.armed = true
 			T.expect(FlightArc.step(plan, state) == "Landed", "au sol")
 		end)
+
+		T.it("laisse retomber une croisière qui a perdu son élan (#215)", function()
+			local plan = FlightArc.plan(600, 300, ORIGIN_HEIGHT, G)
+			local phase = FlightArc.step(plan, {
+				phase = "Cruise",
+				along = 2,
+				height = GameConfig.APEX_HEIGHT,
+				velocity = Vector3.new(0, 0, 0),
+				forward = FORWARD,
+				armed = true,
+				impact = false,
+				trapped = false,
+				coasting = false,
+				dt = DT,
+				gravity = G,
+			})
+			T.expect(phase == "Free", "chute libre, obtenu " .. phase)
+		end)
+
+		T.it("pose au sol, bien avant le délai maximal, un lancer plafonné arrêté net au départ (#215)", function()
+			-- Lancer pleine jauge dont l'élan vers l'avant est coupé à 0,4 s (choc contre un obstacle invisible) : avant
+			-- le correctif, la croisière le tenait au plafond jusqu'au délai maximal (20 s), distance 3, landed = -
+			local speed = Economy.launchSpeed(2.2e7)
+			local vx, vy = speed * math.cos(PITCH), speed * math.sin(PITCH)
+			local plan = FlightArc.plan(vx, vy, ORIGIN_HEIGHT, G)
+			T.expect(plan.capped, "plafonné")
+			local phase = FlightArc.startPhase(plan)
+			local position = Vector3.new(0, ORIGIN_HEIGHT, 0)
+			local velocity = Vector3.new(0, vy, vx)
+			local t, landedAt = 0, nil
+			while t < GameConfig.MAX_FLIGHT_TIME and not landedAt do
+				t += DT
+				if t >= 0.4 and t < 0.4 + DT then
+					velocity = Vector3.new(0, velocity.Y, 0)
+				end
+				velocity -= Vector3.new(0, G * DT, 0)
+				position += velocity * DT
+				local control
+				phase, control = FlightArc.step(plan, {
+					phase = phase,
+					along = position.Z,
+					height = position.Y,
+					velocity = velocity,
+					forward = FORWARD,
+					armed = t > GameConfig.IMPACT_GRACE_TIME,
+					impact = false,
+					trapped = false,
+					coasting = false,
+					dt = DT,
+					gravity = G,
+				})
+				velocity += control
+				if phase == "Landed" then
+					landedAt = t
+				end
+			end
+			T.expect(landedAt ~= nil and landedAt < 3, "au sol en moins de 3 s, obtenu " .. tostring(landedAt))
+		end)
+	end)
+
+	T.describe("FlightArc.stalled (#215)", function()
+		T.it("reconnaît un mannequin resté dans la zone de lancer", function()
+			local speed = Economy.launchSpeed(2.2e7)
+			local plan = FlightArc.plan(speed * math.cos(PITCH), speed * math.sin(PITCH), ORIGIN_HEIGHT, G)
+			T.expect(FlightArc.stalled(plan, 0), "resté sur place")
+			T.expect(FlightArc.stalled(plan, -3), "reparti en arrière")
+			T.expect(not FlightArc.stalled(plan, FlightArc.STALL_DISTANCE), "sorti de la zone")
+		end)
+
+		T.it("ne rend pas un lancer court normal (jauge vide, puissance de départ)", function()
+			-- Tout lancer sans obstacle est vérifié à STALL_TIME : il a parcouru au moins sa portée prévue, glissade
+			-- comprise, ou sa vitesse vers l'avant pendant ce temps
+			for _, gauge in { 0, 0.5, 1 } do
+				local min = GameConfig.GAUGE_MIN_FACTOR
+				local speed = Economy.launchSpeed(GameConfig.START_POWER) * (min + (1 - min) * gauge)
+				local vx = speed * math.cos(PITCH)
+				local plan = FlightArc.plan(vx, speed * math.sin(PITCH), ORIGIN_HEIGHT, G)
+				local along = math.min(vx * FlightArc.STALL_TIME, plan.range)
+				T.expect(not FlightArc.stalled(plan, along), string.format("jauge %.1f : %.1f studs", gauge, along))
+			end
+		end)
 	end)
 
 	T.describe("Comportements des mannequins à lancer (#130)", function()

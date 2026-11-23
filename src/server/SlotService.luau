@@ -178,10 +178,11 @@ end
 
 -- Cette méthode permet de remettre le joueur en prise sur la bande (Action « Holding ») lorsqu'il clique THROW AGAIN
 -- (#76), avant son retour à « Ready » ; false (retour au hub, comme GO BACK) si refusé ou bande pleine.
-function SlotService.holdAgain(player: Player): boolean
-	-- Mêmes contrôles qu'une arrivée à pied, et pas avant la première pose du tutoriel
+function SlotService.holdAgain(player: Player, from: string?): boolean
+	-- Mêmes contrôles qu'une arrivée à pied, et pas avant la première pose du tutoriel ; `from` : état attendu (vol
+	-- rendu au joueur, #215 : « Flying »)
 	if
-		player:GetAttribute("LaneState") ~= "Result"
+		player:GetAttribute("LaneState") ~= (from or "Result")
 		or player:GetAttribute("Action") ~= nil
 		or not player:GetAttribute("DataReady")
 		or not slotOf[player]
