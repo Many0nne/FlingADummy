@@ -159,6 +159,20 @@ return function(T, Loader)
 		)
 	end)
 
+	T.describe("TrackPlan.clearOfTraps (pied des parois, #115)", function()
+		local boxes = TrackPlan.trapBoxes(sites)
+		local box = boxes[1]
+		T.it("refuse l'emprise d'un piège et sa marge, accepte au-delà", function()
+			T.expect(not TrackPlan.clearOfTraps(boxes, box.center.X, box.center.Z, 4), "centre du piège")
+			local edge = box.center.Z + box.size.Z / 2
+			T.expect(not TrackPlan.clearOfTraps(boxes, box.center.X, edge + 3.9, 4), "dans la marge")
+			T.expect(TrackPlan.clearOfTraps({ box }, box.center.X, edge + 4.1, 4), "au-delà de la marge")
+		end)
+		T.it("libre sans piège", function()
+			T.expect(TrackPlan.clearOfTraps({}, 0, 0, 4), "aucun piège")
+		end)
+	end)
+
 	T.describe("TrackPlan.trapBox (anneau propulseur, #85)", function()
 		local center, size = TrackPlan.trapBox("Booster", 7, 1900)
 		local def = Traps.KINDS.Booster

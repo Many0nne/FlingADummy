@@ -20,6 +20,7 @@ local Objectives = require(ReplicatedStorage.Shared.Objectives)
 local ThrowDummies = require(ReplicatedStorage.Shared.ThrowDummies)
 local SurfaceGap = require(ReplicatedStorage.Shared.SurfaceGap)
 local ThrowStart = require(ReplicatedStorage.Shared.ThrowStart)
+local TrackPlan = require(ReplicatedStorage.Shared.TrackPlan)
 local TrainingLook = require(ReplicatedStorage.Shared.TrainingLook)
 local Zones = require(ReplicatedStorage.Shared.Zones)
 local Build = require(script.Parent.Build)
@@ -36,6 +37,11 @@ local CAP_THICKNESS = Drips.CAP_THICKNESS
 local CAP_OVERHANG = 1 -- l'herbe déborde du bord de chaque marche
 local END_Z = GameConfig.COURSE_LENGTH + 40 -- fond du canyon, derrière la paroi de bout de piste
 local END_EXTRA = 200 -- les parois de la dernière zone dépassent d'autant la paroi de bout de piste (pas de trou aux coins)
+-- Décor lointain allégé (#115) : au-delà de 2,4 km (zones de 600 m, vues seulement en vol, vite), accessoires semés
+-- FAR_SPACING fois plus espacés ; la piste, les parois et les obstacles ne changent pas
+local FAR_START = 2400
+local FAR_SPACING = 1.6
+local TRAP_MARGIN = 10 -- pas d'accessoire au pied des parois à moins de 10 studs d'un piège (rayon de l'arc-en-ciel)
 local FINISH_CLEARANCE = 12 -- pas de décor au pied des parois à moins de 12 studs avant l'arche d'arrivée (piliers)
 local STATION_HEIGHT = 1.4 -- hauteur du podium de l'appareil d'entraînement
 local STATION_SPOT = 0.6 -- avance de la place de l'avatar devant le centre du podium (le râtelier est derrière)
@@ -140,6 +146,8 @@ export type Slot = {
 export type Course = { slots: { Slot }, dummies: Folder, boards: { Props.Scoreboard } }
 
 local CourseBuilder = {}
+
+CourseBuilder.FAR_START = FAR_START -- début du décor lointain allégé (tools/decor-count.luau)
 
 local rng = Random.new(SEED)
 -- Par place : repose les mannequins de son râtelier quand les gabarits maillés arrivent
@@ -300,7 +308,8 @@ local function drips(
 end
 
 -- Cette méthode permet de semer le décor de la zone sur une bande (de `from` à `to` au sol, espacement moyen
--- `spacing`, écart latéral `jitter` le long de `side`) lorsque l'on habille une marche ou le pied d'une paroi.
+-- `spacing`, plus large au-delà de FAR_START, écart latéral `jitter` le long de `side`, rien dans l'emprise des
+-- pièges `keepOut`) lorsque l'on habille une marche ou le pied d'une paroi.
 local function scatter(
 	parent: Instance,
 	zone: Zone,
@@ -309,22 +318,23 @@ local function scatter(
 	spacing: number,
 	side: Vector3,
 	jitter: number,
-	solid: boolean
+	solid: boolean,
+	keepOut: { TrackPlan.TrapBox }?
 )
 	local delta = to - from
 	local length = delta.Magnitude
 	local direction = delta.Unit
+	if zone.start >= FAR_START then
+		spacing *= FAR_SPACING
+	end
 	local t = rng:NextNumber(0, spacing)
 	while t < length do
 		local kind = zone.props[rng:NextInteger(1, #zone.props)]
 		local position = from + direction * t + side * rng:NextNumber(-jitter, jitter)
-		Props.build(
-			kind,
-			parent,
-			CFrame.new(position) * CFrame.Angles(0, math.rad(rng:NextInteger(0, 3) * 90), 0),
-			rng,
-			solid
-		)
+		local turn = rng:NextInteger(0, 3)
+		if not keepOut or TrackPlan.clearOfTraps(keepOut, position.X, position.Z, TRAP_MARGIN) then
+			Props.build(kind, parent, CFrame.new(position) * CFrame.Angles(0, math.rad(turn * 90), 0), rng, solid)
+		end
 		t += spacing * rng:NextNumber(0.6, 1.4)
 	end
 end
@@ -1578,6 +1588,7 @@ local function buildTrack(parent: Instance, walls: SurfaceGap.Area): () -> { str
 	local half = GameConfig.TRACK_WIDTH / 2
 	local length = GameConfig.COURSE_LENGTH
 	local spent: { number } = {} -- temps de chaque zone (s), marches puis décor
+	local traps = TrackPlan.trapBoxes(TrackPlan.sites(length)) -- emprise des pièges, laissée libre au pied des parois
 	local dressers: { () -> () } = {}
 	for index, zone in Zones.LIST do
 		local started = os.clock()
@@ -1626,7 +1637,7 @@ local function buildTrack(parent: Instance, walls: SurfaceGap.Area): () -> { str
 			for _, side in { -1, 1 } do
 				local x = side * (half - 4)
 				local from, to = Vector3.new(x, 0, math.max(zoneStart, 8)), Vector3.new(x, 0, footEnd)
-				Build.within(walls, scatter, folder, zone, from, to, 22, Vector3.xAxis, 1.5, false)
+				Build.within(walls, scatter, folder, zone, from, to, 22, Vector3.xAxis, 1.5, false, traps)
 			end
 			-- Panneaux d'entrée de zone (pas au départ : la zone de lancer reste dégagée, comme dans les références), au
 			-- pied des parois : ils ressortent un peu des accessoires qu'ils touchent

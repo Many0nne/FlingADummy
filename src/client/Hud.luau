@@ -10,7 +10,9 @@
 -- (même remote que la fenêtre) et ouverture de la fenêtre Training Gear.
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -23,6 +25,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local ThrowDummies = require(Shared:WaitForChild("ThrowDummies"))
 local Training = require(Shared:WaitForChild("Training"))
 local TrainingBoost = require(Shared:WaitForChild("TrainingBoost"))
+local TouchLayout = require(Shared:WaitForChild("TouchLayout"))
 local TrainingLook = require(Shared:WaitForChild("TrainingLook"))
 local Tutorial = require(Shared:WaitForChild("Tutorial"))
 local UIMotion = require(Shared:WaitForChild("UIMotion"))
@@ -886,12 +889,13 @@ local function announceLevelUp()
 	UIKit.playSound("LevelUp")
 end
 
--- Cette méthode permet d'adapter l'échelle du HUD à la taille de l'écran lorsque la fenêtre change (mobile compris).
+-- Cette méthode permet d'adapter l'échelle du HUD à la taille de l'écran lorsque la fenêtre change (mobile compris :
+-- interface un peu plus grosse sur écran tactile, Shared.TouchLayout).
 local function bindScale(scale: UIScale)
 	local camera = Workspace.CurrentCamera
 	local function update()
 		local size = camera.ViewportSize
-		scale.Scale = math.clamp(math.min(size.X / 1280, size.Y / 720), 0.5, 1.3)
+		scale.Scale = TouchLayout.hudScale(size.X, size.Y, UserInputService.TouchEnabled)
 	end
 	camera:GetPropertyChangedSignal("ViewportSize"):Connect(update)
 	update()
@@ -1095,6 +1099,14 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 		BackgroundTransparency = 1,
 		Parent = gui,
 	})
+	-- Boutons et compteurs hors de l'encoche ; « My Dummies », posée à côté du bouton Dummies, suit sa marge droite
+	local safeRight = 0
+	UIKit.keepSafe(root, function(_left: number, right: number)
+		safeRight = right
+		if windows.Dummies then
+			windows.Dummies.Position = UDim2.new(1, -(30 + BUTTON_SIZE) - safeRight, 0.5, 0)
+		end
+	end)
 	buildCounters()
 	buildButtons()
 	buildGearOffer()
@@ -1110,6 +1122,7 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 	do
 		windows[name] = frame
 	end
+	windows.Dummies.Position = UDim2.new(1, -(30 + BUTTON_SIZE) - safeRight, 0.5, 0)
 	-- Boutique des mannequins à lancer (stand SHOP, popup « NEW DUMMY! »)
 	windows.DummyShop = ThrowShop.init(player, remotes, gui, {
 		popup = Hud.popup,
@@ -1274,6 +1287,22 @@ function Hud.init(localPlayer: Player, onStop: () -> (), remotes: Remotes.Remote
 	Hud.refresh()
 	refreshTraining()
 	refreshState()
+	-- Studio : DebugOpen (attribut du joueur, côté client) ouvre ou ferme une fenêtre par son nom, comme son bouton ;
+	-- sert aux vérifications au Device Simulator, où le clic simulé ne tombe pas au bon endroit (#19)
+	if RunService:IsStudio() then
+		player:GetAttributeChangedSignal("DebugOpen"):Connect(function()
+			local name = player:GetAttribute("DebugOpen")
+			if name == nil then
+				return
+			end
+			player:SetAttribute("DebugOpen", nil)
+			if type(name) == "string" and windows[name] then
+				toggle(name)
+			else
+				warn("[Hud] DebugOpen : fenêtre inconnue " .. tostring(name))
+			end
+		end)
+	end
 end
 
 return Hud

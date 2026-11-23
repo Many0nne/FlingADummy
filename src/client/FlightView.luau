@@ -339,7 +339,15 @@ local function build(gui: ScreenGui)
 	distanceLabel = UIKit.text({ Size = UDim2.fromOffset(190, 40), TextSize = 32, Parent = stats })
 	bonesLabel = UIKit.text({ Size = UDim2.fromOffset(190, 40), TextSize = 32, TextColor3 = C.bone, Parent = stats })
 	smashedLabel = UIKit.text({ Size = UDim2.fromOffset(190, 40), TextSize = 32, TextColor3 = C.smash, Parent = stats })
-	buildXray(root)
+	-- Panneau X-RAY en bas à droite : hors de l'encoche d'un téléphone (#19), les bandes noires restent plein écran
+	local safe = UIKit.create("Frame", {
+		Name = "Safe",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Parent = root,
+	})
+	UIKit.keepSafe(safe)
+	buildXray(safe)
 	buildTag(gui)
 end
 
