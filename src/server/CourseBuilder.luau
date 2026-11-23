@@ -147,6 +147,8 @@ export type Course = { slots: { Slot }, dummies: Folder, boards: { Props.Scorebo
 
 local CourseBuilder = {}
 
+CourseBuilder.FAR_START = FAR_START -- début du décor lointain allégé (tools/decor-count.luau)
+
 local rng = Random.new(SEED)
 -- Par place : repose les mannequins de son râtelier quand les gabarits maillés arrivent
 local rackPlacers: { [number]: () -> () } = {}

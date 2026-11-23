@@ -8,7 +8,7 @@ local scene = DecorBuild.build(Loader)
 local course = scene.course
 local Zones = scene.loader:require("src/shared/Zones")
 
-local FAR = 2400
+local FAR = scene.CourseBuilder.FAR_START
 local total = #course:GetDescendants()
 local near, far = 0, 0
 local lines = {}

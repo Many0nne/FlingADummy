@@ -494,6 +494,12 @@ local function touchPad(button: GuiButton): GuiButton
 			end)
 		end
 	end)
+	-- Bouton qui apparaît ou disparaît (Rebirth, offre) : les zones voisines se recalent sur lui
+	button:GetPropertyChangedSignal("Visible"):Connect(function()
+		local scope = scopeOf(button)
+		scopeRects[scope] = nil
+		refitScope(scope)
+	end)
 	task.defer(fit) -- voisins posés après lui (même construction)
 	return pad
 end
