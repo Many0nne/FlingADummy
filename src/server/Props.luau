@@ -761,7 +761,8 @@ function Props.fence(
 	return feet
 end
 
--- Décor des paliers de base (#61, Shared.BaseLook) : lanternes, massifs de fleurs, drapeaux, arche d'entrée
+-- Décor des paliers de base (#61, #198, Shared.BaseLook) : lanternes, massifs de fleurs, drapeaux, entrée à étoiles,
+-- tours et arbres des coins du fond, buissons, bandeaux des socles
 local LANTERN_FRAME = rgb(60, 45, 35)
 local LANTERN_LIGHT = rgb(255, 210, 90)
 local FLOWER_COLORS =
@@ -770,7 +771,7 @@ local SOIL = rgb(120, 75, 40)
 local GOLD = rgb(255, 200, 40)
 
 -- Cette méthode permet de poser une lanterne (socle et toit sombres, lumière néon chaude) dont le pied est en `top`
--- lorsque l'on habille le haut d'un poteau de clôture ou d'une arche.
+-- lorsque l'on habille le haut d'un poteau de clôture ou du linteau de l'entrée.
 function Props.lantern(parent: Instance, top: Vector3)
 	parent = lookPiece(parent, "Lantern", 2)
 	Build.block(parent, Vector3.new(1.1, 0.3, 1.1), CFrame.new(top + Vector3.new(0, 0.15, 0)), LANTERN_FRAME, false)
@@ -818,9 +819,10 @@ end
 
 -- Cette méthode permet de planter un drapeau (mât, fanion à la couleur `color` tourné vers `side`, boule dorée) au sol
 -- en `at` lorsque l'on habille les coins d'une base ; `height` : hauteur du mât (11 par défaut, plus court au sommet
--- d'une tour).
-function Props.flag(parent: Instance, at: Vector3, side: Vector3, color: Color3, height: number?)
-	parent = lookPiece(parent, "Flag", 0)
+-- d'une tour) ; `stage` : étage de l'animation de construction (0 au sol, 2 au sommet d'une tour : il arrive après
+-- elle).
+function Props.flag(parent: Instance, at: Vector3, side: Vector3, color: Color3, height: number?, stage: number?)
+	parent = lookPiece(parent, "Flag", stage or 0)
 	local mast = height or 11
 	Build.block(parent, Vector3.new(0.5, mast, 0.5), CFrame.new(at + Vector3.new(0, mast / 2, 0)), WHITE, false)
 	Build.block(parent, Vector3.new(0.9, 0.9, 0.9), CFrame.new(at + Vector3.new(0, mast + 0.45, 0)), GOLD, false)
@@ -948,8 +950,9 @@ function Props.tower(parent: Instance, at: Vector3, fence: BaseLook.Fence, face:
 		end
 	end
 	local drape = lookPiece(parent, "Banner", 2)
-	banner(drape, at + face * (side / 2), face, height - 0.6, height * 0.4, side - 0.8, color, trim)
-	Props.flag(parent, at + UP * (height + 1.1), face, color, 6)
+	-- Bannière arrêtée au-dessus de l'anneau (pointe comprise) : pas de faces presque confondues
+	banner(drape, at + face * (side / 2), face, height - 0.6, height * 0.32, side - 0.8, color, trim)
+	Props.flag(parent, at + UP * (height + 1.1), face, color, 6, 2)
 end
 
 -- Cette méthode permet de planter un arbre voxel (tronc haut, houppier en cubes de deux verts) au pied `at`, ses
