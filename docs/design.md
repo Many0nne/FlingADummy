@@ -689,8 +689,8 @@ maximum 30 inchangé : **25 prix** dans `DISPLAY_PRICES`, `DISPLAY_MAX` = 30 et 
 - Présentoirs 6 à 8 à **$400, $1,5K et $6K**, glissés entre les premiers équipements : achetés à **60 s, 90 s et 3 min**
   (médianes, 60 joueurs), peu après que la base est pleine (5, 6 puis 7 mannequins gagnés). Présentoir 9 inchangé
   (9 min). Prix arrondis à deux chiffres, calés au joueur simulé.
-- Présentoirs 9 à 30 : prix inchangés. Le revenu de la première heure monte un peu (60 min : $428K/s contre $431K/s,
-  520 M de puissance : inchangés) : les temps d'achat d'après 10 min bougent de ± 1 min (Display 30 à 10,1 h, renaissance
+- Présentoirs 9 à 30 : prix inchangés. Le revenu de la première heure reste à peu près égal (60 min : $428K/s contre $431K/s,
+  520 M de puissance inchangés ; 5 min : $956/s contre $1,08K/s) : les temps d'achat d'après 10 min bougent de ± 1 min (Display 30 à 10,1 h, renaissance
   à 14 h simulées : une renaissance).
 - Première heure : 24 achats (21 avant), écart le plus long 5 min (garde-fou : 6 min).
 - Paliers : Wood de 5 à 8 (`BaseTier.displays`), Garden au 9e, les autres inchangés.

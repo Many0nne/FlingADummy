@@ -111,6 +111,11 @@ return function(T, Loader, Lib)
 					)
 					previous = at or previous
 				end
+				local ninth = median("display:" .. (start + 4))
+				T.expect(
+					ninth ~= nil and ninth > 300 and ninth < 900,
+					"présentoir 9 acheté à " .. tostring(ninth) .. " s"
+				)
 				-- Un présentoir de la deuxième moitié de la liste n'arrive qu'après la première heure
 				local half = median("display:" .. (start + math.ceil(#m.GameConfig.DISPLAY_PRICES / 2) + 1))
 				T.expect(
