@@ -24,7 +24,9 @@
 
     "StarterPlayer": {
       "$properties": {
-        "CameraMaxZoomDistance": 60
+        "CameraMaxZoomDistance": 60,
+        "DevTouchMovementMode": "UserChoice",
+        "DevComputerMovementMode": "UserChoice"
       },
       "StarterPlayerScripts": {
         "Client": {
