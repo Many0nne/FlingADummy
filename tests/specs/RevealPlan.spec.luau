@@ -153,12 +153,22 @@ return function(T, Loader)
 						T.expect(cues.outline == Rarity.LIST[shown].color, label .. " : contour du palier affiché")
 						T.expectEqual(cues.darkSky, RevealPlan.get(shown).darkSky, label)
 						T.expectEqual(cues.rays, RevealPlan.get(shown).rays, label)
-						if reached < #sequence and shown < 5 then
-							T.expect(
-								not cues.rays and not cues.darkSky,
-								label .. " : ni rayons ni ciel avant Legendary"
-							)
-							T.expectEqual(#RevealPlan.teaseEffects(cues.rarity, cues.outline), 0, label)
+						if reached < #sequence then
+							-- Même suite, gagné remplacé par un Infinity : rien ne change avant que la cote l'atteigne
+							local rigged = table.clone(sequence)
+							rigged[#rigged] = table.clone(sequence[#sequence])
+							rigged[#rigged].rarity = #Rarity.LIST
+							local other = RevealPlan.teaseCues(RevealPlan.shownRarity(rigged, reached))
+							T.expectEqual(other.rarity, cues.rarity, label .. " : indépendant du gagné")
+							T.expectEqual(other.rays, cues.rays, label .. " : rayons indépendants du gagné")
+							T.expectEqual(other.darkSky, cues.darkSky, label .. " : ciel indépendant du gagné")
+							if shown < 5 then
+								T.expect(
+									not cues.rays and not cues.darkSky,
+									label .. " : ni rayons ni ciel avant Legendary"
+								)
+								T.expectEqual(#RevealPlan.teaseEffects(cues.rarity, cues.outline), 0, label)
+							end
 						end
 					end
 				end
@@ -194,7 +204,7 @@ return function(T, Loader)
 		T.it("aucun passage au clic, au toucher ni à Espace dans Client.Prize", function()
 			local fs = require("@lune/fs")
 			local source = fs.readFile("src/client/Prize.luau")
-			for _, pattern in { "InputBegan", "BindAction", "skip", "Skip", "SKIP" } do
+			for _, pattern in { "InputBegan", "ContextActionService", "BindAction", "SKIP_", "to skip" } do
 				T.expect(not string.find(source, pattern, 1, true), pattern .. " : le tirage ne se passe pas")
 			end
 			T.expectEqual((RevealPlan :: any).SKIP_AFTER, nil)

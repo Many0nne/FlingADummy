@@ -74,11 +74,13 @@ base, il rapporte des $/s, seule source d'argent.
    (`Tutorial.canThrowAgain`). HUD du hub masqué de l'atterrissage au GO BACK (#60).
    **Spectacle par palier de rareté** (#67, `Shared.RevealPlan`, effets `Client.RevealFx`) : Common / Uncommon,
    révélation vive (double anneau, éclat, sons) ; Rare / Epic, la silhouette hésite entre 2 ou 3 formes pendant le
-   roulement (1,8 s), confettis de la couleur de la rareté ; Legendary / Mythic, ciel qui s'assombrit dès la silhouette,
-   rayons et colonne de lumière, cote qui grimpe longtemps (× 1,6), explosion et forte secousse ; Secret, en plus, la
-   séquence de 09 : écran noir et phrase propre au mannequin écrite lettre à lettre, décor dédié (tapis rouge, colonnes
+   roulement (1,8 s), confettis de la couleur de la rareté ; Legendary / Mythic, ciel qui s'assombrit, rayons et colonne
+   de lumière quand la cote affichée atteint Legendary (#201 : le suspense suit le palier affiché, jamais le gagné),
+   cote qui grimpe longtemps (× 1,6), explosion et forte secousse ; Secret, en plus, la séquence de 09 : écran noir et phrase propre au mannequin écrite lettre à lettre, décor dédié (tapis rouge, colonnes
    dorées, construit au-dessus de la piste), portail, pluie de pièces, « SECRET!! » et cote complète. Suspense mesuré :
-   Common 2,8 s, Epic 7,1 s, Legendary 11,1 s, Secret 20,6 s jusqu'au portail. Passable au clic (ou Espace) après 1 s.
+   Common 2,8 s, Epic 7,1 s, Legendary 11,1 s, Secret 20,6 s jusqu'au portail. **Non passable** (#197) : seuls THROW
+   AGAIN et GO BACK rendent la main ; GO BACK apparaît après 2,8 à 5,9 s (Common), 6,7 à 9,2 s (Rare, Epic), 11,0 à
+   13,0 s (Legendary, Mythic), 24,6 à 27,2 s (Secret et au-delà), test « durée du tirage par rareté ».
    **Annonce** à partir de Legendary : bandeau en haut pour tous les joueurs et ligne dans le chat, envoyés à la fin du
    résultat du gagnant (personne ne lui gâche son tirage). Test : attribut `DebugPrize` (Studio, contexte Server) =
    rareté 1-11, son nom ou « id:taille », imposé au prochain tirage.

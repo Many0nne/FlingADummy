@@ -128,14 +128,16 @@ function RevealPlan.cinematicTime(): number
 	return total
 end
 
+-- Cette méthode permet de donner la durée (s) de la séquence du secret jouée pour une rareté (0 sans séquence)
+-- lorsque l'on calcule la durée d'un tirage.
+local function cinematicOf(rarity: number): number
+	return if RevealPlan.get(rarity).cinematic then RevealPlan.cinematicTime() else 0
+end
+
 -- Cette méthode permet de donner la durée (s) du tirage d'un mannequin de rareté `rarity` jusqu'aux textes de la
 -- révélation et à GO BACK (suspense, puis séquence du secret) lorsque l'on mesure l'attente imposée au joueur.
 function RevealPlan.revealTime(rarity: number, sequence: { Collection.TeaseStep }): number
-	local total = RevealPlan.teaseTime(rarity, sequence)
-	if RevealPlan.get(rarity).cinematic then
-		total += RevealPlan.cinematicTime()
-	end
-	return total
+	return RevealPlan.teaseTime(rarity, sequence) + cinematicOf(rarity)
 end
 
 -- Cette méthode permet de donner la durée maximale (s) d'un tirage de rareté `rarity`, du début de la silhouette au
@@ -146,10 +148,7 @@ function RevealPlan.maxDuration(rarity: number): number
 		+ MAX_CLIMBS * (MAX_CLIMB_TIME * tier.climbFactor + tier.pause)
 		+ tier.drumroll
 		+ tier.autoClose
-	if tier.cinematic then
-		total += RevealPlan.cinematicTime()
-	end
-	return total
+	return total + cinematicOf(rarity)
 end
 
 -- Cette méthode permet de donner le délai (s) au bout duquel le serveur clôt le résultat sans GO BACK lorsque le
