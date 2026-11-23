@@ -28,6 +28,8 @@ local RESUME_CONFIRM = 0.4 -- s au-dessus de REST_SPEED avant de reprendre le vo
 local TAG_MIN = 0.9 -- s minimum de « X1.36 » à l'écran avant le tirage
 local REPORT_TIME = 3 -- s de radio et bilan après le comptage (dans leur coin pendant le suspense du tirage)
 local TAG_OFFSET = 4.5 -- studs au-dessus du torse
+local REPORT_MAX = Vector2.new(300, 160) -- taille maximale du bilan (px) ; plus étroit sur petit écran
+local REPORT_MARGIN = 12 -- px libres à gauche du bilan
 
 local FlightView = {}
 
@@ -121,12 +123,14 @@ local function buildXray(parent: Instance)
 		Name = "Report",
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, -196, 1, -110),
-		Size = UDim2.fromOffset(300, 150),
+		Size = UDim2.new(1, -(196 + REPORT_MARGIN), 0, REPORT_MAX.Y),
 		BackgroundColor3 = Color3.fromRGB(18, 38, 66),
 		BackgroundTransparency = 0.1,
 		Visible = false,
 		Parent = parent,
 	})
+	-- Largeur bornée à l'écran (marge à gauche de la radio) : le panneau ne sort jamais, la phrase passe à la ligne
+	UIKit.create("UISizeConstraint", { MaxSize = REPORT_MAX, MinSize = Vector2.new(120, 0), Parent = report })
 	UIKit.corner(report, 16)
 	UIKit.outline(report, 3, Color3.fromRGB(120, 200, 255))
 	reportStats = UIKit.text({
@@ -139,8 +143,9 @@ local function buildXray(parent: Instance)
 	reportInjury = UIKit.text({
 		Position = UDim2.fromOffset(12, 44),
 		Size = UDim2.new(1, -24, 1, -52),
-		TextSize = 20,
+		TextSize = 18,
 		TextWrapped = true,
+		TextTruncate = Enum.TextTruncate.AtEnd,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Top,
 		TextColor3 = Color3.fromRGB(255, 210, 200),
