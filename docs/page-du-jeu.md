@@ -56,6 +56,13 @@ Chaque affirmation existe dans le jeu (pas de récompense quotidienne, de revenu
 `docs/captures/sortie-178/comparaison.jpg`. Ordre de publication : vignette 1 (lancer, « 1 IN 100T »), 2 (mystère),
 3 (« SMASH! »), 4 (collection, « $540M/S »).
 
+## Vidéo (#225)
+`assets/store/video/export/throw-a-dummy.mp4` (20 s, 1920 × 1080, −14 LUFS) : l'avatar bacon hair frappe le Crash
+Dummy à l'appareil d'entraînement, le traîne par la cheville jusqu'à la bande, le lance (crash dans la Ferme), en lance
+un second qui traverse un mur de briques (plan de la vignette 3), arrêt sur image et titre « THROW A DUMMY ». Tournée
+dans Studio avec le vrai jeu, procédure et montage : `assets/store/video/README.md`. À placer en tête de galerie, avant
+la vignette 1 (Creator Dashboard, par l'utilisateur ; 3 envois par mois, une vidéo refusée compte).
+
 ## Réglages
 | Réglage | Proposé | Pourquoi |
 |---|---|---|
