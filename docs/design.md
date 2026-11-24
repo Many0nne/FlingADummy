@@ -884,6 +884,14 @@ pièges servent à chaque tour.
   début de la piste (z = 12, juste après la bande), rideau de 18 à 46 studs : au-dessus des joueurs de la bande et du
   lâcher (≈ 12 studs de haut à cet endroit), hors du cadrage de la bande. Pièces traversables : le passage est décidé
   par le serveur.
+- **Portails à la demande** (#231, retour du testeur : pas dressés en permanence) : le serveur les range en modèles de
+  référence (`ReplicatedStorage.PortalTemplates`) ; chaque client (`Client.PortalFx`) les ouvre quand un mannequin
+  affiché, de n'importe quel joueur, va franchir la ligne avec un tour de plus à faire (`Laps.finishNeeded` : moins de
+  0,6 s d'avance), puis les referme. Ouverture en « pop » depuis le cœur du rideau (0,3 s), fermeture 0,25 s après le
+  passage (0,35 s) ; le portail de sortie s'ouvre en même temps et reste 1,2 s après la sortie du mannequin. Au dernier
+  tour, rien ne s'ouvre (paroi du bout). Mesuré en Studio (mannequin de test, Crash, 1,5 T, 3 tours) : portail d'arrivée
+  à l'écran ≈ 1,0 s par passage, ouvert à ≈ 530 studs du mannequin affiché ; portail de sortie ≈ 2,3 s ; rien au repos.
+  Mouvement réduit : apparition sans animation.
 - **Passage** (`LaunchService` : `passPortal`) : quand le torse franchit la ligne d'arrivée, le tour est compté, le
   mannequin entier passe à la sortie dans **son couloir** (abscisse du lâcher, 30 studs de haut) et repart à **15°**
   (32° au lâcher : vol plus tendu, un tour de 6 km en ≈ 6 s au lieu de 8,5) avec la vitesse qui pose sa portée

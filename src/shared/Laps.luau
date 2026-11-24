@@ -29,6 +29,11 @@ Laps.EXIT_HEIGHT = 30 -- hauteur de la sortie au-dessus de la piste (studs)
 Laps.PITCH_DEG = 15 -- angle de la relance (32° au lâcher) : vol plus tendu, tour de 6 km en ≈ 6 s au lieu de 8,5
 Laps.MIN_RUN = 40 -- un mannequin qui passe le portail sans réserve repart au moins de cette distance (studs)
 Laps.SPEED_MAX = 20000 -- borne haute de la recherche de vitesse (studs/s)
+-- Portails à la demande (#231) : le portail d'arrivée s'ouvre quand un mannequin affiché va franchir la ligne en moins
+-- de OPEN_LEAD s (avec un tour de plus à faire), et reste ouvert tant qu'il n'a pas dépassé la ligne de PAST_LINE studs
+Laps.OPEN_LEAD = 0.6
+Laps.PAST_LINE = 50 -- la paroi du bout est 40 studs après la ligne
+Laps.MIN_APPROACH = 1 -- vitesse le long de la piste (studs/s) en deçà de laquelle un mannequin ne fait plus ouvrir
 
 -- Cette méthode permet de donner la portée virtuelle d'un vol (point où la glissade commence, plus SLIDE_SHARE de la
 -- glissade théorique, depuis le départ, le long de la piste) lorsque l'on estime où il s'arrêterait sans paroi.
@@ -88,6 +93,16 @@ function Laps.relaunch(run: number, behavior: FlightArc.Behavior?, gravity: numb
 	local speed = (low + high) / 2
 	local pitch = math.rad(Laps.PITCH_DEG)
 	return speed * math.cos(pitch), speed * math.sin(pitch), relaunchPlan(speed, behavior, gravity)
+end
+
+-- Cette méthode permet de dire si le portail d'arrivée doit être ouvert pour un mannequin affiché en `z` (studs depuis
+-- le départ), qui avance à `speed` studs/s le long de la piste au tour `lap`, lorsque le client ouvre les portails (#231).
+function Laps.finishNeeded(z: number, speed: number, lap: number): boolean
+	if lap >= Laps.MAX or speed < Laps.MIN_APPROACH then
+		return false
+	end
+	local ahead = Laps.LENGTH - z
+	return ahead > -Laps.PAST_LINE and ahead <= speed * Laps.OPEN_LEAD
 end
 
 -- Cette méthode permet d'estimer la durée d'un tour (premier contact, rebonds, glissade freinée, plus REST_TIME pour le

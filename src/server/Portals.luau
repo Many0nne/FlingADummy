@@ -2,15 +2,14 @@
 -- l'arc-en-ciel (piliers et linteau empilés, comme les blocs saturés des jeux de référence 01 et 09), rideau violet
 -- lumineux et tourbillon néon qui tourne, où le mannequin entre ; au début de la piste, juste après la bande de lancer,
 -- un portail de sortie plus petit d'où il ressort pour le tour suivant (Shared.Laps). Rien n'arrête le mannequin :
--- pièces traversables, le passage est décidé par Server.LaunchService (ligne d'arrivée franchie). Les bras du
--- tourbillon sont des pièces mobiles que chaque client anime (Client.TrapMotion, mouvement « Spin »).
-local CollectionService = game:GetService("CollectionService")
+-- pièces traversables, le passage est décidé par Server.LaunchService (ligne d'arrivée franchie). Portails à la demande
+-- (#231) : ils ne sont pas posés sur la piste, mais rangés en modèles de référence (ReplicatedStorage.PortalTemplates, Server.init)
+-- que chaque client ouvre le temps d'un passage, puis referme (Client.PortalFx : tourbillon animé par le client).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
 local GameConfig = require(Shared.GameConfig)
 local Laps = require(Shared.Laps)
-local Traps = require(Shared.Traps)
 local Zones = require(Shared.Zones)
 
 local Build = require(script.Parent.Build)
@@ -36,7 +35,7 @@ local WALL_GAP = 2 -- piliers écartés des parois du canyon (studs) : pas de fa
 type Shape = { half: number, bottom: number, top: number, swirl: number, z: number, arms: number }
 
 -- Cette méthode permet de créer le modèle d'une pièce mobile qui tourne autour de l'axe de la piste (pivot `pivot`,
--- un tour en `period` s, animée par chaque client) lorsque l'on pose le tourbillon d'un portail ; renvoie le modèle.
+-- un tour en `period` s, animée par Client.PortalFx) lorsque l'on pose le tourbillon d'un portail ; renvoie le modèle.
 local function spinner(parent: Instance, pivot: CFrame, period: number): Model
 	local model = Instance.new("Model")
 	model.Name = "Swirl"
@@ -48,14 +47,7 @@ local function spinner(parent: Instance, pivot: CFrame, period: number): Model
 		Parent = model,
 	})
 	model.PrimaryPart = anchor
-	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
-	model:SetAttribute("Motion", "Spin")
-	model:SetAttribute("Axis", Vector3.zAxis)
-	model:SetAttribute("Amplitude", 0)
 	model:SetAttribute("Period", period)
-	model:SetAttribute("Phase", 0)
-	model:SetAttribute("Home", pivot)
-	CollectionService:AddTag(model, Traps.MOTION_TAG)
 	model.Parent = parent
 	return model
 end
@@ -148,13 +140,15 @@ local function portal(parent: Instance, name: string, shape: Shape): Model
 	light.Range = 60
 	light.Brightness = 2
 	light.Parent = curtain
+	-- Pivot au cœur du rideau : le client ouvre le portail depuis son centre
+	model.WorldPivot = CFrame.new(0, shape.bottom + height / 2, z)
 	model.Parent = parent
 	return model
 end
 
 -- Cette méthode permet de dresser le portail de la ligne d'arrivée (rideau du sol au-dessus du plafond du vol, panneau
--- « FINISH 6 KM » au linteau) lorsque la piste est construite.
-function Portals.buildFinish(parent: Instance)
+-- « FINISH 6 KM » au linteau) lorsque les modèles de référence sont rangés.
+local function buildFinish(parent: Instance)
 	local half = GameConfig.TRACK_WIDTH / 2 - BRICK - WALL_GAP
 	local model = portal(parent, "FinishPortal", {
 		half = half,
@@ -177,8 +171,8 @@ function Portals.buildFinish(parent: Instance)
 end
 
 -- Cette méthode permet de dresser le portail de sortie au début de la piste (rideau autour de la hauteur de sortie,
--- au-dessus des joueurs de la bande) lorsque la piste est construite.
-function Portals.buildExit(parent: Instance)
+-- au-dessus des joueurs de la bande) lorsque les modèles de référence sont rangés.
+local function buildExit(parent: Instance)
 	local half = GameConfig.TRACK_WIDTH / 2 - BRICK - WALL_GAP
 	portal(parent, "ExitPortal", {
 		half = half,
@@ -188,6 +182,20 @@ function Portals.buildExit(parent: Instance)
 		z = Laps.EXIT_Z,
 		arms = 3,
 	})
+end
+
+-- Cette méthode permet de ranger les modèles de référence des deux portails (FinishPortal, ExitPortal, à leur place
+-- sur la piste) dans `parent` (PortalTemplates) lorsque le serveur démarre (#231 : ouverts par Client.PortalFx).
+function Portals.build(parent: Instance)
+	local old = parent:FindFirstChild("PortalTemplates")
+	if old then
+		old:Destroy()
+	end
+	local folder = Instance.new("Folder")
+	folder.Name = "PortalTemplates"
+	Build.settled(buildFinish, folder)
+	Build.settled(buildExit, folder)
+	folder.Parent = parent
 end
 
 return Portals
