@@ -318,7 +318,17 @@ local function start(model: Model)
 	if model:GetAttribute("Owner") == Players.LocalPlayer.UserId and LaunchGhost.anticipating() then
 		return
 	end
-	local cues = FlightFxRules.cues(origin, velocity, Workspace.Gravity, ThrowDummies.get(index))
+	-- Élan d'entrée freiné après le portail (#233), absent au lâcher
+	local entry = model:GetAttribute("LaunchEntry")
+	local entryTime = model:GetAttribute("LaunchEntryTime")
+	local cues = FlightFxRules.cues(
+		origin,
+		velocity,
+		Workspace.Gravity,
+		ThrowDummies.get(index),
+		if type(entry) == "number" then entry else nil,
+		if type(entryTime) == "number" then entryTime else nil
+	)
 	if cues.boostAlong <= 0 and not cues.glide and cues.bounces == 0 then
 		return
 	end

@@ -54,8 +54,13 @@ export type Plan = {
 	range: number, -- distance au premier contact au sol, depuis le départ, le long de la piste (studs)
 	contactTime: number, -- durée du vol jusqu'au premier contact au sol (s, sol plat)
 	drop: number?, -- vol plafonné : distance depuis le départ où la croisière finit et la chute commence
+	forward: number, -- élan de croisière vers l'avant (studs/s), sans la poussée ni l'élan d'entrée
 	boost: number, -- réacteur : poussée vers l'avant (studs/s²) pendant `boostTime` (0 : aucune)
 	boostTime: number,
+	-- Élan d'entrée (#233) : vitesse en plus de `forward` au départ, freinée régulièrement à 0 en `entryTime` s (sortie
+	-- du portail : le mannequin garde la vitesse d'arrivée, puis freine en l'air jusqu'à celle du tour)
+	entry: number,
+	entryTime: number,
 	sink: number?, -- planeur : vitesse de descente tenue (studs/s)
 	bounceSpeed: number?, -- caoutchouc : élan vers l'avant pendant les rebonds (studs/s)
 	bounceUps: { number }, -- vitesses de départ vers le haut des rebonds prévus, dans l'ordre (studs/s)
@@ -98,16 +103,41 @@ local function bounceSpeeds(fall: number): { number }
 	return ups
 end
 
+-- Avancée le long de la piste d'un plan : élan de croisière, poussée du réacteur, élan d'entrée freiné
+type Motion = { forward: number, boost: number, boostTime: number, entry: number, entryTime: number }
+
+-- Cette méthode permet de donner la distance parcourue le long de la piste `t` s après le départ (poussée et élan
+-- d'entrée compris, sans choc) lorsque le plan place la fin de la croisière et le contact.
+local function alongOf(m: Motion, t: number): number
+	local pushed = if t < m.boostTime then t * t / 2 else m.boostTime * (t - m.boostTime / 2)
+	local d = m.forward * t + m.boost * pushed
+	if m.entry > 0 then
+		local te = m.entryTime
+		-- Élan d'entrée freiné régulièrement : distance d'un élan qui décroît linéairement de `entry` à 0 en `te`
+		d += m.entry * (if t < te then t - t * t / (2 * te) else te / 2)
+	end
+	return d
+end
+
+-- Cette méthode permet de donner la distance parcourue le long de la piste `t` s après le départ du plan (sans choc)
+-- lorsque l'on place un repère du vol (fin de la poussée, effets du client).
+function FlightArc.along(plan: Plan, t: number): number
+	return alongOf(plan, t)
+end
+
 -- Cette méthode permet de donner le plan d'un vol (sommet, distance au premier contact, fin de la croisière, réglages
 -- du comportement) lorsqu'il part à `forwardSpeed` le long de la piste et `upSpeed` vers le haut, depuis `height`
--- studs, sous `gravity`, avec le comportement `behavior` du mannequin lancé (aucun par défaut).
+-- studs, sous `gravity`, avec le comportement `behavior` du mannequin lancé (aucun par défaut) ; `entry` studs/s de
+-- plus au départ, freinés en `entryTime` s (sortie du portail, #233).
 function FlightArc.plan(
 	forwardSpeed: number,
 	upSpeed: number,
 	height: number,
 	gravity: number,
 	behavior: Behavior?,
-	ceiling: number?
+	ceiling: number?,
+	entry: number?,
+	entryTime: number?
 ): Plan
 	local top = ceiling or GameConfig.APEX_HEIGHT -- `ceiling` : autre plafond (tests)
 	local b = behavior or NONE
@@ -129,12 +159,6 @@ function FlightArc.plan(
 		boost = b.thrust * natural / ((airTime - boostTime / 2) * boostTime)
 	end
 	local speedAfter = forwardSpeed + boost * boostTime
-	-- Cette méthode permet de donner la distance parcourue le long de la piste `t` s après le lâcher (poussée comprise)
-	-- lorsque le plan place la fin de la croisière et le contact.
-	local function along(t: number): number
-		local pushed = if t < boostTime then t * t / 2 else boostTime * (t - boostTime / 2)
-		return forwardSpeed * t + boost * pushed
-	end
 
 	-- Planeur : descente depuis le sommet allongée de `glide` × la durée de l'arc naturel
 	local descent = fallTime
@@ -144,17 +168,26 @@ function FlightArc.plan(
 		sink = sinkFor(fallHeight, descent, gravity)
 	end
 
-	local range, drop, contactTime
+	local dropTime: number?, contactTime
 	if capped then
 		-- Montée freinée régulièrement de `vy` à 0 sur (top - height), croisière, puis descente depuis le plafond
 		local riseTime = 2 * (top - height) / vy
-		local dropTime = math.max(airTime - fallTime, riseTime)
-		drop = along(dropTime)
+		dropTime = math.max(airTime - fallTime, riseTime)
 		contactTime = dropTime + descent
 	else
 		contactTime = airTime - fallTime + descent
 	end
-	range = along(contactTime)
+	-- Élan d'entrée freiné avant le premier contact : la glissade et les rebonds partent de l'élan de croisière
+	local extra = math.max(entry or 0, 0)
+	local extraTime = if extra > 0 then math.min(entryTime or 0, contactTime) else 0
+	if extraTime <= 0 then
+		extra, extraTime = 0, 0
+	end
+
+	local motion =
+		{ forward = forwardSpeed, boost = boost, boostTime = boostTime, entry = extra, entryTime = extraTime }
+	local drop = if dropTime then alongOf(motion, dropTime) else nil
+	local range = alongOf(motion, contactTime)
 
 	-- Caoutchouc : rebonds à élan constant, réglé pour ajouter `bounce` × la portée naturelle à l'arrêt (rebonds puis
 	-- glissade plus courte, sur sol plat) : v × durée + v² / (2 × GROUND_BRAKE) = part + glissade sans rebond
@@ -182,8 +215,11 @@ function FlightArc.plan(
 		range = range,
 		contactTime = contactTime,
 		drop = drop,
+		forward = forwardSpeed,
 		boost = boost,
 		boostTime = boostTime,
+		entry = extra,
+		entryTime = extraTime,
 		sink = sink,
 		bounceSpeed = bounceSpeed,
 		bounceUps = bounceUps,
@@ -218,11 +254,17 @@ function FlightArc.accel(
 		local gain = math.min(FlightArc.GLIDE_GAIN, 1 / math.max(dt or 0, 1e-3))
 		accel += Vector3.new(0, gravity + gain * (-sink - velocity.Y), 0)
 	end
+	local push = 0
 	if plan.boost > 0 and elapsed < plan.boostTime then
-		local flat = Vector3.new(forward.X, 0, forward.Z)
-		if flat.Magnitude > 1e-3 then
-			accel += flat.Unit * plan.boost
-		end
+		push += plan.boost
+	end
+	-- Élan d'entrée (sortie du portail, #233) : freiné régulièrement en l'air, jusqu'à l'élan de croisière
+	if plan.entry > 0 and elapsed < plan.entryTime then
+		push -= plan.entry / plan.entryTime
+	end
+	local flat = Vector3.new(forward.X, 0, forward.Z)
+	if push ~= 0 and flat.Magnitude > 1e-3 then
+		accel += flat.Unit * push
 	end
 	return accel
 end
