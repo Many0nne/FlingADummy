@@ -248,6 +248,8 @@ function DecorBuild.build(Loader): any
 	end
 	local CourseBuilder = loader:require("src/server/CourseBuilder")
 	local built = CourseBuilder.build()
+	-- Portails des tours (#231) : rangés par le serveur, ouverts sur la piste le temps d'un passage ; contrôlés posés
+	loader:require("src/server/Portals").build(workspace:FindFirstChild("Course"))
 	return { course = workspace:FindFirstChild("Course"), built = built, CourseBuilder = CourseBuilder, loader = loader }
 end
 

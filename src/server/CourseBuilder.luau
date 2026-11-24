@@ -1620,8 +1620,8 @@ local function buildHub(parent: Instance, slots: { Slot }, walls: SurfaceGap.Are
 	return boards, decor
 end
 
--- Cette méthode permet de poser la ligne d'arrivée à damier et les portails des tours (#224 : portail de la ligne
--- d'arrivée, portail de sortie au début de la piste, Server.Portals) lorsque la piste est construite.
+-- Cette méthode permet de poser la ligne d'arrivée à damier lorsque la piste est construite (portails des tours, #224 :
+-- ouverts par le client le temps d'un passage, #231, Server.Portals).
 local function buildFinish(parent: Instance)
 	local half = GameConfig.TRACK_WIDTH / 2
 	local z = GameConfig.COURSE_LENGTH
@@ -1640,8 +1640,6 @@ local function buildFinish(parent: Instance)
 			})
 		end
 	end
-	Portals.buildFinish(model)
-	Portals.buildExit(model)
 	model.Parent = parent
 end
 
