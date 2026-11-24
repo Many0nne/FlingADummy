@@ -37,12 +37,11 @@ return function(T, Loader)
 	}
 
 	-- Cette méthode permet de simuler un vol sans obstacle (gravité, sol plat qui arrête la chute, comportement et
-	-- contrôle FlightArc à chaque frame, comme Server.LaunchService) lorsque l'on vérifie la trajectoire.
-	local function simulate(speed: number, behavior: FlightArc.Behavior?): Flight
-		local vx, vy = speed * math.cos(PITCH), speed * math.sin(PITCH)
-		local plan = FlightArc.plan(vx, vy, ORIGIN_HEIGHT, G, behavior)
+	-- contrôle FlightArc à chaque frame, comme Server.LaunchService) qui part de `height` à `vx` vers l'avant et `vy`
+	-- vers le haut, suivi par `plan`, lorsque l'on vérifie la trajectoire.
+	local function simulatePlan(plan: FlightArc.Plan, vx: number, vy: number, height: number): Flight
 		local phase = FlightArc.startPhase(plan)
-		local position = Vector3.new(0, ORIGIN_HEIGHT, 0)
+		local position = Vector3.new(0, height, 0)
 		local velocity = Vector3.new(0, vy, vx)
 		local apex, landed = position.Y, nil
 		local fall, bounces, bounceUntil = 0, 0, 0
@@ -106,6 +105,13 @@ return function(T, Loader)
 			descent = descent,
 			plan = plan,
 		}
+	end
+
+	-- Cette méthode permet de simuler un lancer depuis la main à `speed` (LAUNCH_PITCH_DEG) lorsque l'on vérifie la
+	-- trajectoire d'un mannequin `behavior`.
+	local function simulate(speed: number, behavior: FlightArc.Behavior?): Flight
+		local vx, vy = speed * math.cos(PITCH), speed * math.sin(PITCH)
+		return simulatePlan(FlightArc.plan(vx, vy, ORIGIN_HEIGHT, G, behavior), vx, vy, ORIGIN_HEIGHT)
 	end
 
 	-- Cette méthode permet de simuler un vol du Crash Dummy (sans comportement) lorsque l'on vérifie la trajectoire ;
@@ -464,6 +470,47 @@ return function(T, Loader)
 				print(string.format("[mesure] %s à 4,4 B : vol de %.1f s (sol plat)", name, total))
 				T.expect(total < GameConfig.MAX_FLIGHT_TIME * 0.75, string.format("%s : %.1f s", name, total))
 			end
+		end)
+	end)
+
+	T.describe("Élan d'entrée freiné (#233 : sortie du portail)", function()
+		local HEIGHT = 30 -- sortie du portail
+		local UP_PITCH = math.rad(15)
+
+		T.it("ajoute la distance d'un élan freiné régulièrement, sans changer le temps de vol", function()
+			local cruise, entry, time = 500, 900, 1
+			local plain = FlightArc.plan(cruise, cruise * math.sin(UP_PITCH), HEIGHT, G)
+			local plan = FlightArc.plan(cruise, cruise * math.sin(UP_PITCH), HEIGHT, G, nil, nil, entry, time)
+			T.expectNear(plan.contactTime, plain.contactTime, 1e-9)
+			T.expectNear(plan.range, plain.range + entry * time / 2, 1e-6)
+			T.expectNear(plan.landingSpeed, plain.landingSpeed, 1e-9, "glissade depuis l'élan de croisière")
+			T.expectNear(FlightArc.along(plan, time / 2), cruise * time / 2 + entry * (time / 2 - time / 8), 1e-6)
+			-- Freinage borné au premier contact : l'élan d'entrée est tout freiné avant la glissade
+			local late = FlightArc.plan(cruise, 0, HEIGHT, G, nil, nil, entry, 30)
+			T.expectNear(late.entryTime, late.contactTime, 1e-9)
+		end)
+
+		T.it("freine en l'air sans à-coup et touche le sol au point prévu (± 2 %)", function()
+			for _, case in { { 300, 1200, 1 }, { 900, 700, 1 }, { 120, 1600, 0.4 } } do
+				local cruise, entry, time = case[1], case[2], case[3]
+				local vy = cruise * math.sin(UP_PITCH)
+				local plan = FlightArc.plan(cruise, vy, HEIGHT, G, nil, nil, entry, time)
+				local flight = simulatePlan(plan, cruise + entry, vy, HEIGHT)
+				-- Une frame d'écart au plus sur le freinage (pas de 1/60 s, comme le serveur)
+				T.expect(
+					math.abs(flight.landed - plan.range) <= plan.range * 0.02 + 3 + entry * DT,
+					string.format("%d + %d : contact à %.0f, prévu %.0f", cruise, entry, flight.landed, plan.range)
+				)
+			end
+		end)
+
+		T.it("le réacteur garde sa poussée pendant le freinage", function()
+			local jet = dummyOf("Jetpack")
+			local plan = FlightArc.plan(400, 100, HEIGHT, G, jet, nil, 600, 1)
+			local push = FlightArc.accel(plan, Vector3.new(0, 0, 1000), FORWARD, 0.1, G).Z
+			T.expectNear(push, plan.boost - 600, 1e-3)
+			T.expect(plan.boostTime > 1.5, "poussée plus longue que le freinage")
+			T.expectNear(FlightArc.accel(plan, Vector3.new(0, 0, 1000), FORWARD, 1.5, G).Z, plan.boost, 1e-3, "après")
 		end)
 	end)
 

@@ -898,6 +898,16 @@ pièges servent à chaque tour.
   virtuelle à la distance restante (`Laps.relaunch`, comportement compris : la flamme du Rocket se rallume, le Glider
   replane, le Rubber rebondit au dernier tour). Plan, phase, pièges et rebonds repartent à neuf ; délai de grâce du
   lâcher (pas d'os cassé par le changement de vitesse) ; garde-fou `MAX_FLIGHT_TIME` compté par tour.
+- **Vitesse gardée au passage** (#233, retour du testeur : « le portail fait perdre la vitesse accumulée ») : la
+  relance ne descend jamais sous la vitesse d'arrivée le long de la piste. Tour qui repasse la ligne : vitesse
+  d'arrivée gardée quand elle dépasse celle du tour (la distance restante est recalculée au portail suivant : total
+  inchangé). Dernier tour : le mannequin ressort à sa vitesse d'arrivée, puis **freine en l'air** régulièrement
+  (`Laps.BRAKE_TIME` = 1 s au plus, élan d'entrée du plan : `FlightArc.plan`, `FlightArc.accel`) jusqu'à la vitesse
+  qui pose sa chute à la distance prévue ; les effets du client en tiennent compte (attributs `LaunchEntry`,
+  `LaunchEntryTime`). Avant : Classic à 3,2 tours ressortait de 1 652 à 1 216 puis de 1 216 à 478 studs/s d'un coup ;
+  après : 813 → 1 652 → 1 652 → 1 652, freinés à 365 en 0,72 s au dernier tour (Lune, sol plat). Mesuré en Studio
+  (mannequin de test, Crash, 1,5 T) : arrivée 920 → relance 1 165 au tour 2, puis 1 305 gardés à la sortie du dernier
+  portail, freinés à 243 en 0,46 s ; distance 12 665 m pour 12 616 prévus.
 - **Anneau propulseur** (Moon Base, au plafond) : il levait le plafond comme tout piège, et un vol en croisière
   retombait ≈ 1,4 km plus loin (mesuré en Studio à 600 B et 1,5 T : 3,5 à 4 km au lieu du bout de piste, lancers des
   mannequins de test et du joueur passés par l'anneau de leur colonne). Depuis #224 (`Traps.KINDS.Booster.cruise`), il

@@ -124,6 +124,29 @@ return function(T, Loader)
 				end
 			end
 		end)
+		T.it("ne ressort jamais moins vite qu'il n'est arrivé (#233), sans changer la distance", function()
+			for _, name in BEHAVIORS do
+				local dummy = if name == "Classic" then nil else dummyOf(name)
+				for _, run in { 150, 1200, 3000, 5800, 9000, 14000 } do
+					for _, arrival in { 0, 400, 900, 1700 } do
+						local label = string.format("%s, %d studs, arrivée %d", name, run, arrival)
+						local forward, up, plan = Laps.relaunch(run, dummy, G, arrival)
+						T.expect(forward >= arrival - 1e-6, label .. string.format(" : sortie %.0f", forward))
+						T.expectNear(math.deg(math.atan2(up, plan.forward)), Laps.PITCH_DEG, 1e-6, label)
+						T.expectNear(forward, plan.forward + plan.entry, 1e-6, label)
+						if run < L - Laps.EXIT_Z then
+							-- Dernier tour : la chute reste à la distance prévue, l'élan en trop est freiné en l'air
+							T.expectNear(Laps.virtual(plan), run, 1, label)
+							T.expect(plan.entryTime <= Laps.BRAKE_TIME + 1e-9, label)
+						else
+							-- Tour qui repasse la ligne : au moins la distance restante, sans freinage
+							T.expect(Laps.virtual(plan) >= run - 1, label)
+							T.expectEqual(plan.entry, 0, label)
+						end
+					end
+				end
+			end
+		end)
 		T.it("relance au moins de MIN_RUN un mannequin passé sans réserve", function()
 			local _, _, plan = Laps.relaunch(-200, nil, G)
 			T.expectNear(Laps.virtual(plan), Laps.MIN_RUN, 1)
@@ -139,22 +162,28 @@ return function(T, Loader)
 					-- Premier tour jusqu'au portail, puis un plan par tour jusqu'à l'arrêt
 					local time = Laps.duration(first, false)
 					local offset = L
+					-- Élan à la ligne : croisière plus poussée du réacteur, gardé à la sortie (#233)
+					local arrival = first.forward + first.boost * first.boostTime
+					local speeds = { string.format("%.0f", arrival) }
 					while true do
 						local run = total - offset - Laps.EXIT_Z
-						local _, _, plan = Laps.relaunch(run, dummy, G)
+						local forward, _, plan = Laps.relaunch(run, dummy, G, arrival)
 						local last = Laps.EXIT_Z + Laps.virtual(plan) < L
 						time += Laps.duration(plan, last)
+						table.insert(speeds, string.format("%.0f → %.0f", forward, plan.forward))
 						if last then
 							break
 						end
+						arrival = plan.forward + plan.boost * plan.boostTime
 						offset += L
 					end
 					print(
 						string.format(
-							"[mesure] %s à 3 tours (puissance %.3g) : vol de %.1f s (sol plat)",
+							"[mesure] %s à 3 tours (puissance %.3g) : vol de %.1f s (sol plat), élan %s studs/s",
 							name,
 							power,
-							time
+							time,
+							table.concat(speeds, " | ")
 						)
 					)
 					T.expect(time <= 25, string.format("%s : %.1f s", name, time))

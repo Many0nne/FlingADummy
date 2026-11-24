@@ -34,15 +34,24 @@ export type Cues = {
 }
 
 -- Cette méthode permet de donner les repères des effets d'un vol (fin de la poussée, planeur, rebonds) lorsque le
--- client voit partir un mannequin lancé de `origin` à `velocity` sous `gravity`, avec le comportement `behavior`.
-function FlightFx.cues(origin: Vector3, velocity: Vector3, gravity: number, behavior: FlightArc.Behavior?): Cues
+-- client voit partir un mannequin lancé de `origin` à `velocity` sous `gravity`, avec le comportement `behavior` ;
+-- `entry` studs/s de la vitesse de départ freinés en `entryTime` s (sortie du portail, #233).
+function FlightFx.cues(
+	origin: Vector3,
+	velocity: Vector3,
+	gravity: number,
+	behavior: FlightArc.Behavior?,
+	entry: number?,
+	entryTime: number?
+): Cues
 	local horizontal = Vector3.new(velocity.X, 0, velocity.Z).Magnitude
-	local plan = FlightArc.plan(horizontal, velocity.Y, origin.Y, gravity, behavior)
+	local extra = math.clamp(entry or 0, 0, horizontal)
+	local plan = FlightArc.plan(horizontal - extra, velocity.Y, origin.Y, gravity, behavior, nil, extra, entryTime)
 	local t = plan.boostTime
 	return {
 		boostTime = t,
-		-- Même intégration que FlightArc.plan : vitesse de départ plus poussée constante pendant `t`
-		boostAlong = if plan.boost > 0 then horizontal * t + plan.boost * t * t / 2 else 0,
+		-- Même intégration que FlightArc.plan : élan de départ, poussée et élan d'entrée freiné pendant `t`
+		boostAlong = if plan.boost > 0 then FlightArc.along(plan, t) else 0,
 		glide = plan.sink ~= nil,
 		bounces = #plan.bounceUps,
 	}

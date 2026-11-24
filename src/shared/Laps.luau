@@ -4,7 +4,8 @@
 -- glissade théorique, sans paroi) donne un tour de plus chaque fois qu'elle est multipliée par RATIO (≈ un tour par
 -- POWER_PER_LAP de puissance, pour tous les mannequins à lancer : leurs parts de portée sont fixes). Continue, tour
 -- partiel compris. Au portail, le serveur relance le mannequin depuis la sortie (EXIT_Z, EXIT_HEIGHT, PITCH_DEG plus
--- tendu qu'au lâcher : un tour dure moins longtemps) avec la vitesse qui pose son point de chute à la distance restante.
+-- tendu qu'au lâcher : un tour dure moins longtemps) avec la vitesse qui pose son point de chute à la distance restante,
+-- jamais moins vite qu'à l'arrivée (#233 : au dernier tour, l'élan en trop est freiné en l'air).
 -- Lu par Server.LaunchService, Shared.Economy (CHANCE au-delà du bout) et tools/ProgressionSim.luau.
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local FlightArc = require(Shared:WaitForChild("FlightArc"))
@@ -29,6 +30,9 @@ Laps.EXIT_HEIGHT = 30 -- hauteur de la sortie au-dessus de la piste (studs)
 Laps.PITCH_DEG = 15 -- angle de la relance (32° au lâcher) : vol plus tendu, tour de 6 km en ≈ 6 s au lieu de 8,5
 Laps.MIN_RUN = 40 -- un mannequin qui passe le portail sans réserve repart au moins de cette distance (studs)
 Laps.SPEED_MAX = 20000 -- borne haute de la recherche de vitesse (studs/s)
+-- Sortie du portail (#233) : le mannequin garde sa vitesse d'arrivée ; au dernier tour, l'élan en trop est freiné en
+-- l'air en ce temps au plus (s), pas d'un coup au passage
+Laps.BRAKE_TIME = 1
 -- Portails à la demande (#231) : le portail d'arrivée s'ouvre quand un mannequin affiché va franchir la ligne en moins
 -- de OPEN_LEAD s (avec un tour de plus à faire), et reste ouvert tant qu'il n'a pas dépassé la ligne de PAST_LINE studs
 Laps.OPEN_LEAD = 0.6
@@ -77,22 +81,63 @@ local function relaunchPlan(speed: number, behavior: FlightArc.Behavior?, gravit
 	return FlightArc.plan(speed * math.cos(pitch), speed * math.sin(pitch), Laps.EXIT_HEIGHT, gravity, behavior)
 end
 
--- Cette méthode permet de donner la relance d'un tour (vitesse le long de la piste, vers le haut, et son plan) qui pose
--- la portée virtuelle `run` studs après la sortie (MIN_RUN au moins) lorsque le mannequin passe le portail.
-function Laps.relaunch(run: number, behavior: FlightArc.Behavior?, gravity: number): (number, number, FlightArc.Plan)
-	local target = math.max(run, Laps.MIN_RUN)
-	local low, high = 0, Laps.SPEED_MAX
+-- Cette méthode permet de donner la plus petite vitesse de `0` à `high` dont le plan (`planFor`) pose la portée
+-- virtuelle à `target` au moins lorsque l'on cherche la vitesse d'une relance.
+local function speedFor(target: number, high: number, planFor: (number) -> FlightArc.Plan): number
+	local low = 0
 	for _ = 1, 40 do
 		local mid = (low + high) / 2
-		if Laps.virtual(relaunchPlan(mid, behavior, gravity)) < target then
+		if Laps.virtual(planFor(mid)) < target then
 			low = mid
 		else
 			high = mid
 		end
 	end
-	local speed = (low + high) / 2
+	return (low + high) / 2
+end
+
+-- Cette méthode permet de donner la relance d'un tour (vitesse de départ le long de la piste, vers le haut, et son
+-- plan) qui pose la portée virtuelle `run` studs après la sortie (MIN_RUN au moins) lorsque le mannequin passe le
+-- portail en avançant à `arrival` studs/s (#233 : jamais de coupure de vitesse au passage). Le mannequin garde au
+-- moins sa vitesse d'arrivée ; au dernier tour, l'élan en trop est freiné en l'air en BRAKE_TIME s au plus.
+function Laps.relaunch(
+	run: number,
+	behavior: FlightArc.Behavior?,
+	gravity: number,
+	arrival: number?
+): (number, number, FlightArc.Plan)
+	local target = math.max(run, Laps.MIN_RUN)
 	local pitch = math.rad(Laps.PITCH_DEG)
-	return speed * math.cos(pitch), speed * math.sin(pitch), relaunchPlan(speed, behavior, gravity)
+	local speed = speedFor(target, Laps.SPEED_MAX, function(s)
+		return relaunchPlan(s, behavior, gravity)
+	end)
+	local keep = math.max(arrival or 0, 0)
+	if keep <= speed * math.cos(pitch) then
+		-- Relance plus rapide que l'arrivée (ou égale) : le tour part à sa vitesse, sans freinage
+		return speed * math.cos(pitch), speed * math.sin(pitch), relaunchPlan(speed, behavior, gravity)
+	end
+	if run >= Laps.LENGTH - Laps.EXIT_Z then
+		-- Tour qui repasse la ligne : vitesse d'arrivée gardée (la distance restante est recalculée au portail suivant)
+		local kept = keep / math.cos(pitch)
+		return keep, kept * math.sin(pitch), relaunchPlan(kept, behavior, gravity)
+	end
+	-- Dernier tour : sortie à la vitesse d'arrivée, freinée en l'air jusqu'à la vitesse qui pose la chute à `run`
+	local brakeTime = math.min(Laps.BRAKE_TIME, target / keep)
+	local function braked(s: number): FlightArc.Plan
+		local forward = s * math.cos(pitch)
+		return FlightArc.plan(
+			forward,
+			s * math.sin(pitch),
+			Laps.EXIT_HEIGHT,
+			gravity,
+			behavior,
+			nil,
+			keep - forward,
+			brakeTime
+		)
+	end
+	local cruise = speedFor(target, speed, braked)
+	return keep, cruise * math.sin(pitch), braked(cruise)
 end
 
 -- Cette méthode permet de dire si le portail d'arrivée doit être ouvert pour un mannequin affiché en `z` (studs depuis

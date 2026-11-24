@@ -877,7 +877,9 @@ local function passPortal(flight: Flight, entry: Vector3)
 	flight.offset = (flight.lap - 1) * length
 	local exit = Vector3.new(flight.laneX, Laps.EXIT_HEIGHT, Laps.EXIT_Z)
 	local run = flight.total - flight.offset - Laps.EXIT_Z
-	local forward, up, plan = Laps.relaunch(run, flight.thrown, Workspace.Gravity)
+	-- Vitesse d'arrivée le long de la piste, gardée à la sortie (#233)
+	local arrival = math.max(flight.torso.AssemblyLinearVelocity:Dot(flight.flat), 0)
+	local forward, up, plan = Laps.relaunch(run, flight.thrown, Workspace.Gravity, arrival)
 	local velocity = flight.flat * forward + Vector3.new(0, up, 0)
 	-- Tout le mannequin (membres et accessoires) passe d'un bloc ; nouvelle vitesse de référence pour chaque pièce : ni
 	-- os cassé ni choc sur ce changement imposé (délai de grâce du tour qui commence)
@@ -911,6 +913,8 @@ local function passPortal(flight: Flight, entry: Vector3)
 	dummy:SetAttribute("LaunchOrigin", exit)
 	dummy:SetAttribute("LaunchTime", Workspace:GetServerTimeNow())
 	dummy:SetAttribute("LaunchVelocity", velocity)
+	dummy:SetAttribute("LaunchEntry", plan.entry)
+	dummy:SetAttribute("LaunchEntryTime", plan.entryTime)
 	dummy:SetAttribute("Bounces", 0)
 	dummy:SetAttribute("Lap", flight.lap)
 	addImpact(flight, "Portal", entry, flight.lap)
@@ -918,14 +922,17 @@ local function passPortal(flight: Flight, entry: Vector3)
 	if RunService:IsStudio() then
 		print(
 			string.format(
-				"[Lap] %s tour %d : portail passé à %.0f s, distance prévue %.0f m (reste %.0f m), relance %.0f studs/s,"
-					.. " premier contact prévu à %.0f m",
+				"[Lap] %s tour %d : portail passé à %.0f s, distance prévue %.0f m (reste %.0f m), arrivée %.0f studs/s,"
+					.. " relance %.0f studs/s (croisière %.0f après %.2f s), premier contact prévu à %.0f m",
 				if flight.owner then flight.owner.Name else tostring(flight.key),
 				flight.lap,
 				os.clock() - flight.launchedAt,
 				flight.total,
 				flight.total - flight.offset,
-				velocity.Magnitude,
+				arrival,
+				forward,
+				plan.forward,
+				plan.entryTime,
 				flight.offset + exit.Z + plan.range
 			)
 		)
